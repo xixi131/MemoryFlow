@@ -1,0 +1,62 @@
+{
+  "name": "memoryflow",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
+    "build": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "framer-motion": "^12.29.2",
+    "lucide-react": "^0.563.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.23.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "40.1.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.6.3",
+    "vite": "^6.1.0",
+    "wait-on": "^6.0.1"
+  },
+  "description": "基于艾宾浩斯遗忘曲线的学习计划管理系统",
+  "author": "MemoryFlow Team",
+  "build": {
+    "appId": "com.yourname.memoryflow",
+    "productName": "MemoryFlow",
+    "directories": {
+      "output": "release_v2"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "protocols": {
+      "name": "MemoryFlow Protocol",
+      "schemes": [
+        "memoryflow"
+      ]
+    }
+  }
+}

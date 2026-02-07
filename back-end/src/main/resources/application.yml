@@ -1,0 +1,119 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+file:
+  upload-dir: ./uploads/avatars/
+
+spring:
+  application:
+    name: memoryflow
+
+  # MySQL 数据库配置
+  datasource:
+    url: jdbc:mysql://8.138.16.119:3306/memory-flow?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: user-memory-flow
+    password: 1H1PmdG3NX3I0R
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000       # 5分钟 (默认600000=10分钟)
+      pool-name: MemoryFlowHikariCP
+      max-lifetime: 600000       # 10分钟 (缩短以避免防火墙切断连接)
+      connection-timeout: 30000
+      keepalive-time: 30000      # 30秒检查一次连接活跃状态
+
+  # MyBatis Plus 配置
+  mybatis-plus:
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    global-config:
+      db-config:
+        id-type: auto
+        logic-delete-field: deleted
+    mapper-locations: classpath*:/mapper/**/*.xml
+    type-aliases-package: com.memoryflow.entity
+
+  # Redis 配置
+  data:
+    redis:
+      host: 8.138.16.119
+      port: 6666
+      password: Txt@@asd2050905359
+      database: 0
+      timeout: 30000ms # Increased timeout from 10s to 30s
+      lettuce:
+        pool:
+          max-active: 50 # Increased max active connections
+          max-idle: 20   # Increased max idle
+          min-idle: 5
+          max-wait: 5000ms # Set explicit max wait
+          time-between-eviction-runs: 30s
+        shutdown-timeout: 200ms
+
+  # 邮件配置
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: tanxmq@163.com
+    password: JDqsbt5pAYL4rthW
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+
+# JWT 配置
+jwt:
+  secret: MemoryFlow2024SecretKeyForJWTTokenGenerationAndValidation!@#$%^&*()
+  access-token-expiration: 1800000    # 30分钟 (毫秒)
+  refresh-token-expiration: 604800000  # 7天 (毫秒)
+  issuer: MemoryFlow
+
+# 安全配置
+security:
+  # 登录防暴力破解
+  login:
+    max-fail-count: 5        # 最大失败次数
+    lock-duration: 300       # 锁定时长(秒) = 5分钟
+  # 注册防刷
+  register:
+    max-count-per-hour: 3    # 同一IP每小时最多注册数
+
+# 艾宾浩斯复习周期配置 (天数)
+ebbinghaus:
+  cycles:
+    - 1     # Review 1: T + 1天
+    - 2     # Review 2: T + 2天
+    - 4     # Review 3: T + 4天
+    - 7     # Review 4: T + 7天
+    - 15    # Review 5: T + 15天
+    - 30    # Review 6: T + 30天
+    - 90    # Review 7: T + 90天
+    - 180   # Review 8: T + 180天
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.memoryflow: DEBUG
+    com.memoryflow.mapper: DEBUG
+    org.hibernate.SQL: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+cloudflare:
+  turnstile:
+    secret-key: 0x4AAAAAACYc4Fl40AYt5N6TmKs1fwfL6Jo
+    site-verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
