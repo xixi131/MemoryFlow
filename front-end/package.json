@@ -12,9 +12,11 @@
     "build": "vite build && electron-builder"
   },
   "dependencies": {
+    "@coooookies/windows-smtc-monitor": "^1.0.12",
     "axios": "^1.13.2",
     "framer-motion": "^12.29.2",
     "lucide-react": "^0.563.0",
+    "node-vibrant": "^4.0.4",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",

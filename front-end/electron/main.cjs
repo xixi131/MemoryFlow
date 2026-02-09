@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
 
 let widgetWindow;
 let tray;
@@ -33,7 +34,7 @@ function saveConfig(config) {
 function initAutoLaunch() {
     const config = loadConfig();
     const isFirstRun = config === null;
-    
+
     if (isFirstRun) {
         console.log('First run detected, enabling auto-launch...');
         // 首次运行，默认开启
@@ -47,11 +48,11 @@ function initAutoLaunch() {
 
 // 协议注册 (Protocol Registration)
 if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('memoryflow', process.execPath, [path.resolve(process.argv[1])]);
-  }
+    if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient('memoryflow', process.execPath, [path.resolve(process.argv[1])]);
+    }
 } else {
-  app.setAsDefaultProtocolClient('memoryflow');
+    app.setAsDefaultProtocolClient('memoryflow');
 }
 
 // 单实例锁 (Single Instance Lock)
@@ -59,32 +60,35 @@ const gotTheLock = app.requestSingleInstanceLock();
 console.log('Got single instance lock:', gotTheLock);
 
 if (!gotTheLock) {
-  console.log('Quitting because another instance is running');
-  app.quit();
+    console.log('Quitting because another instance is running');
+    app.quit();
 } else {
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // 当运行第二个实例时，聚焦到当前窗口
-    if (widgetWindow) {
-      if (!widgetWindow.isVisible()) widgetWindow.show();
-      if (widgetWindow.isMinimized()) widgetWindow.restore();
-      widgetWindow.focus();
-    }
-    
-    // Windows 平台处理 Deep Link
-    const url = commandLine.find(arg => arg.startsWith('memoryflow://'));
-    if (url) handleDeepLink(url);
-  });
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // 当运行第二个实例时，聚焦到当前窗口
+        if (widgetWindow) {
+            if (!widgetWindow.isVisible()) widgetWindow.show();
+            if (widgetWindow.isMinimized()) widgetWindow.restore();
+            widgetWindow.focus();
+        }
 
-  app.whenReady().then(() => {
-    console.log('App is ready, creating window...');
-    initAutoLaunch();
-    createWidgetWindow();
-    createTray();
-    
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWidgetWindow();
+        // Windows 平台处理 Deep Link
+        const url = commandLine.find(arg => arg.startsWith('memoryflow://'));
+        if (url) handleDeepLink(url);
     });
-  }).catch(err => console.error('Error during app ready:', err));
+
+    app.whenReady().then(() => {
+        console.log('App is ready, creating window...');
+        initAutoLaunch();
+        createWidgetWindow();
+        createTray();
+
+        // Start music listener after window is created
+        startMusicListener(widgetWindow);
+
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) createWidgetWindow();
+        });
+    }).catch(err => console.error('Error during app ready:', err));
 }
 
 // macOS 平台处理 Deep Link
@@ -120,7 +124,7 @@ function createTray() {
         // 生产环境：引用复制到 electron/assets 下的资源
         iconPath = path.join(__dirname, 'assets/logo.png');
     }
-    
+
     tray = new Tray(iconPath);
 
     // 获取当前自启动状态
@@ -128,15 +132,15 @@ function createTray() {
     const isAutoLaunch = loginSettings.openAtLogin;
 
     const contextMenu = Menu.buildFromTemplate([
-        { 
-            label: '显示/隐藏悬浮窗', 
+        {
+            label: '显示/隐藏悬浮窗',
             click: () => {
                 if (widgetWindow.isVisible()) {
                     widgetWindow.hide();
                 } else {
                     widgetWindow.show();
                 }
-            } 
+            }
         },
         {
             label: '开机自动启动',
@@ -154,25 +158,25 @@ function createTray() {
                 saveConfig(config);
             }
         },
-        { 
-            label: '访问官网', 
+        {
+            label: '访问官网',
             click: () => {
                 shell.openExternal('http://localhost:3000'); // 这里的URL后续需替换为线上地址
-            } 
+            }
         },
         { type: 'separator' },
-        { 
-            label: '退出', 
+        {
+            label: '退出',
             click: () => {
                 app.quit();
-            } 
+            }
         }
     ]);
     tray.setToolTip('MemoryFlow Widget');
     tray.setContextMenu(contextMenu);
-    
+
     tray.on('click', () => {
-         if (widgetWindow.isVisible()) {
+        if (widgetWindow.isVisible()) {
             widgetWindow.hide();
         } else {
             widgetWindow.show();
@@ -181,55 +185,59 @@ function createTray() {
 }
 
 function createWidgetWindow() {
-  const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
-  const widgetWidth = 500; // Enough space for expanded state (460px)
-  
-  // Create the browser window.
-  widgetWindow = new BrowserWindow({
-    width: widgetWidth, 
-    height: 600, // Enough height for dropdown list
-    x: Math.floor((screenWidth - widgetWidth) / 2), // Center horizontally
-    y: 0, // Stick to top edge
-    frame: false, // Frameless
-    transparent: true, // Transparent background
-    alwaysOnTop: false, // Do NOT force on top to avoid blocking other apps
-    skipTaskbar: true, // Don't show in taskbar
-    resizable: false, // Prevent manual resizing
-    hasShadow: false, 
-    backgroundColor: '#00000000', // Ensure transparent background
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      devTools: true, 
-      webSecurity: false // Allow loading local resources if needed
-    },
-  });
+    const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
+    const widgetWidth = 500; // Enough space for expanded state (460px)
 
-  // Handle Ignore Mouse Events
-  ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) {
-      win.setIgnoreMouseEvents(ignore, options);
+    // Create the browser window.
+    widgetWindow = new BrowserWindow({
+        width: widgetWidth,
+        height: 600, // Enough height for dropdown list
+        x: Math.floor((screenWidth - widgetWidth) / 2), // Center horizontally
+        y: 0, // Stick to top edge
+        frame: false, // Frameless
+        transparent: true, // Transparent background
+        alwaysOnTop: false, // Do NOT force on top to avoid blocking other apps
+        skipTaskbar: true, // Don't show in taskbar
+        resizable: false, // Prevent manual resizing
+        hasShadow: false,
+        backgroundColor: '#00000000', // Ensure transparent background
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            devTools: true,
+            webSecurity: false // Allow loading local resources if needed
+        },
+    });
+
+    // Handle Ignore Mouse Events
+    ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+            win.setIgnoreMouseEvents(ignore, options);
+        }
+    });
+
+    // Load the app
+    // In production, we need to load the index.html and handle the hash route manually if needed, 
+    // or ensure the app handles the default route correctly.
+
+    if (process.env.ELECTRON_START_URL) {
+        widgetWindow.loadURL(process.env.ELECTRON_START_URL + '#/widget');
+    } else {
+        // For production (file:// protocol), use loadFile which handles paths correctly on Windows
+        const indexPath = path.join(__dirname, '../dist/index.html');
+        // Load file directly with hash is tricky in Electron loadFile, using loadURL with file protocol is safer for hash
+        widgetWindow.loadURL(`file://${indexPath}#/widget`);
     }
-  });
 
-  // Load the app
-  // In production, we need to load the index.html and handle the hash route manually if needed, 
-  // or ensure the app handles the default route correctly.
-  
-  if (process.env.ELECTRON_START_URL) {
-      widgetWindow.loadURL(process.env.ELECTRON_START_URL + '#/widget');
-  } else {
-      // For production (file:// protocol), use loadFile which handles paths correctly on Windows
-      const indexPath = path.join(__dirname, '../dist/index.html');
-      // Load file directly with hash is tricky in Electron loadFile, using loadURL with file protocol is safer for hash
-      widgetWindow.loadURL(`file://${indexPath}#/widget`);
-  }
-
-  // Open DevTools in dev mode
-  // widgetWindow.webContents.openDevTools({ mode: 'detach' });
+    // Open DevTools in dev mode
+    // widgetWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+    stopMusicListener();
 });
