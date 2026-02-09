@@ -24,9 +24,12 @@ interface MusicData {
     lastUpdate: number;
 }
 
-// Music Waveform Component - Animated bars
-const MusicWaveform: React.FC<{ color: string; isPlaying: boolean }> = ({ color, isPlaying }) => {
-    const bars = [0, 1, 2, 3, 4];
+// Music Waveform Component - Animated bars with Gradient
+const MusicWaveform: React.FC<{ color: string; isPlaying: boolean; count?: number }> = ({ color, isPlaying, count = 5 }) => {
+    const bars = Array.from({ length: count }, (_, i) => i);
+
+    // Helper to ensure we have a valid hex for gradient manipulation
+    const safeColor = /^#[0-9A-F]{6}$/i.test(color) ? color : '#22d3ee';
 
     return (
         <div className="flex items-center justify-center gap-[2px] h-6">
@@ -34,7 +37,10 @@ const MusicWaveform: React.FC<{ color: string; isPlaying: boolean }> = ({ color,
                 <motion.div
                     key={i}
                     className="w-[3px] rounded-full"
-                    style={{ backgroundColor: color }}
+                    style={{
+                        background: `linear-gradient(180deg, ${safeColor} 0%, ${safeColor}33 100%)`,
+                        transition: 'background 0.5s ease'
+                    }}
                     initial={{ height: 4 }}
                     animate={isPlaying ? {
                         height: [4, 16, 8, 20, 6, 12, 4],
@@ -156,6 +162,25 @@ const generateOpenSquirclePath = (width: number, height: number, radius: number)
         C ${r - ctrl} ${height} 0 ${height - r + ctrl} 0 ${height - r}
         L 0 0
     `.replace(/\s+/g, ' ').trim();
+};
+
+// Helper for Left Cap Background
+const generateLeftCapPath = (height: number, radius: number) => {
+    const w = 60; // Fixed width for cap
+    const k = 0.62;
+    const r = radius;
+    const ctrl = r * k;
+    return `M 0 0 L ${w} 0 L ${w} ${height} L ${r} ${height} C ${r - ctrl} ${height} 0 ${height - r + ctrl} 0 ${height - r} Z`;
+};
+
+// Helper for Right Cap Background
+const generateRightCapPath = (height: number, radius: number) => {
+    const w = 60;
+    const k = 0.62;
+    const r = radius;
+    const ctrl = r * k;
+    // 0 is left edge of box, 60 is right edge
+    return `M 0 0 L ${w} 0 L ${w} ${height - r} C ${w} ${height - r + ctrl} ${w - r + ctrl} ${height} ${w - r} ${height} L 0 ${height} Z`;
 };
 
 const DynamicIslandWidget: React.FC = () => {
@@ -301,10 +326,15 @@ const DynamicIslandWidget: React.FC = () => {
 
     // Handle gestures
     const handlePointerDown = (e: React.PointerEvent) => {
+        // Prevent interaction if clicking on a button
+        if ((e.target as HTMLElement).closest('button')) return;
         startX.current = e.clientX;
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
+        // Prevent interaction if clicking on a button
+        if ((e.target as HTMLElement).closest('button')) return;
+
         const diff = e.clientX - startX.current;
         if (Math.abs(diff) < 10) {
             toggleExpand();
@@ -427,7 +457,7 @@ const DynamicIslandWidget: React.FC = () => {
     // Determine collapsed width based on mode
     const getCollapsedWidth = () => {
         if (mode === 'music' && musicData) {
-            return 200; // Wider for music mode
+            return 210; // Wider for music mode (Cover + Space + Waveform)
         }
         return isLoggedIn ? (showReminder ? 240 : 160) : 180;
     };
@@ -436,11 +466,35 @@ const DynamicIslandWidget: React.FC = () => {
     // Get theme color for music
     const themeColor = musicData?.themeColor || '#22d3ee';
 
+    // Base width for animation (standard collapsed state)
+    const baseWidth = isLoggedIn ? 160 : 180;
+
+    // 固定窗口大小以避免动画时的闪烁问题 (Canvas Strategy)
+    // 窗口始终保持最大尺寸，通过忽略鼠标事件(setIgnoreMouseEvents)来实现点击穿透
+    const WINDOW_WIDTH = 520;
+    const WINDOW_HEIGHT = 300;
+
+    useEffect(() => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            // 仅在组件挂载时发送一次调整指令，确保窗口居中且尺寸正确
+            ipcRenderer.send('resize-widget', { 
+                width: WINDOW_WIDTH, 
+                height: WINDOW_HEIGHT 
+            });
+        } catch (e) {
+            // Electron IPC not available
+        }
+    }, []);
+
     return (
         <div className="flex items-start justify-center w-full h-auto bg-transparent pointer-events-none" style={{ background: 'transparent' }}>
             {/* Inject Font Style */}
             <style>
-                {`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');`}
+                {`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+                  body, html { overflow: hidden !important; }
+                  ::-webkit-scrollbar { display: none !important; }
+                `}
             </style>
             <motion.div
                 className="relative pointer-events-none"
@@ -449,8 +503,12 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? "expanded" : "collapsed"}
                 variants={{
                     collapsed: {
-                        width: collapsedWidth,
-                        height: 36,
+                        width: mode === 'music' ? [null, baseWidth, baseWidth, collapsedWidth] : collapsedWidth,
+                        height: mode === 'music' ? [null, 36, 36, 36] : 36,
+                        transition: mode === 'music' ? {
+                            width: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
+                            height: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                        } : undefined
                     },
                     expanded: {
                         width: expandedWidth,
@@ -459,6 +517,58 @@ const DynamicIslandWidget: React.FC = () => {
                 }}
                 transition={containerSpring}
             >
+                {/* Background Layer - To fix animation gap issue */}
+                <div className="absolute inset-0 w-full h-full z-40 pointer-events-none flex">
+                    {/* Left Cap */}
+                    <div className="relative w-[60px] h-full flex-shrink-0">
+                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                initial={false}
+                                animate={isExpanded ? "expanded" : "collapsed"}
+                                variants={{
+                                    collapsed: {
+                                        d: mode === 'music'
+                                            ? [null, generateLeftCapPath(36, 18), generateLeftCapPath(36, 18), generateLeftCapPath(36, 18)]
+                                            : generateLeftCapPath(36, 18),
+                                        transition: mode === 'music' ? {
+                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                         } : undefined
+                                    },
+                                    expanded: { d: generateLeftCapPath(mode === 'music' ? expandedMusicHeight : 200, 48) }
+                                }}
+                                transition={containerSpring}
+                            />
+                        </motion.svg>
+                    </div>
+
+                    {/* Middle */}
+                    <div className="flex-1 bg-black h-full"></div>
+
+                    {/* Right Cap */}
+                    <div className="relative w-[60px] h-full flex-shrink-0">
+                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                initial={false}
+                                animate={isExpanded ? "expanded" : "collapsed"}
+                                variants={{
+                                    collapsed: {
+                                        d: mode === 'music'
+                                            ? [null, generateRightCapPath(36, 18), generateRightCapPath(36, 18), generateRightCapPath(36, 18)]
+                                            : generateRightCapPath(36, 18),
+                                        transition: mode === 'music' ? {
+                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                         } : undefined
+                                    },
+                                    expanded: { d: generateRightCapPath(mode === 'music' ? expandedMusicHeight : 200, 48) }
+                                }}
+                                transition={containerSpring}
+                            />
+                        </motion.svg>
+                    </div>
+                </div>
+
                 {/* Ears - Smoother, larger liquid transition with 1px overlap to prevent cracks */}
                 {/* Left ear - Static left positioning works fine */}
                 <div className="absolute top-0 w-[22px] h-[22px] z-50 pointer-events-none" style={{ left: '-21px' }}>
@@ -481,19 +591,20 @@ const DynamicIslandWidget: React.FC = () => {
                     className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
                     variants={{
                         collapsed: {
-                            clipPath: `path('${generateSquirclePath(collapsedWidth, 36, 18)}')`
+                            borderRadius: 18 // Fallback for content clipping
                         },
                         expanded: {
-                            clipPath: `path('${generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)}')`
+                            borderRadius: 48 // Fallback for content clipping
                         }
                     }}
                     style={{
-                        backgroundColor: '#000000',
+                        backgroundColor: 'transparent', // Use SVG for background
                         cursor: 'pointer',
                         position: 'relative',
                         zIndex: 9999,
                         // Add deep shadow filter here since clip-path clips standard box-shadow
                         filter: 'drop-shadow(0px 4px 24px rgba(0, 0, 0, 0.25))',
+                        overflow: 'hidden' // Clip content using border-radius
                     }}
 
                     onMouseEnter={() => {
@@ -509,6 +620,35 @@ const DynamicIslandWidget: React.FC = () => {
                         } catch (e) { }
                     }}
                 >
+                    {/* Background SVG Layer - For smooth Squircle animation */}
+                    <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                        <motion.svg
+                            className="w-full h-full overflow-visible"
+                            width="100%"
+                            height="100%"
+                        >
+                            <motion.path
+                                fill="#000000"
+                                initial={false}
+                                animate={isExpanded ? "expanded" : "collapsed"}
+                                variants={{
+                                    collapsed: {
+                                        d: mode === 'music' 
+                                            ? [null, generateSquirclePath(baseWidth, 36, 18), generateSquirclePath(baseWidth, 36, 18), generateSquirclePath(collapsedWidth, 36, 18)]
+                                            : generateSquirclePath(collapsedWidth, 36, 18),
+                                        transition: mode === 'music' ? {
+                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                         } : undefined
+                                    },
+                                    expanded: {
+                                        d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)
+                                    }
+                                }}
+                                transition={containerSpring}
+                            />
+                        </motion.svg>
+                    </div>
+
                     {/* Inner Edge Stroke Overlay */}
                     <div className="absolute inset-0 w-full h-full pointer-events-none z-50">
                         <motion.svg
@@ -536,7 +676,12 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: generateOpenSquirclePath(collapsedWidth, 36, 18)
+                                        d: mode === 'music'
+                                            ? [null, generateOpenSquirclePath(baseWidth, 36, 18), generateOpenSquirclePath(baseWidth, 36, 18), generateOpenSquirclePath(collapsedWidth, 36, 18)]
+                                            : generateOpenSquirclePath(collapsedWidth, 36, 18),
+                                        transition: mode === 'music' ? {
+                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                         } : undefined
                                     },
                                     expanded: {
                                         d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)
@@ -560,14 +705,17 @@ const DynamicIslandWidget: React.FC = () => {
                                 filter: isExpanded ? 'blur(5px)' : 'blur(0px)',
                                 pointerEvents: isExpanded ? 'none' : 'auto',
                             }}
-                            transition={{ duration: 0.2 }}
+                            transition={{
+                                duration: 0.38, // Match the expansion duration (0.45s to 0.85s is 0.38s)
+                                delay: (!isExpanded && mode === 'music') ? 0.47 : 0
+                            }}
                             className="absolute inset-0 w-full h-full z-20"
                         >
                             {mode === 'music' && musicData ? (
                                 // MUSIC COLLAPSED STATE
                                 <div className="flex items-center justify-between w-full h-full px-2">
                                     {/* Left: Album Cover */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center pl-1">
                                         <div className="w-7 h-7 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
                                             {musicData.coverUrl ? (
                                                 <img
@@ -581,15 +729,11 @@ const DynamicIslandWidget: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        {/* Title - truncated */}
-                                        <span className="text-xs font-medium text-white truncate max-w-[80px]">
-                                            {musicData.title}
-                                        </span>
                                     </div>
 
                                     {/* Right: Waveform */}
                                     <div className="pr-1">
-                                        <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} />
+                                        <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} count={4} />
                                     </div>
                                 </div>
                             ) : !isLoggedIn ? (
@@ -627,7 +771,7 @@ const DynamicIslandWidget: React.FC = () => {
                                 filter: isExpanded ? 'blur(0px)' : 'blur(5px)',
                                 pointerEvents: isExpanded ? 'auto' : 'none',
                             }}
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: isExpanded ? 0.3 : 0.15 }}
                             className="flex flex-col w-full px-9 py-5 z-10 overflow-hidden"
                             style={{ width: expandedWidth, minWidth: expandedWidth }}
                         >
@@ -715,9 +859,9 @@ const DynamicIslandWidget: React.FC = () => {
                                         {/* Previous */}
                                         <motion.button
                                             onClick={handlePrev}
-                                            onPointerUp={(e) => e.stopPropagation()}
+                                            whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
-                                            className="p-1 text-white hover:text-white/80 transition-colors"
+                                            className="p-1 text-white transition-colors outline-none focus:outline-none"
                                         >
                                             <svg width="36" height="36" viewBox="0 0 28 28" fill="currentColor">
                                                 {/* First triangle pointing left (Right one) - Shifted right */}
@@ -730,14 +874,14 @@ const DynamicIslandWidget: React.FC = () => {
                                         {/* Play/Pause */}
                                         <motion.button
                                             onClick={handlePlayPause}
-                                            onPointerUp={(e) => e.stopPropagation()}
+                                            whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
-                                            className="p-1 text-white hover:text-white/80 transition-colors"
+                                            className="p-1 text-white transition-colors outline-none focus:outline-none"
                                         >
                                             {musicData.isPlaying ? (
                                                 <svg width="52" height="52" viewBox="0 0 24 24" fill="currentColor">
-                                                    <rect x="6" y="5" width="4" height="14" rx="1.5" />
-                                                    <rect x="14" y="5" width="4" height="14" rx="1.5" />
+                                                    <rect x="6" y="5" width="4" height="14" rx="1" />
+                                                    <rect x="14" y="5" width="4" height="14" rx="1" />
                                                 </svg>
                                             ) : (
                                                 <svg width="52" height="52" viewBox="0 0 28 28" fill="currentColor">
@@ -750,9 +894,9 @@ const DynamicIslandWidget: React.FC = () => {
                                         {/* Next */}
                                         <motion.button
                                             onClick={handleNext}
-                                            onPointerUp={(e) => e.stopPropagation()}
+                                            whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
-                                            className="p-1 text-white hover:text-white/80 transition-colors"
+                                            className="p-1 text-white transition-colors outline-none focus:outline-none"
                                         >
                                             <svg width="36" height="36" viewBox="0 0 28 28" fill="currentColor">
                                                 {/* First triangle pointing right (Left one) - Shifted left */}

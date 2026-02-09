@@ -5,6 +5,7 @@ let monitor = null;
 let lastCoverUrl = '';
 let lastThemeColor = '#22d3ee';
 let lastTitle = '';
+let lastThumbnailBuffer = null; // Track thumbnail buffer to detect changes
 let lastPosition = null; // Track last position for play/pause detection
 let lastStatus = 'Paused'; // Track last reported status
 let unchangedCount = 0; // Count consecutive unchanged positions
@@ -12,12 +13,18 @@ let unchangedCount = 0; // Count consecutive unchanged positions
 // 动态导入 Vibrant (处理不同版本的 API)
 let Vibrant = null;
 try {
-    Vibrant = require('node-vibrant/node');
+    const vNode = require('node-vibrant/node');
+    // node-vibrant v4 exports { Vibrant } as named export
+    Vibrant = vNode.Vibrant || vNode.default || vNode;
+    log('[MusicWorker] node-vibrant loaded successfully');
 } catch (e) {
+    console.warn('[MusicWorker] Failed to load node-vibrant/node, trying fallback...', e.message);
     try {
-        Vibrant = require('node-vibrant');
+        const vLib = require('node-vibrant');
+        Vibrant = vLib.Vibrant || vLib.default || vLib;
+        log('[MusicWorker] node-vibrant (fallback) loaded successfully');
     } catch (e2) {
-        console.warn('node-vibrant not available');
+        console.warn('[MusicWorker] node-vibrant not available:', e2.message);
     }
 }
 
@@ -60,7 +67,8 @@ async function extractThemeColor(buffer) {
         const hex = palette?.Vibrant?.hex || palette?.DarkVibrant?.hex || palette?.Muted?.hex || '#22d3ee';
         return hex;
     } catch (e) {
-        // 静默失败，使用默认颜色
+        // Log error but fallback to default color
+        console.error('[MusicWorker] Theme color extraction failed:', e);
         return lastThemeColor;
     }
 }
@@ -158,21 +166,56 @@ function initMonitor() {
             let coverUrl = lastCoverUrl;
             let themeColor = lastThemeColor;
 
-            // 检查是否需要更新封面 (歌曲变化时)
-            if (session.media?.title !== lastTitle) {
-                lastTitle = session.media?.title;
+            // 检查是否需要更新封面
+            // 逻辑: 只有当封面数据实际发生变化时，或者标题变化且之前无封面时，才更新
+            // 这样可以解决 Windows SMTC 延迟更新封面导致的封面不匹配问题
+            const currentThumbnail = session.media?.thumbnail;
+            let shouldUpdateCover = false;
 
-                if (session.media?.thumbnail && Buffer.isBuffer(session.media.thumbnail)) {
-                    const buffer = session.media.thumbnail;
-                    coverUrl = `data:image/png;base64,${buffer.toString('base64')}`;
-                    lastCoverUrl = coverUrl;
-
-                    // 异步提取主题色
-                    extractThemeColor(buffer).then(hex => {
-                        lastThemeColor = hex;
-                    });
+            if (Buffer.isBuffer(currentThumbnail)) {
+                // 如果当前有封面
+                if (!lastThumbnailBuffer || !currentThumbnail.equals(lastThumbnailBuffer)) {
+                    // 且与上次不同（或者是第一次）
+                    shouldUpdateCover = true;
+                }
+            } else {
+                // 当前没封面
+                if (lastThumbnailBuffer) {
+                    // 之前有 -> 变成了没有
+                    shouldUpdateCover = true;
                 }
             }
+
+            // 如果标题变了，更新标题
+            if (session.media?.title !== lastTitle) {
+                lastTitle = session.media?.title;
+                // 注意：这里我们不再强制重置封面，因为可能切歌时封面数据还没变
+                // 如果封面数据还没变，我们暂时显示旧封面，等到封面数据变了（shouldUpdateCover=true）再更新
+            }
+
+            if (shouldUpdateCover) {
+                if (Buffer.isBuffer(currentThumbnail)) {
+                    lastThumbnailBuffer = currentThumbnail;
+                    lastCoverUrl = `data:image/png;base64,${currentThumbnail.toString('base64')}`;
+                    
+                    // 异步提取主题色 (使用 await 确保第一时间发送正确的颜色)
+                    try {
+                        lastThemeColor = await extractThemeColor(currentThumbnail);
+                    } catch (e) {
+                        console.error('[MusicWorker] Color extraction error:', e);
+                        // 出错时保持旧颜色，或者可以使用默认颜色
+                    }
+                } else {
+                    // 封面消失了
+                    lastThumbnailBuffer = null;
+                    lastCoverUrl = '';
+                    lastThemeColor = '#22d3ee';
+                }
+            }
+            
+            // 使用更新后的值
+            coverUrl = lastCoverUrl;
+            themeColor = lastThemeColor;
 
             const payload = {
                 title: session.media?.title || '未知歌曲',

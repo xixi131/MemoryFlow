@@ -186,13 +186,15 @@ function createTray() {
 
 function createWidgetWindow() {
     const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
-    const widgetWidth = 500; // Enough space for expanded state (460px)
+    // 使用固定的最大尺寸，避免动画时的窗口调整导致闪烁
+    const initialWidth = 520; 
+    const initialHeight = 300;
 
     // Create the browser window.
     widgetWindow = new BrowserWindow({
-        width: widgetWidth,
-        height: 600, // Enough height for dropdown list
-        x: Math.floor((screenWidth - widgetWidth) / 2), // Center horizontally
+        width: initialWidth,
+        height: initialHeight, 
+        x: Math.floor((screenWidth - initialWidth) / 2), // Center horizontally
         y: 0, // Stick to top edge
         frame: false, // Frameless
         transparent: true, // Transparent background
@@ -214,6 +216,16 @@ function createWidgetWindow() {
         const win = BrowserWindow.fromWebContents(event.sender);
         if (win) {
             win.setIgnoreMouseEvents(ignore, options);
+        }
+    });
+
+    // 监听调整窗口大小
+    ipcMain.on('resize-widget', (event, { width, height }) => {
+        if (widgetWindow) {
+            const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
+            const x = Math.floor((screenWidth - width) / 2);
+            // 保持 y = 0，更新宽度和高度，并水平居中
+            widgetWindow.setBounds({ x, y: 0, width, height });
         }
     });
 
