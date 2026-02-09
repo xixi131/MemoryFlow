@@ -451,6 +451,7 @@ const DynamicIslandWidget: React.FC = () => {
     // Dynamic dimensions
     const expandedWidth = 460;
     const expandedMusicHeight = 228;
+    const expandedAppHeight = 328; // Fixed height for App mode (fits 4 items + stats)
     const hasPendingReviews = data.totalPendingReviews > 0;
     const showReminder = hasPendingReviews && isReminderActive && !forceCompactMode && mode === 'app';
 
@@ -472,7 +473,7 @@ const DynamicIslandWidget: React.FC = () => {
     // 固定窗口大小以避免动画时的闪烁问题 (Canvas Strategy)
     // 窗口始终保持最大尺寸，通过忽略鼠标事件(setIgnoreMouseEvents)来实现点击穿透
     const WINDOW_WIDTH = 520;
-    const WINDOW_HEIGHT = 300;
+    const SHADOW_BUFFER = 40; // Buffer for shadow (24px blur + 4px offset + safety)
 
     useEffect(() => {
         try {
@@ -480,12 +481,42 @@ const DynamicIslandWidget: React.FC = () => {
             // 仅在组件挂载时发送一次调整指令，确保窗口居中且尺寸正确
             ipcRenderer.send('resize-widget', { 
                 width: WINDOW_WIDTH, 
-                height: WINDOW_HEIGHT 
+                height: 300 // Initial height
             });
         } catch (e) {
             // Electron IPC not available
         }
     }, []);
+
+    // Sync Electron window height with content height
+    useEffect(() => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            
+            // Calculate the visual height of the island
+            const visualHeight = isExpanded ? (mode === 'music' ? expandedMusicHeight : expandedAppHeight) : 36;
+            
+            // Calculate required window height (visual height + shadow buffer)
+            // We only need the buffer when expanded or when the shadow is visible
+            const windowHeight = isExpanded ? (visualHeight + SHADOW_BUFFER) : 300; 
+            // When collapsed, we keep 300 to avoid window resizing during the collapse animation 
+            // which might look glitchy. 300 is safe.
+
+            if (isExpanded) {
+                ipcRenderer.send('resize-widget', { 
+                    width: WINDOW_WIDTH, 
+                    height: Math.ceil(windowHeight)
+                });
+            } else {
+                ipcRenderer.send('resize-widget', { 
+                    width: WINDOW_WIDTH, 
+                    height: 300 
+                });
+            }
+        } catch (e) {
+            // Electron IPC not available
+        }
+    }, [isExpanded, mode]);
 
     return (
         <div className="flex items-start justify-center w-full h-auto bg-transparent pointer-events-none" style={{ background: 'transparent' }}>
@@ -512,7 +543,7 @@ const DynamicIslandWidget: React.FC = () => {
                     },
                     expanded: {
                         width: expandedWidth,
-                        height: mode === 'music' ? expandedMusicHeight : 200,
+                        height: mode === 'music' ? expandedMusicHeight : expandedAppHeight,
                     }
                 }}
                 transition={containerSpring}
@@ -535,7 +566,7 @@ const DynamicIslandWidget: React.FC = () => {
                                              d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
                                          } : undefined
                                     },
-                                    expanded: { d: generateLeftCapPath(mode === 'music' ? expandedMusicHeight : 200, 48) }
+                                    expanded: { d: generateLeftCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
                                 transition={containerSpring}
                             />
@@ -561,7 +592,7 @@ const DynamicIslandWidget: React.FC = () => {
                                              d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
                                          } : undefined
                                     },
-                                    expanded: { d: generateRightCapPath(mode === 'music' ? expandedMusicHeight : 200, 48) }
+                                    expanded: { d: generateRightCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
                                 transition={containerSpring}
                             />
@@ -641,7 +672,7 @@ const DynamicIslandWidget: React.FC = () => {
                                          } : undefined
                                     },
                                     expanded: {
-                                        d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)
+                                        d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
                                     }
                                 }}
                                 transition={containerSpring}
@@ -684,7 +715,7 @@ const DynamicIslandWidget: React.FC = () => {
                                          } : undefined
                                     },
                                     expanded: {
-                                        d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)
+                                        d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
                                     }
                                 }}
                                 transition={containerSpring}
@@ -772,7 +803,7 @@ const DynamicIslandWidget: React.FC = () => {
                                 pointerEvents: isExpanded ? 'auto' : 'none',
                             }}
                             transition={{ duration: isExpanded ? 0.3 : 0.15 }}
-                            className="flex flex-col w-full px-9 py-5 z-10 overflow-hidden"
+                            className="flex flex-col w-full px-9 py-5 pb-8 z-10 overflow-hidden"
                             style={{ width: expandedWidth, minWidth: expandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
@@ -961,11 +992,13 @@ const DynamicIslandWidget: React.FC = () => {
                                     >
                                         {(() => {
                                             const activeSubjects = data.subjects.filter(s => s.pendingReviewCount > 0);
-                                            const displaySubjects = activeSubjects.slice(0, 6);
-                                            const hasMore = activeSubjects.length > 6;
+                                            const displaySubjects = activeSubjects.slice(0, 4);
+                                            const hasMore = activeSubjects.length > 4;
+                                            const emptySlots = Math.max(0, 4 - displaySubjects.length);
 
-                                            return displaySubjects.length > 0 ? (
+                                            return (
                                                 <>
+                                                    {/* Real Data Items */}
                                                     {displaySubjects.map((subject) => (
                                                         <motion.div
                                                             key={subject.id}
@@ -992,30 +1025,42 @@ const DynamicIslandWidget: React.FC = () => {
                                                         </motion.div>
                                                     ))}
 
-                                                    {hasMore && (
+                                                    {/* Empty Slot Placeholders */}
+                                                    {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, i) => (
                                                         <motion.div
+                                                            key={`empty-${i}`}
                                                             variants={{
                                                                 hidden: { opacity: 0 },
                                                                 visible: { opacity: 1 }
                                                             }}
-                                                            className="col-span-2 flex items-center justify-center py-2"
+                                                            className="flex items-center gap-3 bg-white/5 p-2 rounded-xl opacity-30 cursor-default"
                                                         >
-                                                            <span className="text-[10px] text-white/30 font-medium">
-                                                                +还有 {activeSubjects.length - 6} 个待复习科目
-                                                            </span>
+                                                            <div className="size-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                                                <div className="w-4 h-4 rounded bg-white/20" />
+                                                            </div>
+                                                            <div className="flex flex-col flex-1 min-w-0 gap-1.5">
+                                                                <div className="h-2.5 w-16 bg-white/10 rounded-sm" />
+                                                                <div className="h-2 w-8 bg-white/10 rounded-sm" />
+                                                            </div>
                                                         </motion.div>
-                                                    )}
+                                                    ))}
+
+                                                    {/* Footer Message */}
+                                                    <motion.div
+                                                        variants={{
+                                                            hidden: { opacity: 0 },
+                                                            visible: { opacity: 1 }
+                                                        }}
+                                                        className="col-span-2 flex items-center justify-center py-2"
+                                                    >
+                                                        <span className="text-[10px] text-white/30 font-medium">
+                                                            {hasMore 
+                                                                ? `+还有 ${activeSubjects.length - 4} 个待复习科目` 
+                                                                : '已显示全部'
+                                                            }
+                                                        </span>
+                                                    </motion.div>
                                                 </>
-                                            ) : (
-                                                <div className="col-span-2 flex flex-col items-center justify-center py-10 text-white/30 gap-3">
-                                                    <div className="size-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-2xl text-green-400">check_circle</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-sm font-bold text-white/60">全部完成！</span>
-                                                        <span className="text-[10px]">当前没有待复习的内容</span>
-                                                    </div>
-                                                </div>
                                             );
                                         })()}
                                     </motion.div>
