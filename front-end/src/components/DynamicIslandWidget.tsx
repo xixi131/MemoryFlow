@@ -442,39 +442,51 @@ const DynamicIslandWidget: React.FC = () => {
             <style>
                 {`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');`}
             </style>
-            <div className="relative pointer-events-none">
+            <motion.div
+                className="relative pointer-events-none"
+                style={{ transform: 'translateZ(0)' }}
+                initial={false}
+                animate={isExpanded ? "expanded" : "collapsed"}
+                variants={{
+                    collapsed: {
+                        width: collapsedWidth,
+                        height: 36,
+                    },
+                    expanded: {
+                        width: expandedWidth,
+                        height: mode === 'music' ? expandedMusicHeight : 200,
+                    }
+                }}
+                transition={containerSpring}
+            >
                 {/* Ears - Smoother, larger liquid transition with 1px overlap to prevent cracks */}
-                <div className="absolute top-0 -left-[21px] w-[22px] h-[22px] z-50 pointer-events-none">
+                {/* Left ear - Static left positioning works fine */}
+                <div className="absolute top-0 w-[22px] h-[22px] z-50 pointer-events-none" style={{ left: '-21px' }}>
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                         {/* Enhanced liquid curve: Starts vertical, eases to horizontal with surface tension */}
                         <path d="M22 22 C 22 8 14 0 0 0 H 22 V 22 Z" fill="#000000" />
                     </svg>
                 </div>
-                <div className="absolute top-0 -right-[21px] w-[22px] h-[22px] z-50 pointer-events-none">
+                {/* Right ear - Mirror left ear positioning with right instead of left */}
+                {/* Fixed: Adjusted right offset to -20px (2px overlap) to prevent separation gap during animation */}
+                <div className="absolute top-0 w-[22px] h-[22px] z-50 pointer-events-none" style={{ right: '-20px' }}>
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                         <path d="M0 22 C 0 8 8 0 22 0 H 0 V 22 Z" fill="#000000" />
                     </svg>
                 </div>
 
                 <motion.div
-                    layout
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
-                    initial={false}
-                    animate={isExpanded ? "expanded" : "collapsed"}
+                    className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
                     variants={{
                         collapsed: {
-                            width: collapsedWidth,
-                            height: 36,
                             clipPath: `path('${generateSquirclePath(collapsedWidth, 36, 18)}')`
                         },
                         expanded: {
-                            width: expandedWidth,
-                            height: mode === 'music' ? expandedMusicHeight : 'auto',
-                            clipPath: `path('${generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)}')` // Fallback height for non-music expanded if needed
+                            clipPath: `path('${generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : 200, 48)}')`
                         }
                     }}
-                    transition={containerSpring}
                     style={{
                         backgroundColor: '#000000',
                         cursor: 'pointer',
@@ -483,7 +495,7 @@ const DynamicIslandWidget: React.FC = () => {
                         // Add deep shadow filter here since clip-path clips standard box-shadow
                         filter: 'drop-shadow(0px 4px 24px rgba(0, 0, 0, 0.25))',
                     }}
-                    className="flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
+
                     onMouseEnter={() => {
                         try {
                             const { ipcRenderer } = (window as any).require('electron');
@@ -868,8 +880,9 @@ const DynamicIslandWidget: React.FC = () => {
                         </motion.div>
                     </motion.div>
                 </motion.div>
-            </div>
+            </motion.div>
         </div>
+
     );
 };
 
