@@ -104,7 +104,26 @@ function initMonitor() {
             }) || sessions.find(s => s.media?.title) || sessions[0];
 
             if (!session) {
-                // No session found, but don't spam logs
+                // 如果没有找到会话（音乐软件关闭），且上次状态不是停止，则发送停止状态
+                // 这样前端可以立即切换回“复习提醒”模式
+                if (lastStatus !== 'Stopped') {
+                    const payload = {
+                        title: '',
+                        artist: '',
+                        status: 'Stopped',
+                        isPlaying: false,
+                        coverUrl: '',
+                        themeColor: '#22d3ee',
+                        position: 0,
+                        duration: 0,
+                        lastUpdate: Date.now()
+                    };
+                    lastStatus = 'Stopped';
+                    lastTitle = '';
+                    lastThumbnailBuffer = null;
+                    log('[MusicWorker] 检测到无活动会话，发送 Stopped 状态');
+                    sendData(payload);
+                }
                 return;
             }
 
