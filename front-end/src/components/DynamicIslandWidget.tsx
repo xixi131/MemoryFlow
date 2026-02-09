@@ -882,8 +882,8 @@ const DynamicIslandWidget: React.FC = () => {
                                             whileTap={{ scale: 0.9 }}
                                             className="p-2 text-white/40 hover:text-white transition-colors"
                                         >
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 2 L13.9 9.2 L21.5 8.9 L15.4 13.1 L17.9 20.1 L12 15.5 L6.1 20.1 L8.6 13.1 L2.5 8.9 L10.1 9.2 Z" />
                                             </svg>
                                         </motion.button>
 
@@ -937,14 +937,14 @@ const DynamicIslandWidget: React.FC = () => {
                                             </svg>
                                         </motion.button>
 
-                                        {/* AirPlay/Output Icon */}
+                                        {/* Computer/Laptop Icon */}
                                         <motion.button
                                             whileTap={{ scale: 0.9 }}
                                             className="p-2 text-white/40 hover:text-white transition-colors"
                                         >
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                                <rect x="2" y="3" width="20" height="14" rx="2" />
-                                                <polygon points="12 17 17 22 7 22 12 17" fill="currentColor" stroke="none" />
+                                            <svg width="28" height="28" viewBox="0 0 26 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M4 16V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v11" fill="#1B1B1B" stroke="#6D6D6F" />
+                                                <rect x="0" y="15" width="26" height="3" rx="1" fill="#6D6D6F" stroke="none" />
                                             </svg>
                                         </motion.button>
                                     </div>
