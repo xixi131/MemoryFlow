@@ -64,10 +64,11 @@ public class AuthController {
     /**
      * 发送验证码
      */
-    @RequiresCaptcha
+    // @RequiresCaptcha // 发送验证码不需要人机验证，因为注册流程已经包含验证码，或者人机验证应该在提交注册时进行
+    // 用户反馈：发送验证码不用人机验证
     @PostMapping("/send-code")
     public ApiResponse<Void> sendCode(@Valid @RequestBody SendCodeRequest request) {
-        authService.sendVerificationCode(request.getEmail());
+        authService.sendVerificationCode(request.getEmail(), request.getType());
         return ApiResponse.success();
     }
 

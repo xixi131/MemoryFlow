@@ -107,8 +107,8 @@ export const Widgets: React.FC = () => {
     };
 
     return (
-        <aside className="w-full lg:w-80 xl:w-96 shrink-0">
-            <div className="sticky top-28 flex flex-col gap-6">
+        <aside className="w-full lg:w-80 xl:w-96 shrink-0 relative">
+            <div className="sticky top-28 lg:fixed lg:right-8 lg:w-80 xl:w-96 flex flex-col gap-6 z-10">
                 {/* Today's Focus Widget */}
                 <div className="glass-panel rounded-3xl p-6 flex flex-col gap-6 h-fit border border-slate-200 dark:border-white/10 shadow-xl transition-all">
                 <div className="flex items-center justify-between">
@@ -119,8 +119,8 @@ export const Widgets: React.FC = () => {
                     <span className="text-xs font-mono text-slate-500 dark:text-text-secondary bg-slate-100 dark:bg-[#0F172A] px-2 py-1 rounded-md transition-colors">{todayDate}</span>
                 </div>
 
-                {/* Task List */}
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                {/* 任务列表 - 展示所有待复习内容，取消内部滚动，使其完全展开 */}
+                <div className="flex flex-col gap-3 pr-1">
                     {reviews.length === 0 ? (
                         <div className="text-center py-4 text-slate-400 text-sm">今日无待复习内容</div>
                     ) : (

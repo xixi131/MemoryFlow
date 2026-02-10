@@ -27,6 +27,7 @@ public class AdminService {
 
     private final UserMapper userMapper;
     private final AdminWhitelistMapper adminWhitelistMapper;
+    private final EmailReminderService emailReminderService;
 
     /**
      * 获取管理后台统计数据
@@ -142,6 +143,9 @@ public class AdminService {
                         .isRegistered(false)
                         .build();
                 adminWhitelistMapper.insert(whitelist);
+                
+                // 发送邀请邮件
+                emailReminderService.sendInvitationEmail(email);
             }
         }
     }

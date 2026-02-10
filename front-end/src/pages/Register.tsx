@@ -11,11 +11,43 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [nickname, setNickname] = useState('');
+    const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+
+    const handleSendCode = async () => {
+        if (!email) return message.warning("请输入邮箱");
+        if (countdown > 0) return;
+
+        try {
+            const res = await authService.sendCode(email, 'register');
+            if (res.code === 200) {
+                message.success("验证码已发送");
+                setCountdown(60);
+                const timer = setInterval(() => {
+                    setCountdown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+            } else {
+                message.error(res.message || "发送失败");
+            }
+        } catch (e: any) {
+            console.error("Send code error", e);
+            // 修复: 只有当后端明确返回 4xx/5xx 且有 message 时才显示错误信息
+            // 否则对于 400 Bad Request 等情况，可能 e.response.data.message 就是后端的错误提示
+            const errorMsg = e.response?.data?.message || "发送失败，请稍后重试";
+            message.error(errorMsg);
+        }
+    };
 
     const handleRegister = async () => {
-        if (!email || !password || !nickname) return message.warning("Please fill in all fields");
-        if (password !== confirmPassword) return message.warning("Passwords do not match");
+        if (!email || !password || !nickname || !code) return message.warning("请填写所有字段");
+        if (password !== confirmPassword) return message.warning("两次输入的密码不一致");
 
         // Password complexity validation
         const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,20}$/;
@@ -32,16 +64,16 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
     const processRegister = async () => {
         setLoading(true);
         try {
-            const res = await authService.register({ email, password, nickname });
+            const res = await authService.register({ email, password, nickname, code });
             if (res.code === 200) {
                 message.success("注册成功，请登录");
                 setView('login');
             } else {
-                message.error("Register failed: " + res.message);
+                message.error("注册失败: " + res.message);
             }
         } catch (e: any) {
             console.error("Register error", e);
-            const errorMsg = e.response?.data?.message || "Registration failed. Please try again.";
+            const errorMsg = e.response?.data?.message || "注册失败，请重试";
             // If there are specific validation errors
             if (e.response?.data?.data && typeof e.response.data.data === 'object') {
                  const firstError = Object.values(e.response.data.data)[0] as string;
@@ -56,7 +88,7 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
 
     return (
         <div className="flex items-center justify-center min-h-screen animate-fade-in px-4">
-            <div className="glass-panel rounded-3xl p-12 border border-slate-200 dark:border-white/10 shadow-xl transition-all text-center max-w-md w-full">
+            <div className="p-12 transition-all text-center max-w-md w-full">
                 <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-2">MemoryFlow</h1>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">注册</h2>
                 <div className="flex flex-col gap-4 text-left">
@@ -80,6 +112,28 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                             placeholder="name@example.com"
                         />
                     </div>
+                    
+                    {/* 验证码输入框 */}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">验证码</label>
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value)}
+                                className="flex-1 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                placeholder="6位验证码"
+                            />
+                            <button
+                                onClick={handleSendCode}
+                                disabled={countdown > 0 || !email}
+                                className="px-4 rounded-2xl bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors dark:bg-blue-900/30 dark:text-blue-400"
+                            >
+                                {countdown > 0 ? `${countdown}s` : '发送验证码'}
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">密码</label>
                         <input

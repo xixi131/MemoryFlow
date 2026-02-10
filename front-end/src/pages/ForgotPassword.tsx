@@ -93,9 +93,9 @@ export const ForgotPassword: React.FC<{ setView: (v: string) => void }> = ({ set
 
     return (
         <div className="flex items-center justify-center min-h-screen animate-fade-in px-4">
-            <div className="glass-panel rounded-3xl p-12 border border-slate-200 dark:border-white/10 shadow-xl transition-all text-center max-w-md w-full">
-                <img src={logo} alt="logo" className="h-20 w-20 rounded-2xl mb-6 mx-auto object-cover" />
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">重置密码</h1>
+            <div className="p-12 transition-all text-center max-w-md w-full">
+                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-2">MemoryFlow</h1>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">重置密码</h2>
                 
                 <div className="flex flex-col gap-4 text-left">
                     {/* Email */}

@@ -8,6 +8,7 @@ import { motion, useScroll, useTransform, useSpring, useMotionValue, useMotionTe
 const translations = {
     en: {
         signIn: "Sign In",
+        docs: "Docs",
         getStarted: "Get Started",
         capture: "Capture.",
         flow: "Flow.",
@@ -67,6 +68,7 @@ const translations = {
     },
     zh: {
         signIn: "登录",
+        docs: "文档",
         getStarted: "立即开始",
         capture: "捕捉灵感",
         flow: "心流体验",
@@ -264,6 +266,12 @@ const HomePage: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-center gap-4"
                 >
+                    <button 
+                        onClick={() => navigate('/docs')}
+                        className="px-4 py-2 rounded-full text-sm font-bold text-slate-600 hover:bg-white/50 hover:text-slate-900 transition-colors"
+                    >
+                        {t.docs}
+                    </button>
                     <button
                         onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
                         className="px-4 py-2 rounded-full text-sm font-medium text-slate-600 hover:bg-white/50 transition-colors flex items-center gap-1"

@@ -21,11 +21,11 @@ const userApis = {
     },
 
     // 发送验证码
-    sendCode: (email: string) => {
+    sendCode: (email: string, type: string = 'reset') => {
         return request({
             url: '/auth/send-code',
             method: 'post',
-            data: { email }
+            data: { email, type }
         })
     },
 

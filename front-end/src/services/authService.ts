@@ -22,8 +22,8 @@ export const authService = {
     return api.post<any, ApiResponse<User>>('/auth/profile', data);
   },
 
-  sendCode: (email: string) => {
-    return api.post<any, ApiResponse<void>>('/auth/send-code', { email });
+  sendCode: (email: string, type: string = 'reset') => {
+    return api.post<any, ApiResponse<void>>('/auth/send-code', { email, type });
   },
 
   resetPassword: (data: any) => {

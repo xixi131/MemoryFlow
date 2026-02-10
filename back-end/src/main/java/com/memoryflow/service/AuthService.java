@@ -48,11 +48,28 @@ public class AuthService {
     /**
      * 发送验证码
      */
-    public void sendVerificationCode(String email) {
+    public void sendVerificationCode(String email, String type) {
         // 1. 检查邮箱是否存在
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
-        if (user == null) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        
+        if ("register".equals(type)) {
+            // 注册模式：邮箱不能存在
+            if (user != null) {
+                throw new BusinessException(ErrorCode.AUTH_EMAIL_EXISTS);
+            }
+            // 还需要检查白名单
+            com.memoryflow.entity.AdminWhitelist whitelist = adminWhitelistMapper.selectOne(
+                    new LambdaQueryWrapper<com.memoryflow.entity.AdminWhitelist>()
+                            .eq(com.memoryflow.entity.AdminWhitelist::getEmail, email)
+            );
+            if (whitelist == null) {
+                throw new BusinessException(ErrorCode.AUTH_EMAIL_NOT_INVITED);
+            }
+        } else {
+            // 重置密码/其他模式：邮箱必须存在
+            if (user == null) {
+                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+            }
         }
 
         // 2. 生成验证码
@@ -143,6 +160,14 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request, String ipAddress) {
         // 1. 检查IP注册频率限制
         checkRegisterRateLimit(ipAddress);
+
+        // 验证验证码
+        String key = VERIFY_CODE_PREFIX + request.getEmail();
+        Object storedCode = redisTemplate.opsForValue().get(key);
+        if (storedCode == null || !request.getCode().equals(storedCode.toString())) {
+            throw new BusinessException(ErrorCode.AUTH_VERIFY_CODE_INVALID);
+        }
+        redisTemplate.delete(key); // 验证成功后删除
 
         // 1.5 检查白名单 (邀请制)
         com.memoryflow.entity.AdminWhitelist whitelist = adminWhitelistMapper.selectOne(

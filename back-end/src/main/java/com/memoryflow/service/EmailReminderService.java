@@ -45,6 +45,143 @@ public class EmailReminderService {
     @Value("${app.name:MemoryFlow}")
     private String appName;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
+    @Async
+    public void sendInvitationEmail(String to) {
+        String subject = String.format("邀请您加入 %s", appName);
+        String inviteLink = String.format("%s/#/register?email=%s", frontendUrl, to);
+        
+        String content = String.format("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+                            background-color: #f5f5f5;
+                            color: #202124;
+                        }
+                        .container {
+                            width: 100%%;
+                            max-width: 580px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .card {
+                            background-color: #ffffff;
+                            border-radius: 8px;
+                            padding: 40px 40px;
+                            border: 1px solid #dadce0;
+                            text-align: center;
+                        }
+                        .logo {
+                            font-size: 24px;
+                            font-weight: 500;
+                            color: #5f6368;
+                            margin-bottom: 24px;
+                            display: inline-block;
+                        }
+                        .logo span {
+                            color: #1a73e8;
+                            font-weight: bold;
+                        }
+                        h1 {
+                            font-size: 22px;
+                            font-weight: 400;
+                            margin: 0 0 24px 0;
+                            color: #202124;
+                        }
+                        p {
+                            font-size: 14px;
+                            line-height: 1.5;
+                            color: #3c4043;
+                            margin: 0 0 24px 0;
+                        }
+                        .btn {
+                            display: inline-block;
+                            background-color: #1a73e8;
+                            color: #ffffff;
+                            padding: 10px 24px;
+                            text-decoration: none;
+                            border-radius: 4px;
+                            font-weight: 500;
+                            font-size: 14px;
+                            letter-spacing: 0.25px;
+                            line-height: 20px;
+                            transition: background-color 0.2s;
+                        }
+                        .btn:hover {
+                            background-color: #1765cc;
+                            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+                        }
+                        .footer {
+                            margin-top: 24px;
+                            font-size: 12px;
+                            color: #5f6368;
+                            text-align: center;
+                        }
+                        .divider {
+                            height: 1px;
+                            background-color: #dadce0;
+                            margin: 24px 0;
+                        }
+                        .user-email {
+                            font-weight: 500;
+                            color: #202124;
+                            border: 1px solid #dadce0;
+                            border-radius: 16px;
+                            padding: 4px 12px;
+                            display: inline-block;
+                            margin-bottom: 24px;
+                            font-size: 13px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="card">
+                            <div class="logo">Memory<span>Flow</span></div>
+                            
+                            <h1>Ready to start learning?</h1>
+                            
+                            <p>您好！管理员已邀请您加入 <strong>%s</strong>。</p>
+                            
+                            <div class="user-email">%s</div>
+                            
+                            <p>我们为您准备了科学的记忆算法和舒适的学习体验。<br>点击下方按钮即可完成注册。</p>
+                            
+                            <a href="%s" class="btn">接受邀请</a>
+                            
+                            <div class="divider"></div>
+                            
+                            <p style="font-size: 12px; color: #5f6368; margin-bottom: 0;">
+                                如果按钮无法点击，请复制以下链接到浏览器打开：<br>
+                                <a href="%s" style="color: #1a73e8; text-decoration: none;">%s</a>
+                            </p>
+                        </div>
+                        
+                        <div class="footer">
+                            <p>&copy; %d %s. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """, appName, to, inviteLink, inviteLink, inviteLink, java.time.Year.now().getValue(), appName);
+
+        try {
+            sendHtmlEmail(to, subject, content);
+            log.info("成功发送邀请邮件给 {}", to);
+        } catch (Exception e) {
+            log.error("发送邀请邮件失败: {}", e.getMessage());
+        }
+    }
+
     /**
      * 检查并发送逾期提醒邮件
      * 规则：超过1天、7天、30天各发送一次提醒

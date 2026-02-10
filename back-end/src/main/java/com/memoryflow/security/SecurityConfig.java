@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/auth/register",
                                 "/auth/login",
                                 "/auth/refresh",
+                                "/auth/send-code", // 发送验证码接口公开
                                 "/health",
                                 "/uploads/**",      // 静态资源（头像等）
                                 "/widget/summary",  // 桌面小组件支持未登录状态

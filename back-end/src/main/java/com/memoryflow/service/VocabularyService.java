@@ -109,6 +109,8 @@ public class VocabularyService {
      */
     @Transactional
     public CourseDTO selectCourse(Long userId, SelectCourseRequest request) {
+        log.info("Selecting course {} for user {} with dailyGoal {}", request.getCourseId(), userId, request.getDailyGoal());
+        
         EnglishCourse course = courseMapper.selectById(request.getCourseId());
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
@@ -177,6 +179,8 @@ public class VocabularyService {
         dto.setProgress(course.getWordCount() > 0
                 ? (double) userCourse.getLearnedCount() / course.getWordCount() * 100
                 : 0.0);
+        
+        log.info("Course selected successfully. Daily goal updated to {}", userCourse.getDailyGoal());
 
         return dto;
     }
@@ -186,6 +190,8 @@ public class VocabularyService {
      * 策略：优先获取所有待复习单词，然后根据每日目标填充新词
      */
     public StudySessionDTO getStudySession(Long userId, Long courseId) {
+        log.info("Getting study session for user {} courseId {}", userId, courseId);
+        
         // 1. 获取所有待复习单词
         List<WordDTO> reviewWords = getPendingReviewWords(userId, courseId);
 
@@ -218,14 +224,22 @@ public class VocabularyService {
             UserCourse userCourse = userCourseMapper.selectOne(new LambdaQueryWrapper<UserCourse>()
                     .eq(UserCourse::getUserId, userId)
                     .eq(UserCourse::getCourseId, courseId));
-            if (userCourse != null && userCourse.getDailyGoal() != null) {
-                newWordsLimit = userCourse.getDailyGoal();
+            if (userCourse != null) {
+                 if (userCourse.getDailyGoal() != null) {
+                     newWordsLimit = userCourse.getDailyGoal();
+                 }
+                 log.info("Found UserCourse. DailyGoal: {}", newWordsLimit);
+            } else {
+                 log.warn("UserCourse not found for userId={} courseId={}", userId, courseId);
             }
+        } else {
+            log.warn("No courseId determined for study session.");
         }
 
         // 填充新词
         List<WordDTO> newWords = new ArrayList<>();
         if (courseId != null) {
+            log.info("Fetching new words with limit {}", newWordsLimit);
             newWords = getTodayLearningWords(userId, courseId, newWordsLimit);
         }
 
@@ -233,6 +247,8 @@ public class VocabularyService {
         List<WordDTO> allWords = new ArrayList<>();
         allWords.addAll(reviewWords);
         allWords.addAll(newWords);
+        
+        log.info("Session created. New: {}, Review: {}, Total: {}", newWords.size(), reviewWords.size(), allWords.size());
 
         return StudySessionDTO.builder()
                 .words(allWords)
