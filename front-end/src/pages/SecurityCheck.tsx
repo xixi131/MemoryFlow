@@ -55,11 +55,18 @@ const SecurityCheck: React.FC = () => {
                 </p>
 
                 {/* Turnstile Widget */}
-                <div className="w-full flex justify-start mb-12 min-h-[65px] items-center">
+                <div className="w-full flex flex-col items-start mb-12 min-h-[65px]">
                     <CloudflareTurnstile 
                         siteKey={siteKey}
                         onVerify={handleVerify}
                     />
+                    
+                    {/* Verifying Shimmer Effect */}
+                    {verifying && (
+                        <p className="mt-2 ml-1 text-sm font-medium bg-gradient-to-r from-slate-500 via-slate-300 to-slate-500 dark:from-slate-400 dark:via-slate-100 dark:to-slate-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-text-shimmer text-left">
+                            正在验证...
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
