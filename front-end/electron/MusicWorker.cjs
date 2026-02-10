@@ -10,6 +10,16 @@ let lastPosition = null; // Track last position for play/pause detection
 let lastStatus = 'Paused'; // Track last reported status
 let unchangedCount = 0; // Count consecutive unchanged positions
 
+// Position estimator for apps that don't provide SMTC timeline (e.g., NetEase Cloud Music)
+let posEstimator = {
+    title: '',              // Current song title
+    accumulatedSec: 0,      // Accumulated playback seconds
+    lastTickTime: 0,        // Timestamp of last tick
+    active: false,          // Whether estimation mode is on
+    playingConfirmedCount: 0,// Consecutive Playing polls (wait for actual playback)
+    lastSeenUpdateTime: 0,  // Track session.lastUpdatedTime to detect seek events
+};
+
 // 动态导入 Vibrant (处理不同版本的 API)
 let Vibrant = null;
 try {
@@ -83,13 +93,6 @@ function initMonitor() {
             let sessions = [];
             try {
                 sessions = SMTCMonitor.getMediaSessions();
-                // Debug log: Show session count
-                if (sessions.length > 0) {
-                    log(`Found ${sessions.length} media session(s)`);
-                    sessions.forEach((s, i) => {
-                        log(`  Session ${i}: ${s.media?.title || 'unknown'} - status: ${s.playback?.status}`);
-                    });
-                }
             } catch (e) {
                 error('Failed to get media sessions: ' + e.message);
                 return;
@@ -129,16 +132,18 @@ function initMonitor() {
 
             // 获取时间轴信息 (position 和 duration 都是秒) - 使用原始浮点数比较
             const rawPosition = session.timeline?.position || 0;
-            const duration = session.timeline?.endTime || session.timeline?.duration || 240;
+            const duration = session.timeline?.duration || session.timeline?.endTime || 240;
+
+            // Only log if timeline is empty (NetEase Cloud Music issue)
+            if (rawPosition === 0 && duration === 0 && session.timeline) {
+                log(`⚠️ Warning: Empty timeline data from ${session.sourceAppId || 'unknown app'}`);
+            }
 
             // 状态映射 - 处理各种可能的状态值
             let status = 'Stopped';
             const pbStatus = session.playback?.playbackStatus;  // FIXED: 使用正确的字段名
 
-            // Debug: log actual playback status value
-            if (pbStatus !== undefined) {
-                log(`Playback status from SMTC: ${pbStatus}`);
-            }
+            // Playback status check (no logging to reduce noise)
 
             // 直接检查数值状态
             if (pbStatus === 4 || pbStatus === 'Playing') {
@@ -216,7 +221,7 @@ function initMonitor() {
                 if (Buffer.isBuffer(currentThumbnail)) {
                     lastThumbnailBuffer = currentThumbnail;
                     lastCoverUrl = `data:image/png;base64,${currentThumbnail.toString('base64')}`;
-                    
+
                     // 异步提取主题色 (使用 await 确保第一时间发送正确的颜色)
                     try {
                         lastThemeColor = await extractThemeColor(currentThumbnail);
@@ -231,10 +236,79 @@ function initMonitor() {
                     lastThemeColor = '#22d3ee';
                 }
             }
-            
+
             // 使用更新后的值
             coverUrl = lastCoverUrl;
             themeColor = lastThemeColor;
+
+            // === Position Estimation for apps without SMTC timeline ===
+            let finalPosition = rawPosition;
+            const currentSongTitle = session.media?.title || '';
+
+            if (rawPosition > 0) {
+                // App provides real position (e.g., Apple Music) → use it directly
+                if (posEstimator.active) {
+                    posEstimator.active = false;
+                }
+                posEstimator.title = currentSongTitle;
+            } else if (currentSongTitle && duration > 0) {
+                // Position is 0 → this app doesn't update SMTC timeline
+                const sessionUpdateTime = session.lastUpdatedTime || 0;
+
+                if (currentSongTitle !== posEstimator.title) {
+                    // Song changed → reset estimator
+                    posEstimator.title = currentSongTitle;
+                    posEstimator.accumulatedSec = 0;
+                    posEstimator.lastTickTime = Date.now();
+                    posEstimator.playingConfirmedCount = 0;
+                    posEstimator.lastSeenUpdateTime = sessionUpdateTime;
+                    posEstimator.active = true;
+                    log(`[PosEstimator] New song: "${currentSongTitle}", waiting for playback confirmation...`);
+                }
+
+                // Detect seek events: if lastUpdatedTime changed significantly,
+                // it may indicate the user dragged the progress bar
+                if (posEstimator.active && posEstimator.lastSeenUpdateTime > 0 && sessionUpdateTime > 0) {
+                    const updateTimeDiff = Math.abs(sessionUpdateTime - posEstimator.lastSeenUpdateTime);
+                    // If lastUpdatedTime jumped by more than 2 seconds, a seek or state change happened
+                    if (updateTimeDiff > 2000 && posEstimator.playingConfirmedCount > 0) {
+                        // We can't know the exact new position, but we know something changed
+                        // Log for diagnostics
+                        log(`[PosEstimator] Detected possible seek (lastUpdatedTime jumped by ${(updateTimeDiff / 1000).toFixed(1)}s)`);
+                    }
+                }
+                posEstimator.lastSeenUpdateTime = sessionUpdateTime;
+
+                if (posEstimator.active) {
+                    const now = Date.now();
+
+                    if (isPlaying) {
+                        // Require 3 consecutive Playing polls (~1.5s) before advancing
+                        // This prevents premature progress during network buffering
+                        posEstimator.playingConfirmedCount++;
+
+                        if (posEstimator.playingConfirmedCount >= 3) {
+                            // Playback confirmed → accumulate time
+                            if (posEstimator.lastTickTime > 0) {
+                                const deltaSec = (now - posEstimator.lastTickTime) / 1000;
+                                // Guard against large jumps (system sleep, etc.)
+                                if (deltaSec > 0 && deltaSec < 5) {
+                                    posEstimator.accumulatedSec = Math.min(
+                                        posEstimator.accumulatedSec + deltaSec,
+                                        duration
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        // Paused → freeze accumulated time, reset confirmation
+                        posEstimator.playingConfirmedCount = 0;
+                    }
+
+                    posEstimator.lastTickTime = now;
+                    finalPosition = posEstimator.accumulatedSec;
+                }
+            }
 
             const payload = {
                 title: session.media?.title || '未知歌曲',
@@ -243,12 +317,15 @@ function initMonitor() {
                 isPlaying,
                 coverUrl: coverUrl || '',
                 themeColor: themeColor || '#22d3ee',
-                position: Math.floor(rawPosition),  // 只在发送给前端时才取整
+                position: Math.floor(finalPosition),
                 duration: Math.floor(duration),
                 lastUpdate: Date.now()
             };
 
-            log(`Sending payload: ${payload.title} - ${payload.status}`);
+            // Only log when song changes or status changes
+            if (payload.title !== lastTitle || payload.status !== lastStatus) {
+                log(`♪ ${payload.title} - ${payload.status}`);
+            }
             sendData(payload);
         };
 
@@ -265,18 +342,22 @@ function initMonitor() {
             }
         }
 
-        // 降低节流时间以提高进度条的实时性
-        const throttledSend = throttle((id) => sendUpdate(id), 200);
+        // 降低节流时间以提高进度条的实时性 (50ms 提供更快的拖动响应)
+        const throttledSend = throttle((id) => sendUpdate(id), 50);
 
-        monitor.on('session-timeline-changed', throttledSend);
+        // Diagnostic: log raw timeline events to understand what NetEase sends during drag
+        monitor.on('session-timeline-changed', (sourceAppId, timelineProps) => {
+            log(`[Timeline Event] ${sourceAppId}: pos=${timelineProps?.position}, dur=${timelineProps?.duration}`);
+            throttledSend(sourceAppId);
+        });
         monitor.on('session-media-changed', sendUpdate);
         monitor.on('session-playback-changed', sendUpdate);
         monitor.on('current-session-changed', sendUpdate);
         monitor.on('session-added', sendUpdate);
 
-        // 初始化时发送一次，然后每秒轮询一次以确保进度同步
+        // 初始化时发送一次,然后每500ms轮询一次以确保进度同步 (提高实时性)
         setTimeout(() => sendUpdate(null), 300);
-        setInterval(() => sendUpdate(null), 1000);
+        setInterval(() => sendUpdate(null), 500);
 
         log('SMTCMonitor started successfully');
 

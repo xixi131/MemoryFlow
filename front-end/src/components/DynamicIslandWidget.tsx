@@ -45,11 +45,14 @@ const MusicWaveform: React.FC<{ color: string; isPlaying: boolean; count?: numbe
                     animate={isPlaying ? {
                         height: [4, 16, 8, 20, 6, 12, 4],
                     } : { height: 4 }}
-                    transition={{
-                        duration: 0.8,
+                    transition={isPlaying ? {
+                        duration: 2.2,
                         repeat: Infinity,
-                        delay: i * 0.12,
+                        delay: i * 0.2,
                         ease: "easeInOut"
+                    } : {
+                        duration: 0.3,
+                        ease: "easeOut"
                     }}
                 />
             ))}
@@ -195,6 +198,10 @@ const DynamicIslandWidget: React.FC = () => {
     const [localPosition, setLocalPosition] = useState(0);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Track when playback started (for simulating progress when server doesn't provide it)
+    const playStartTimeRef = useRef<number | null>(null);
+    const playStartPositionRef = useRef<number>(0);
+
     const startX = useRef(0);
     const [data, setData] = useState<WidgetData>({
         totalPendingReviews: 0,
@@ -209,7 +216,14 @@ const DynamicIslandWidget: React.FC = () => {
             ipcRenderer = (window as any).require('electron').ipcRenderer;
 
             const handleMusicUpdate = (_event: any, data: MusicData) => {
-                console.log('[DynamicIsland] Received music data:', data);
+                console.log('[DynamicIsland] 🎵 Received music data:', data);
+                console.log('[DynamicIsland] 📊 Data breakdown:', {
+                    title: data.title,
+                    position: data.position,
+                    duration: data.duration,
+                    status: data.status,
+                    isPlaying: data.isPlaying
+                });
 
                 // Clear timeout for switching back to app mode
                 if (musicTimeoutRef.current) {
@@ -219,7 +233,9 @@ const DynamicIslandWidget: React.FC = () => {
 
                 if (data && (data.status === 'Playing' || data.status === 'Paused')) {
                     setMusicData(data);
-                    setLocalPosition(data.position);
+                    // Position sync is handled by the dedicated sync useEffect
+                    // Do NOT set localPosition here — for apps like NetEase Cloud Music
+                    // where data.position is always 0, this would reset the local timer every 500ms
                     setMode('music');
 
                     // If paused, set a timeout to switch back to app mode after 30 seconds
@@ -249,12 +265,20 @@ const DynamicIslandWidget: React.FC = () => {
         }
     }, []);
 
-    // Local position update for smooth progress bar - only when playing
+    // Local position update for smooth progress bar
+    // For apps that provide timeline (Apple Music): use server position + local increment
+    // For apps that DON'T provide timeline (NetEase Cloud Music): simulate based on play start time
     useEffect(() => {
-        if (!musicData?.isPlaying) return;
+        if (!musicData?.isPlaying) {
+            // Not playing, pause the timer
+            playStartTimeRef.current = null;
+            return;
+        }
 
         const interval = setInterval(() => {
             setLocalPosition(prev => {
+                // If server is providing valid position updates (position > 0 or continuously changing)
+                // we rely on the sync effect. Here we just do local increment.
                 const newPos = prev + 1;
                 return newPos <= (musicData?.duration || 0) ? newPos : prev;
             });
@@ -263,39 +287,70 @@ const DynamicIslandWidget: React.FC = () => {
         return () => clearInterval(interval);
     }, [musicData?.isPlaying, musicData?.duration]);
 
-    // Sync local position when music data updates - with smart anti-flicker logic
+    // Sync local position when server data updates
+    // Uses lastServerPosRef to detect real server position changes vs repeated polls
     const lastTitleRef = useRef<string>('');
     const initialSyncDoneRef = useRef<boolean>(false);
+    const lastServerPosRef = useRef<number>(0); // Track last server position to detect real changes
+
     useEffect(() => {
         if (musicData) {
             const serverPos = musicData.position;
-            const diff = Math.abs(serverPos - localPosition);
             const titleChanged = musicData.title !== lastTitleRef.current;
 
-            // Always sync on song change
+            // 歌曲切换 → 直接同步 (处理网易云进度记忆：切歌回来从上次位置继续)
             if (titleChanged) {
+                console.log('[DynamicIsland] 🎼 Title changed, syncing position to:', serverPos);
                 setLocalPosition(serverPos);
                 lastTitleRef.current = musicData.title;
                 initialSyncDoneRef.current = true;
+                lastServerPosRef.current = serverPos;
+
+                // Initialize play start time if playing
+                if (musicData.isPlaying) {
+                    playStartTimeRef.current = Date.now();
+                    playStartPositionRef.current = serverPos;
+                }
                 return;
             }
 
-            // Initial sync for first load
+            // 首次加载 → 直接同步
             if (!initialSyncDoneRef.current) {
+                console.log('[DynamicIsland] 🆕 Initial sync, setting position to:', serverPos);
                 setLocalPosition(serverPos);
                 initialSyncDoneRef.current = true;
+                lastServerPosRef.current = serverPos;
+
+                if (musicData.isPlaying) {
+                    playStartTimeRef.current = Date.now();
+                    playStartPositionRef.current = serverPos;
+                }
                 return;
             }
 
-            // When playing: only sync if drift > 2 seconds
-            // When paused: only sync if user seeked (diff > 5 seconds, indicating manual seek)
-            if (musicData.isPlaying && diff > 2) {
-                setLocalPosition(serverPos);
-            } else if (!musicData.isPlaying && diff > 5) {
-                // Large jump while paused = user seeked
-                setLocalPosition(serverPos);
+            // 检测服务端位置是否真的发生了变化 (用于区分拖动/推进 vs 重复轮询)
+            const serverPosChanged = Math.abs(serverPos - lastServerPosRef.current) > 0.5;
+            lastServerPosRef.current = serverPos;
+
+            if (serverPosChanged) {
+                // 服务端位置变了 → 检查与本地差距，如果大于2秒则同步
+                // 这处理了：拖动进度条、正常播放推进、进度记忆恢复
+                const drift = Math.abs(serverPos - localPosition);
+                if (drift > 2) {
+                    console.log('[DynamicIsland] ⏩ Server position changed, syncing:', serverPos, '(drift:', drift, ')');
+                    setLocalPosition(serverPos);
+                    playStartTimeRef.current = Date.now();
+                    playStartPositionRef.current = serverPos;
+                }
+            } else if (!musicData.isPlaying) {
+                // 暂停状态 + 服务端位置未变 → 但如果跟本地差太多也同步 (处理暂停后拖动)
+                const drift = Math.abs(serverPos - localPosition);
+                if (drift > 1) {
+                    console.log('[DynamicIsland] ⏸️ Paused drift detected, syncing:', serverPos);
+                    setLocalPosition(serverPos);
+                }
             }
-            // Otherwise: ignore server updates to prevent flickering
+            // 播放中 + 服务端位置未变 → 靠本地定时器每秒 +1 递增，保持平滑
         }
     }, [musicData?.position, musicData?.title, musicData?.isPlaying]);
 
@@ -479,8 +534,8 @@ const DynamicIslandWidget: React.FC = () => {
         try {
             const { ipcRenderer } = (window as any).require('electron');
             // 仅在组件挂载时发送一次调整指令，确保窗口居中且尺寸正确
-            ipcRenderer.send('resize-widget', { 
-                width: WINDOW_WIDTH, 
+            ipcRenderer.send('resize-widget', {
+                width: WINDOW_WIDTH,
                 height: 300 // Initial height
             });
         } catch (e) {
@@ -492,25 +547,25 @@ const DynamicIslandWidget: React.FC = () => {
     useEffect(() => {
         try {
             const { ipcRenderer } = (window as any).require('electron');
-            
+
             // Calculate the visual height of the island
             const visualHeight = isExpanded ? (mode === 'music' ? expandedMusicHeight : expandedAppHeight) : 36;
-            
+
             // Calculate required window height (visual height + shadow buffer)
             // We only need the buffer when expanded or when the shadow is visible
-            const windowHeight = isExpanded ? (visualHeight + SHADOW_BUFFER) : 300; 
+            const windowHeight = isExpanded ? (visualHeight + SHADOW_BUFFER) : 300;
             // When collapsed, we keep 300 to avoid window resizing during the collapse animation 
             // which might look glitchy. 300 is safe.
 
             if (isExpanded) {
-                ipcRenderer.send('resize-widget', { 
-                    width: WINDOW_WIDTH, 
+                ipcRenderer.send('resize-widget', {
+                    width: WINDOW_WIDTH,
                     height: Math.ceil(windowHeight)
                 });
             } else {
-                ipcRenderer.send('resize-widget', { 
-                    width: WINDOW_WIDTH, 
-                    height: 300 
+                ipcRenderer.send('resize-widget', {
+                    width: WINDOW_WIDTH,
+                    height: 300
                 });
             }
         } catch (e) {
@@ -534,7 +589,7 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? "expanded" : "collapsed"}
                 variants={{
                     collapsed: {
-                        width: mode === 'music' ? [null, baseWidth, baseWidth, collapsedWidth] : collapsedWidth,
+                        width: mode === 'music' ? [null, 155, 155, collapsedWidth] : collapsedWidth,
                         height: mode === 'music' ? [null, 36, 36, 36] : 36,
                         transition: mode === 'music' ? {
                             width: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
@@ -563,8 +618,8 @@ const DynamicIslandWidget: React.FC = () => {
                                             ? [null, generateLeftCapPath(36, 18), generateLeftCapPath(36, 18), generateLeftCapPath(36, 18)]
                                             : generateLeftCapPath(36, 18),
                                         transition: mode === 'music' ? {
-                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                         } : undefined
+                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                        } : undefined
                                     },
                                     expanded: { d: generateLeftCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
@@ -589,8 +644,8 @@ const DynamicIslandWidget: React.FC = () => {
                                             ? [null, generateRightCapPath(36, 18), generateRightCapPath(36, 18), generateRightCapPath(36, 18)]
                                             : generateRightCapPath(36, 18),
                                         transition: mode === 'music' ? {
-                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                         } : undefined
+                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                        } : undefined
                                     },
                                     expanded: { d: generateRightCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
@@ -633,8 +688,6 @@ const DynamicIslandWidget: React.FC = () => {
                         cursor: 'pointer',
                         position: 'relative',
                         zIndex: 9999,
-                        // Add deep shadow filter here since clip-path clips standard box-shadow
-                        filter: 'drop-shadow(0px 4px 24px rgba(0, 0, 0, 0.25))',
                         overflow: 'hidden' // Clip content using border-radius
                     }}
 
@@ -664,12 +717,12 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: mode === 'music' 
-                                            ? [null, generateSquirclePath(baseWidth, 36, 18), generateSquirclePath(baseWidth, 36, 18), generateSquirclePath(collapsedWidth, 36, 18)]
+                                        d: mode === 'music'
+                                            ? [null, generateSquirclePath(155, 36, 18), generateSquirclePath(155, 36, 18), generateSquirclePath(collapsedWidth, 36, 18)]
                                             : generateSquirclePath(collapsedWidth, 36, 18),
                                         transition: mode === 'music' ? {
-                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                         } : undefined
+                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                        } : undefined
                                     },
                                     expanded: {
                                         d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
@@ -708,11 +761,11 @@ const DynamicIslandWidget: React.FC = () => {
                                 variants={{
                                     collapsed: {
                                         d: mode === 'music'
-                                            ? [null, generateOpenSquirclePath(baseWidth, 36, 18), generateOpenSquirclePath(baseWidth, 36, 18), generateOpenSquirclePath(collapsedWidth, 36, 18)]
+                                            ? [null, generateOpenSquirclePath(155, 36, 18), generateOpenSquirclePath(155, 36, 18), generateOpenSquirclePath(collapsedWidth, 36, 18)]
                                             : generateOpenSquirclePath(collapsedWidth, 36, 18),
                                         transition: mode === 'music' ? {
-                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                         } : undefined
+                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                                        } : undefined
                                     },
                                     expanded: {
                                         d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
@@ -883,7 +936,7 @@ const DynamicIslandWidget: React.FC = () => {
                                             className="p-2 text-white/40 hover:text-white transition-colors"
                                         >
                                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M12 2 L13.9 9.2 L21.5 8.9 L15.4 13.1 L17.9 20.1 L12 15.5 L6.1 20.1 L8.6 13.1 L2.5 8.9 L10.1 9.2 Z" />
+                                                <path d="M12 2 L15 9 L22 9 L16.5 13 L18.5 21 L12 17 L5.5 21 L7.5 13 L2 9 L9 9 Z" />
                                             </svg>
                                         </motion.button>
 
@@ -1054,8 +1107,8 @@ const DynamicIslandWidget: React.FC = () => {
                                                         className="col-span-2 flex items-center justify-center py-2"
                                                     >
                                                         <span className="text-[10px] text-white/30 font-medium">
-                                                            {hasMore 
-                                                                ? `+还有 ${activeSubjects.length - 4} 个待复习科目` 
+                                                            {hasMore
+                                                                ? `+还有 ${activeSubjects.length - 4} 个待复习科目`
                                                                 : '已显示全部'
                                                             }
                                                         </span>
