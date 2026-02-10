@@ -196,6 +196,12 @@ const DynamicIslandWidget: React.FC = () => {
     const [mode, setMode] = useState<'app' | 'music'>('app');
     const [musicData, setMusicData] = useState<MusicData | null>(null);
     const [localPosition, setLocalPosition] = useState(0);
+
+    // Ref to track latest login state for use in IPC callbacks (avoids stale closure)
+    const isLoggedInRef = useRef(isLoggedIn);
+    useEffect(() => {
+        isLoggedInRef.current = isLoggedIn;
+    }, [isLoggedIn]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
@@ -232,6 +238,12 @@ const DynamicIslandWidget: React.FC = () => {
                 }
 
                 if (data && (data.status === 'Playing' || data.status === 'Paused')) {
+                    // 只有登录状态才接管音乐
+                    if (!isLoggedInRef.current) {
+                        console.log('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
+                        return;
+                    }
+
                     setMusicData(data);
                     // Position sync is handled by the dedicated sync useEffect
                     // Do NOT set localPosition here — for apps like NetEase Cloud Music
