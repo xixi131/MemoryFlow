@@ -2365,6 +2365,17 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                         <span className="material-symbols-outlined text-accent-coral">logout</span>
                         账户操作
                     </h4>
+                    <p className="text-slate-500 dark:text-text-secondary text-sm mb-3">
+                        下载桌面小组件（Windows），安装后可在桌面快速使用 MemoryFlow。
+                    </p>
+                    <a
+                        href="https://memoryflow.tanxhub.com/download/MemoryFlow-Setup.exe"
+                        download
+                        className="w-full py-3 rounded-xl bg-primary text-white font-bold shadow-glow hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 mb-3"
+                    >
+                        <span className="material-symbols-outlined">download</span>
+                        Download for Windows
+                    </a>
                      <button onClick={() => { logout(); setView('login'); }} className="w-full py-3 rounded-xl border border-red-500/20 text-red-500 font-bold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
                         <span className="material-symbols-outlined">logout</span>
                         退出登录
