@@ -187,7 +187,7 @@ function createTray() {
 function createWidgetWindow() {
     const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
     // 使用固定的最大尺寸，避免动画时的窗口调整导致闪烁
-    const initialWidth = 520; 
+    const initialWidth = 620; 
     const initialHeight = 300;
 
     // Create the browser window.

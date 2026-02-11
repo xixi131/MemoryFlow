@@ -670,13 +670,15 @@ const DynamicIslandWidget: React.FC = () => {
     // Get theme color for music
     const themeColor = musicData?.themeColor || '#22d3ee';
 
+    const shouldShowShadow = isExpanded || isHovered;
+
     // Base width for animation (standard collapsed state)
     const baseWidth = isLoggedIn ? 160 : 180;
 
     // 固定窗口大小以避免动画时的闪烁问题 (Canvas Strategy)
     // 窗口始终保持最大尺寸，通过忽略鼠标事件(setIgnoreMouseEvents)来实现点击穿透
-    const WINDOW_WIDTH = 520;
-    const SHADOW_BUFFER = 40; // Buffer for shadow (24px blur + 4px offset + safety)
+    const WINDOW_WIDTH = 620;
+    const SHADOW_BUFFER = 120; // Buffer for shadow (避免 drop-shadow 在窗口底部被裁切出现“硬边”)
 
     useEffect(() => {
         try {
@@ -733,7 +735,14 @@ const DynamicIslandWidget: React.FC = () => {
             </style>
             <motion.div
                 className="relative pointer-events-none"
-                style={{ transform: 'translateZ(0)' }}
+                style={{
+                    transform: 'translateZ(0)',
+                    filter: shouldShowShadow
+                        ? 'drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.22)) drop-shadow(0px 6px 14px rgba(0, 0, 0, 0.18)) drop-shadow(0px 2px 6px rgba(0, 0, 0, 0.12))'
+                        : 'none',
+                    transition: 'filter 260ms ease-out',
+                    willChange: 'transform, filter',
+                }}
                 initial={false}
                 animate={isExpanded ? "expanded" : "collapsed"}
                 variants={{
@@ -1074,8 +1083,8 @@ const DynamicIslandWidget: React.FC = () => {
                                         </div>
 
                                         {/* Info + Waveform */}
-                                        <div className="flex-1 flex flex-col justify-end min-w-0 pb-0.5">
-                                            <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1 flex flex-col justify-center min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
                                                 <div className="flex flex-col min-w-0 flex-1">
                                                     <span className="text-base text-white truncate" style={{ fontFamily: '"Noto Sans SC", sans-serif' }}>
                                                         {musicData.title}
@@ -1085,7 +1094,7 @@ const DynamicIslandWidget: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 {/* Waveform on the right */}
-                                                <div className="flex-shrink-0 pt-1">
+                                                <div className="flex-shrink-0">
                                                     <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} />
                                                 </div>
                                             </div>
