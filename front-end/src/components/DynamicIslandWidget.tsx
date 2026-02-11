@@ -315,6 +315,7 @@ const DynamicIslandWidget: React.FC = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [forceCompactMode, setForceCompactMode] = useState(false);
     const [isReminderActive, setIsReminderActive] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     // Music state
     const [mode, setMode] = useState<'app' | 'music'>('app');
@@ -330,6 +331,12 @@ const DynamicIslandWidget: React.FC = () => {
     useEffect(() => {
         modeRef.current = mode;
     }, [mode]);
+
+    useEffect(() => {
+        if (isExpanded) {
+            setIsHovered(false);
+        }
+    }, [isExpanded]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
@@ -720,6 +727,7 @@ const DynamicIslandWidget: React.FC = () => {
             <style>
                 {`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
                   body, html { overflow: hidden !important; }
+                  html, body, #root { height: 100% !important; }
                   ::-webkit-scrollbar { display: none !important; }
                 `}
             </style>
@@ -732,14 +740,19 @@ const DynamicIslandWidget: React.FC = () => {
                     collapsed: {
                         width: mode === 'music' ? [null, 155, 155, collapsedWidth] : collapsedWidth,
                         height: mode === 'music' ? [null, 36, 36, 36] : 36,
+                        scale: isHovered ? 1.06 : 1,
+                        originY: 0,
                         transition: mode === 'music' ? {
                             width: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
-                            height: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
+                            height: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
+                            scale: { ...containerSpring }
                         } : undefined
                     },
                     expanded: {
                         width: expandedWidth,
                         height: mode === 'music' ? expandedMusicHeight : expandedAppHeight,
+                        scale: 1,
+                        originY: 0,
                     }
                 }}
                 transition={containerSpring}
@@ -868,12 +881,16 @@ const DynamicIslandWidget: React.FC = () => {
                     }}
 
                     onMouseEnter={() => {
+                        if (!isExpanded) {
+                            setIsHovered(true);
+                        }
                         try {
                             const { ipcRenderer } = (window as any).require('electron');
                             ipcRenderer.send('set-ignore-mouse-events', false);
                         } catch (e) { }
                     }}
                     onMouseLeave={() => {
+                        setIsHovered(false);
                         try {
                             const { ipcRenderer } = (window as any).require('electron');
                             ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
