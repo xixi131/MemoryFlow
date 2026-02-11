@@ -599,7 +599,7 @@ const DynamicIslandWidget: React.FC = () => {
 
     // Dynamic dimensions
     const expandedWidth = 460;
-    const expandedMusicHeight = 228;
+    const expandedMusicHeight = 210;
     const expandedAppHeight = 328; // Fixed height for App mode (fits 4 items + stats)
     const hasPendingReviews = data.totalPendingReviews > 0;
     const showReminder = hasPendingReviews && isReminderActive && !forceCompactMode && mode === 'app';
@@ -950,12 +950,12 @@ const DynamicIslandWidget: React.FC = () => {
                                 pointerEvents: isExpanded ? 'auto' : 'none',
                             }}
                             transition={{ duration: isExpanded ? 0.3 : 0.15 }}
-                            className="flex flex-col w-full px-9 py-5 pb-8 z-10 overflow-hidden"
+                            className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
                             style={{ width: expandedWidth, minWidth: expandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
                                 // MUSIC EXPANDED UI
-                                <div className="flex flex-col gap-2.5">
+                                <div className="flex flex-col gap-2">
                                     {/* Layer 1: Top Metadata Section */}
                                     <div className="flex gap-4">
                                         {/* Album Art */}
@@ -1023,7 +1023,7 @@ const DynamicIslandWidget: React.FC = () => {
 
                                     {/* Layer 3: Control Buttons */}
                                     {/* Layer 3: Control Buttons - Equal Spacing */}
-                                    <div className="flex items-center justify-center gap-6 mt-2" style={{ marginBottom: '5px' }}>
+                                    <div className="flex items-center justify-center gap-6 mt-1" style={{ marginBottom: '5px' }}>
                                         {/* Star/Favorite Icon */}
                                         <motion.button
                                             whileTap={{ scale: 0.9 }}
