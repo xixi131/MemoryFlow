@@ -19,18 +19,18 @@ const SQUIRCLE_SMOOTHNESS = 2.25; // 修改此处数值以调整圆角平滑度
 
 // --- 状态 1: 静止/空闲态 (Idle/Empty) ---
 // 只有小胶囊，无任何活动时
-const EAR_TENSION_IDLE = 1.1;       // 张力较小
-const EAR_BLEND_HEIGHT_IDLE = 8;    // 融合高度最小 (e.g. 4-8px)
+const EAR_TENSION_IDLE = 0.6;       // 张力较小
+const EAR_BLEND_HEIGHT_IDLE = 14;    // 融合高度最小 (e.g. 4-8px)
 
 // --- 状态 2: 活动/音乐态 (Activity/Music) ---
 // 胶囊变宽显示波形或封面时
-const EAR_TENSION_ACTIVITY = 0.8;   // 张力适中
-const EAR_BLEND_HEIGHT_ACTIVITY = 20; // 融合高度中等 (e.g. 10-16px)
+const EAR_TENSION_ACTIVITY = 0.2;   // 张力适中
+const EAR_BLEND_HEIGHT_ACTIVITY = 26; // 融合高度中等 (e.g. 10-16px)
 
 // --- 状态 3: 展开态 (Expanded) ---
 // 完整的大卡片面板
 const EAR_TENSION_EXPANDED = 0.7;   // 张力最大 (液态感最强)
-const EAR_BLEND_HEIGHT_EXPANDED = 44; // 融合高度最大，消除大转角的夹角感 (e.g. 20-30px)
+const EAR_BLEND_HEIGHT_EXPANDED = 32; // 融合高度最大，消除大转角的夹角感 (e.g. 20-30px)
 
 // Path generation function for liquid ears
 const generateEarPath = (isLeft: boolean, tension: number, blendHeight: number) => {
