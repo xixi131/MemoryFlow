@@ -199,9 +199,13 @@ const DynamicIslandWidget: React.FC = () => {
 
     // Ref to track latest login state for use in IPC callbacks (avoids stale closure)
     const isLoggedInRef = useRef(isLoggedIn);
+    const modeRef = useRef(mode);
     useEffect(() => {
         isLoggedInRef.current = isLoggedIn;
     }, [isLoggedIn]);
+    useEffect(() => {
+        modeRef.current = mode;
+    }, [mode]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
@@ -238,8 +242,9 @@ const DynamicIslandWidget: React.FC = () => {
                 }
 
                 if (data && (data.status === 'Playing' || data.status === 'Paused')) {
-                    // 只有登录状态才接管音乐
-                    if (!isLoggedInRef.current) {
+                    // 只有登录状态才允许首次接管音乐（从 app 模式切换到 music 模式）
+                    // 如果已经在 music 模式，则始终允许数据更新（保持歌曲切换、播放状态、进度同步）
+                    if (!isLoggedInRef.current && modeRef.current !== 'music') {
                         console.log('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
                         return;
                     }
