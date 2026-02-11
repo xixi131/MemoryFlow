@@ -11,6 +11,12 @@ const containerSpring: any = {
     mass: 1.2,
 };
 
+// SQUIRCLE SMOOTHNESS CONFIGURATION
+// 3.5: Very round (接近圆形)
+// 4.0: Balanced (平衡，像 iOS App 图标)
+// 4.8: Sleek/Modern (更接近 iOS 灵动岛的硬朗感，默认推荐)
+const SQUIRCLE_SMOOTHNESS = 2.25; // 修改此处数值以调整圆角平滑度
+
 // Music data interface
 interface MusicData {
     title: string;
@@ -124,66 +130,137 @@ const formatTime = (seconds: number): string => {
 };
 
 // Helper to generate squircle path (bottom corners only, top flat)
-// Using a slightly adjusted cubic bezier control point for smoother corners
-const generateSquirclePath = (width: number, height: number, radius: number) => {
-    // 0.6 is a common approximation for squircle-like smoothing (standard circle is ~0.55)
-    // For iOS super-ellipse look, we can push it slightly further, e.g., 0.62
-    const k = 0.62;
-    const r = radius;
-    const ctrl = r * k;
+// Using Superellipse Parametric Equation for iOS-like "Straight-to-Squircle" smoothness
+// Formula: |x/a|^n + |y/b|^n = 1 with n=4.8 (approx)
+const generateSquirclePath = (width: number, height: number, radius: number, smoothness: number) => {
+    const r = Math.min(radius, width / 2, height / 2);
+    const steps = 30; // Increased sampling for better precision
 
-    // Top-left (0,0) -> Top-Right (w, 0) -> Right Side (w, h-r)
-    // Curve to Bottom-Right (w-r, h)
-    // Bottom Side (r, h)
-    // Curve to Bottom-Left (0, h-r)
-    // Left Side (0, 0)
+    // Start Top-Left -> Top-Right (Flat Top)
+    let path = `M 0 0 L ${width} 0 L ${width} ${height - r}`;
 
-    return `
-        M 0 0
-        L ${width} 0
-        L ${width} ${height - r}
-        C ${width} ${height - r + ctrl} ${width - r + ctrl} ${height} ${width - r} ${height}
-        L ${r} ${height}
-        C ${r - ctrl} ${height} 0 ${height - r + ctrl} 0 ${height - r}
-        Z
-    `.replace(/\s+/g, ' ').trim();
+    // Bottom-Right Corner (Superellipse 0 to 90 deg)
+    const cx1 = width - r;
+    const cy1 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        // x = cx + r * |cos t|^(2/n)
+        // y = cy + r * |sin t|^(2/n)
+        const x = cx1 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy1 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    // Bottom Edge
+    path += ` L ${r} ${height}`;
+
+    // Bottom-Left Corner (Superellipse 90 to 180 deg)
+    const cx2 = r;
+    const cy2 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx2 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy2 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    // Left Edge -> Close
+    path += ` L 0 0 Z`;
+    return path;
 };
 
-// Helper for border stroke - OPEN at the top (U-shape) to prevent double border at top edge
-const generateOpenSquirclePath = (width: number, height: number, radius: number) => {
-    const k = 0.62;
-    const r = radius;
-    const ctrl = r * k;
+// Helper for border stroke - OPEN at the top (U-shape)
+const generateOpenSquirclePath = (width: number, height: number, radius: number, smoothness: number) => {
+    const r = Math.min(radius, width / 2, height / 2);
+    const steps = 30;
 
-    // Start Top-Right (w, 0) -> Right Side -> Bottom -> Left Side -> Top-Left (0,0)
-    // Do NOT close path (Z) and do NOT draw top line
-    return `
-        M ${width} 0
-        L ${width} ${height - r}
-        C ${width} ${height - r + ctrl} ${width - r + ctrl} ${height} ${width - r} ${height}
-        L ${r} ${height}
-        C ${r - ctrl} ${height} 0 ${height - r + ctrl} 0 ${height - r}
-        L 0 0
-    `.replace(/\s+/g, ' ').trim();
+    // Start Top-Right -> Right Side
+    let path = `M ${width} 0 L ${width} ${height - r}`;
+
+    // Bottom-Right Corner
+    const cx1 = width - r;
+    const cy1 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx1 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy1 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    // Bottom Edge
+    path += ` L ${r} ${height}`;
+
+    // Bottom-Left Corner
+    const cx2 = r;
+    const cy2 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx2 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy2 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    // Left Edge -> Top-Left
+    path += ` L 0 0`;
+    return path;
 };
 
 // Helper for Left Cap Background
-const generateLeftCapPath = (height: number, radius: number) => {
-    const w = 60; // Fixed width for cap
-    const k = 0.62;
+const generateLeftCapPath = (height: number, radius: number, smoothness: number = SQUIRCLE_SMOOTHNESS) => {
+    const w = 60;
     const r = radius;
-    const ctrl = r * k;
-    return `M 0 0 L ${w} 0 L ${w} ${height} L ${r} ${height} C ${r - ctrl} ${height} 0 ${height - r + ctrl} 0 ${height - r} Z`;
+    const steps = 30;
+    
+    // Rect Top-Right & Bottom-Right, Round Bottom-Left
+    let path = `M 0 0 L ${w} 0 L ${w} ${height} L ${r} ${height}`;
+    
+    // Bottom-Left Corner
+    const cx = r;
+    const cy = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+    
+    path += ` L 0 0 Z`;
+    return path;
 };
 
 // Helper for Right Cap Background
-const generateRightCapPath = (height: number, radius: number) => {
+const generateRightCapPath = (height: number, radius: number, smoothness: number = SQUIRCLE_SMOOTHNESS) => {
     const w = 60;
-    const k = 0.62;
     const r = radius;
-    const ctrl = r * k;
-    // 0 is left edge of box, 60 is right edge
-    return `M 0 0 L ${w} 0 L ${w} ${height - r} C ${w} ${height - r + ctrl} ${w - r + ctrl} ${height} ${w - r} ${height} L 0 ${height} Z`;
+    const steps = 30;
+    
+    // Rect Top-Left, Round Bottom-Right
+    let path = `M 0 0 L ${w} 0 L ${w} ${height - r}`;
+    
+    // Bottom-Right Corner
+    const cx = w - r;
+    const cy = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+    
+    path += ` L 0 ${height} Z`;
+    return path;
 };
 
 const DynamicIslandWidget: React.FC = () => {
@@ -694,10 +771,10 @@ const DynamicIslandWidget: React.FC = () => {
                     className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
                     variants={{
                         collapsed: {
-                            borderRadius: 18 // Fallback for content clipping
+                            // borderRadius: 18 // REMOVED: Clipping conflicts with Squircle shape
                         },
                         expanded: {
-                            borderRadius: 48 // Fallback for content clipping
+                            // borderRadius: 48 // REMOVED: Clipping conflicts with Squircle shape
                         }
                     }}
                     style={{
@@ -705,7 +782,7 @@ const DynamicIslandWidget: React.FC = () => {
                         cursor: 'pointer',
                         position: 'relative',
                         zIndex: 9999,
-                        overflow: 'hidden' // Clip content using border-radius
+                        // overflow: 'hidden' // REMOVED: Allow SVG Squircle to dictate shape without clipping
                     }}
 
                     onMouseEnter={() => {
@@ -735,14 +812,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 variants={{
                                     collapsed: {
                                         d: mode === 'music'
-                                            ? [null, generateSquirclePath(155, 36, 18), generateSquirclePath(155, 36, 18), generateSquirclePath(collapsedWidth, 36, 18)]
-                                            : generateSquirclePath(collapsedWidth, 36, 18),
+                                            ? [null, generateSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS)]
+                                            : generateSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS),
                                         transition: mode === 'music' ? {
                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
                                         } : undefined
                                     },
                                     expanded: {
-                                        d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
+                                        d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48, SQUIRCLE_SMOOTHNESS)
                                     }
                                 }}
                                 transition={containerSpring}
@@ -778,14 +855,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 variants={{
                                     collapsed: {
                                         d: mode === 'music'
-                                            ? [null, generateOpenSquirclePath(155, 36, 18), generateOpenSquirclePath(155, 36, 18), generateOpenSquirclePath(collapsedWidth, 36, 18)]
-                                            : generateOpenSquirclePath(collapsedWidth, 36, 18),
+                                            ? [null, generateOpenSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateOpenSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateOpenSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS)]
+                                            : generateOpenSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS),
                                         transition: mode === 'music' ? {
                                             d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
                                         } : undefined
                                     },
                                     expanded: {
-                                        d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48)
+                                        d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48, SQUIRCLE_SMOOTHNESS)
                                     }
                                 }}
                                 transition={containerSpring}
