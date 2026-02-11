@@ -26,7 +26,13 @@ const SecurityCheck: React.FC = () => {
         try {
             // Execute the pending action (e.g., login request)
             if (pendingAction) {
-                await pendingAction();
+                const result = await pendingAction();
+                const redirectTo = result?.redirectTo;
+                if (redirectTo) {
+                    navigate(redirectTo, { replace: true });
+                } else {
+                    navigate(returnPath || '/login', { replace: true });
+                }
             }
             // Reset pending action after success (optional, depending on flow)
             setPendingAction(null);

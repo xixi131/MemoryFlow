@@ -6,6 +6,11 @@ const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
 let widgetWindow;
 let tray;
 
+app.setName('MemoryFlow');
+if (process.platform === 'win32') {
+    app.setAppUserModelId('com.yourname.memoryflow');
+}
+
 // 配置路径
 const configPath = path.join(app.getPath('userData'), 'app-config.json');
 

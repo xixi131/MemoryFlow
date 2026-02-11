@@ -3,8 +3,8 @@ import { create } from 'zustand';
 interface SecurityState {
     turnstileToken: string | null;
     setTurnstileToken: (token: string | null) => void;
-    pendingAction: (() => Promise<void>) | null;
-    setPendingAction: (action: (() => Promise<void>) | null) => void;
+    pendingAction: (() => Promise<any>) | null;
+    setPendingAction: (action: (() => Promise<any>) | null) => void;
     // Optional: Store the path to return to if action fails or is cancelled
     returnPath: string | null;
     setReturnPath: (path: string | null) => void;

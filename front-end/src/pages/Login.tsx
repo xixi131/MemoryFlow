@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { message } from '../components/Message';
@@ -14,79 +14,122 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
     const [desktopRedirecting, setDesktopRedirecting] = useState(false);
 
     const [isConnecting, setIsConnecting] = useState(true); // New state to track connection status
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
+
+    const isDesktopCallback = () => {
+        const params = new URLSearchParams(location.search);
+        return params.get('callback') === 'desktop';
+    };
+
+    const launchDesktopCallback = (token: string, force: boolean = false) => {
+        if (!token) return;
+
+        const lastLaunchedToken = sessionStorage.getItem('desktop_callback_launched_token');
+        if (!force && lastLaunchedToken === token) {
+            return;
+        }
+
+        sessionStorage.setItem('desktop_callback_launched_token', token);
+
+        setDesktopRedirecting(true);
+        setIsConnecting(true);
+
+        setTimeout(() => {
+            window.location.href = `memoryflow://callback?token=${encodeURIComponent(token)}`;
+        }, 300);
+
+        setTimeout(() => {
+            setIsConnecting(false);
+        }, 2000);
+    };
 
     // Check if already logged in and needs desktop callback
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        const params = new URLSearchParams(location.search);
-        
-        if (token && params.get('callback') === 'desktop') {
-            // Already logged in, show connecting state immediately
+        let cancelled = false;
+
+        const run = async () => {
+            if (!isDesktopCallback()) return;
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setDesktopRedirecting(false);
+                setIsConnecting(true);
+                return;
+            }
+
             setDesktopRedirecting(true);
-            setIsConnecting(true); // Start with connecting state
-            
-            // Wait a bit to ensure UI renders
-            setTimeout(() => {
-                // Try to wake up desktop app
-                window.location.href = `memoryflow://callback?token=${token}`;
-                
-                // After attempting to connect, show success state
-                setTimeout(() => {
-                    setIsConnecting(false);
-                }, 2000);
-            }, 1000);
+            setIsConnecting(true);
+
+            try {
+                const res: any = await authService.getCurrentUser();
+                if (cancelled) return;
+
+                if (res && res.code === 200) {
+                    launchDesktopCallback(token);
+                } else {
+                    throw new Error(res?.message || 'token invalid');
+                }
+            } catch (e) {
+                if (cancelled) return;
+                localStorage.removeItem('token');
+                sessionStorage.removeItem('desktop_callback_launched_token');
+                setDesktopRedirecting(false);
+                setIsConnecting(true);
+            }
+        };
+
+        run();
+
+        return () => {
+            cancelled = true;
         }
-    }, []);
+    }, [location.search]);
 
     const handleLogin = async () => {
         if (!email || !password) return message.warning("Please enter email and password");
         
         // Setup pending action for security check
         setPendingAction(processLogin);
-        setReturnPath('/login');
+        setReturnPath(location.pathname + location.search);
         navigate('/security-check');
     };
 
     const processLogin = async () => {
-        setLoading(true);
         try {
+            if (mountedRef.current) setLoading(true);
+
             const res = await authService.login({ email, password });
             if (res.code === 200) {
                 if (res.data.accessToken) {
                     localStorage.setItem('token', res.data.accessToken);
-                    
-                    // Check for desktop callback
-                    const params = new URLSearchParams(location.search);
-                    if (params.get('callback') === 'desktop') {
-                        setDesktopRedirecting(true);
-                        setIsConnecting(true); // Start connecting
-                        
-                        window.location.href = `memoryflow://callback?token=${res.data.accessToken}`;
-                        
-                        // Show success after a delay
-                        setTimeout(() => {
-                            setIsConnecting(false);
-                        }, 2000);
-                        return; 
-                    }
                 }
-                message.success("登录成功");
-                setTimeout(() => {
-                    // Check for admin role or specific email
-                    if (res.data.user && (res.data.user.role === 'ADMIN' || res.data.user.email === 'admin@gmail.com')) {
-                        setView('admin');
-                    } else {
-                        setView('dashboard');
-                    }
-                }, 500);
+
+                if (isDesktopCallback()) {
+                    return { redirectTo: '/login?callback=desktop' };
+                }
+
+                if (res.data.user && (res.data.user.role === 'ADMIN' || res.data.user.email === 'admin@gmail.com')) {
+                    return { redirectTo: '/admin' };
+                }
+
+                return { redirectTo: '/home' };
             } else {
                 message.error("Login failed: " + res.message);
+                throw new Error(res.message || 'login failed');
             }
         } catch (e) {
             console.error("Login error", e);
             message.error("Login failed. Please check your credentials.");
+            throw e;
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setLoading(false);
         }
     };
 

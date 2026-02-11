@@ -2445,23 +2445,6 @@ const App: React.FC = () => {
     // Ref to prevent duplicate logout messages
     const lastLogoutTimeRef = useRef(0);
 
-    // Global Desktop Callback Handler
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const callbackType = params.get('callback');
-        const token = localStorage.getItem('token');
-
-        if (token && callbackType === 'desktop') {
-            console.log("Detected desktop callback with token, redirecting...");
-            message.loading("正在验证身份并唤起桌面...", 2);
-            
-            // Allow UI to settle
-            setTimeout(() => {
-                window.location.href = `memoryflow://callback?token=${token}`;
-            }, 1000);
-        }
-    }, [location.search]);
-
     // Auth Check & Event Listener
     useEffect(() => {
         const token = localStorage.getItem('token');
