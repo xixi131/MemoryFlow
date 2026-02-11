@@ -17,6 +17,53 @@ const containerSpring: any = {
 // 4.8: Sleek/Modern (更接近 iOS 灵动岛的硬朗感，默认推荐)
 const SQUIRCLE_SMOOTHNESS = 2.25; // 修改此处数值以调整圆角平滑度
 
+// --- 状态 1: 静止/空闲态 (Idle/Empty) ---
+// 只有小胶囊，无任何活动时
+const EAR_TENSION_IDLE = 1.1;       // 张力较小
+const EAR_BLEND_HEIGHT_IDLE = 8;    // 融合高度最小 (e.g. 4-8px)
+
+// --- 状态 2: 活动/音乐态 (Activity/Music) ---
+// 胶囊变宽显示波形或封面时
+const EAR_TENSION_ACTIVITY = 0.8;   // 张力适中
+const EAR_BLEND_HEIGHT_ACTIVITY = 20; // 融合高度中等 (e.g. 10-16px)
+
+// --- 状态 3: 展开态 (Expanded) ---
+// 完整的大卡片面板
+const EAR_TENSION_EXPANDED = 0.7;   // 张力最大 (液态感最强)
+const EAR_BLEND_HEIGHT_EXPANDED = 44; // 融合高度最大，消除大转角的夹角感 (e.g. 20-30px)
+
+// Path generation function for liquid ears
+const generateEarPath = (isLeft: boolean, tension: number, blendHeight: number) => {
+    const width = 40; // Fixed large width to accommodate expansion
+    
+    // Visual width of the curve based on tension and height
+    const curveWidth = blendHeight * tension;
+    
+    if (!isLeft) {
+        // Right Ear (Island is on Left)
+        // We use -1 as startX to ensure 1px overlap into the island body (gap fix)
+        const startX = -1;
+        
+        // C command: CP1, CP2, EndPoint
+        // CP1: (startX, 0) -> Vertical tangent at the connection
+        // CP2: (startX + curveWidth, 0) -> Horizontal tangent at the top (y=0)
+        // End: (startX + curveWidth + 4, 0) -> Slight extension to ensure smoothness
+        return `M ${startX} ${blendHeight} 
+                C ${startX} 0, ${startX + curveWidth} 0, ${startX + curveWidth + 4} 0 
+                L ${startX} 0 Z`;
+    } else {
+        // Left Ear (Island is on Right)
+        // We use width + 1 as startX to ensure 1px overlap into the island body (gap fix)
+        const startX = width + 1;
+        
+        // Mirror logic for left side
+        return `M ${startX} ${blendHeight} 
+                C ${startX} 0, ${startX - curveWidth} 0, ${startX - curveWidth - 4} 0 
+                L ${startX} 0 Z`;
+    }
+};
+
+
 // Music data interface
 interface MusicData {
     title: string;
@@ -749,21 +796,56 @@ const DynamicIslandWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Ears - Smoother, larger liquid transition with 1px overlap to prevent cracks */}
-                {/* Left ear - Static left positioning works fine */}
-                <div className="absolute top-0 w-[22px] h-[22px] z-50 pointer-events-none" style={{ left: '-21px' }}>
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        {/* Enhanced liquid curve: Starts vertical, eases to horizontal with surface tension */}
-                        <path d="M22 22 C 22 8 14 0 0 0 H 22 V 22 Z" fill="#000000" />
-                    </svg>
-                </div>
-                {/* Right ear - Mirror left ear positioning with right instead of left */}
-                {/* Fixed: Adjusted right offset to -20px (2px overlap) to prevent separation gap during animation */}
-                <div className="absolute top-0 w-[22px] h-[22px] z-50 pointer-events-none" style={{ right: '-20px' }}>
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <path d="M0 22 C 0 8 8 0 22 0 H 0 V 22 Z" fill="#000000" />
-                    </svg>
-                </div>
+                {/* Ears - Liquid connection with dynamic tension and blend height */}
+                {(() => {
+                    // Calculate ear parameters based on state
+                    let currentTension = EAR_TENSION_IDLE;
+                    let currentBlendHeight = EAR_BLEND_HEIGHT_IDLE;
+
+                    if (isExpanded) {
+                        currentTension = EAR_TENSION_EXPANDED;
+                        currentBlendHeight = EAR_BLEND_HEIGHT_EXPANDED;
+                    } else if (mode === 'music' && musicData) {
+                        currentTension = EAR_TENSION_ACTIVITY;
+                        currentBlendHeight = EAR_BLEND_HEIGHT_ACTIVITY;
+                    }
+
+                    return (
+                        <>
+                            {/* Left ear */}
+                            <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ left: '-40px' }}>
+                                <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                                    <motion.path
+                                        fill="#000000"
+                                        animate={{
+                                            d: generateEarPath(true, currentTension, currentBlendHeight)
+                                        }}
+                                        transition={{
+                                            ...containerSpring,
+                                            // Ensure smoother morphing for path
+                                            d: { duration: 0.4, ease: "easeInOut" }
+                                        }}
+                                    />
+                                </motion.svg>
+                            </div>
+                            {/* Right ear */}
+                            <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ right: '-40px' }}>
+                                <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                                    <motion.path
+                                        fill="#000000"
+                                        animate={{
+                                            d: generateEarPath(false, currentTension, currentBlendHeight)
+                                        }}
+                                        transition={{
+                                            ...containerSpring,
+                                            d: { duration: 0.4, ease: "easeInOut" }
+                                        }}
+                                    />
+                                </motion.svg>
+                            </div>
+                        </>
+                    );
+                })()}
 
                 <motion.div
                     onPointerDown={handlePointerDown}
