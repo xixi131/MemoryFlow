@@ -135,7 +135,7 @@ MemoryFlow 结合了**间隔重复系统 (SRS)** 与**桌面灵动岛 (Dynamic I
 
 ### 3.3 客户端下载 (Client Download)
 1.  登录 [MemoryFlow 管理后台](http://localhost:3000)。
-2.  导航至 **Settings (设置)** > **Client (客户端)**。
+2.  导航至 **profile（用户）**。
 3.  点击 **Download for Windows** 获取最新版 \`.exe\` 安装程序。
 `
     },

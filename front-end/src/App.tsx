@@ -25,6 +25,7 @@ import userApis from './api/userApis';
 import { message } from './components/Message';
 import ReactMarkdown from 'react-markdown';
 import HomePage from './pages/HomePage';
+import DocsPage from './pages/DocsPage';
 
 import DynamicIslandWidget from './components/DynamicIslandWidget';
 import { useGoalStore } from './store/useGoalStore';
@@ -2419,7 +2420,7 @@ const App: React.FC = () => {
         }
         
         const route = path.substring(1);
-        if (['calendar', 'stats', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin'].includes(route)) {
+        if (['calendar', 'stats', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
             return { view: route, subjectId: null, goalId: null };
         }
         
@@ -2460,7 +2461,7 @@ const App: React.FC = () => {
     useEffect(() => {
         const token = localStorage.getItem('token');
         // Allow public pages (login, register) without token
-        if (!token && view !== 'login' && view !== 'register' && view !== 'widget' && view !== 'forgot-password' && view !== 'security-check' && view !== 'homepage') {
+        if (!token && view !== 'login' && view !== 'register' && view !== 'widget' && view !== 'forgot-password' && view !== 'security-check' && view !== 'homepage' && view !== 'docs') {
             navigate('/login');
         } else if (token) {
              // Fetch user info if not exists
@@ -2662,6 +2663,8 @@ const App: React.FC = () => {
                 <SecurityCheck />
             ) : view === 'homepage' ? (
                 <HomePage />
+            ) : view === 'docs' ? (
+                <DocsPage />
             ) : view === 'admin' ? (
                 <AdminDashboard />
             ) : (
