@@ -3,6 +3,7 @@ package com.memoryflow.service;
 import com.memoryflow.dto.dashboard.DashboardSummaryDTO;
 import com.memoryflow.entity.User;
 import com.memoryflow.mapper.PointMapper;
+import com.memoryflow.mapper.ReviewLogMapper;
 import com.memoryflow.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 public class DashboardService {
 
     private final PointMapper pointMapper;
+    private final ReviewLogMapper reviewLogMapper;
     private final UserMapper userMapper;
 
     public DashboardSummaryDTO getDashboardSummary(Long userId) {
@@ -27,7 +29,12 @@ public class DashboardService {
         String greeting = "你好，" + nickname;
 
         int pendingCount = pointMapper.countPendingReviewsByUserId(userId, today);
-        int completedCount = pointMapper.countCompletedReviewsByUserId(userId, today);
+        int completedCount;
+        try {
+            completedCount = reviewLogMapper.countTotalCompletedByUserId(userId);
+        } catch (Exception e) {
+            completedCount = pointMapper.countCumulativeReviewedPointsByUserId(userId);
+        }
 
         return DashboardSummaryDTO.builder()
                 .greeting(greeting)

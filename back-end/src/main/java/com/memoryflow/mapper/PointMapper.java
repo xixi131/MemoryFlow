@@ -82,4 +82,7 @@ public interface PointMapper extends BaseMapper<Point> {
     @Select("SELECT COUNT(*) FROM points WHERE user_id = #{userId} AND is_learned = true " +
             "AND last_review_at IS NOT NULL AND DATE(last_review_at) = #{today}")
     int countCompletedReviewsByUserId(@Param("userId") Long userId, @Param("today") LocalDate today);
+
+    @Select("SELECT COUNT(*) FROM points WHERE user_id = #{userId} AND is_learned = true AND last_review_at IS NOT NULL")
+    int countCumulativeReviewedPointsByUserId(@Param("userId") Long userId);
 }

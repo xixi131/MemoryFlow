@@ -42,6 +42,7 @@ public class WidgetService {
 
         // 统计总待复习数
         int totalPending = pointMapper.countPendingReviewsByUserId(userId, today);
+        int totalCompletedToday = pointMapper.countCompletedReviewsByUserId(userId, today);
 
         // 构建科目灯状态列表
         List<WidgetSummaryDTO.SubjectLight> subjectLights = subjects.stream()
@@ -73,7 +74,7 @@ public class WidgetService {
 
         return WidgetSummaryDTO.builder()
                 .totalPendingReviews(totalPending)
-                .totalCompletedToday(0) // 可以后续添加统计
+                .totalCompletedToday(totalCompletedToday)
                 .reminderTime(reminderTime)
                 .subjects(subjectLights)
                 .build();

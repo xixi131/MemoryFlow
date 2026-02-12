@@ -8,12 +8,14 @@ import com.memoryflow.dto.point.UpdatePointRequest;
 import com.memoryflow.entity.Chapter;
 import com.memoryflow.entity.Goal;
 import com.memoryflow.entity.Point;
+import com.memoryflow.entity.ReviewLog;
 import com.memoryflow.entity.Subject;
 import com.memoryflow.exception.BusinessException;
 import com.memoryflow.exception.ErrorCode;
 import com.memoryflow.mapper.ChapterMapper;
 import com.memoryflow.mapper.GoalMapper;
 import com.memoryflow.mapper.PointMapper;
+import com.memoryflow.mapper.ReviewLogMapper;
 import com.memoryflow.mapper.SubjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +39,7 @@ public class PointService {
     private final SubjectService subjectService;
     private final UserSettingsService userSettingsService;
     private final EbbinghausConfig ebbinghausConfig;
+    private final ReviewLogMapper reviewLogMapper;
 
     /**
      * 获取要点详情
@@ -218,9 +222,28 @@ public class PointService {
             throw new BusinessException(ErrorCode.REVIEW_ALREADY_COMPLETED);
         }
 
+        Integer reviewStageBefore = point.getCurrentReviewStage();
+        LocalDate scheduledDate = point.getNextReviewDate();
+        boolean isOverdue = scheduledDate != null && scheduledDate.isBefore(LocalDate.now());
+
         // 使用充血模型方法完成复习
         point.completeReview(ebbinghausConfig);
         pointMapper.updateById(point);
+
+        try {
+            ReviewLog logRecord = ReviewLog.builder()
+                    .pointId(pointId)
+                    .userId(userId)
+                    .reviewStage(reviewStageBefore)
+                    .scheduledDate(scheduledDate != null ? scheduledDate : LocalDate.now())
+                    .actualReviewAt(LocalDateTime.now())
+                    .isCompleted(true)
+                    .isOverdue(isOverdue)
+                    .build();
+            reviewLogMapper.insert(logRecord);
+        } catch (Exception e) {
+            log.warn("Failed to write review log for point {}: {}", pointId, e.getMessage());
+        }
 
         log.info("Point {} review completed, stage: {}, next review: {}",
                 pointId, point.getCurrentReviewStage(), point.getNextReviewDate());
@@ -250,9 +273,22 @@ public class PointService {
             throw new BusinessException(ErrorCode.REVIEW_NOT_READY);
         }
 
+        boolean wasReviewCompleted = Boolean.TRUE.equals(point.getReviewCompleted());
+        int stageBefore = point.getCurrentReviewStage() != null ? point.getCurrentReviewStage() : 0;
+
         // 使用充血模型方法撤销复习
         point.revertReview();
         pointMapper.updateById(point);
+
+        try {
+            int undoneStage = wasReviewCompleted ? stageBefore : Math.max(1, stageBefore - 1);
+            Long latestLogId = reviewLogMapper.findLatestCompletedId(userId, pointId, undoneStage);
+            if (latestLogId != null) {
+                reviewLogMapper.updateIsCompletedById(latestLogId, false);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to revert review log for point {}: {}", pointId, e.getMessage());
+        }
 
         log.info("Point {} review reverted, stage: {}, next review: {}",
                 pointId, point.getCurrentReviewStage(), point.getNextReviewDate());

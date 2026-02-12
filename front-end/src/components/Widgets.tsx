@@ -108,7 +108,7 @@ export const Widgets: React.FC = () => {
 
     return (
         <aside className="w-full lg:w-80 xl:w-96 shrink-0 relative">
-            <div className="sticky top-32 md:top-36 lg:top-30 lg:fixed lg:right-[30px] xl:right-[190px] lg:w-80 xl:w-96 flex flex-col gap-6 z-10">
+            <div className="sticky top-32 md:top-36 lg:top-32 lg:w-80 xl:w-96 flex flex-col gap-6 z-10">
                 {/* Today's Focus Widget */}
                 <div className="glass-panel rounded-3xl p-6 flex flex-col gap-6 h-fit border border-slate-200 dark:border-white/10 shadow-xl transition-all">
                 <div className="flex items-center justify-between">
