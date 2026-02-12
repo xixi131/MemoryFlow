@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { User } from '../types';
 import userApis from '../api/userApis';
 import { authService } from '../services/authService';
+import { resolveApiAssetUrl } from '../utils/resolveApiAssetUrl';
 
 interface UserState {
     user: User | null;
@@ -32,7 +33,10 @@ export const useUserStore = create<UserState>((set, get) => ({
         try {
             const res: any = await userApis.getUserInfo();
             if (res.code === 200) {
-                set({ user: res.data, isAuthenticated: true });
+                const nextUser = res.data
+                    ? { ...res.data, avatarUrl: resolveApiAssetUrl(res.data.avatarUrl) }
+                    : res.data;
+                set({ user: nextUser, isAuthenticated: true });
             } else {
                 // If token invalid, might need logout
                 set({ user: null }); // Don't auto logout here to avoid redirect loops, let interceptor handle 401
@@ -51,13 +55,17 @@ export const useUserStore = create<UserState>((set, get) => ({
             // Optimistic update
             const currentUser = get().user;
             if (currentUser) {
-                set({ user: { ...currentUser, ...data } });
+                const nextAvatarUrl = data.avatarUrl !== undefined ? resolveApiAssetUrl(data.avatarUrl) : currentUser.avatarUrl;
+                set({ user: { ...currentUser, ...data, avatarUrl: nextAvatarUrl } });
             }
 
             const res: any = await authService.updateProfile(data);
             if (res.code === 200) {
                 // Ensure server data is synced
-                set({ user: res.data });
+                const nextUser = res.data
+                    ? { ...res.data, avatarUrl: resolveApiAssetUrl(res.data.avatarUrl) }
+                    : res.data;
+                set({ user: nextUser });
                 return true;
             }
             return false;

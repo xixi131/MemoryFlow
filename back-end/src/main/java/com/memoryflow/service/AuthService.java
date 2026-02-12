@@ -16,10 +16,15 @@ import com.memoryflow.security.JwtTokenProvider;
 import com.memoryflow.utils.IpUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +42,9 @@ public class AuthService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final EmailReminderService emailReminderService;
     private final IpUtils ipUtils;
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
 
     // Redis Key 前缀
     private static final String LOGIN_FAIL_PREFIX = "auth:login:fail:";
@@ -329,6 +337,7 @@ public class AuthService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
 
+        String oldAvatarUrl = user.getAvatarUrl();
         user.setNickname(request.getNickname());
         user.setProfession(request.getProfession());
         user.setAge(request.getAge());
@@ -337,6 +346,7 @@ public class AuthService {
         }
 
         userMapper.updateById(user);
+        deleteOldAvatarIfReplaced(oldAvatarUrl, user.getAvatarUrl());
 
         return AuthResponse.UserInfo.builder()
                 .id(user.getId())
@@ -346,6 +356,54 @@ public class AuthService {
                 .profession(user.getProfession())
                 .age(user.getAge())
                 .build();
+    }
+
+    private void deleteOldAvatarIfReplaced(String oldAvatarUrl, String newAvatarUrl) {
+        String oldFileName = extractAvatarFileName(oldAvatarUrl);
+        if (oldFileName == null || oldFileName.isBlank()) return;
+
+        String newFileName = extractAvatarFileName(newAvatarUrl);
+        if (oldFileName.equals(newFileName)) return;
+        if ("default-avatar.png".equalsIgnoreCase(oldFileName)) return;
+
+        try {
+            String dir = uploadDir;
+            if (dir == null || dir.isBlank()) return;
+            if (!dir.endsWith("/") && !dir.endsWith("\\")) dir = dir + "/";
+
+            Path base = Paths.get(dir).normalize().toAbsolutePath();
+            Path target = base.resolve(oldFileName).normalize().toAbsolutePath();
+            if (!target.startsWith(base)) return;
+
+            Files.deleteIfExists(target);
+        } catch (Exception e) {
+            log.warn("Failed to delete old avatar: {}", e.getMessage());
+        }
+    }
+
+    private String extractAvatarFileName(String avatarUrl) {
+        if (avatarUrl == null) return null;
+        String value = avatarUrl.trim();
+        if (value.isEmpty()) return null;
+
+        String path = value;
+        try {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                path = new URL(value).getPath();
+            }
+        } catch (Exception ignored) {
+        }
+
+        int idx = path.indexOf("/uploads/avatars/");
+        if (idx < 0) idx = path.indexOf("/api/uploads/avatars/");
+        if (idx < 0) return null;
+
+        String base = idx >= 0 && path.startsWith("/api/uploads/avatars/") ? "/api/uploads/avatars/" : "/uploads/avatars/";
+        int start = path.indexOf(base);
+        if (start < 0) return null;
+        String tail = path.substring(start + base.length());
+        if (tail.isEmpty() || tail.contains("/") || tail.contains("\\")) return null;
+        return tail;
     }
 
     /**

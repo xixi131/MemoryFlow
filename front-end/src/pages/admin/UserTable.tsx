@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Lock, Unlock, MapPin, Calendar, Activity, Users, ShieldCheck } from 'lucide-react';
 import adminApis from '../../services/adminApis';
+import { resolveApiAssetUrl } from '../../utils/resolveApiAssetUrl';
 
 interface User {
     id: number;
@@ -182,7 +183,7 @@ const UserTable: React.FC = () => {
                                             <div className="relative">
                                                 <div className="size-12 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                                                     {user.avatarUrl ? (
-                                                        <img src={user.avatarUrl} alt={user.nickname} className="w-full h-full object-cover" />
+                                                        <img src={resolveApiAssetUrl(user.avatarUrl)} alt={user.nickname} className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-lg">
                                                             {user.nickname?.[0]?.toUpperCase() || 'U'}

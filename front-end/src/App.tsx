@@ -22,6 +22,7 @@ import dashboardApis, { DashboardSummary } from './services/dashboardApis'; // I
 import calendarApis, { CalendarRecordDTO } from './services/calendarApis';
 import settingsApis from './services/settingsApis';
 import userApis from './api/userApis';
+import { resolveApiAssetUrl } from './utils/resolveApiAssetUrl';
 import { message } from './components/Message';
 import ReactMarkdown from 'react-markdown';
 import HomePage from './pages/HomePage';
@@ -2136,7 +2137,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
         try {
             const res: any = await userApis.uploadAvatar(file);
             if (res.url) {
-                 setAvatarUrl(res.url);
+                 setAvatarUrl(resolveApiAssetUrl(res.url));
                  message.success('头像上传成功');
             } else {
                  message.error('上传失败');

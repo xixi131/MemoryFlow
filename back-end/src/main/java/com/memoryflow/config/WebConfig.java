@@ -14,8 +14,12 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 映射上传文件的路径
+        String location = uploadDir;
+        if (location != null && !location.endsWith("/") && !location.endsWith("\\")) {
+            location = location + "/";
+        }
         registry.addResourceHandler("/uploads/avatars/**")
-                .addResourceLocations("file:" + uploadDir);
+                .addResourceLocations("file:" + location);
     }
 
     @Override
