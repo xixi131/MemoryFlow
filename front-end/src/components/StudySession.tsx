@@ -342,15 +342,15 @@ const StudySession: React.FC<StudySessionProps> = ({ courseId, onExit, target })
             </div>
 
             {/* 底部操作栏 */}
-            <div className={`mt-12 flex gap-12 transition-all duration-500 opacity-100 translate-y-0 w-full max-w-4xl justify-center`}>
+            <div className={`mt-12 flex flex-col sm:flex-row gap-6 sm:gap-12 transition-all duration-500 opacity-100 translate-y-0 w-full max-w-4xl justify-center px-4 sm:px-0`}>
                 {/* Forgot Button */}
                 <div className={`flex flex-col items-center gap-3 transition-opacity duration-300 ${hasAnswered ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                     <button 
                         onClick={() => onUserResponse(false)}
-                        className="group relative flex items-center gap-4 px-12 py-6 rounded-full bg-[#FF7E5F] hover:bg-[#FF6B4A] active:scale-95 text-white shadow-xl shadow-orange-500/20 transition-all duration-300 w-[320px] justify-center border-none"
+                        className="group relative flex items-center gap-4 px-8 sm:px-12 py-5 sm:py-6 rounded-full bg-[#FF7E5F] hover:bg-[#FF6B4A] active:scale-95 text-white shadow-xl shadow-orange-500/20 transition-all duration-300 w-full max-w-[320px] sm:w-[320px] justify-center border-none"
                     >
-                        <span className="material-symbols-outlined text-3xl group-hover:-rotate-12 transition-transform">restart_alt</span>
-                        <span className="font-bold text-2xl tracking-wide">Forgot</span>
+                        <span className="material-symbols-outlined text-2xl sm:text-3xl group-hover:-rotate-12 transition-transform">restart_alt</span>
+                        <span className="font-bold text-xl sm:text-2xl tracking-wide">Forgot</span>
                     </button>
                     <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
                         <span className="material-symbols-outlined text-[14px]">history</span>
@@ -362,7 +362,7 @@ const StudySession: React.FC<StudySessionProps> = ({ courseId, onExit, target })
                 <div className="flex flex-col items-center gap-3">
                     <button 
                         onClick={() => hasAnswered ? handleNextAfterForgot() : onUserResponse(true)}
-                        className={`group relative flex items-center gap-4 px-12 py-6 rounded-full transition-all duration-300 w-[320px] justify-center border-none
+                        className={`group relative flex items-center gap-4 px-8 sm:px-12 py-5 sm:py-6 rounded-full transition-all duration-300 w-full max-w-[320px] sm:w-[320px] justify-center border-none
                             ${hasAnswered && !autoAdvanceTimer 
                                 ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' // "Next" style
                                 : 'bg-[#FF3366] hover:bg-[#F42156] shadow-pink-500/20' // "Know" style
@@ -370,13 +370,13 @@ const StudySession: React.FC<StudySessionProps> = ({ courseId, onExit, target })
                     >
                         {hasAnswered && !autoAdvanceTimer ? (
                             <>
-                                <span className="material-symbols-outlined text-3xl">arrow_forward</span>
-                                <span className="font-bold text-2xl tracking-wide">Next</span>
+                                <span className="material-symbols-outlined text-2xl sm:text-3xl">arrow_forward</span>
+                                <span className="font-bold text-xl sm:text-2xl tracking-wide">Next</span>
                             </>
                         ) : (
                             <>
-                                <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">check_circle</span>
-                                <span className="font-bold text-2xl tracking-wide">Know</span>
+                                <span className="material-symbols-outlined text-2xl sm:text-3xl group-hover:scale-110 transition-transform">check_circle</span>
+                                <span className="font-bold text-xl sm:text-2xl tracking-wide">Know</span>
                             </>
                         )}
                     </button>

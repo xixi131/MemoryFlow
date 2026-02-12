@@ -11,8 +11,10 @@ export const Navigation: React.FC = () => {
     const [isHovered, setIsHovered] = useState(false);
     // 新增状态：控制弹性动画阶段
     const [isAnimating, setIsAnimating] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
-    // 使用 User Store
+    // 使用 User Storeright-4 md:right-8
     const { user, fetchUser } = useUserStore();
     const avatarUrl = user?.avatarUrl;
 
@@ -27,6 +29,18 @@ export const Navigation: React.FC = () => {
             window.removeEventListener('profile:updated', handleProfileUpdate);
         };
     }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(min-width: 768px)');
+        const update = () => setIsDesktop(mediaQuery.matches);
+        update();
+        mediaQuery.addEventListener?.('change', update);
+        return () => mediaQuery.removeEventListener?.('change', update);
+    }, []);
+
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [pathname]);
 
     // 监听滚动事件
     useEffect(() => {
@@ -44,7 +58,7 @@ export const Navigation: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isScrolled]);
 
-    const isCollapsed = isScrolled && !isHovered;
+    const isCollapsed = isDesktop && isScrolled && !isHovered;
 
     // 路由配置：导航项与路径映射
     const navItems = [
@@ -68,34 +82,52 @@ export const Navigation: React.FC = () => {
                     isCollapsed ? 'w-full max-w-[1600px] px-4 md:px-8' : 'w-full max-w-4xl mx-4'
                 }`}>
                     <nav 
-                        className={`glass-panel pointer-events-auto flex items-center absolute right-0 shadow-lg transition-all duration-[1000ms] overflow-hidden ${
+                        className={`glass-panel pointer-events-auto flex items-center absolute right-0 shadow-lg transition-all duration-[1000ms] ${mobileMenuOpen ? 'overflow-visible' : 'overflow-hidden'} ${
                             isAnimating 
                                 ? (isCollapsed ? 'animate-squish-in' : 'animate-squish-out') // 应用弹性动画
                                 : 'ease-[cubic-bezier(0.34,1.56,0.64,1)]' // 静态时的平滑回弹效果
                         } ${
                             isCollapsed 
-                            ? 'w-[48px] h-[48px] rounded-full justify-center p-0 top-[16px] right-4 md:right-8 lg:right-[220px] xl:right-[290px]' // 收缩时
+                            ? 'w-[48px] h-[48px] rounded-full justify-center p-0 top-[16px] right-4 md:right-8 lg:right-[240px] xl:right-[346px]' // 收缩时
                             : 'w-full h-full rounded-full justify-between px-5 py-4 top-0 right-0'
                         }`}
                         onMouseEnter={() => setIsHovered(true)}
                         onMouseLeave={() => setIsHovered(false)}
                     >
-                        {/* Logo：点击返回首页 */}
-                        <Link 
-                            to="/home" 
-                            className={`flex items-center gap-4 cursor-pointer transition-all duration-500 ${
-                                isCollapsed ? 'opacity-0 w-0 p-0 overflow-hidden absolute left-0' : 'opacity-100 w-auto pl-5 pr-5 relative'
-                            }`}
-                        >
-                            <img 
-                                src="/logo-memoryflow.png" 
-                                alt="MemoryFlow Logo" 
-                                className="size-10 object-contain shrink-0" 
-                            />
-                            <span className="text-slate-800 dark:text-white font-bold text-xl tracking-tight hidden sm:block whitespace-nowrap">
-                                MemoryFlow
-                            </span>
-                        </Link>
+                        <div className={`flex items-center gap-2 transition-all duration-500 ${
+                            isCollapsed ? 'opacity-0 w-0 p-0 overflow-hidden absolute left-0' : 'opacity-100 w-auto pl-2 pr-2 relative'
+                        }`}>
+                            <button
+                                type="button"
+                                aria-label={mobileMenuOpen ? '关闭菜单' : '打开菜单'}
+                                aria-expanded={mobileMenuOpen}
+                                onClick={() => setMobileMenuOpen((v) => !v)}
+                                className={`md:hidden size-12 rounded-full flex items-center justify-center transition-colors ${
+                                    mobileMenuOpen
+                                        ? 'bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white'
+                                        : 'text-slate-500 hover:bg-slate-200 dark:text-text-secondary dark:hover:text-white dark:hover:bg-white/10'
+                                }`}
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M4 7H20" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d="M4 12H20" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d="M4 17H20" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                </svg>
+                            </button>
+                            <Link 
+                                to="/home" 
+                                className="flex items-center gap-4 cursor-pointer transition-all duration-500 pl-3 pr-3"
+                            >
+                                <img 
+                                    src="/logo-memoryflow.png" 
+                                    alt="MemoryFlow Logo" 
+                                    className="size-10 object-contain shrink-0" 
+                                />
+                                <span className="text-slate-800 dark:text-white font-bold text-xl tracking-tight hidden sm:block whitespace-nowrap">
+                                    MemoryFlow
+                                </span>
+                            </Link>
+                        </div>
 
                         {/* Nav Links */}
                         <div className={`hidden md:flex items-center bg-slate-100/50 dark:bg-[#0F172A]/50 rounded-full p-2 border border-slate-200 dark:border-white/5 transition-all duration-500 overflow-hidden ${
@@ -135,6 +167,34 @@ export const Navigation: React.FC = () => {
                             />
                         </div>
                     </nav>
+                    {mobileMenuOpen && (
+                        <div className="md:hidden pointer-events-auto absolute left-0 right-0 top-[84px]">
+                            <div className="glass-panel rounded-3xl p-3 border border-slate-200 dark:border-white/10 shadow-xl mx-4">
+                                <div className="flex flex-col gap-2">
+                                    {navItems.map((item) => {
+                                        const isActive =
+                                            (item.id === 'dashboard' && isDashboardActive) ||
+                                            (item.id !== 'dashboard' && pathname === item.path);
+                                        return (
+                                            <Link
+                                                key={item.id}
+                                                to={item.path}
+                                                onClick={() => setMobileMenuOpen(false)}
+                                                className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-base font-bold transition-all ${
+                                                    isActive
+                                                        ? 'bg-primary text-white shadow-glow'
+                                                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 dark:text-text-secondary dark:hover:text-white dark:hover:bg-white/5'
+                                                }`}
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                                                {item.label}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
         </>

@@ -31,3 +31,6 @@ front-end/release_v2/
 
 # Data Files (Large Files)
 back-end/src/main/resources/data/ecdict.csv
+
+# Local runtime configs (do not commit)
+back-end/uploads/config/

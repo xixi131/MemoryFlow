@@ -1360,7 +1360,7 @@ const Calendar: React.FC = () => {
     const totalPoints = records.reduce((acc, curr) => acc + (curr.pointsCompleted || 0), 0);
 
     return (
-        <div className="w-full flex-1 flex flex-col justify-center animate-fade-in">
+        <div className="w-full flex-1 flex flex-col justify-start lg:justify-center pt-2 md:pt-0 md:-mt-10 lg:mt-0 animate-fade-in">
             {/* Calendar Card */}
             <div className="w-full bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-white/5 shadow-2xl shadow-black/5 dark:shadow-black/40 p-8 md:p-10 relative overflow-hidden backdrop-blur-sm group/calendar transition-colors duration-500">
                 {/* Card Inner Glow Top */}

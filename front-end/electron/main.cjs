@@ -5,6 +5,8 @@ const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
 
 let widgetWindow;
 let tray;
+let pendingAuthToken = null;
+let pendingLogout = false;
 
 app.setName('MemoryFlow');
 if (process.platform === 'win32') {
@@ -93,6 +95,9 @@ if (!gotTheLock) {
         // Start music listener after window is created
         startMusicListener(widgetWindow);
 
+        const initialUrl = process.argv.find(arg => arg.startsWith('memoryflow://'));
+        if (initialUrl) handleDeepLink(initialUrl);
+
         app.on('activate', () => {
             if (BrowserWindow.getAllWindows().length === 0) createWidgetWindow();
         });
@@ -111,14 +116,57 @@ function handleDeepLink(url) {
     try {
         const urlObj = new URL(url);
         const token = urlObj.searchParams.get('token');
-        if (token && widgetWindow) {
-            console.log('Sending token to renderer');
-            // 发送 Token 到渲染进程
-            widgetWindow.webContents.send('auth-token', token);
-            widgetWindow.show();
+        if (token) {
+            sendTokenToRenderer(token);
         }
     } catch (error) {
         console.error('Error parsing deep link:', error);
+    }
+}
+
+function sendTokenToRenderer(token) {
+    pendingAuthToken = token;
+    if (!widgetWindow || widgetWindow.isDestroyed()) {
+        return;
+    }
+
+    const deliver = () => {
+        if (!widgetWindow || widgetWindow.isDestroyed()) {
+            return;
+        }
+        widgetWindow.webContents.send('auth-token', token);
+        widgetWindow.show();
+        pendingAuthToken = null;
+    };
+
+    if (widgetWindow.webContents.isLoading()) {
+        widgetWindow.webContents.once('did-finish-load', deliver);
+    } else {
+        deliver();
+    }
+}
+
+function sendLogoutToRenderer() {
+    pendingLogout = true;
+    pendingAuthToken = null;
+
+    if (!widgetWindow || widgetWindow.isDestroyed()) {
+        return;
+    }
+
+    const deliver = () => {
+        if (!widgetWindow || widgetWindow.isDestroyed()) {
+            return;
+        }
+        widgetWindow.webContents.send('auth-logout');
+        widgetWindow.show();
+        pendingLogout = false;
+    };
+
+    if (widgetWindow.webContents.isLoading()) {
+        widgetWindow.webContents.once('did-finish-load', deliver);
+    } else {
+        deliver();
     }
 }
 
@@ -169,6 +217,12 @@ function createTray() {
             label: '访问官网',
             click: () => {
                 shell.openExternal('https://memoryflow.tanxhub.com');
+            }
+        },
+        {
+            label: '退出登录',
+            click: () => {
+                sendLogoutToRenderer();
             }
         },
         { type: 'separator' },
@@ -248,6 +302,15 @@ function createWidgetWindow() {
         // Load file directly with hash is tricky in Electron loadFile, using loadURL with file protocol is safer for hash
         widgetWindow.loadURL(`file://${indexPath}#/widget`);
     }
+
+    widgetWindow.webContents.on('did-finish-load', () => {
+        if (pendingAuthToken) {
+            sendTokenToRenderer(pendingAuthToken);
+        }
+        if (pendingLogout) {
+            sendLogoutToRenderer();
+        }
+    });
 
     // Open DevTools in dev mode
     // widgetWindow.webContents.openDevTools({ mode: 'detach' });

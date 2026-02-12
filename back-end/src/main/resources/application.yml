@@ -16,11 +16,10 @@ spring:
   application:
     name: memoryflow
 
-  # MySQL 数据库配置
   datasource:
-    url: jdbc:mysql://8.138.16.119:3306/memory-flow?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
-    username: user-memory-flow
-    password: 1H1PmdG3NX3I0R
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/memory-flow?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -31,7 +30,6 @@ spring:
       connection-timeout: 30000
       keepalive-time: 30000      # 30秒检查一次连接活跃状态
 
-  # MyBatis Plus 配置
   mybatis-plus:
     configuration:
       map-underscore-to-camel-case: true
@@ -43,13 +41,12 @@ spring:
     mapper-locations: classpath*:/mapper/**/*.xml
     type-aliases-package: com.memoryflow.entity
 
-  # Redis 配置
   data:
     redis:
-      host: 8.138.16.119
-      port: 6666
-      password: Txt@@asd2050905359
-      database: 0
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      database: ${SPRING_DATA_REDIS_DATABASE:0}
       timeout: 30000ms # Increased timeout from 10s to 30s
       lettuce:
         pool:
@@ -60,13 +57,12 @@ spring:
           time-between-eviction-runs: 30s
         shutdown-timeout: 200ms
 
-  # 邮件配置
   mail:
-    host: smtp.163.com
-    port: 465
-    username: tanxmq@163.com
-    password: JDqsbt5pAYL4rthW
-    protocol: smtp
+    host: ${SPRING_MAIL_HOST:smtp.163.com}
+    port: ${SPRING_MAIL_PORT:465}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    protocol: ${SPRING_MAIL_PROTOCOL:smtp}
     properties:
       mail:
         smtp:
@@ -79,7 +75,7 @@ spring:
 
 # JWT 配置
 jwt:
-  secret: MemoryFlow2024SecretKeyForJWTTokenGenerationAndValidation!@#$%^&*()
+  secret: ${JWT_SECRET:}
   access-token-expiration: 1800000    # 30分钟 (毫秒)
   refresh-token-expiration: 604800000  # 7天 (毫秒)
   issuer: MemoryFlow
@@ -118,5 +114,5 @@ logging:
 
 cloudflare:
   turnstile:
-    secret-key: 0x4AAAAAACYc4Fl40AYt5N6TmKs1fwfL6Jo
+    secret-key: ${CLOUDFLARE_TURNSTILE_SECRET_KEY:}
     site-verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify

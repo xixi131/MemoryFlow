@@ -87,10 +87,10 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen animate-fade-in px-4">
-            <div className="p-12 transition-all text-center max-w-md w-full">
-                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-2">MemoryFlow</h1>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">注册</h2>
+        <div className="flex justify-center items-start sm:items-center min-h-screen animate-fade-in px-4 py-10">
+            <div className="p-6 sm:p-10 md:p-12 transition-all text-center max-w-md w-full">
+                <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 mb-2">MemoryFlow</h1>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-6">注册</h2>
                 <div className="flex flex-col gap-4 text-left">
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">昵称</label>
@@ -98,7 +98,7 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                             type="text"
                             value={nickname}
                             onChange={(e) => setNickname(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                             placeholder="Your Name"
                         />
                     </div>
@@ -108,7 +108,7 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                             placeholder="name@example.com"
                         />
                     </div>
@@ -116,18 +116,18 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                     {/* 验证码输入框 */}
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">验证码</label>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <input
                                 type="text"
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}
-                                className="flex-1 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                className="w-full sm:flex-1 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                                 placeholder="6位验证码"
                             />
                             <button
                                 onClick={handleSendCode}
                                 disabled={countdown > 0 || !email}
-                                className="px-4 rounded-2xl bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors dark:bg-blue-900/30 dark:text-blue-400"
+                                className="w-full sm:w-auto px-4 py-3 sm:py-0 rounded-2xl bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors dark:bg-blue-900/30 dark:text-blue-400"
                             >
                                 {countdown > 0 ? `${countdown}s` : '发送验证码'}
                             </button>
@@ -140,7 +140,7 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                             placeholder="至少 8 位"
                         />
                     </div>
@@ -150,12 +150,12 @@ export const Register: React.FC<{ setView: (v: string) => void }> = ({ setView }
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                            className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                             placeholder="再次输入密码"
                         />
                     </div>
                 </div>
-                <div className="flex items-center justify-between mt-4 text-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 text-sm">
                     <button onClick={() => setView('login')} className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors">已有账号？登录</button>
                     <span className="text-slate-400 dark:text-slate-500">注册即表示同意服务条款</span>
                 </div>

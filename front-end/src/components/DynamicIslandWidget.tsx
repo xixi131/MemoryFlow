@@ -556,7 +556,11 @@ const DynamicIslandWidget: React.FC = () => {
     const openLogin = () => {
         try {
             const { shell } = (window as any).require('electron');
-            shell.openExternal('http://localhost:3000/#/login?callback=desktop');
+            const envUrl = (window as any)?.process?.env?.ELECTRON_START_URL;
+            const defaultWebUrl = 'https://memoryflow.tanxhub.com';
+            const baseUrl = (envUrl && typeof envUrl === 'string') ? envUrl : defaultWebUrl;
+            const normalizedBaseUrl = baseUrl.split('#')[0].replace(/\/$/, '');
+            shell.openExternal(`${normalizedBaseUrl}/#/login?callback=desktop`);
         } catch (e) {
             console.error('Cannot open external link', e);
         }
@@ -588,13 +592,13 @@ const DynamicIslandWidget: React.FC = () => {
                 if (res.code === 200) {
                     setData(res.data);
                 } else {
-                    localStorage.removeItem('token');
-                    setIsLoggedIn(false);
+                    if (res.code === 401 || res.code === 403) {
+                        localStorage.removeItem('token');
+                        setIsLoggedIn(false);
+                    }
                 }
             } catch (error: any) {
                 console.error("Widget fetch error", error);
-                localStorage.removeItem('token');
-                setIsLoggedIn(false);
             }
         };
 
@@ -613,6 +617,12 @@ const DynamicIslandWidget: React.FC = () => {
                 setIsLoggedIn(true);
                 fetchData();
             });
+            ipcRenderer.on('auth-logout', () => {
+                localStorage.removeItem('token');
+                setIsLoggedIn(false);
+                setIsExpanded(false);
+                setMode('app');
+            });
         } catch (e) {
             console.warn('Electron IPC not available');
         }
@@ -625,6 +635,7 @@ const DynamicIslandWidget: React.FC = () => {
             clearInterval(timer);
             if (ipcRenderer) {
                 ipcRenderer.removeAllListeners('auth-token');
+                ipcRenderer.removeAllListeners('auth-logout');
             }
         };
     }, []);

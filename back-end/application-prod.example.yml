@@ -1,0 +1,50 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+app:
+  frontend-url: https://memoryflow.tanxhub.com
+
+file:
+  upload-dir: ./uploads/avatars/
+
+spring:
+  datasource:
+    url: jdbc:mysql://8.138.16.119:3306/memory-flow?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: user-memory-flow
+    password: 1H1PmdG3NX3I0R
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 8.138.16.119
+      port: 6666
+      password: Txt@@asd2050905359
+      database: 0
+      timeout: 30000ms
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: tanxmq@163.com
+    password: YLaJ7QwBCeBJrydS
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+
+jwt:
+  secret: G^W3zGG2s5^VnfR9vZNUfZhdv2bKC%TLlYffbMqxKR5YSH6sn5$F@lZ3395q6QUYC!k7&c
+  access-token-expiration: 1800000
+  refresh-token-expiration: 604800000
+  issuer: MemoryFlow
+
+cloudflare:
+  turnstile:
+    secret-key: 0x4AAAAAACYc4Fl40AYt5N6TmKs1fwfL6Jo
+    site-verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
