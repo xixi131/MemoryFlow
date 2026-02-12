@@ -6,6 +6,9 @@ server:
       max-file-size: 5MB
       max-request-size: 5MB
 
+app:
+  frontend-url: ${APP_FRONTEND_URL:https://memoryflow.tanxhub.com}
+
 file:
   upload-dir: ./uploads/avatars/
 

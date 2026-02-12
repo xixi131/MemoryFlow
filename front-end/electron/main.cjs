@@ -37,6 +37,9 @@ function saveConfig(config) {
 
 // 初始化自启动设置
 function initAutoLaunch() {
+    if (!app.isPackaged) {
+        return;
+    }
     const config = loadConfig();
     const isFirstRun = config === null;
 
@@ -132,9 +135,7 @@ function createTray() {
 
     tray = new Tray(iconPath);
 
-    // 获取当前自启动状态
-    const loginSettings = app.getLoginItemSettings();
-    const isAutoLaunch = loginSettings.openAtLogin;
+    const isAutoLaunch = app.isPackaged ? app.getLoginItemSettings().openAtLogin : false;
 
     const contextMenu = Menu.buildFromTemplate([
         {
@@ -151,6 +152,7 @@ function createTray() {
             label: '开机自动启动',
             type: 'checkbox',
             checked: isAutoLaunch,
+            enabled: app.isPackaged,
             click: (menuItem) => {
                 const newState = menuItem.checked;
                 app.setLoginItemSettings({
@@ -166,7 +168,7 @@ function createTray() {
         {
             label: '访问官网',
             click: () => {
-                shell.openExternal('http://localhost:3000'); // 这里的URL后续需替换为线上地址
+                shell.openExternal('https://memoryflow.tanxhub.com');
             }
         },
         { type: 'separator' },

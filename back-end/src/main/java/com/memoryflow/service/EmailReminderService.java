@@ -48,10 +48,10 @@ public class EmailReminderService {
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
-    @Async
+    @Async 
     public void sendInvitationEmail(String to) {
         String subject = String.format("邀请您加入 %s", appName);
-        String inviteLink = String.format("%s/#/register?email=%s", frontendUrl, to);
+        String inviteLink = String.format("%s/#/register", frontendUrl);
         
         String content = String.format("""
                 <!DOCTYPE html>

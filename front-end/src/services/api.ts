@@ -1,7 +1,17 @@
 import axios from 'axios';
 import { useSecurityStore } from '../store/useSecurityStore';
 
-const API_URL = 'http://localhost:8080/api';
+const normalizeApiBaseUrl = (raw?: string) => {
+  const fallback = 'http://localhost:8080/api';
+  const value = (raw ?? '').trim();
+  if (!value) return fallback;
+
+  const trimmed = value.replace(/\/+$/, '');
+  if (trimmed.endsWith('/api')) return trimmed;
+  return `${trimmed}/api`;
+};
+
+const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_URL,

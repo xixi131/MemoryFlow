@@ -200,7 +200,11 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
                     {/* App Icon Box */}
                     <div className="w-24 h-24 md:w-32 md:h-32 bg-white rounded-3xl flex items-center justify-center border border-slate-200 shadow-xl shadow-slate-200/50 relative group transition-transform hover:-translate-y-1 duration-300 delay-75">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <span className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-indigo-600">M</span>
+                        <img
+                            src="/logo-memoryflow.png"
+                            alt="MemoryFlow"
+                            className="w-14 h-14 md:w-20 md:h-20 object-contain"
+                        />
                     </div>
                 </div>
 
