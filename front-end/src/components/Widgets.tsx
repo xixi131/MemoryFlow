@@ -110,7 +110,7 @@ export const Widgets: React.FC = () => {
         <aside className="w-full lg:w-80 xl:w-96 shrink-0 relative">
             <div className="sticky top-32 md:top-36 lg:top-32 lg:w-80 xl:w-96 flex flex-col gap-6 z-10">
                 {/* Today's Focus Widget */}
-                <div className="glass-panel rounded-3xl p-6 flex flex-col gap-6 h-fit border border-slate-200 dark:border-white/10 shadow-xl transition-all">
+                <div className="glass-panel !border-0 rounded-3xl p-6 flex flex-col gap-6 h-fit shadow-[0_12px_30px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] hover:shadow-[0_20px_50px_rgba(15,23,42,0.14),0_8px_16px_rgba(15,23,42,0.08)] dark:shadow-[0_14px_44px_rgba(0,0,0,0.55),0_4px_14px_rgba(0,0,0,0.30)] dark:hover:shadow-[0_22px_70px_rgba(0,0,0,0.60),0_10px_24px_rgba(0,0,0,0.34)] transition-all">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <span className="material-symbols-outlined text-accent-coral">today</span>
@@ -128,10 +128,10 @@ export const Widgets: React.FC = () => {
                             <div 
                                 key={review.id} 
                                 onClick={() => handleNavigate(review.subjectId)}
-                                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer group ${
+                                className={`flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer group ${
                                 review.completedLocal 
-                                ? 'bg-slate-100 dark:bg-[#0F172A]/50 border-transparent opacity-60' 
-                                : 'bg-slate-50 dark:bg-[#0F172A] border-slate-200 dark:border-surface-light hover:border-primary/50'
+                                ? 'bg-slate-100 dark:bg-[#0F172A]/50 opacity-60' 
+                                : 'bg-[#D6E3FF] dark:bg-[#0F172A] hover:shadow-md'
                             }`}>
                                 <div onClick={(e) => handleToggleReview(e, review)}>
                                     {review.completedLocal ? (

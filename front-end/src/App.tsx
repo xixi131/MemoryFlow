@@ -88,7 +88,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {goals.map((goal) => (
-                        <div key={goal.id} onClick={() => onGoalClick(goal.id)} className="group relative overflow-hidden bg-white dark:bg-surface-dark rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-lg hover:shadow-glow transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                        <div key={goal.id} onClick={() => onGoalClick(goal.id)} className="group relative overflow-hidden bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-[0_12px_30px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] hover:shadow-[0_20px_50px_rgba(15,23,42,0.14),0_8px_16px_rgba(15,23,42,0.08)] dark:shadow-[0_14px_44px_rgba(0,0,0,0.55),0_4px_14px_rgba(0,0,0,0.30)] dark:hover:shadow-[0_22px_70px_rgba(0,0,0,0.60),0_10px_24px_rgba(0,0,0,0.34)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                             <div className="absolute top-0 right-0 p-6 opacity-5 dark:opacity-10 group-hover:opacity-10 dark:group-hover:opacity-20 transition-opacity">
                                 <span className="material-symbols-outlined text-[120px] text-current">{goal.icon}</span>
                             </div>
@@ -120,7 +120,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
                                         <span className="text-slate-700 dark:text-white">总体进度</span>
                                         <span className={goal.colorClass}>{goal.progress}%</span>
                                     </div>
-                                    <div className="h-3 w-full bg-slate-100 dark:bg-[#0F172A] rounded-full overflow-hidden border border-slate-200 dark:border-white/5">
+                                    <div className="h-3 w-full bg-slate-100 dark:bg-[#0F172A] rounded-full overflow-hidden">
                                         <div 
                                             className={`h-full w-[${goal.progress}%] rounded-full relative`}
                                             style={{ width: `${goal.progress}%`, background: goal.progressGradient || (goal.id === '1' ? 'linear-gradient(to right, #3B82F6, #60A5FA)' : 'linear-gradient(to right, #A855F7, #6366F1)') }}
@@ -179,7 +179,7 @@ const GoalDetail: React.FC<{
         </div>
 
         {/* Header */}
-        <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-surface-dark dark:to-[#151e2e] border border-white/5 p-8 md:p-10 shadow-2xl">
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-surface-dark dark:to-[#151e2e] p-8 md:p-10 shadow-2xl">
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-[80px]"></div>
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div className="flex flex-col gap-3">
@@ -199,7 +199,7 @@ const GoalDetail: React.FC<{
                         <span className="text-4xl font-bold text-white">{goal.progress}%</span>
                         <span className="text-slate-300 dark:text-text-secondary text-sm block">Completed</span>
                     </div>
-                    <div className="w-full h-3 bg-slate-700 dark:bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                    <div className="w-full h-3 bg-slate-700 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div 
                             className="h-full bg-gradient-to-r from-primary to-primary-glow rounded-full shadow-glow"
                             style={{ width: `${goal.progress}%` }}
@@ -225,9 +225,9 @@ const GoalDetail: React.FC<{
             ) : subjects.map((subject, index) => {
                 const theme = GOAL_THEMES[index % GOAL_THEMES.length];
                 return (
-                    <div key={subject.id} onClick={() => onSubjectClick(subject.id)} className="group relative flex items-center justify-between p-3 bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-white/5 hover:border-primary/40 hover:bg-slate-50 dark:hover:bg-[#1E293B] hover:shadow-[0_4px_20px_-8px_rgba(55,128,246,0.4)] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
+                    <div key={subject.id} onClick={() => onSubjectClick(subject.id)} className="group relative flex items-center justify-between p-3 bg-white dark:bg-surface-dark rounded-2xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                         <div className="flex items-center gap-5 pl-2">
-                            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 ${theme.colorClass} shadow-md`}>
+                            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-50 dark:bg-background-dark ${theme.colorClass} shadow-sm`}>
                                 <span className="material-symbols-outlined text-2xl">{subject.icon || theme.icon}</span>
                             </div>
                             <div className="flex flex-col gap-1">
@@ -247,7 +247,7 @@ const GoalDetail: React.FC<{
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Progress</span>
                                     <span className={`text-xs font-bold ${theme.colorClass}`}>{subject.progress}%</span>
                                 </div>
-                                <div className="h-2.5 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden border border-slate-200 dark:border-white/5">
+                                <div className="h-2.5 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden">
                                     <div 
                                         className="h-full rounded-full relative"
                                         style={{ width: `${subject.progress}%`, background: theme.progressGradient }}
@@ -781,10 +781,10 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     const showReviewCompleted = !showReviewReminder && reviewedTodayPoints.length > 0;
 
                     return (
-                    <div key={chapter.id} className={`flex flex-col transition-all duration-500 ease-in-out ${expanded[chapter.id] ? 'bg-slate-50/80 dark:bg-slate-900/40 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-3 pb-6 gap-2' : 'gap-4 bg-transparent border border-transparent p-0'}`}>
+                    <div key={chapter.id} className={`flex flex-col transition-all duration-500 ease-in-out ${expanded[chapter.id] ? 'bg-slate-50/80 dark:bg-slate-900/40 rounded-[2.5rem] p-3 pb-6 gap-2 shadow-sm dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]' : 'gap-4 bg-transparent p-0'}`}>
                         {/* Level 1: Chapter */}
                         <div 
-                            className={`group relative rounded-[2rem] transition-all cursor-pointer overflow-hidden ${expanded[chapter.id] ? 'bg-transparent' : 'bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md'}`}
+                            className={`group relative rounded-[2rem] transition-all cursor-pointer overflow-hidden ${expanded[chapter.id] ? 'bg-transparent' : 'bg-white dark:bg-surface-dark shadow-sm hover:shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.28)]'}`}
                             onClick={() => toggleExpand(String(chapter.id), true)}
                         >
                             <div className="flex items-center justify-between p-6">
@@ -845,9 +845,9 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                     {/* Level 1 Content (Articles direct under Chapter) */}
                                     {(chapter.contents && chapter.contents.length > 0) && (
-                                        <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-white/5 shadow-inner flex flex-col mb-4">
+                                        <div className="bg-white dark:bg-[#0F172A] rounded-2xl shadow-sm flex flex-col mb-4">
                                             {/* Header with Tabs */}
-                                            <div className="group flex justify-between items-center border-b border-slate-100 dark:border-white/5 px-6 pt-6 pb-2">
+                                            <div className="group flex justify-between items-center px-6 pt-6 pb-2">
                                                 <div className="flex gap-2 overflow-x-auto flex-1 no-scrollbar">
                                                     {chapter.contents.map((article: any, idx: number) => {
                                                         const isActive = (activeTabs[String(chapter.id)] || 0) === idx;
@@ -904,7 +904,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                     {chapter.children?.map((point: any) => (
                                         <div key={point.id} className="flex flex-col">
                                             <div 
-                                                className={`group relative bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-white/5 hover:border-primary/30 transition-all cursor-pointer ${expanded[point.id] ? 'rounded-b-none border-b-0 bg-slate-50 dark:bg-white/5' : ''}`}
+                                                className={`group relative bg-white dark:bg-surface-dark rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer ${expanded[point.id] ? 'rounded-b-none bg-slate-50 dark:bg-white/5' : ''}`}
                                                 onClick={() => toggleExpand(String(point.id))}
                                             >
                                                 <div className="flex items-center justify-between p-5">
@@ -938,10 +938,10 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                             <div className={`grid transition-all duration-500 ease-in-out ${expanded[point.id] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                                 <div className="overflow-hidden">
                                                     {(point.contents && point.contents.length > 0) ? (
-                                                        <div className="bg-white dark:bg-[#0F172A] rounded-b-2xl border border-t-0 border-slate-200 dark:border-white/5 shadow-inner flex flex-col">
+                                                        <div className="bg-white dark:bg-[#0F172A] rounded-b-2xl shadow-sm flex flex-col">
                                                             {/* Tabs if multiple contents */}
                                                             {point.contents.length > 1 && (
-                                                                <div className="flex gap-2 px-6 pt-6 pb-2 overflow-x-auto border-b border-slate-100 dark:border-white/5">
+                                                                <div className="flex gap-2 px-6 pt-6 pb-2 overflow-x-auto">
                                                                     {point.contents.map((article: any, idx: number) => {
                                                                         const isActive = (activeTabs[String(point.id)] || 0) === idx;
                                                                         return (
@@ -996,7 +996,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="bg-white dark:bg-[#0F172A] rounded-b-2xl border border-t-0 border-slate-200 dark:border-white/5 p-6 text-slate-500 dark:text-slate-400 italic">
+                                                        <div className="bg-white dark:bg-[#0F172A] rounded-b-2xl shadow-sm p-6 text-slate-500 dark:text-slate-400 italic">
                                                             No content available.
                                                         </div>
                                                     )}
