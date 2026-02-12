@@ -316,6 +316,8 @@ const DynamicIslandWidget: React.FC = () => {
     const [forceCompactMode, setForceCompactMode] = useState(false);
     const [isReminderActive, setIsReminderActive] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const islandHitRef = useRef<HTMLDivElement | null>(null);
+    const isExpandedRef = useRef<boolean>(false);
 
     // Music state
     const [mode, setMode] = useState<'app' | 'music'>('app');
@@ -337,6 +339,22 @@ const DynamicIslandWidget: React.FC = () => {
             setIsHovered(false);
         }
     }, [isExpanded]);
+
+    useEffect(() => {
+        isExpandedRef.current = isExpanded;
+    }, [isExpanded]);
+
+    const enableClickThrough = useCallback(() => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
+        } catch (e) { }
+    }, []);
+
+    const collapseExpanded = useCallback(() => {
+        setIsExpanded(false);
+        enableClickThrough();
+    }, [enableClickThrough]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
@@ -640,6 +658,40 @@ const DynamicIslandWidget: React.FC = () => {
         };
     }, []);
 
+    useEffect(() => {
+        let ipcRenderer: any = null;
+        try {
+            ipcRenderer = (window as any).require('electron').ipcRenderer;
+            const handleCollapse = () => {
+                if (isExpandedRef.current) {
+                    collapseExpanded();
+                }
+            };
+            ipcRenderer.on('widget-collapse', handleCollapse);
+            return () => {
+                ipcRenderer.removeListener('widget-collapse', handleCollapse);
+            };
+        } catch (e) {
+            return;
+        }
+    }, [collapseExpanded]);
+
+    useEffect(() => {
+        const handlePointerDownCapture = (event: PointerEvent) => {
+            if (!isExpandedRef.current) return;
+            const targetNode = event.target as Node | null;
+            if (!targetNode) return;
+            const hitEl = islandHitRef.current;
+            if (hitEl && hitEl.contains(targetNode)) return;
+            collapseExpanded();
+        };
+
+        document.addEventListener('pointerdown', handlePointerDownCapture, true);
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDownCapture, true);
+        };
+    }, [collapseExpanded]);
+
     // Time check for reminder
     useEffect(() => {
         const checkTime = () => {
@@ -881,6 +933,7 @@ const DynamicIslandWidget: React.FC = () => {
                 })()}
 
                 <motion.div
+                    ref={islandHitRef}
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
                     className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
@@ -913,7 +966,9 @@ const DynamicIslandWidget: React.FC = () => {
                         setIsHovered(false);
                         try {
                             const { ipcRenderer } = (window as any).require('electron');
-                            ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
+                            if (!isExpandedRef.current) {
+                                ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
+                            }
                         } catch (e) { }
                     }}
                 >

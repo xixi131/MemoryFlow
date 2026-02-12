@@ -312,6 +312,14 @@ function createWidgetWindow() {
         }
     });
 
+    widgetWindow.on('blur', () => {
+        try {
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.webContents.send('widget-collapse');
+            }
+        } catch (e) { }
+    });
+
     // Open DevTools in dev mode
     // widgetWindow.webContents.openDevTools({ mode: 'detach' });
 }
