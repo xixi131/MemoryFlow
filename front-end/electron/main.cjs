@@ -86,6 +86,7 @@ const UPDATE_THROTTLE_MS = 6 * 60 * 60 * 1000;
 const UPDATE_REMIND_LATER_MS = 6 * 60 * 60 * 1000;
 
 autoUpdater.autoDownload = false;
+autoUpdater.disableDifferentialDownload = true;
 
 let updatePromptVisible = false;
 let pendingManualUpdateCheck = false;
@@ -185,7 +186,7 @@ async function promptUpdateDownloaded() {
     }
 }
 
-async function checkForUpdates({ manual } = { manual: false }) {
+async function checkForUpdates({ manual, force } = { manual: false, force: false }) {
     if (!app.isPackaged) {
         if (manual) {
             await showMessageBox({
@@ -203,7 +204,7 @@ async function checkForUpdates({ manual } = { manual: false }) {
     const updaterConfig = getUpdaterConfig();
     if (!manual) {
         if (updaterConfig.remindLaterUntil && Date.now() < updaterConfig.remindLaterUntil) return;
-        if (updaterConfig.lastCheckTime && Date.now() - updaterConfig.lastCheckTime < UPDATE_THROTTLE_MS) return;
+        if (!force && updaterConfig.lastCheckTime && Date.now() - updaterConfig.lastCheckTime < UPDATE_THROTTLE_MS) return;
     }
 
     saveUpdaterConfig({ lastCheckTime: Date.now() });
@@ -252,10 +253,39 @@ function initUpdater() {
     });
 
     autoUpdater.on('update-downloaded', async () => {
+        try {
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(-1);
+            }
+            if (tray) {
+                tray.setToolTip('MemoryFlow Widget');
+            }
+        } catch (e) { }
         await promptUpdateDownloaded();
     });
 
+    autoUpdater.on('download-progress', (progress) => {
+        try {
+            const percent = typeof progress?.percent === 'number' ? progress.percent : 0;
+            const normalized = Math.max(0, Math.min(100, percent));
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(normalized / 100);
+            }
+            if (tray) {
+                tray.setToolTip(`MemoryFlow Widget（正在下载更新 ${normalized.toFixed(0)}%）`);
+            }
+        } catch (e) { }
+    });
+
     autoUpdater.on('error', async (err) => {
+        try {
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(-1);
+            }
+            if (tray) {
+                tray.setToolTip('MemoryFlow Widget');
+            }
+        } catch (e) { }
         if (pendingManualUpdateCheck) {
             pendingManualUpdateCheck = false;
             await showMessageBox({
@@ -270,7 +300,7 @@ function initUpdater() {
     });
 
     setTimeout(() => {
-        checkForUpdates({ manual: false });
+        checkForUpdates({ manual: false, force: true });
     }, UPDATE_STARTUP_DELAY_MS);
 }
 
