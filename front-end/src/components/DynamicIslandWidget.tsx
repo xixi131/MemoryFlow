@@ -600,6 +600,16 @@ const DynamicIslandWidget: React.FC = () => {
             ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
         } catch (e) { }
 
+        const handleAuthLogout = () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('tokenExpiresAt');
+            setIsLoggedIn(false);
+            setIsExpanded(false);
+            setMode('app');
+        };
+        window.addEventListener('auth:logout', handleAuthLogout);
+
         const fetchData = async () => {
             try {
                 const res: any = await request({
@@ -668,6 +678,7 @@ const DynamicIslandWidget: React.FC = () => {
 
         return () => {
             clearInterval(timer);
+            window.removeEventListener('auth:logout', handleAuthLogout);
             if (ipcRenderer) {
                 ipcRenderer.removeAllListeners('auth-token');
                 ipcRenderer.removeAllListeners('auth-logout');

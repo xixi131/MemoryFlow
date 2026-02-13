@@ -2507,6 +2507,10 @@ const App: React.FC = () => {
             if (now - lastLogoutTimeRef.current < 3000) return;
             lastLogoutTimeRef.current = now;
 
+            if (view === 'widget') {
+                return;
+            }
+
             navigate('/login');
             message.error("会话已过期，请重新登录");
         };
