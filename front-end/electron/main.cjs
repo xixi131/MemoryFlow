@@ -38,6 +38,30 @@ function saveConfig(config) {
     }
 }
 
+function ensureDesktopShortcut() {
+    if (process.platform !== 'win32') return;
+    if (!app.isPackaged) return;
+
+    try {
+        const desktopDir = app.getPath('desktop');
+        const shortcutPath = path.join(desktopDir, 'MemoryFlow.lnk');
+        const options = {
+            target: process.execPath,
+            cwd: path.dirname(process.execPath),
+            description: 'MemoryFlow',
+            icon: process.execPath
+        };
+
+        if (fs.existsSync(shortcutPath)) {
+            shell.writeShortcutLink(shortcutPath, 'update', options);
+        } else {
+            shell.writeShortcutLink(shortcutPath, 'create', options);
+        }
+    } catch (e) {
+        console.error('[Shortcut] Failed to ensure desktop shortcut:', e?.message || e);
+    }
+}
+
 function getConfigOrEmpty() {
     return loadConfig() || {};
 }
@@ -340,6 +364,7 @@ if (!gotTheLock) {
         createWidgetWindow();
         createTray();
         initUpdater();
+        ensureDesktopShortcut();
 
         // Start music listener after window is created
         startMusicListener(widgetWindow);
