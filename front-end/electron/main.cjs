@@ -1,11 +1,12 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, shell } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
+const { autoUpdater } = require('electron-updater');
 
 let widgetWindow;
 let tray;
-let pendingAuthToken = null;
+let pendingAuthData = null;
 let pendingLogout = false;
 
 app.setName('MemoryFlow');
@@ -37,6 +38,30 @@ function saveConfig(config) {
     }
 }
 
+function getConfigOrEmpty() {
+    return loadConfig() || {};
+}
+
+function saveConfigPatch(patch) {
+    const current = getConfigOrEmpty();
+    const next = { ...current, ...patch };
+    saveConfig(next);
+    return next;
+}
+
+function getUpdaterConfig() {
+    const config = getConfigOrEmpty();
+    return config.updater || {};
+}
+
+function saveUpdaterConfig(patch) {
+    const current = getConfigOrEmpty();
+    const nextUpdater = { ...(current.updater || {}), ...patch };
+    const next = { ...current, updater: nextUpdater };
+    saveConfig(next);
+    return nextUpdater;
+}
+
 // 初始化自启动设置
 function initAutoLaunch() {
     if (!app.isPackaged) {
@@ -54,6 +79,199 @@ function initAutoLaunch() {
         });
         saveConfig({ autoLaunch: true });
     }
+}
+
+const UPDATE_STARTUP_DELAY_MS = 5000;
+const UPDATE_THROTTLE_MS = 6 * 60 * 60 * 1000;
+const UPDATE_REMIND_LATER_MS = 6 * 60 * 60 * 1000;
+
+autoUpdater.autoDownload = false;
+
+let updatePromptVisible = false;
+let pendingManualUpdateCheck = false;
+
+function showMessageBox(options) {
+    const win = widgetWindow && !widgetWindow.isDestroyed() ? widgetWindow : null;
+    if (win) {
+        return dialog.showMessageBox(win, options);
+    }
+    return dialog.showMessageBox(options);
+}
+
+function formatReleaseNotes(releaseNotes) {
+    if (!releaseNotes) return '';
+    if (typeof releaseNotes === 'string') return releaseNotes;
+    if (Array.isArray(releaseNotes)) {
+        return releaseNotes
+            .map((n) => {
+                const v = (n && typeof n === 'object') ? n.version : '';
+                const note = (n && typeof n === 'object') ? (n.note || '') : '';
+                return [v ? `v${v}` : '', note].filter(Boolean).join('\n');
+            })
+            .filter(Boolean)
+            .join('\n\n');
+    }
+    return '';
+}
+
+async function promptUpdateAvailable(updateInfo, manual) {
+    if (!updateInfo || !updateInfo.version) return;
+    if (updatePromptVisible) return;
+
+    const updaterConfig = getUpdaterConfig();
+    const isSkipped = updaterConfig.skipVersion && updaterConfig.skipVersion === updateInfo.version;
+    if (!manual && isSkipped) return;
+
+    updatePromptVisible = true;
+    try {
+        const notes = formatReleaseNotes(updateInfo.releaseNotes);
+        const detailParts = [];
+        if (updateInfo.releaseName) detailParts.push(String(updateInfo.releaseName));
+        if (notes) detailParts.push(notes);
+
+        const detail = detailParts.join('\n\n').slice(0, 3500);
+        const { response } = await showMessageBox({
+            type: 'info',
+            buttons: ['稍后再说', '跳过此版本', '立即更新'],
+            defaultId: 2,
+            cancelId: 0,
+            noLink: true,
+            message: `发现新版本 v${updateInfo.version}`,
+            detail: detail || '有新版本可用。'
+        });
+
+        if (response === 0) {
+            saveUpdaterConfig({ remindLaterUntil: Date.now() + UPDATE_REMIND_LATER_MS });
+            return;
+        }
+
+        if (response === 1) {
+            saveUpdaterConfig({ skipVersion: updateInfo.version, remindLaterUntil: 0 });
+            return;
+        }
+
+        if (response === 2) {
+            try {
+                await autoUpdater.downloadUpdate();
+            } catch (e) {
+                await showMessageBox({
+                    type: 'error',
+                    buttons: ['确定'],
+                    defaultId: 0,
+                    noLink: true,
+                    message: '下载更新失败',
+                    detail: e?.message ? String(e.message) : '请稍后重试。'
+                });
+            }
+        }
+    } finally {
+        updatePromptVisible = false;
+    }
+}
+
+async function promptUpdateDownloaded() {
+    const { response } = await showMessageBox({
+        type: 'info',
+        buttons: ['稍后', '重启安装'],
+        defaultId: 1,
+        cancelId: 0,
+        noLink: true,
+        message: '更新已下载完成',
+        detail: '点击“重启安装”将退出并安装更新。'
+    });
+
+    if (response === 1) {
+        autoUpdater.quitAndInstall();
+    }
+}
+
+async function checkForUpdates({ manual } = { manual: false }) {
+    if (!app.isPackaged) {
+        if (manual) {
+            await showMessageBox({
+                type: 'info',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '开发环境不检查更新',
+                detail: '请打包后在安装版应用中测试自动更新。'
+            });
+        }
+        return;
+    }
+
+    const updaterConfig = getUpdaterConfig();
+    if (!manual) {
+        if (updaterConfig.remindLaterUntil && Date.now() < updaterConfig.remindLaterUntil) return;
+        if (updaterConfig.lastCheckTime && Date.now() - updaterConfig.lastCheckTime < UPDATE_THROTTLE_MS) return;
+    }
+
+    saveUpdaterConfig({ lastCheckTime: Date.now() });
+    pendingManualUpdateCheck = !!manual;
+    try {
+        await autoUpdater.checkForUpdates();
+    } catch (e) {
+        pendingManualUpdateCheck = false;
+        if (manual) {
+            await showMessageBox({
+                type: 'error',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '检查更新失败',
+                detail: e?.message ? String(e.message) : '请稍后重试。'
+            });
+        }
+    }
+}
+
+function initUpdater() {
+    autoUpdater.removeAllListeners('update-available');
+    autoUpdater.removeAllListeners('update-not-available');
+    autoUpdater.removeAllListeners('update-downloaded');
+    autoUpdater.removeAllListeners('error');
+
+    autoUpdater.on('update-available', async (info) => {
+        const manual = pendingManualUpdateCheck;
+        pendingManualUpdateCheck = false;
+        await promptUpdateAvailable(info, manual);
+    });
+
+    autoUpdater.on('update-not-available', async () => {
+        if (pendingManualUpdateCheck) {
+            pendingManualUpdateCheck = false;
+            await showMessageBox({
+                type: 'info',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '当前已是最新版本',
+                detail: `版本：v${app.getVersion()}`
+            });
+        }
+    });
+
+    autoUpdater.on('update-downloaded', async () => {
+        await promptUpdateDownloaded();
+    });
+
+    autoUpdater.on('error', async (err) => {
+        if (pendingManualUpdateCheck) {
+            pendingManualUpdateCheck = false;
+            await showMessageBox({
+                type: 'error',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '更新发生错误',
+                detail: err?.message ? String(err.message) : '请稍后重试。'
+            });
+        }
+    });
+
+    setTimeout(() => {
+        checkForUpdates({ manual: false });
+    }, UPDATE_STARTUP_DELAY_MS);
 }
 
 // 协议注册 (Protocol Registration)
@@ -91,6 +309,7 @@ if (!gotTheLock) {
         initAutoLaunch();
         createWidgetWindow();
         createTray();
+        initUpdater();
 
         // Start music listener after window is created
         startMusicListener(widgetWindow);
@@ -116,16 +335,19 @@ function handleDeepLink(url) {
     try {
         const urlObj = new URL(url);
         const token = urlObj.searchParams.get('token');
+        const refreshToken = urlObj.searchParams.get('refreshToken');
+        const expiresInRaw = urlObj.searchParams.get('expiresIn');
+        const expiresIn = expiresInRaw ? Number(expiresInRaw) : undefined;
         if (token) {
-            sendTokenToRenderer(token);
+            sendTokenToRenderer({ accessToken: token, refreshToken: refreshToken || undefined, expiresIn });
         }
     } catch (error) {
         console.error('Error parsing deep link:', error);
     }
 }
 
-function sendTokenToRenderer(token) {
-    pendingAuthToken = token;
+function sendTokenToRenderer(authData) {
+    pendingAuthData = authData;
     if (!widgetWindow || widgetWindow.isDestroyed()) {
         return;
     }
@@ -134,9 +356,9 @@ function sendTokenToRenderer(token) {
         if (!widgetWindow || widgetWindow.isDestroyed()) {
             return;
         }
-        widgetWindow.webContents.send('auth-token', token);
+        widgetWindow.webContents.send('auth-token', authData);
         widgetWindow.show();
-        pendingAuthToken = null;
+        pendingAuthData = null;
     };
 
     if (widgetWindow.webContents.isLoading()) {
@@ -148,7 +370,7 @@ function sendTokenToRenderer(token) {
 
 function sendLogoutToRenderer() {
     pendingLogout = true;
-    pendingAuthToken = null;
+    pendingAuthData = null;
 
     if (!widgetWindow || widgetWindow.isDestroyed()) {
         return;
@@ -208,15 +430,19 @@ function createTray() {
                     path: process.execPath
                 });
                 // 更新本地配置，保持同步
-                const config = loadConfig() || {};
-                config.autoLaunch = newState;
-                saveConfig(config);
+                saveConfigPatch({ autoLaunch: newState });
             }
         },
         {
             label: '访问官网',
             click: () => {
                 shell.openExternal('https://memoryflow.tanxhub.com');
+            }
+        },
+        {
+            label: '检查更新',
+            click: () => {
+                checkForUpdates({ manual: true });
             }
         },
         {
@@ -304,8 +530,8 @@ function createWidgetWindow() {
     }
 
     widgetWindow.webContents.on('did-finish-load', () => {
-        if (pendingAuthToken) {
-            sendTokenToRenderer(pendingAuthToken);
+        if (pendingAuthData) {
+            sendTokenToRenderer(pendingAuthData);
         }
         if (pendingLogout) {
             sendLogoutToRenderer();

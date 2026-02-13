@@ -9,11 +9,13 @@
     "build:web": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
-    "build": "vite build && electron-builder"
+    "build": "vite build && electron-builder",
+    "release:win": "vite build && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
     "@coooookies/windows-smtc-monitor": "^1.0.12",
     "axios": "^1.13.2",
+    "electron-updater": "^6.6.2",
     "framer-motion": "^12.29.2",
     "lucide-react": "^0.563.0",
     "node-vibrant": "^4.0.4",
@@ -59,6 +61,13 @@
       "schemes": [
         "memoryflow"
       ]
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "xixi131",
+        "repo": "MemoryFlow.exe"
+      }
+    ]
   }
 }

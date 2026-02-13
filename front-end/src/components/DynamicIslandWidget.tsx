@@ -612,6 +612,8 @@ const DynamicIslandWidget: React.FC = () => {
                 } else {
                     if (res.code === 401 || res.code === 403) {
                         localStorage.removeItem('token');
+                        localStorage.removeItem('refreshToken');
+                        localStorage.removeItem('tokenExpiresAt');
                         setIsLoggedIn(false);
                     }
                 }
@@ -621,7 +623,8 @@ const DynamicIslandWidget: React.FC = () => {
         };
 
         const token = localStorage.getItem('token');
-        if (token) {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (token || refreshToken) {
             setIsLoggedIn(true);
             fetchData();
         }
@@ -629,14 +632,28 @@ const DynamicIslandWidget: React.FC = () => {
         let ipcRenderer: any = null;
         try {
             ipcRenderer = (window as any).require('electron').ipcRenderer;
-            ipcRenderer.on('auth-token', (_event: any, token: string) => {
+            ipcRenderer.on('auth-token', (_event: any, auth: any) => {
                 console.log('Received token via IPC');
-                localStorage.setItem('token', token);
+                if (typeof auth === 'string') {
+                    localStorage.setItem('token', auth);
+                } else if (auth && typeof auth === 'object') {
+                    if (auth.accessToken) {
+                        localStorage.setItem('token', String(auth.accessToken));
+                    }
+                    if (auth.refreshToken) {
+                        localStorage.setItem('refreshToken', String(auth.refreshToken));
+                    }
+                    if (typeof auth.expiresIn === 'number' && Number.isFinite(auth.expiresIn) && auth.expiresIn > 0) {
+                        localStorage.setItem('tokenExpiresAt', String(Date.now() + auth.expiresIn * 1000));
+                    }
+                }
                 setIsLoggedIn(true);
                 fetchData();
             });
             ipcRenderer.on('auth-logout', () => {
                 localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('tokenExpiresAt');
                 setIsLoggedIn(false);
                 setIsExpanded(false);
                 setMode('app');

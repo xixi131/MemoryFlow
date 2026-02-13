@@ -162,9 +162,15 @@ export const Navigation: React.FC = () => {
                                 to="/profile"
                                 className={`rounded-full bg-cover bg-center shadow-sm cursor-pointer shrink-0 transition-all duration-500 ${
                                     isCollapsed ? 'size-[48px]' : 'h-12 w-12'
-                                }`}
-                                style={{ backgroundImage: `url('${avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuBTEclYR8F_pkLAtS8wLfPT3QVwCMd5RhwSJjSY28e1PF7nHKZDXgzGQ0FV4peEV087BZVCvaPbPbgxQMbz81RuIXy7-pk7sniURUZrLqeRD0xRcANqR5YixFMj2V0UzBi28Z8ASy0fcXdkZP9g6Ym3SqqcAxkkLmtY15vtYjB-AKPa3msQWCbQs9XGyqG65y_UH1UIj4MYVuguZhyot-H03zomY8toB-6TbkdZRgwZFeQt1ba2iBPCm5j73JqVjYGFr7n-a_QyoOHw"}')` }}
-                            />
+                                } ${avatarUrl ? '' : 'bg-[#FFD7F5] flex items-center justify-center'}`}
+                                style={avatarUrl ? { backgroundImage: `url('${avatarUrl}')` } : undefined}
+                            >
+                                {!avatarUrl && (
+                                    <span className={`material-symbols-outlined text-slate-700/70 ${
+                                        isCollapsed ? 'text-[22px]' : 'text-[20px]'
+                                    }`}>person</span>
+                                )}
+                            </Link>
                         </div>
                     </nav>
                     {mobileMenuOpen && (

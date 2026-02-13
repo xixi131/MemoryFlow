@@ -28,21 +28,27 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
         return params.get('callback') === 'desktop';
     };
 
-    const launchDesktopCallback = (token: string, force: boolean = false) => {
-        if (!token) return;
+    const launchDesktopCallback = (accessToken: string, refreshToken?: string, expiresIn?: number, force: boolean = false) => {
+        if (!accessToken) return;
 
         const lastLaunchedToken = sessionStorage.getItem('desktop_callback_launched_token');
-        if (!force && lastLaunchedToken === token) {
+        if (!force && lastLaunchedToken === accessToken) {
             return;
         }
 
-        sessionStorage.setItem('desktop_callback_launched_token', token);
+        sessionStorage.setItem('desktop_callback_launched_token', accessToken);
 
         setDesktopRedirecting(true);
         setIsConnecting(true);
 
         setTimeout(() => {
-            window.location.href = `memoryflow://callback?token=${encodeURIComponent(token)}`;
+            const params = new URLSearchParams();
+            params.set('token', accessToken);
+            if (refreshToken) params.set('refreshToken', refreshToken);
+            if (typeof expiresIn === 'number' && Number.isFinite(expiresIn) && expiresIn > 0) {
+                params.set('expiresIn', String(expiresIn));
+            }
+            window.location.href = `memoryflow://callback?${params.toString()}`;
         }, 300);
 
         setTimeout(() => {
@@ -58,6 +64,7 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
             if (!isDesktopCallback()) return;
 
             const token = localStorage.getItem('token');
+            const refreshToken = localStorage.getItem('refreshToken') || undefined;
             if (!token) {
                 setDesktopRedirecting(false);
                 setIsConnecting(true);
@@ -72,13 +79,15 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
                 if (cancelled) return;
 
                 if (res && res.code === 200) {
-                    launchDesktopCallback(token);
+                    launchDesktopCallback(token, refreshToken);
                 } else {
                     throw new Error(res?.message || 'token invalid');
                 }
             } catch (e) {
                 if (cancelled) return;
                 localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('tokenExpiresAt');
                 sessionStorage.removeItem('desktop_callback_launched_token');
                 setDesktopRedirecting(false);
                 setIsConnecting(true);
@@ -109,6 +118,12 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
             if (res.code === 200) {
                 if (res.data.accessToken) {
                     localStorage.setItem('token', res.data.accessToken);
+                }
+                if (res.data.refreshToken) {
+                    localStorage.setItem('refreshToken', res.data.refreshToken);
+                }
+                if (typeof res.data.expiresIn === 'number' && Number.isFinite(res.data.expiresIn) && res.data.expiresIn > 0) {
+                    localStorage.setItem('tokenExpiresAt', String(Date.now() + res.data.expiresIn * 1000));
                 }
 
                 if (isDesktopCallback()) {

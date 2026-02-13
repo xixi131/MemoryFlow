@@ -125,3 +125,46 @@ MemoryFlow 结合了**间隔重复系统 (SRS)** 与**桌面灵动岛 (Dynamic I
 ---
 
 **© 2024 MemoryFlow Team.** *Designed for efficiency.*
+
+
+
+java -jar back-end/target/memoryflow-backend-1.0.0.jar --spring.profiles.active=prod --spring.config.additional-location=file:E:/ai-Project/MemoryFlow-trae/back-end/uploads/config/
+
+
+
+
+**一、你本地要准备的 3 个产物（打包后要上传的文件）**
+
+1) **后端 Jar**
+```bash
+mvn -f back-end/pom.xml -DskipTests package
+```
+mvn clean
+
+产物：  
+
+- `E:\ai-Project\MemoryFlow-trae\back-end\target\memoryflow-backend-1.0.0.jar`
+
+2) **前端 Web 静态文件**
+```bash
+npm --prefix front-end run build:web
+```
+产物目录：  
+- `E:\ai-Project\MemoryFlow-trae\front-end\dist\`
+
+3) **Windows 安装包 exe（桌面端）**
+```bash
+npm --prefix front-end run build
+```
+产物：  
+- `E:\ai-Project\MemoryFlow-trae\front-end\release_v2\MemoryFlow Setup 0.0.0.exe`
+
+
+
+location /api/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}

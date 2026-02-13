@@ -79,6 +79,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
     logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('tokenExpiresAt');
         set({ user: null, isAuthenticated: false });
         authService.logout(); // Call backend logout
     }
