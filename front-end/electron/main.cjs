@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
 const { autoUpdater } = require('electron-updater');
 
@@ -450,7 +451,7 @@ function sendLogoutToRenderer() {
 // 创建系统托盘
 function createTray() {
     let iconPath;
-    if (process.env.ELECTRON_START_URL) {
+    if (!app.isPackaged && process.env.ELECTRON_START_URL) {
         // 开发环境：直接引用 src 下的资源
         iconPath = path.join(__dirname, '../src/assets/logo.png');
     } else {
@@ -527,7 +528,14 @@ function createTray() {
 }
 
 function createWidgetWindow() {
-    const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
+    const positionWindow = (width, height) => {
+        try {
+            const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
+            const x = Math.max(0, Math.floor(((screenWidth || 0) - width) / 2));
+            widgetWindow.setBounds({ x, y: 0, width, height });
+        } catch (e) { }
+    };
+
     // 使用固定的最大尺寸，避免动画时的窗口调整导致闪烁
     const initialWidth = 620; 
     const initialHeight = 300;
@@ -536,8 +544,9 @@ function createWidgetWindow() {
     widgetWindow = new BrowserWindow({
         width: initialWidth,
         height: initialHeight, 
-        x: Math.floor((screenWidth - initialWidth) / 2), // Center horizontally
+        x: 0,
         y: 0, // Stick to top edge
+        show: false,
         frame: false, // Frameless
         transparent: true, // Transparent background
         alwaysOnTop: false, // Do NOT force on top to avoid blocking other apps
@@ -553,6 +562,8 @@ function createWidgetWindow() {
         },
     });
 
+    positionWindow(initialWidth, initialHeight);
+
     // Handle Ignore Mouse Events
     ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
         const win = BrowserWindow.fromWebContents(event.sender);
@@ -564,10 +575,8 @@ function createWidgetWindow() {
     // 监听调整窗口大小
     ipcMain.on('resize-widget', (event, { width, height }) => {
         if (widgetWindow) {
-            const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
-            const x = Math.floor((screenWidth - width) / 2);
             // 保持 y = 0，更新宽度和高度，并水平居中
-            widgetWindow.setBounds({ x, y: 0, width, height });
+            positionWindow(width, height);
         }
     });
 
@@ -575,14 +584,39 @@ function createWidgetWindow() {
     // In production, we need to load the index.html and handle the hash route manually if needed, 
     // or ensure the app handles the default route correctly.
 
-    if (process.env.ELECTRON_START_URL) {
+    if (!app.isPackaged && process.env.ELECTRON_START_URL) {
         widgetWindow.loadURL(process.env.ELECTRON_START_URL + '#/widget');
     } else {
         // For production (file:// protocol), use loadFile which handles paths correctly on Windows
         const indexPath = path.join(__dirname, '../dist/index.html');
         // Load file directly with hash is tricky in Electron loadFile, using loadURL with file protocol is safer for hash
-        widgetWindow.loadURL(`file://${indexPath}#/widget`);
+        const fileUrl = pathToFileURL(indexPath).toString();
+        widgetWindow.loadURL(`${fileUrl}#/widget`);
     }
+
+    widgetWindow.once('ready-to-show', () => {
+        try {
+            positionWindow(initialWidth, initialHeight);
+            widgetWindow.show();
+        } catch (e) { }
+
+        setTimeout(() => {
+            try {
+                if (widgetWindow && !widgetWindow.isDestroyed()) {
+                    positionWindow(initialWidth, initialHeight);
+                }
+            } catch (e) { }
+        }, 1500);
+    });
+
+    screen.on('display-metrics-changed', () => {
+        try {
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                const bounds = widgetWindow.getBounds();
+                positionWindow(bounds.width, bounds.height);
+            }
+        } catch (e) { }
+    });
 
     widgetWindow.webContents.on('did-finish-load', () => {
         if (pendingAuthData) {

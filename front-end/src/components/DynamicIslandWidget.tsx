@@ -316,8 +316,11 @@ const DynamicIslandWidget: React.FC = () => {
     const [forceCompactMode, setForceCompactMode] = useState(false);
     const [isReminderActive, setIsReminderActive] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [greetingText, setGreetingText] = useState<string | null>(null);
+    const [isGreetingActive, setIsGreetingActive] = useState(false);
     const islandHitRef = useRef<HTMLDivElement | null>(null);
     const isExpandedRef = useRef<boolean>(false);
+    const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Music state
     const [mode, setMode] = useState<'app' | 'music'>('app');
@@ -584,6 +587,33 @@ const DynamicIslandWidget: React.FC = () => {
         }
     };
 
+    const getTimeGreeting = () => {
+        const hour = new Date().getHours();
+        const pick = (items: string[]) => items[Math.floor(Math.random() * items.length)];
+
+        if (hour >= 5 && hour <= 8) return pick(["晨光微露", "破晓啦", "早安", "新的一天"]);
+        if (hour >= 9 && hour <= 11) return pick(["上午好", "阳光正好", "专注时刻", "展信佳"]);
+        if (hour >= 12 && hour <= 13) return pick(["午安", "小憩时间", "正午好"]);
+        if (hour >= 14 && hour <= 17) return pick(["下午好", "微风不燥", "日渐西斜"]);
+        if (hour >= 18 && hour <= 19) return pick(["傍晚好", "暮色降临", "黄昏好"]);
+        if (hour >= 20 && hour <= 23) return pick(["晚上好", "夜幕低垂", "星光亮起"]);
+        return pick(["夜深了", "万籁俱寂", "还在熬夜吗"]);
+    };
+
+    const startGreeting = useCallback((name: string) => {
+        if (!name) return;
+        if (greetingTimeoutRef.current) {
+            clearTimeout(greetingTimeoutRef.current);
+            greetingTimeoutRef.current = null;
+        }
+
+        setGreetingText(`${getTimeGreeting()}，${name}`);
+        setIsGreetingActive(true);
+        greetingTimeoutRef.current = setTimeout(() => {
+            setIsGreetingActive(false);
+        }, 10000);
+    }, []);
+
     // Toggle expansion
     const toggleExpand = () => {
         if (!isLoggedIn && mode === 'app') {
@@ -632,11 +662,27 @@ const DynamicIslandWidget: React.FC = () => {
             }
         };
 
+        const fetchUserName = async () => {
+            try {
+                const res: any = await request({
+                    url: '/auth/me',
+                    method: 'get'
+                });
+                if (res && res.code === 200 && res.data) {
+                    const name = String(res.data.nickname || res.data.email || '').trim();
+                    if (name) startGreeting(name);
+                }
+            } catch (error: any) {
+                console.error("User fetch error", error);
+            }
+        };
+
         const token = localStorage.getItem('token');
         const refreshToken = localStorage.getItem('refreshToken');
         if (token || refreshToken) {
             setIsLoggedIn(true);
             fetchData();
+            fetchUserName();
         }
 
         let ipcRenderer: any = null;
@@ -659,6 +705,7 @@ const DynamicIslandWidget: React.FC = () => {
                 }
                 setIsLoggedIn(true);
                 fetchData();
+                fetchUserName();
             });
             ipcRenderer.on('auth-logout', () => {
                 localStorage.removeItem('token');
@@ -679,12 +726,26 @@ const DynamicIslandWidget: React.FC = () => {
         return () => {
             clearInterval(timer);
             window.removeEventListener('auth:logout', handleAuthLogout);
+            if (greetingTimeoutRef.current) {
+                clearTimeout(greetingTimeoutRef.current);
+                greetingTimeoutRef.current = null;
+            }
             if (ipcRenderer) {
                 ipcRenderer.removeAllListeners('auth-token');
                 ipcRenderer.removeAllListeners('auth-logout');
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (mode === 'music' && isGreetingActive) {
+            if (greetingTimeoutRef.current) {
+                clearTimeout(greetingTimeoutRef.current);
+                greetingTimeoutRef.current = null;
+            }
+            setIsGreetingActive(false);
+        }
+    }, [mode, isGreetingActive]);
 
     useEffect(() => {
         let ipcRenderer: any = null;
@@ -753,6 +814,10 @@ const DynamicIslandWidget: React.FC = () => {
     const getCollapsedWidth = () => {
         if (mode === 'music' && musicData) {
             return 210; // Wider for music mode (Cover + Space + Waveform)
+        }
+        if (isGreetingActive && isLoggedIn && greetingText) {
+            const estimated = Math.ceil(greetingText.length * 14 + 40);
+            return Math.max(220, Math.min(300, estimated));
         }
         return isLoggedIn ? (showReminder ? 240 : 160) : 180;
     };
@@ -918,7 +983,7 @@ const DynamicIslandWidget: React.FC = () => {
                     if (isExpanded) {
                         currentTension = EAR_TENSION_EXPANDED;
                         currentBlendHeight = EAR_BLEND_HEIGHT_EXPANDED;
-                    } else if (mode === 'music' && musicData) {
+                    } else if ((mode === 'music' && musicData) || (isGreetingActive && isLoggedIn)) {
                         currentTension = EAR_TENSION_ACTIVITY;
                         currentBlendHeight = EAR_BLEND_HEIGHT_ACTIVITY;
                     }
@@ -1120,6 +1185,21 @@ const DynamicIslandWidget: React.FC = () => {
                                 <div className="flex items-center justify-center w-full h-full gap-2 px-3">
                                     <span className="material-symbols-outlined text-sm">login</span>
                                     <span className="text-sm font-bold">点击登录</span>
+                                </div>
+                            ) : isGreetingActive && greetingText ? (
+                                <div className="flex items-center justify-center w-full h-full px-3">
+                                    <motion.div
+                                        key={greetingText}
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -6 }}
+                                        transition={{ duration: 0.35, ease: "easeOut" }}
+                                        className="w-full min-w-0"
+                                    >
+                                        <div className="text-[13px] font-semibold text-white/90 truncate text-center" style={{ fontFamily: '"Noto Sans SC", sans-serif' }}>
+                                            {greetingText}
+                                        </div>
+                                    </motion.div>
                                 </div>
                             ) : showReminder ? (
                                 // REMINDER STATE
