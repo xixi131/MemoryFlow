@@ -25,11 +25,24 @@ export const ModalWrapper: React.FC<ModalProps> = ({ onClose, children, classNam
     );
 };
 
-export const AddSubjectModal: React.FC<{ onClose: () => void; onCreate: (title: string, content: string) => void }> = ({ onClose, onCreate }) => {
-    const [title, setTitle] = useState('计算机算法设计');
+export const AddSubjectModal: React.FC<{
+    onClose: () => void;
+    onCreate: (title: string, content: string) => void;
+    mode?: 'create' | 'append';
+    subjectTitle?: string;
+}> = ({ onClose, onCreate, mode = 'create', subjectTitle }) => {
+    const defaultTitle = '计算机算法设计';
     const [showTooltip, setShowTooltip] = useState(false);
     const [typedText, setTypedText] = useState('');
     const fullTooltipText = "点击AI辅助生成即可复制格式要求提示词";
+    const titleInputRef = useRef<HTMLInputElement | null>(null);
+    const contentRef = useRef<HTMLTextAreaElement | null>(null);
+    const isAppendMode = mode === 'append';
+    const [isTitleFocused, setIsTitleFocused] = useState(false);
+    const [isContentFocused, setIsContentFocused] = useState(false);
+    const [isTitleGhost, setIsTitleGhost] = useState(!isAppendMode);
+    const [isContentGhost, setIsContentGhost] = useState(true);
+    const [title, setTitle] = useState(isAppendMode ? (subjectTitle || '') : defaultTitle);
 
     useEffect(() => {
         let timer: any;
@@ -79,7 +92,7 @@ export const AddSubjectModal: React.FC<{ onClose: () => void; onCreate: (title: 
         });
     };
 
-    const [content, setContent] = useState(`@ 搜索算法基础
+    const defaultContent = `@ 搜索算法基础
 
 @@ DFS (深度优先搜索)
 
@@ -129,27 +142,62 @@ void backtrack(路径, 选择列表) {
 {title: "层序遍历应用", content: "测试内容"}
 
 @ 动态规划
-@@ 背包问题`);
+@@ 背包问题`;
+    const [content, setContent] = useState(defaultContent);
+
+    useEffect(() => {
+        if (isAppendMode) {
+            setTitle(subjectTitle || '');
+            setIsTitleGhost(false);
+        }
+    }, [isAppendMode, subjectTitle]);
+
+    const handleSubmit = () => {
+        const actualTitle = isAppendMode ? (subjectTitle || title).trim() : (isTitleGhost ? '' : title.trim());
+        const actualContent = isContentGhost ? '' : content.trim();
+        if (!isAppendMode && !actualTitle) {
+            message.warning('请输入科目名称');
+            return;
+        }
+        if (!actualContent) {
+            message.warning('请输入内容规划');
+            return;
+        }
+        onCreate(actualTitle, actualContent);
+    };
 
     return (
         <ModalWrapper onClose={onClose}>
             <div className="px-8 pt-10 pb-4 bg-gradient-to-b from-slate-50/50 to-transparent dark:from-white/5 dark:to-transparent">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary text-3xl">post_add</span>
-                    添加新科目
+                    {isAppendMode ? '科目添加内容' : '添加新科目'}
                 </h2>
-                <p className="text-slate-500 dark:text-text-secondary mt-2 text-base ml-1">支持批量导入与 AI 生成内容格式化</p>
+                <p className="text-slate-500 dark:text-text-secondary mt-2 text-base ml-1">{isAppendMode ? '为当前科目追加章节、知识点与文章内容' : '支持批量导入与 AI 生成内容格式化'}</p>
             </div>
             
             <div className="px-8 pb-8 pt-4 flex flex-col gap-8 h-full overflow-y-auto">
                 <div className="space-y-3">
                     <label className="text-sm font-bold text-slate-500 dark:text-slate-300 ml-2 uppercase tracking-wide">科目名称 Subject Name</label>
                     <input 
-                        className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-full px-6 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all shadow-inner text-lg" 
+                        ref={titleInputRef}
+                        readOnly={isAppendMode}
+                        className={`w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 rounded-full px-6 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all shadow-inner text-lg ${isAppendMode ? 'opacity-80 cursor-not-allowed' : ''} ${!isAppendMode && isTitleGhost && isTitleFocused ? 'text-slate-400 dark:text-slate-500' : ''}`} 
                         placeholder="输入科目名称 (e.g. 算法导论)" 
                         type="text" 
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        value={isAppendMode ? (subjectTitle || '') : title}
+                        onFocus={() => {
+                            setIsTitleFocused(true);
+                            if (!isAppendMode && isTitleGhost) {
+                                requestAnimationFrame(() => titleInputRef.current?.select());
+                            }
+                        }}
+                        onBlur={() => setIsTitleFocused(false)}
+                        onChange={(e) => {
+                            if (isAppendMode) return;
+                            if (isTitleGhost) setIsTitleGhost(false);
+                            setTitle(e.target.value);
+                        }}
                     />
                 </div>
 
@@ -179,10 +227,21 @@ void backtrack(路径, 选择列表) {
                             {/* Changed transition-all to transition-shadow to avoid animating background/borders unexpectedly */}
                             <div className="w-full min-h-[320px] bg-slate-900 dark:bg-background-dark rounded-[1.5rem] border border-slate-200 dark:border-white/10 p-1 font-mono text-sm leading-7 shadow-[inset_0_2px_10px_rgba(0,0,0,0.1)] relative overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-shadow duration-300">
                                 <textarea 
-                                    className="w-full h-full min-h-[320px] bg-transparent text-slate-300 border-0 resize-none ring-0 focus:ring-0 outline-none focus:outline-none p-6 placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:placeholder:text-slate-700 dark:focus:placeholder:text-slate-700 placeholder:transition-colors duration-300"
+                                    ref={contentRef}
+                                    className={`w-full h-full min-h-[320px] bg-transparent text-slate-300 border-0 resize-none ring-0 focus:ring-0 outline-none focus:outline-none p-6 placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:placeholder:text-slate-700 dark:focus:placeholder:text-slate-700 placeholder:transition-colors duration-300 ${isContentGhost && isContentFocused ? 'text-slate-500 dark:text-slate-500' : ''}`}
                                     spellCheck={false}
                                     value={content}
-                                    onChange={(e) => setContent(e.target.value)}
+                                    onFocus={() => {
+                                        setIsContentFocused(true);
+                                        if (isContentGhost) {
+                                            requestAnimationFrame(() => contentRef.current?.select());
+                                        }
+                                    }}
+                                    onBlur={() => setIsContentFocused(false)}
+                                    onChange={(e) => {
+                                        if (isContentGhost) setIsContentGhost(false);
+                                        setContent(e.target.value);
+                                    }}
                                     placeholder={`@ 搜索算法基础
 @@ DFS (深度优先搜索)
 {title: "回溯算法实践", content: "..."}
@@ -230,9 +289,9 @@ void backtrack(路径, 选择列表) {
                     <button onClick={onClose} className="px-8 py-3 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-white transition-all font-medium text-sm tracking-wide">
                         取消
                     </button>
-                    <button onClick={() => onCreate(title, content)} className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-blue-600 dark:hover:bg-primary-glow shadow-lg dark:shadow-[0_4px_20px_-5px_rgba(55,128,246,0.5)] hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm tracking-wide">
+                    <button onClick={handleSubmit} className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-blue-600 dark:hover:bg-primary-glow shadow-lg dark:shadow-[0_4px_20px_-5px_rgba(55,128,246,0.5)] hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm tracking-wide">
                         <span className="material-symbols-outlined text-[20px] group-hover:rotate-12 transition-transform">smart_toy</span>
-                        智能解析并保存
+                        {isAppendMode ? '智能解析并添加' : '智能解析并保存'}
                     </button>
                 </div>
             </div>

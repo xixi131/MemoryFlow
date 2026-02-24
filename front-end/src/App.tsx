@@ -52,7 +52,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
         <>
             <section className="flex flex-col gap-4 px-2">
                 <div className="flex flex-col gap-1">
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug pb-[0.18em]">
                         {/* Use greeting if available, else default */}
                         {summary ? (
                             <span dangerouslySetInnerHTML={{ __html: summary.greeting.replace('你好，', '你好，<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-primary dark:from-blue-200 dark:to-primary">').replace('同学', '同学</span>') }}></span>
@@ -112,7 +112,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
                                     )}
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-bold mb-1 text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-900 to-blue-600 dark:from-white dark:via-white dark:to-blue-500">{goal.title}</h3>
+                                    <h3 className="text-2xl font-bold mb-1 text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-900 to-blue-600 dark:from-white dark:via-white dark:to-blue-500 leading-snug pb-[0.12em]">{goal.title}</h3>
                                     <p className="text-slate-500 dark:text-text-secondary text-sm">{goal.subtitle}</p>
                                 </div>
                                 <div className="space-y-2">
@@ -170,12 +170,12 @@ const GoalDetail: React.FC<{
     return (
     <div className="flex flex-col gap-10 w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm font-medium px-2">
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium px-2 min-w-0">
             <button className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors" onClick={() => setView('dashboard')}>首页</button>
             <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
             <span className="text-slate-900 dark:text-white">Goals</span>
              <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
-            <span className="text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">{goal.title}</span>
+            <span className="text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 break-words max-w-full leading-snug">{goal.title}</span>
         </div>
 
         {/* Header */}
@@ -189,7 +189,7 @@ const GoalDetail: React.FC<{
                             <span className="material-symbols-outlined text-base">event</span> Target: {goal.dueDate ? goal.dueDate.substring(0, 10) : 'N/A'}
                         </span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-blue-500 leading-tight">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-blue-500 leading-snug pb-[0.28em] break-words">
                         {goal.title}
                     </h1>
                     <p className="text-slate-300 dark:text-text-secondary max-w-md">{goal.subtitle || '暂无描述'}</p>
@@ -728,7 +728,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 </div>
                 <div>
                     <div className="flex justify-between items-end mb-2">
-                        <h2 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-900 to-blue-600 dark:from-white dark:via-white dark:to-blue-500">{subjectTitle}</h2>
+                        <h2 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-900 to-blue-600 dark:from-white dark:via-white dark:to-blue-500 leading-snug pb-[0.12em]">{subjectTitle}</h2>
                         <span className="text-2xl font-bold text-primary">{progress}%</span>
                     </div>
                     <div className="h-3 w-full bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
@@ -1018,7 +1018,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 </button>
             </div>
             
-            {showAddModal && <AddSubjectModal onClose={() => setShowAddModal(false)} onCreate={handleAddSubject} />}
+            {showAddModal && <AddSubjectModal onClose={() => setShowAddModal(false)} onCreate={handleAddSubject} mode="append" subjectTitle={subjectTitle} />}
             {deleteConfig && deleteConfig.show && (
                 <DeleteConfirmModal 
                     title={deleteConfig.title}
