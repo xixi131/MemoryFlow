@@ -9,8 +9,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import { MessageContainer } from './components/Message';
 import { Widgets } from './components/Widgets';
 import { GOALS, SUBJECTS, TOPICS, GOAL_THEMES } from './constants';
-import { AddSubjectModal, EditContentModal, DeleteConfirmModal, AddGoalModal } from './components/Modals';
-import EditArticleModal from './components/EditArticleModal';
+import { EditContentModal, DeleteConfirmModal, AddGoalModal } from './components/Modals';
+import AddSubjectModal from './components/AddSubjectModal';
 import StudySession from './components/StudySession';
 import LearnedHistory from './components/LearnedHistory';
 
@@ -24,7 +24,7 @@ import settingsApis from './services/settingsApis';
 import userApis from './api/userApis';
 import { resolveApiAssetUrl } from './utils/resolveApiAssetUrl';
 import { message } from './components/Message';
-import ReactMarkdown from 'react-markdown';
+import TyporaEditor from './components/TyporaEditor';
 import HomePage from './pages/HomePage';
 import DocsPage from './pages/DocsPage';
 
@@ -38,6 +38,95 @@ import { useSubjectStore } from './store/useSubjectStore';
 import { BackgroundGlow } from './components/BackgroundGlow';
 
 // --- Page Components ---
+const ArticleInlineEditor: React.FC<{
+    article: { id: string | number; title: string; body: string };
+    onSave: (id: string, title: string, body: string) => Promise<{ title: string; body: string }>;
+}> = ({ article, onSave }) => {
+    const [title, setTitle] = useState(article.title || '');
+    const [body, setBody] = useState(article.body || '');
+    const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const saveTimerRef = useRef<number | null>(null);
+    const lastSavedTitleRef = useRef(article.title || '');
+    const lastSavedBodyRef = useRef(article.body || '');
+
+    useEffect(() => {
+        setTitle(article.title || '');
+        setBody(article.body || '');
+        setStatus('idle');
+        lastSavedTitleRef.current = article.title || '';
+        lastSavedBodyRef.current = article.body || '';
+    }, [article.id, article.title, article.body]);
+
+    useEffect(() => {
+        const hasChanges = title !== lastSavedTitleRef.current || body !== lastSavedBodyRef.current;
+        if (!hasChanges) return;
+
+        if (saveTimerRef.current) {
+            window.clearTimeout(saveTimerRef.current);
+        }
+
+        setStatus('saving');
+        saveTimerRef.current = window.setTimeout(async () => {
+            try {
+                const saved = await onSave(String(article.id), title, body);
+                lastSavedTitleRef.current = saved.title;
+                lastSavedBodyRef.current = saved.body;
+                setTitle(saved.title);
+                setBody(saved.body);
+                setStatus('saved');
+            } catch (error) {
+                console.error(error);
+                setStatus('error');
+            }
+        }, 700);
+
+        return () => {
+            if (saveTimerRef.current) {
+                window.clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+        };
+    }, [article.id, title, body, onSave]);
+
+    return (
+        <div className="space-y-3">
+            <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="内容标题"
+                className="w-full rounded-xl border-0 bg-blue-100/80 dark:bg-[#11213a]/85 px-6 py-3 text-lg font-bold text-slate-900 dark:text-white outline-none ring-0 focus:ring-2 focus:ring-blue-400/35"
+            />
+            <TyporaEditor
+                key={`always-inline-editor-${article.id}`}
+                initialValue={body}
+                onChange={(nextValue) => setBody(nextValue)}
+                placeholder="输入 Markdown，自动保存"
+                flat
+            />
+            <div className="text-xs font-medium">
+                <span
+                    className={
+                        status === 'saving'
+                            ? 'text-slate-500'
+                            : status === 'saved'
+                            ? 'text-emerald-500'
+                            : status === 'error'
+                            ? 'text-red-500'
+                            : 'text-slate-400'
+                    }
+                >
+                    {status === 'saving'
+                        ? '自动保存中...'
+                        : status === 'saved'
+                        ? '已保存'
+                        : status === 'error'
+                        ? '保存失败，请继续编辑后重试'
+                        : '可直接编辑'}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => void; onGoalClick: (id: string) => void }> = ({ setView, onOpenAddGoal, onGoalClick }) => {
     const { summary, fetchSummary } = useReviewStore();
@@ -304,6 +393,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
     const [checked, setChecked] = useState<Record<string, boolean>>({});
     const [activeTabs, setActiveTabs] = useState<Record<string, number>>({});
     const [showAddModal, setShowAddModal] = useState(false);
+    const [chapterQuickAdd, setChapterQuickAdd] = useState<{ id: string; title: string } | null>(null);
+    const [pointQuickAdd, setPointQuickAdd] = useState<{
+        chapterId: string;
+        chapterTitle: string;
+        pointId: string;
+        pointTitle: string;
+    } | null>(null);
     const [loading, setLoading] = useState(false);
     const [deleteConfig, setDeleteConfig] = useState<{
         show: boolean;
@@ -311,12 +407,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         id: string;
         title: string;
     } | null>(null);
-    const [editingArticle, setEditingArticle] = useState<any>(null);
 
     useEffect(() => {
         if (subjectId) {
             fetchData();
         }
+        setChapterQuickAdd(null);
+        setPointQuickAdd(null);
 
         // Listen for global review updates (e.g. from Widgets)
         const handleReviewUpdate = (event: CustomEvent) => {
@@ -350,7 +447,24 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         return () => window.removeEventListener('review:update', handleReviewUpdate as EventListener);
     }, [subjectId]);
 
-    const fetchData = async () => {
+    const loadChapterDetail = async (chapterId: string) => {
+        try {
+            const res: any = await subjectApis.getChapterDetail(chapterId);
+            if (res.code === 200 && res.data) {
+                setData((prevData) =>
+                    prevData.map((chapter) =>
+                        String(chapter.id) === String(chapterId) ? { ...chapter, ...res.data } : chapter
+                    )
+                );
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load chapter details', error);
+        }
+        return false;
+    };
+
+    const fetchData = async (force: boolean = false, chapterIdsToEnsure: string[] = []) => {
         if (!subjectId) return;
 
         // Check cache first
@@ -362,7 +476,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
         try {
             // This will use cache if available (controlled by store logic)
-            await fetchSubjectDetail(subjectId);
+            await fetchSubjectDetail(subjectId, force);
             
             // Get fresh state
             const currentDetail = useSubjectStore.getState().subjectDetails[subjectId];
@@ -370,7 +484,21 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             if (currentDetail && currentDetail.data) {
                 const detail = currentDetail.data;
                 setSubjectTitle(detail.title);
-                setData(detail.chapters || []);
+                const nextChapters = detail.chapters || [];
+                setData(nextChapters);
+
+                const expandedChapterIds = Object.keys(expanded).filter((id) => expanded[id]);
+                const targetChapterIds = [...expandedChapterIds, ...chapterIdsToEnsure]
+                    .filter((id, index, arr) => id && arr.indexOf(id) === index);
+
+                if (targetChapterIds.length > 0) {
+                    const existingChapterIds = new Set(nextChapters.map((chapter: any) => String(chapter.id)));
+                    await Promise.all(
+                        targetChapterIds
+                            .filter((chapterId) => existingChapterIds.has(String(chapterId)))
+                            .map((chapterId) => loadChapterDetail(String(chapterId)))
+                    );
+                }
                 
                 // Don't auto expand
             } else {
@@ -385,14 +513,28 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         }
     };
 
-    const handleAddSubject = async (title: string, content: string) => {
+    const handleAddSubject = async (
+        title: string,
+        content: string,
+        options?: { targetChapterId?: string; targetPointId?: string }
+    ) => {
         if (!subjectId) return;
         try {
-            const res: any = await subjectApis.appendContent(subjectId, content);
+            const res: any = await subjectApis.appendContent(
+                subjectId,
+                content,
+                options?.targetChapterId,
+                options?.targetPointId
+            );
             if (res.code === 200) {
                 message.success('添加成功');
                 setShowAddModal(false);
-                fetchData();
+                setChapterQuickAdd(null);
+                setPointQuickAdd(null);
+                if (options?.targetChapterId) {
+                    setExpanded((prev) => ({ ...prev, [options.targetChapterId!]: true }));
+                }
+                await fetchData(true, options?.targetChapterId ? [options.targetChapterId] : []);
             } else {
                 message.warning(res.message || '添加失败');
             }
@@ -424,20 +566,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             const needsLoad = !chapter.contents || (chapter.children && chapter.children.length > 0 && !chapter.children[0].contents);
 
             if (chapter && needsLoad) {
-                try {
-                    const res: any = await subjectApis.getChapterDetail(id);
-                    if (res.code === 200 && res.data) {
-                        // Merge data
-                        setData(prevData => prevData.map(c => {
-                            if (String(c.id) === id) {
-                                return { ...c, ...res.data };
-                            }
-                            return c;
-                        }));
-                    }
-                } catch (error) {
-                    console.error("Failed to load chapter details", error);
-                }
+                await loadChapterDetail(id);
             }
         }
     };
@@ -584,7 +713,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
             if (res && res.code === 200) {
                 message.success('删除成功');
-                fetchData();
+                await fetchData(true);
             } else {
                 message.error(res?.message || '删除失败');
             }
@@ -687,31 +816,63 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         } catch (error) {
             console.error(error);
             message.error('操作失败');
-            fetchData(); // Revert on error
+            fetchData(true); // Revert on error
         }
     };
 
-    const handleSaveArticle = async (id: string, title: string, content: string) => {
-        try {
-            const res: any = await subjectApis.updateArticle(id, title, content);
-            if (res.code === 200) {
-                message.success('修改成功');
-                fetchData();
-            } else {
-                message.error(res.message || '修改失败');
-            }
-        } catch (error) {
-            console.error(error);
-            message.error('网络错误');
-        }
+    const patchArticleInView = (articleId: string, title: string, body: string) => {
+        setData((prevData) =>
+            prevData.map((chapter) => ({
+                ...chapter,
+                contents: chapter.contents?.map((article: any) =>
+                    String(article.id) === articleId ? { ...article, title, body } : article
+                ),
+                children: chapter.children?.map((point: any) => ({
+                    ...point,
+                    contents: point.contents?.map((article: any) =>
+                        String(article.id) === articleId ? { ...article, title, body } : article
+                    )
+                }))
+            }))
+        );
     };
 
-    const handleEditArticle = (article: any, e: React.MouseEvent) => {
+    const saveArticleInline = async (id: string, title: string, body: string) => {
+        const normalizedTitle = title.trim() || '未命名内容';
+        const res: any = await subjectApis.updateArticle(id, normalizedTitle, body);
+        if (res.code !== 200) {
+            throw new Error(res.message || '保存失败');
+        }
+        patchArticleInView(id, normalizedTitle, body);
+        return {
+            title: normalizedTitle,
+            body
+        };
+    };
+
+    const handleChapterQuickAdd = (chapterId: string, chapterTitle: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (article) {
-            setEditingArticle(article);
-        }
+        setChapterQuickAdd({ id: chapterId, title: chapterTitle });
     };
+
+    const handlePointQuickAdd = (
+        chapterId: string,
+        chapterTitle: string,
+        pointId: string,
+        pointTitle: string,
+        e: React.MouseEvent
+    ) => {
+        e.stopPropagation();
+        setPointQuickAdd({ chapterId, chapterTitle, pointId, pointTitle });
+    };
+
+    const renderArticleContent = (article: any) => (
+        <ArticleInlineEditor
+            key={`article-inline-${article.id}`}
+            article={article}
+            onSave={saveArticleInline}
+        />
+    );
 
     if (loading && data.length === 0) {
         return <div className="flex justify-center items-center h-full py-20 text-slate-500">Loading...</div>;
@@ -820,6 +981,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                 <div className="flex items-center gap-4">
                                     {/* Level 1 Delete Button */}
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => handleChapterQuickAdd(String(chapter.id), chapter.title, e)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-lg"
+                                            title="Add Content"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">add</span>
+                                        </button>
                                         <button 
                                             onClick={(e) => handleDeleteChapter(String(chapter.id), chapter.title, e)}
                                             className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
@@ -870,13 +1038,6 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                                 <div className="flex items-center gap-2 pl-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
-                                                        onClick={(e) => handleEditArticle(chapter.contents[activeTabs[String(chapter.id)] || 0], e)}
-                                                        className="h-9 w-9 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                                        title="Edit Article"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                    </button>
-                                                    <button 
                                                         onClick={(e) => {
                                                             const currentArticle = chapter.contents[activeTabs[String(chapter.id)] || 0];
                                                             if (currentArticle) handleDeleteArticle(String(currentArticle.id), currentArticle.title, e);
@@ -891,10 +1052,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                             
                                             <div className="p-6 md:p-8">
                                                 {chapter.contents[activeTabs[String(chapter.id)] || 0] && (
-                                                    <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#0B1120] prose-pre:border prose-pre:border-white/10">
-                                                        <h1 className="text-3xl font-black mb-6 text-slate-900 dark:text-white">{chapter.contents[activeTabs[String(chapter.id)] || 0].title}</h1>
-                                                        <ReactMarkdown>{chapter.contents[activeTabs[String(chapter.id)] || 0].body}</ReactMarkdown>
-                                                    </div>
+                                                    renderArticleContent(chapter.contents[activeTabs[String(chapter.id)] || 0])
                                                 )}
                                             </div>
                                         </div>
@@ -921,6 +1079,21 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                     <div className="flex items-center gap-4">
                                                         {/* Level 2 Edit/Delete Buttons */}
                                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={(e) =>
+                                                                    handlePointQuickAdd(
+                                                                        String(chapter.id),
+                                                                        chapter.title,
+                                                                        String(point.id),
+                                                                        point.title,
+                                                                        e
+                                                                    )
+                                                                }
+                                                                className="h-9 w-9 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                                title="Add Point Content"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">add</span>
+                                                            </button>
                                                             <button 
                                                                 onClick={(e) => handleDeletePoint(String(point.id), point.title, e)}
                                                                 className="h-9 w-9 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
@@ -971,25 +1144,16 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                                                     return (
                                                                         <>
-                                                                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover/article:opacity-100 transition-opacity z-10">
-                                                                                <button 
-                                                                                    onClick={(e) => handleEditArticle(currentArticle, e)}
-                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
-                                                                                >
-                                                                                    <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                                                </button>
-                                                                                <button 
+                                                                            <div className="h-8 mb-2 flex justify-end">
+                                                                                <button
                                                                                     onClick={(e) => handleDeleteArticle(String(currentArticle.id), currentArticle.title, e)}
-                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all opacity-0 pointer-events-none group-hover/article:opacity-100 group-hover/article:pointer-events-auto"
                                                                                 >
                                                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                                                 </button>
                                                                             </div>
 
-                                                                            <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#0B1120] prose-pre:border prose-pre:border-white/10">
-                                                                                <h1 className="text-3xl font-black mb-6 text-slate-900 dark:text-white">{currentArticle.title}</h1>
-                                                                                <ReactMarkdown>{currentArticle.body}</ReactMarkdown>
-                                                                            </div>
+                                                                            {renderArticleContent(currentArticle)}
                                                                         </>
                                                                     );
                                                                 })()}
@@ -1018,19 +1182,43 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 </button>
             </div>
             
-            {showAddModal && <AddSubjectModal onClose={() => setShowAddModal(false)} onCreate={handleAddSubject} mode="append" subjectTitle={subjectTitle} />}
+            {showAddModal && (
+                <AddSubjectModal
+                    onClose={() => setShowAddModal(false)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                />
+            )}
+            {chapterQuickAdd && (
+                <AddSubjectModal
+                    onClose={() => setChapterQuickAdd(null)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                    initialChapterId={chapterQuickAdd.id}
+                    initialChapterTitle={chapterQuickAdd.title}
+                    restrictToSingleChapter
+                />
+            )}
+            {pointQuickAdd && (
+                <AddSubjectModal
+                    onClose={() => setPointQuickAdd(null)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                    initialChapterId={pointQuickAdd.chapterId}
+                    initialChapterTitle={pointQuickAdd.chapterTitle}
+                    initialPointId={pointQuickAdd.pointId}
+                    initialPointTitle={pointQuickAdd.pointTitle}
+                    restrictToSinglePoint
+                />
+            )}
             {deleteConfig && deleteConfig.show && (
                 <DeleteConfirmModal 
                     title={deleteConfig.title}
                     onClose={() => setDeleteConfig(null)}
                     onConfirm={performDelete}
-                />
-            )}
-            {editingArticle && (
-                <EditArticleModal
-                    article={editingArticle}
-                    onClose={() => setEditingArticle(null)}
-                    onSave={handleSaveArticle}
                 />
             )}
         </div>
@@ -2097,6 +2285,7 @@ const Stats: React.FC = () => (
 );
 
 const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: User | null; onUpdate: () => void }> = ({ isOpen, onClose, user, onUpdate }) => {
+    const defaultAvatarUrl = resolveApiAssetUrl('/uploads/avatars/default-avatar.svg');
     const [nickname, setNickname] = useState('');
     const [profession, setProfession] = useState('');
     const [age, setAge] = useState('');
@@ -2219,7 +2408,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
                     <div className="flex flex-col items-center mb-6">
                         <div className="relative size-24 rounded-full overflow-hidden border-4 border-white dark:border-white/10 shadow-lg mb-4 group cursor-pointer">
                             <img 
-                                src={avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuBTEclYR8F_pkLAtS8wLfPT3QVwCMd5RhwSJjSY28e1PF7nHKZDXgzGQ0FV4peEV087BZVCvaPbPbgxQMbz81RuIXy7-pk7sniURUZrLqeRD0xRcANqR5YixFMj2V0UzBi28Z8ASy0fcXdkZP9g6Ym3SqqcAxkkLmtY15vtYjB-AKPa3msQWCbQs9XGyqG65y_UH1UIj4MYVuguZhyot-H03zomY8toB-6TbkdZRgwZFeQt1ba2iBPCm5j73JqVjYGFr7n-a_QyoOHw"} 
+                                src={avatarUrl || defaultAvatarUrl}
                                 alt="Avatar" 
                                 className="w-full h-full object-cover"
                             />
@@ -2316,6 +2505,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
 const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
     const { user, fetchUser, logout } = useUserStore();
     const [showEditModal, setShowEditModal] = useState(false);
+    const defaultAvatarUrl = resolveApiAssetUrl('/uploads/avatars/default-avatar.svg');
 
     useEffect(() => {
         fetchUser();
@@ -2335,7 +2525,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
             <div className="bg-white dark:bg-surface-dark rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 shadow-lg relative overflow-hidden">
                  <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary/20 to-blue-400/20"></div>
                  <div className="relative flex flex-col items-center mt-12">
-                    <div className="size-32 rounded-full border-4 border-white dark:border-surface-dark shadow-xl bg-cover bg-center mb-4" style={{ backgroundImage: `url('${user.avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuBTEclYR8F_pkLAtS8wLfPT3QVwCMd5RhwSJjSY28e1PF7nHKZDXgzGQ0FV4peEV087BZVCvaPbPbgxQMbz81RuIXy7-pk7sniURUZrLqeRD0xRcANqR5YixFMj2V0UzBi28Z8ASy0fcXdkZP9g6Ym3SqqcAxkkLmtY15vtYjB-AKPa3msQWCbQs9XGyqG65y_UH1UIj4MYVuguZhyot-H03zomY8toB-6TbkdZRgwZFeQt1ba2iBPCm5j73JqVjYGFr7n-a_QyoOHw"}')` }}></div>
+                    <div className="size-32 rounded-full border-4 border-white dark:border-surface-dark shadow-xl bg-cover bg-center mb-4" style={{ backgroundImage: `url('${user.avatarUrl || defaultAvatarUrl}')` }}></div>
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{user.nickname || (user as any).username || 'User'}</h3>
                     <p className="text-slate-500 dark:text-text-secondary">{user.profession || 'Student'}</p>
                     <div className="flex gap-4 mt-6">
@@ -2677,7 +2867,7 @@ const App: React.FC = () => {
                     <Navigation />
             
                     <main className="flex flex-col lg:flex-row gap-8 flex-1">
-                <div className="flex flex-col flex-1 gap-10">
+                <div className={`flex flex-col flex-1 gap-10 ${view !== 'english' ? 'lg:pr-[22rem] xl:pr-[26rem]' : ''}`}>
                     {view === 'dashboard' && <Dashboard setView={setView} onOpenAddGoal={() => setShowAddGoalModal(true)} onGoalClick={handleGoalClick} />}
                     {view === 'goal' && (
                         <GoalDetail 
@@ -2701,7 +2891,7 @@ const App: React.FC = () => {
                         <div className="flex items-center justify-center h-full text-text-secondary">Work in progress...</div>
                     )}
                 </div>
-                {view !== 'english' && <Widgets />}
+                {view !== 'english' && <Widgets fixed />}
             </main>
             </div>
             )}

@@ -53,11 +53,14 @@ const subjectApis = {
     },
 
     // 追加内容
-    appendContent: (id: string, content: string) => {
+    appendContent: (id: string, content: string, chapterId?: string, pointId?: string) => {
+        const payload: Record<string, string> = { content };
+        if (chapterId) payload.chapterId = chapterId;
+        if (pointId) payload.pointId = pointId;
         return request({
             url: `/subjects/${id}/append`,
             method: 'post',
-            data: { content }
+            data: payload
         });
     },
 

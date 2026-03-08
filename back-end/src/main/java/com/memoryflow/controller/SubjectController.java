@@ -76,7 +76,21 @@ public class SubjectController {
     public ApiResponse<SubjectDTO> appendContent(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
         Long userId = securityUtils.getCurrentUserId();
         String content = payload.get("content");
-        SubjectDTO subject = subjectService.appendDsl(id, content, userId);
+        Long chapterId = null;
+        if (payload.containsKey("chapterId")) {
+            String rawChapterId = payload.get("chapterId");
+            if (rawChapterId != null && !rawChapterId.isBlank()) {
+                chapterId = Long.valueOf(rawChapterId.trim());
+            }
+        }
+        Long pointId = null;
+        if (payload.containsKey("pointId")) {
+            String rawPointId = payload.get("pointId");
+            if (rawPointId != null && !rawPointId.isBlank()) {
+                pointId = Long.valueOf(rawPointId.trim());
+            }
+        }
+        SubjectDTO subject = subjectService.appendDsl(id, content, userId, chapterId, pointId);
         return ApiResponse.success(subject);
     }
 

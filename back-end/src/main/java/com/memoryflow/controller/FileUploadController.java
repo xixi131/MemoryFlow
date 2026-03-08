@@ -104,7 +104,7 @@ public class FileUploadController {
 
         String newFileName = extractAvatarFileName(newAvatarUrl);
         if (oldFileName.equals(newFileName)) return;
-        if ("default-avatar.png".equalsIgnoreCase(oldFileName)) return;
+        if (isDefaultAvatarFile(oldFileName)) return;
 
         try {
             String dir = uploadDir;
@@ -142,5 +142,11 @@ public class FileUploadController {
         String tail = path.substring(start + base.length());
         if (tail.isEmpty() || tail.contains("/") || tail.contains("\\")) return null;
         return tail;
+    }
+
+    private boolean isDefaultAvatarFile(String fileName) {
+        if (fileName == null) return false;
+        return "default-avatar.png".equalsIgnoreCase(fileName)
+                || "default-avatar.svg".equalsIgnoreCase(fileName);
     }
 }
