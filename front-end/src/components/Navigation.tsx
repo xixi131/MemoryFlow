@@ -64,7 +64,7 @@ export const Navigation: React.FC = () => {
     const navItems = [
         { id: 'dashboard', label: '首页', path: '/home', icon: 'home' },
         { id: 'calendar', label: '日历', path: '/calendar', icon: 'calendar_month' },
-        { id: 'stats', label: '统计', path: '/stats', icon: 'analytics' },
+        { id: 'todo', label: '待办', path: '/todo', icon: 'checklist' },
         { id: 'english', label: '英语', path: '/english', icon: 'translate' },
         { id: 'settings', label: '设置', path: '/settings', icon: 'settings' }
     ];

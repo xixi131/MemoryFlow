@@ -27,6 +27,7 @@ import { message } from './components/Message';
 import TyporaEditor from './components/TyporaEditor';
 import HomePage from './pages/HomePage';
 import DocsPage from './pages/DocsPage';
+import TodoPage from './pages/TodoPage';
 
 import DynamicIslandWidget from './components/DynamicIslandWidget';
 import { useGoalStore } from './store/useGoalStore';
@@ -2611,7 +2612,10 @@ const App: React.FC = () => {
         }
         
         const route = path.substring(1);
-        if (['calendar', 'stats', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
+        if (route === 'stats') {
+            return { view: 'todo', subjectId: null, goalId: null };
+        }
+        if (['calendar', 'todo', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
             return { view: route, subjectId: null, goalId: null };
         }
         
@@ -2867,7 +2871,7 @@ const App: React.FC = () => {
                     <Navigation />
             
                     <main className="flex flex-col lg:flex-row gap-8 flex-1">
-                <div className={`flex flex-col flex-1 gap-10 ${view !== 'english' ? 'lg:pr-[22rem] xl:pr-[26rem]' : ''}`}>
+                <div className={`flex flex-col flex-1 gap-10 ${view !== 'english' && view !== 'todo' ? 'lg:pr-[22rem] xl:pr-[26rem]' : ''}`}>
                     {view === 'dashboard' && <Dashboard setView={setView} onOpenAddGoal={() => setShowAddGoalModal(true)} onGoalClick={handleGoalClick} />}
                     {view === 'goal' && (
                         <GoalDetail 
@@ -2883,15 +2887,15 @@ const App: React.FC = () => {
                     {view === 'detail' && <SubjectDetail subjectId={selectedSubjectId} setView={setView} onEdit={(title) => setEditModalTitle(title)} />}
                     {view === 'settings' && <Settings theme={theme} setTheme={setTheme} />}
                     {view === 'calendar' && <Calendar />}
-                    {view === 'stats' && <Stats />}
+                    {view === 'todo' && <TodoPage />}
                     {view === 'english' && <English setView={setView} />}
                     {view === 'history' && <LearnedHistory onBack={() => setView('english')} />}
                     {view === 'profile' && <Profile setView={setView} />}
-                    {view !== 'dashboard' && view !== 'goal' && view !== 'detail' && view !== 'settings' && view !== 'profile' && view !== 'calendar' && view !== 'stats' && view !== 'english' && view !== 'history' && (
+                    {view !== 'dashboard' && view !== 'goal' && view !== 'detail' && view !== 'settings' && view !== 'profile' && view !== 'calendar' && view !== 'todo' && view !== 'english' && view !== 'history' && (
                         <div className="flex items-center justify-center h-full text-text-secondary">Work in progress...</div>
                     )}
                 </div>
-                {view !== 'english' && <Widgets fixed />}
+                {view !== 'english' && view !== 'todo' && <Widgets fixed />}
             </main>
             </div>
             )}

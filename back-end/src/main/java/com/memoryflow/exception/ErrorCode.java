@@ -55,7 +55,20 @@ public enum ErrorCode {
     COURSE_NOT_FOUND(8001, "课程不存在"),
     WORD_NOT_FOUND(8002, "单词不存在"),
     WORD_ALREADY_LEARNED(8003, "该单词已学习"),
-    WORD_NOT_LEARNED(8004, "该单词尚未学习");
+    WORD_NOT_LEARNED(8004, "该单词尚未学习"),
+
+    // Todo 相关错误 9000-9999
+    TODO_LIST_NOT_FOUND(9001, "待办清单不存在"),
+    TODO_LIST_ACCESS_DENIED(9002, "无权访问此待办清单"),
+    TODO_LIST_NAME_DUPLICATED(9003, "待办清单名称已存在"),
+    TODO_DEFAULT_LIST_DELETE_DENIED(9004, "默认清单不允许删除"),
+    TODO_TASK_NOT_FOUND(9101, "待办任务不存在"),
+    TODO_TASK_ACCESS_DENIED(9102, "无权访问此待办任务"),
+    TODO_TAG_NOT_FOUND(9201, "待办标签不存在"),
+    TODO_TAG_ACCESS_DENIED(9202, "无权访问此待办标签"),
+    TODO_TAG_NAME_DUPLICATED(9203, "待办标签名称已存在"),
+    TODO_SUBTASK_NOT_FOUND(9301, "子任务不存在"),
+    TODO_SUBTASK_ACCESS_DENIED(9302, "无权访问此子任务");
 
     private final int code;
     private final String message;

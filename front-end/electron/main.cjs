@@ -9,6 +9,7 @@ let widgetWindow;
 let tray;
 let pendingAuthData = null;
 let pendingLogout = false;
+const WIDGET_DISPLAY_MODE_KEY = 'widgetDisplayMode';
 
 app.setName('MemoryFlow');
 if (process.platform === 'win32') {
@@ -448,19 +449,31 @@ function sendLogoutToRenderer() {
     }
 }
 
-// 创建系统托盘
-function createTray() {
-    let iconPath;
-    if (!app.isPackaged && process.env.ELECTRON_START_URL) {
-        // 开发环境：直接引用 src 下的资源
-        iconPath = path.join(__dirname, '../src/assets/logo.png');
-    } else {
-        // 生产环境：引用复制到 electron/assets 下的资源
-        iconPath = path.join(__dirname, 'assets/logo.png');
+function getWidgetDisplayMode() {
+    const config = getConfigOrEmpty();
+    const mode = config[WIDGET_DISPLAY_MODE_KEY];
+    return mode === 'todo' ? 'todo' : 'review';
+}
+
+function sendWidgetDisplayModeToRenderer(targetWebContents) {
+    const webContents = targetWebContents || (widgetWindow && !widgetWindow.isDestroyed() ? widgetWindow.webContents : null);
+    if (!webContents || webContents.isDestroyed()) {
+        return;
     }
+    webContents.send('widget-display-mode-changed', getWidgetDisplayMode());
+}
 
-    tray = new Tray(iconPath);
+function setWidgetDisplayMode(mode) {
+    const normalizedMode = mode === 'todo' ? 'todo' : 'review';
+    saveConfigPatch({ [WIDGET_DISPLAY_MODE_KEY]: normalizedMode });
+    sendWidgetDisplayModeToRenderer();
+    refreshTrayMenu();
+}
 
+function refreshTrayMenu() {
+    if (!tray) return;
+
+    const currentMode = getWidgetDisplayMode();
     const isAutoLaunch = app.isPackaged ? app.getLoginItemSettings().openAtLogin : false;
 
     const contextMenu = Menu.buildFromTemplate([
@@ -473,6 +486,23 @@ function createTray() {
                     widgetWindow.show();
                 }
             }
+        },
+        {
+            label: '显示模式',
+            submenu: [
+                {
+                    label: '复习模式',
+                    type: 'radio',
+                    checked: currentMode === 'review',
+                    click: () => setWidgetDisplayMode('review')
+                },
+                {
+                    label: '待办模式',
+                    type: 'radio',
+                    checked: currentMode === 'todo',
+                    click: () => setWidgetDisplayMode('todo')
+                }
+            ]
         },
         {
             label: '开机自动启动',
@@ -515,8 +545,24 @@ function createTray() {
             }
         }
     ]);
+
     tray.setToolTip('MemoryFlow Widget');
     tray.setContextMenu(contextMenu);
+}
+
+// 创建系统托盘
+function createTray() {
+    let iconPath;
+    if (!app.isPackaged && process.env.ELECTRON_START_URL) {
+        // 开发环境：直接引用 src 下的资源
+        iconPath = path.join(__dirname, '../src/assets/logo.png');
+    } else {
+        // 生产环境：引用复制到 electron/assets 下的资源
+        iconPath = path.join(__dirname, 'assets/logo.png');
+    }
+
+    tray = new Tray(iconPath);
+    refreshTrayMenu();
 
     tray.on('click', () => {
         if (widgetWindow.isVisible()) {
@@ -580,6 +626,20 @@ function createWidgetWindow() {
         }
     });
 
+    ipcMain.removeAllListeners('get-widget-display-mode');
+    ipcMain.on('get-widget-display-mode', (event) => {
+        try {
+            sendWidgetDisplayModeToRenderer(event.sender);
+        } catch (e) { }
+    });
+
+    ipcMain.removeAllListeners('set-widget-display-mode');
+    ipcMain.on('set-widget-display-mode', (_event, mode) => {
+        try {
+            setWidgetDisplayMode(mode === 'todo' ? 'todo' : 'review');
+        } catch (e) { }
+    });
+
     // Load the app
     // In production, we need to load the index.html and handle the hash route manually if needed, 
     // or ensure the app handles the default route correctly.
@@ -619,6 +679,7 @@ function createWidgetWindow() {
     });
 
     widgetWindow.webContents.on('did-finish-load', () => {
+        sendWidgetDisplayModeToRenderer(widgetWindow.webContents);
         if (pendingAuthData) {
             sendTokenToRenderer(pendingAuthData);
         }
