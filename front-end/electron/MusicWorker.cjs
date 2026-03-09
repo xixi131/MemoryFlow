@@ -9,6 +9,10 @@ let lastThumbnailBuffer = null; // Track thumbnail buffer to detect changes
 let lastPosition = null; // Track last position for play/pause detection
 let lastStatus = 'Paused'; // Track last reported status
 let unchangedCount = 0; // Count consecutive unchanged positions
+let lastEmittedPayload = null;
+
+const EVENT_THROTTLE_MS = 180;
+const POLLING_INTERVAL_MS = 1000;
 
 // Position estimator for apps that don't provide SMTC timeline (e.g., NetEase Cloud Music)
 let posEstimator = {
@@ -48,6 +52,26 @@ function error(msg) {
 
 function sendData(data) {
     parentPort.postMessage({ type: 'music-data', data });
+}
+
+function shouldEmitPayload(nextPayload) {
+    if (!nextPayload || typeof nextPayload !== 'object') return false;
+    if (!lastEmittedPayload) return true;
+
+    const prev = lastEmittedPayload;
+    if (nextPayload.status !== prev.status) return true;
+    if (nextPayload.isPlaying !== prev.isPlaying) return true;
+    if (nextPayload.title !== prev.title) return true;
+    if (nextPayload.artist !== prev.artist) return true;
+    if (nextPayload.coverUrl !== prev.coverUrl) return true;
+    if (nextPayload.themeColor !== prev.themeColor) return true;
+    if (Number(nextPayload.duration || 0) !== Number(prev.duration || 0)) return true;
+
+    const nextPos = Number(nextPayload.position || 0);
+    const prevPos = Number(prev.position || 0);
+    if (Math.abs(nextPos - prevPos) >= 1) return true;
+
+    return false;
 }
 
 // 异步提取主题色
@@ -124,6 +148,7 @@ function initMonitor() {
                     lastStatus = 'Stopped';
                     lastTitle = '';
                     lastThumbnailBuffer = null;
+                    lastEmittedPayload = null;
                     log('[MusicWorker] 检测到无活动会话，发送 Stopped 状态');
                     sendData(payload);
                 }
@@ -322,11 +347,10 @@ function initMonitor() {
                 lastUpdate: Date.now()
             };
 
-            // Only log when song changes or status changes
-            if (payload.title !== lastTitle || payload.status !== lastStatus) {
-                log(`♪ ${payload.title} - ${payload.status}`);
+            if (shouldEmitPayload(payload)) {
+                lastEmittedPayload = { ...payload };
+                sendData(payload);
             }
-            sendData(payload);
         };
 
         const throttle = (func, limit) => {
@@ -342,22 +366,20 @@ function initMonitor() {
             }
         }
 
-        // 降低节流时间以提高进度条的实时性 (50ms 提供更快的拖动响应)
-        const throttledSend = throttle((id) => sendUpdate(id), 50);
+        const throttledSend = throttle((id) => sendUpdate(id), EVENT_THROTTLE_MS);
 
-        // Diagnostic: log raw timeline events to understand what NetEase sends during drag
-        monitor.on('session-timeline-changed', (sourceAppId, timelineProps) => {
-            log(`[Timeline Event] ${sourceAppId}: pos=${timelineProps?.position}, dur=${timelineProps?.duration}`);
+        // Timeline events can be very frequent when dragging progress bars.
+        monitor.on('session-timeline-changed', (sourceAppId) => {
             throttledSend(sourceAppId);
         });
-        monitor.on('session-media-changed', sendUpdate);
-        monitor.on('session-playback-changed', sendUpdate);
-        monitor.on('current-session-changed', sendUpdate);
-        monitor.on('session-added', sendUpdate);
+        monitor.on('session-media-changed', throttledSend);
+        monitor.on('session-playback-changed', throttledSend);
+        monitor.on('current-session-changed', throttledSend);
+        monitor.on('session-added', throttledSend);
 
-        // 初始化时发送一次,然后每500ms轮询一次以确保进度同步 (提高实时性)
+        // 初始化时发送一次，然后按更低频率轮询，降低线程和 IPC 压力。
         setTimeout(() => sendUpdate(null), 300);
-        setInterval(() => sendUpdate(null), 500);
+        setInterval(() => sendUpdate(null), POLLING_INTERVAL_MS);
 
         log('SMTCMonitor started successfully');
 

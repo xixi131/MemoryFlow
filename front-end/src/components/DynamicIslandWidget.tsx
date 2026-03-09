@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import request from '../utils/request';
 
@@ -51,6 +51,21 @@ const ACTIVITY_OPEN_DURATION_SECONDS = 0.56; // 活动态开启（普通态 -> �
 const ACTIVITY_OPEN_CONTENT_DELAY_SECONDS = 0.1; // 活动态内容出现延迟（先扩展后显内容）
 const ACTIVITY_OPEN_CONTENT_DURATION_SECONDS = 0.26; // 活动态内容淡入时长
 const ACTIVITY_COLLAPSED_WIDTH = 240; // 活动态统一宽度（音乐/复习/待办/未来新增活动态）
+const COLLAPSED_MUSIC_COVER_WIDTH = 24;
+const COLLAPSED_MUSIC_COVER_HEIGHT = 27;
+const COLLAPSED_MUSIC_COVER_RADIUS = 6.4;
+const COLLAPSED_MUSIC_COVER_SMOOTHNESS = 1.92;
+const EXPANDED_MUSIC_COVER_WIDTH = 72;
+const EXPANDED_MUSIC_COVER_HEIGHT = 80;
+const EXPANDED_MUSIC_COVER_RADIUS = 16;
+const EXPANDED_MUSIC_COVER_SMOOTHNESS = 1.85;
+const DEBUG_MUSIC_PIPELINE = false;
+
+const musicDebugLog = (...args: any[]) => {
+    if (DEBUG_MUSIC_PIPELINE) {
+        console.log(...args);
+    }
+};
 
 // Path generation function for liquid ears
 const generateEarPath = (isLeft: boolean, tension: number, blendHeight: number) => {
@@ -339,6 +354,207 @@ const generateRightCapPath = (height: number, radius: number, smoothness: number
     return path;
 };
 
+// Full squircle path (4 rounded corners) for small cover/thumb visuals.
+const generateFullSquirclePath = (width: number, height: number, radius: number, smoothness: number = 2.8) => {
+    const r = Math.min(radius, width / 2, height / 2);
+    const steps = 24;
+
+    let path = `M ${r} 0 L ${width - r} 0`;
+
+    // Top-right
+    const cx1 = width - r;
+    const cy1 = r;
+    for (let i = 1; i <= steps; i++) {
+        const t = -Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx1 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy1 + Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L ${width} ${height - r}`;
+
+    // Bottom-right
+    const cx2 = width - r;
+    const cy2 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx2 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy2 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L ${r} ${height}`;
+
+    // Bottom-left
+    const cx3 = r;
+    const cy3 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx3 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy3 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L 0 ${r}`;
+
+    // Top-left
+    const cx4 = r;
+    const cy4 = r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx4 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy4 + Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` Z`;
+    return path;
+};
+
+// Puffy cover path: all four edges participate in the curve, so the sides feel slightly "inflated".
+const generatePuffyCoverPath = (width: number, height: number, radius: number, smoothness: number = 2) => {
+    const steps = 72;
+    const cx = width / 2;
+    const cy = height / 2;
+    const minSide = Math.min(width, height);
+    const normalizedRadius = Math.max(0.1, Math.min(0.34, radius / minSide));
+    const superellipseN = Math.max(
+        3.8,
+        Math.min(7.2, 3.9 + normalizedRadius * 8.5 + (2.4 - smoothness) * 2.2)
+    );
+    const exponent = 2 / superellipseN;
+
+    let path = '';
+    for (let i = 0; i <= steps; i++) {
+        const t = -Math.PI / 2 + (Math.PI * 2 * i) / steps;
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx + (width / 2) * Math.sign(cosT) * Math.pow(Math.abs(cosT), exponent);
+        const y = cy + (height / 2) * Math.sign(sinT) * Math.pow(Math.abs(sinT), exponent);
+        path += `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)} `;
+    }
+    path += 'Z';
+    return path;
+};
+
+const SquircleCoverThumb: React.FC<{
+    src?: string;
+    width?: number;
+    height?: number;
+    radius?: number;
+    smoothness?: number;
+    shapeVariant?: 'rounded' | 'puffy';
+    showGloss?: boolean;
+    showRim?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
+    backgroundFill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    placeholderIconClassName?: string;
+}> = ({
+    src,
+    width = 22,
+    height = 26,
+    radius = 8.6,
+    smoothness = 2.35,
+    shapeVariant = 'rounded',
+    showGloss = false,
+    showRim = false,
+    className,
+    style,
+    backgroundFill = 'rgba(255,255,255,0.1)',
+    stroke = 'transparent',
+    strokeWidth = 0.9,
+    placeholderIconClassName = 'material-symbols-outlined text-[13px] text-white/50'
+}) => {
+    const rawId = useId();
+    const clipId = useMemo(() => `cover-squircle-${rawId.replace(/:/g, '')}`, [rawId]);
+    const glossId = useMemo(() => `cover-gloss-${rawId.replace(/:/g, '')}`, [rawId]);
+    const shadeId = useMemo(() => `cover-shade-${rawId.replace(/:/g, '')}`, [rawId]);
+    const rimId = useMemo(() => `cover-rim-${rawId.replace(/:/g, '')}`, [rawId]);
+    const squirclePath = useMemo(
+        () => shapeVariant === 'puffy'
+            ? generatePuffyCoverPath(width, height, radius, smoothness)
+            : generateFullSquirclePath(width, height, radius, smoothness),
+        [width, height, radius, smoothness, shapeVariant]
+    );
+
+    return (
+        <div
+            className={`relative shrink-0 ${className || ''}`.trim()}
+            style={{ width, height, ...style }}
+        >
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
+                <defs>
+                    <clipPath id={clipId}>
+                        <path d={squirclePath} />
+                    </clipPath>
+                    <linearGradient id={glossId} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(255,255,255,0.34)" />
+                        <stop offset="22%" stopColor="rgba(255,255,255,0.14)" />
+                        <stop offset="48%" stopColor="rgba(255,255,255,0.03)" />
+                        <stop offset="70%" stopColor="rgba(255,255,255,0)" />
+                    </linearGradient>
+                    <linearGradient id={shadeId} x1="100%" y1="100%" x2="0%" y2="0%">
+                        <stop offset="0%" stopColor="rgba(0,0,0,0.22)" />
+                        <stop offset="28%" stopColor="rgba(0,0,0,0.1)" />
+                        <stop offset="58%" stopColor="rgba(0,0,0,0)" />
+                    </linearGradient>
+                    <linearGradient id={rimId} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(255,255,255,0.36)" />
+                        <stop offset="35%" stopColor="rgba(255,255,255,0.12)" />
+                        <stop offset="70%" stopColor="rgba(255,255,255,0.06)" />
+                        <stop offset="100%" stopColor="rgba(255,255,255,0.14)" />
+                    </linearGradient>
+                </defs>
+
+                <path d={squirclePath} fill={backgroundFill} />
+
+                {src ? (
+                    <image
+                        href={src}
+                        width={width}
+                        height={height}
+                        preserveAspectRatio="xMidYMid slice"
+                        clipPath={`url(#${clipId})`}
+                    />
+                ) : null}
+
+                {showGloss ? (
+                    <>
+                        <rect width={width} height={height} fill={`url(#${glossId})`} clipPath={`url(#${clipId})`} />
+                        <rect width={width} height={height} fill={`url(#${shadeId})`} clipPath={`url(#${clipId})`} />
+                    </>
+                ) : null}
+
+                <path
+                    d={squirclePath}
+                    fill="none"
+                    stroke={showGloss && showRim ? `url(#${rimId})` : stroke}
+                    strokeWidth={strokeWidth}
+                    vectorEffect="non-scaling-stroke"
+                />
+
+            </svg>
+
+            {!src ? (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className={placeholderIconClassName}>music_note</span>
+                </div>
+            ) : null}
+        </div>
+    );
+};
+
 const DynamicIslandWidget: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -430,8 +646,8 @@ const DynamicIslandWidget: React.FC = () => {
             ipcRenderer = (window as any).require('electron').ipcRenderer;
 
             const handleMusicUpdate = (_event: any, data: MusicData) => {
-                console.log('[DynamicIsland] 🎵 Received music data:', data);
-                console.log('[DynamicIsland] 📊 Data breakdown:', {
+                musicDebugLog('[DynamicIsland] 🎵 Received music data:', data);
+                musicDebugLog('[DynamicIsland] 📊 Data breakdown:', {
                     title: data.title,
                     position: data.position,
                     duration: data.duration,
@@ -449,7 +665,7 @@ const DynamicIslandWidget: React.FC = () => {
                     // 只有登录状态才允许首次接管音乐（从 app 模式切换到 music 模式）
                     // 如果已经在 music 模式，则始终允许数据更新（保持歌曲切换、播放状态、进度同步）
                     if (!isLoggedInRef.current && modeRef.current !== 'music') {
-                        console.log('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
+                        musicDebugLog('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
                         return;
                     }
 
@@ -546,7 +762,7 @@ const DynamicIslandWidget: React.FC = () => {
 
             // 歌曲切换 → 直接同步 (处理网易云进度记忆：切歌回来从上次位置继续)
             if (titleChanged) {
-                console.log('[DynamicIsland] 🎼 Title changed, syncing position to:', serverPos);
+                musicDebugLog('[DynamicIsland] 🎼 Title changed, syncing position to:', serverPos);
                 setLocalPosition(serverPos);
                 lastTitleRef.current = musicData.title;
                 initialSyncDoneRef.current = true;
@@ -562,7 +778,7 @@ const DynamicIslandWidget: React.FC = () => {
 
             // 首次加载 → 直接同步
             if (!initialSyncDoneRef.current) {
-                console.log('[DynamicIsland] 🆕 Initial sync, setting position to:', serverPos);
+                musicDebugLog('[DynamicIsland] 🆕 Initial sync, setting position to:', serverPos);
                 setLocalPosition(serverPos);
                 initialSyncDoneRef.current = true;
                 lastServerPosRef.current = serverPos;
@@ -583,7 +799,7 @@ const DynamicIslandWidget: React.FC = () => {
                 // 这处理了：拖动进度条、正常播放推进、进度记忆恢复
                 const drift = Math.abs(serverPos - localPosition);
                 if (drift > 2) {
-                    console.log('[DynamicIsland] ⏩ Server position changed, syncing:', serverPos, '(drift:', drift, ')');
+                    musicDebugLog('[DynamicIsland] ⏩ Server position changed, syncing:', serverPos, '(drift:', drift, ')');
                     setLocalPosition(serverPos);
                     playStartTimeRef.current = Date.now();
                     playStartPositionRef.current = serverPos;
@@ -592,7 +808,7 @@ const DynamicIslandWidget: React.FC = () => {
                 // 暂停状态 + 服务端位置未变 → 但如果跟本地差太多也同步 (处理暂停后拖动)
                 const drift = Math.abs(serverPos - localPosition);
                 if (drift > 1) {
-                    console.log('[DynamicIsland] ⏸️ Paused drift detected, syncing:', serverPos);
+                    musicDebugLog('[DynamicIsland] ⏸️ Paused drift detected, syncing:', serverPos);
                     setLocalPosition(serverPos);
                 }
             }
@@ -1636,24 +1852,22 @@ const DynamicIslandWidget: React.FC = () => {
                                 >
                                     <div className="flex items-center justify-between w-full h-full px-2">
                                         {/* Left: Album Cover */}
-                                        <div className="flex items-center pl-1">
-                                            <div className="w-7 h-7 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
-                                                {musicData.coverUrl ? (
-                                                    <img
-                                                        src={musicData.coverUrl}
-                                                        alt="Album"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-sm text-white/50">music_note</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <div className="flex items-center pl-[6px]">
+                                            <SquircleCoverThumb
+                                                src={musicData.coverUrl}
+                                                width={COLLAPSED_MUSIC_COVER_WIDTH}
+                                                height={COLLAPSED_MUSIC_COVER_HEIGHT}
+                                                radius={COLLAPSED_MUSIC_COVER_RADIUS}
+                                                smoothness={COLLAPSED_MUSIC_COVER_SMOOTHNESS}
+                                                shapeVariant="puffy"
+                                                showGloss
+                                                backgroundFill="rgba(255,255,255,0.1)"
+                                                placeholderIconClassName="material-symbols-outlined text-[14px] text-white/50"
+                                            />
                                         </div>
 
                                         {/* Right: Waveform */}
-                                        <div className="pr-1">
+                                        <div className="pr-[6px]">
                                             <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} count={4} />
                                         </div>
                                     </div>
@@ -1761,21 +1975,22 @@ const DynamicIslandWidget: React.FC = () => {
                                 <div className="flex flex-col gap-2">
                                     {/* Layer 1: Top Metadata Section */}
                                     <div className="flex gap-4">
-                                        {/* Album Art */}
-                                        {/* Album Art - Squircle-like smooth corners + Soft diffuse shadow */}
-                                        <div className="w-20 h-20 rounded-[18px] overflow-hidden bg-white/10 flex-shrink-0 shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-                                            {musicData.coverUrl ? (
-                                                <img
-                                                    src={musicData.coverUrl}
-                                                    alt="Album"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/20 to-white/5">
-                                                    <span className="material-symbols-outlined text-3xl text-white/50">music_note</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Album Art - Continuous curvature squircle with taller proportion */}
+                                        <SquircleCoverThumb
+                                            src={musicData.coverUrl}
+                                            width={EXPANDED_MUSIC_COVER_WIDTH}
+                                            height={EXPANDED_MUSIC_COVER_HEIGHT}
+                                            radius={EXPANDED_MUSIC_COVER_RADIUS}
+                                            smoothness={EXPANDED_MUSIC_COVER_SMOOTHNESS}
+                                            shapeVariant="puffy"
+                                            showGloss
+                                            className="flex-shrink-0"
+                                            style={{
+                                                filter: 'drop-shadow(0 10px 22px rgba(0,0,0,0.46)) drop-shadow(0 3px 10px rgba(0,0,0,0.2))'
+                                            }}
+                                            backgroundFill="rgba(255,255,255,0.12)"
+                                            placeholderIconClassName="material-symbols-outlined text-[30px] text-white/50"
+                                        />
 
                                         {/* Info + Waveform */}
                                         <div className="flex-1 flex flex-col justify-center min-w-0">
