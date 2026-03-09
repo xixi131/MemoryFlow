@@ -1,7 +1,7 @@
 {
   "name": "memoryflow",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.8",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
     "build": "vite build && electron-builder",
-    "release:win": "vite build && electron-builder --win --x64 --publish always"
+    "release:win": "vite build && electron-builder --win --x64"
   },
   "dependencies": {
     "@coooookies/windows-smtc-monitor": "^1.0.12",
@@ -52,6 +52,7 @@
   "build": {
     "appId": "com.yourname.memoryflow",
     "productName": "MemoryFlow",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "directories": {
       "output": "release_v2"
     },
@@ -78,9 +79,8 @@
     },
     "publish": [
       {
-        "provider": "github",
-        "owner": "xixi131",
-        "repo": "MemoryFlow.exe"
+        "provider": "generic",
+        "url": "https://update.memoryflow.tanxhub.com"
       }
     ]
   }

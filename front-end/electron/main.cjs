@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
-const { autoUpdater } = require('electron-updater');
+const { NsisUpdater } = require('electron-updater');
 
 let widgetWindow;
 let tray;
@@ -88,6 +88,23 @@ function saveUpdaterConfig(patch) {
     return nextUpdater;
 }
 
+function normalizeUpdateFeedUrl(value) {
+    return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function getUpdateFeedUrl() {
+    const updaterConfig = getUpdaterConfig();
+    return normalizeUpdateFeedUrl(
+        process.env.MEMORYFLOW_UPDATE_URL
+        || updaterConfig.feedUrl
+        || 'https://update.memoryflow.tanxhub.com'
+    );
+}
+
+function getReleaseNotesUrl() {
+    return `${getUpdateFeedUrl()}/release-notes.json`;
+}
+
 // 初始化自启动设置
 function initAutoLaunch() {
     if (!app.isPackaged) {
@@ -111,11 +128,39 @@ const UPDATE_STARTUP_DELAY_MS = 5000;
 const UPDATE_THROTTLE_MS = 6 * 60 * 60 * 1000;
 const UPDATE_REMIND_LATER_MS = 6 * 60 * 60 * 1000;
 
-autoUpdater.autoDownload = false;
-autoUpdater.disableDifferentialDownload = true;
-
 let updatePromptVisible = false;
 let pendingManualUpdateCheck = false;
+let updateProgressWindow = null;
+let updateProgressWindowReady = false;
+let updateDownloadInProgress = false;
+let updateErrorDialogVisible = false;
+let autoUpdater = null;
+let currentUpdateProgressState = {
+    version: '',
+    percent: 0,
+    transferredText: '0 MB',
+    totalText: '0 MB',
+    speedText: '0 MB/s',
+    statusText: '准备下载更新...'
+};
+
+function getAutoUpdater() {
+    const feedUrl = getUpdateFeedUrl();
+    if (!feedUrl) {
+        return null;
+    }
+
+    if (!autoUpdater || autoUpdater.getFeedURL() !== feedUrl) {
+        autoUpdater = new NsisUpdater({
+            provider: 'generic',
+            url: feedUrl
+        });
+        autoUpdater.autoDownload = false;
+        autoUpdater.disableDifferentialDownload = true;
+    }
+
+    return autoUpdater;
+}
 
 function showMessageBox(options) {
     const win = widgetWindow && !widgetWindow.isDestroyed() ? widgetWindow : null;
@@ -125,20 +170,363 @@ function showMessageBox(options) {
     return dialog.showMessageBox(options);
 }
 
+function decodeHtmlEntities(value) {
+    return String(value ?? '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'");
+}
+
+function stripReleaseHtml(input) {
+    if (!input) return '';
+    const normalized = decodeHtmlEntities(String(input))
+        .replace(/\r\n/g, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li[^>]*>/gi, '• ')
+        .replace(/<\/?(p|div|ul|ol)[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n');
+    return normalized.trim();
+}
+
+function formatBytes(bytes) {
+    const size = Number(bytes || 0);
+    if (!Number.isFinite(size) || size <= 0) return '0 MB';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = size;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+    }
+    const digits = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+    return `${value.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function getUpdateProgressWindowHtml() {
+    return `
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>MemoryFlow 更新</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --card: rgba(255, 255, 255, 0.92);
+      --text: #111827;
+      --muted: #6b7280;
+      --track: #e5e7eb;
+      --fill: linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%);
+      --border: rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #edf4ff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+    .wrap {
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 22px 18px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(10px);
+    }
+    .badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+    }
+    .title {
+      margin: 14px 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      min-height: 22px;
+    }
+    .progress-meta {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .progress-bar {
+      margin-top: 10px;
+      width: 100%;
+      height: 10px;
+      background: var(--track);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--fill);
+      transition: width 160ms ease-out;
+    }
+    .detail {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="badge">↓</div>
+      <div class="title" id="title">正在下载更新</div>
+      <p class="subtitle" id="subtitle">准备下载更新...</p>
+      <div class="progress-meta">
+        <span id="status">准备下载更新...</span>
+        <span id="percent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="fill"></div>
+      </div>
+      <div class="detail" id="detail">已下载 0 MB / 0 MB</div>
+    </div>
+  </div>
+  <script>
+    window.renderUpdateProgress = function renderUpdateProgress(state) {
+      const versionText = state.version ? (' v' + state.version) : '';
+      document.getElementById('title').textContent = '正在下载更新' + versionText;
+      document.getElementById('subtitle').textContent = '下载完成后将提示你重启安装。';
+      document.getElementById('status').textContent = state.statusText || '正在下载更新...';
+      document.getElementById('percent').textContent = (typeof state.percent === 'number' ? Math.round(state.percent) : 0) + '%';
+      document.getElementById('fill').style.width = Math.max(0, Math.min(100, Number(state.percent || 0))) + '%';
+      const speedText = state.speedText ? (' · ' + state.speedText) : '';
+      document.getElementById('detail').textContent = '已下载 ' + (state.transferredText || '0 MB') + ' / ' + (state.totalText || '0 MB') + speedText;
+    };
+  </script>
+</body>
+</html>`;
+}
+
+function createUpdateProgressWindow() {
+    if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
+        return updateProgressWindow;
+    }
+
+    const parent = widgetWindow && !widgetWindow.isDestroyed() ? widgetWindow : null;
+    updateProgressWindowReady = false;
+    updateProgressWindow = new BrowserWindow({
+        width: 430,
+        height: 250,
+        show: false,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        autoHideMenuBar: true,
+        title: 'MemoryFlow 更新',
+        parent: parent || undefined,
+        modal: false,
+        alwaysOnTop: true,
+        backgroundColor: '#f6f8fb',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            devTools: false
+        }
+    });
+
+    updateProgressWindow.on('closed', () => {
+        updateProgressWindow = null;
+        updateProgressWindowReady = false;
+    });
+
+    updateProgressWindow.webContents.on('did-finish-load', () => {
+        updateProgressWindowReady = true;
+        pushUpdateProgressState(currentUpdateProgressState);
+    });
+
+    const html = getUpdateProgressWindowHtml();
+    updateProgressWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`);
+    return updateProgressWindow;
+}
+
+function showUpdateProgressWindow() {
+    const win = createUpdateProgressWindow();
+    if (win && !win.isDestroyed()) {
+        if (!win.isVisible()) {
+            win.show();
+        }
+        win.focus();
+    }
+}
+
+function closeUpdateProgressWindow() {
+    if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
+        updateProgressWindow.close();
+    }
+    updateProgressWindow = null;
+    updateProgressWindowReady = false;
+}
+
+function pushUpdateProgressState(nextState) {
+    currentUpdateProgressState = { ...currentUpdateProgressState, ...nextState };
+    if (!updateProgressWindow || updateProgressWindow.isDestroyed() || !updateProgressWindowReady) {
+        return;
+    }
+    const payload = JSON.stringify(currentUpdateProgressState);
+    updateProgressWindow.webContents.executeJavaScript(
+        `window.renderUpdateProgress && window.renderUpdateProgress(${payload});`,
+        true
+    ).catch(() => { });
+}
+
+async function showUpdaterErrorDialog({ message, detail }) {
+    if (updateErrorDialogVisible) {
+        return;
+    }
+
+    updateErrorDialogVisible = true;
+    try {
+        await showMessageBox({
+            type: 'error',
+            buttons: ['确定'],
+            defaultId: 0,
+            noLink: true,
+            message,
+            detail
+        });
+    } finally {
+        updateErrorDialogVisible = false;
+    }
+}
+
 function formatReleaseNotes(releaseNotes) {
     if (!releaseNotes) return '';
-    if (typeof releaseNotes === 'string') return releaseNotes;
+    if (typeof releaseNotes === 'string') return stripReleaseHtml(releaseNotes);
     if (Array.isArray(releaseNotes)) {
         return releaseNotes
             .map((n) => {
                 const v = (n && typeof n === 'object') ? n.version : '';
-                const note = (n && typeof n === 'object') ? (n.note || '') : '';
+                const note = (n && typeof n === 'object') ? stripReleaseHtml(n.note || '') : '';
                 return [v ? `v${v}` : '', note].filter(Boolean).join('\n');
             })
             .filter(Boolean)
             .join('\n\n');
     }
     return '';
+}
+
+function normalizeReleaseNotesEntry(entry, version) {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const rawVersion = entry.version != null ? String(entry.version) : version;
+    if (version && rawVersion && rawVersion !== version) {
+        return null;
+    }
+
+    const rawTitle = entry.title || entry.releaseName || entry.name || '';
+    const rawNotes = entry.notes || entry.note || entry.description || entry.detail || '';
+    const notes = Array.isArray(rawNotes)
+        ? rawNotes.map((item) => stripReleaseHtml(item)).filter(Boolean).join('\n')
+        : formatReleaseNotes(rawNotes);
+
+    return {
+        version: rawVersion || version || '',
+        releaseName: rawTitle ? String(rawTitle) : '',
+        releaseNotes: notes
+    };
+}
+
+function normalizeReleaseNotesPayload(payload, version) {
+    if (!payload) {
+        return null;
+    }
+
+    if (Array.isArray(payload)) {
+        for (const entry of payload) {
+            const normalized = normalizeReleaseNotesEntry(entry, version);
+            if (normalized) return normalized;
+        }
+        return null;
+    }
+
+    if (typeof payload !== 'object') {
+        return null;
+    }
+
+    if (payload.versions && typeof payload.versions === 'object') {
+        const versionEntry = payload.versions[version];
+        const normalized = normalizeReleaseNotesEntry(versionEntry, version);
+        if (normalized) return normalized;
+    }
+
+    if (payload.releases && typeof payload.releases === 'object') {
+        const versionEntry = payload.releases[version];
+        const normalized = normalizeReleaseNotesEntry(versionEntry, version);
+        if (normalized) return normalized;
+    }
+
+    return normalizeReleaseNotesEntry(payload, version);
+}
+
+async function fetchSelfHostedReleaseNotes(version) {
+    const requestUrl = getReleaseNotesUrl();
+    if (!requestUrl || typeof fetch !== 'function') {
+        return null;
+    }
+
+    try {
+        const response = await fetch(requestUrl, {
+            headers: {
+                'Cache-Control': 'no-cache'
+            }
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = await response.json();
+        return normalizeReleaseNotesPayload(payload, version);
+    } catch (e) {
+        return null;
+    }
 }
 
 async function promptUpdateAvailable(updateInfo, manual) {
@@ -151,9 +539,11 @@ async function promptUpdateAvailable(updateInfo, manual) {
 
     updatePromptVisible = true;
     try {
-        const notes = formatReleaseNotes(updateInfo.releaseNotes);
+        const remoteNotes = await fetchSelfHostedReleaseNotes(updateInfo.version);
+        const releaseName = remoteNotes?.releaseName || updateInfo.releaseName || '';
+        const notes = remoteNotes?.releaseNotes || formatReleaseNotes(updateInfo.releaseNotes);
         const detailParts = [];
-        if (updateInfo.releaseName) detailParts.push(String(updateInfo.releaseName));
+        if (releaseName) detailParts.push(String(releaseName));
         if (notes) detailParts.push(notes);
 
         const detail = detailParts.join('\n\n').slice(0, 3500);
@@ -179,13 +569,29 @@ async function promptUpdateAvailable(updateInfo, manual) {
 
         if (response === 2) {
             try {
-                await autoUpdater.downloadUpdate();
+                const updater = getAutoUpdater();
+                if (!updater) {
+                    await showUpdaterErrorDialog({
+                        message: '未配置更新源',
+                        detail: '请先配置 updater.feedUrl 或环境变量 MEMORYFLOW_UPDATE_URL。'
+                    });
+                    return;
+                }
+                updateDownloadInProgress = true;
+                pushUpdateProgressState({
+                    version: updateInfo.version,
+                    percent: 0,
+                    transferredText: '0 MB',
+                    totalText: '0 MB',
+                    speedText: '0 MB/s',
+                    statusText: '开始下载更新...'
+                });
+                showUpdateProgressWindow();
+                await updater.downloadUpdate();
             } catch (e) {
-                await showMessageBox({
-                    type: 'error',
-                    buttons: ['确定'],
-                    defaultId: 0,
-                    noLink: true,
+                updateDownloadInProgress = false;
+                closeUpdateProgressWindow();
+                await showUpdaterErrorDialog({
                     message: '下载更新失败',
                     detail: e?.message ? String(e.message) : '请稍后重试。'
                 });
@@ -197,6 +603,7 @@ async function promptUpdateAvailable(updateInfo, manual) {
 }
 
 async function promptUpdateDownloaded() {
+    closeUpdateProgressWindow();
     const { response } = await showMessageBox({
         type: 'info',
         buttons: ['稍后', '重启安装'],
@@ -208,7 +615,10 @@ async function promptUpdateDownloaded() {
     });
 
     if (response === 1) {
-        autoUpdater.quitAndInstall();
+        const updater = getAutoUpdater();
+        if (updater) {
+            updater.quitAndInstall();
+        }
     }
 }
 
@@ -227,6 +637,21 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
         return;
     }
 
+    const updater = getAutoUpdater();
+    if (!updater) {
+        if (manual) {
+            await showMessageBox({
+                type: 'warning',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '未配置更新源',
+                detail: '请先配置 updater.feedUrl 或环境变量 MEMORYFLOW_UPDATE_URL。'
+            });
+        }
+        return;
+    }
+
     const updaterConfig = getUpdaterConfig();
     if (!manual) {
         if (updaterConfig.remindLaterUntil && Date.now() < updaterConfig.remindLaterUntil) return;
@@ -236,7 +661,7 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
     saveUpdaterConfig({ lastCheckTime: Date.now() });
     pendingManualUpdateCheck = !!manual;
     try {
-        await autoUpdater.checkForUpdates();
+        await updater.checkForUpdates();
     } catch (e) {
         pendingManualUpdateCheck = false;
         if (manual) {
@@ -253,18 +678,24 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
 }
 
 function initUpdater() {
-    autoUpdater.removeAllListeners('update-available');
-    autoUpdater.removeAllListeners('update-not-available');
-    autoUpdater.removeAllListeners('update-downloaded');
-    autoUpdater.removeAllListeners('error');
+    const updater = getAutoUpdater();
+    if (!updater) {
+        return;
+    }
 
-    autoUpdater.on('update-available', async (info) => {
+    updater.removeAllListeners('update-available');
+    updater.removeAllListeners('update-not-available');
+    updater.removeAllListeners('update-downloaded');
+    updater.removeAllListeners('download-progress');
+    updater.removeAllListeners('error');
+
+    updater.on('update-available', async (info) => {
         const manual = pendingManualUpdateCheck;
         pendingManualUpdateCheck = false;
         await promptUpdateAvailable(info, manual);
     });
 
-    autoUpdater.on('update-not-available', async () => {
+    updater.on('update-not-available', async () => {
         if (pendingManualUpdateCheck) {
             pendingManualUpdateCheck = false;
             await showMessageBox({
@@ -278,8 +709,9 @@ function initUpdater() {
         }
     });
 
-    autoUpdater.on('update-downloaded', async () => {
+    updater.on('update-downloaded', async () => {
         try {
+            updateDownloadInProgress = false;
             if (widgetWindow && !widgetWindow.isDestroyed()) {
                 widgetWindow.setProgressBar(-1);
             }
@@ -290,35 +722,50 @@ function initUpdater() {
         await promptUpdateDownloaded();
     });
 
-    autoUpdater.on('download-progress', (progress) => {
+    updater.on('download-progress', (progress) => {
         try {
             const percent = typeof progress?.percent === 'number' ? progress.percent : 0;
             const normalized = Math.max(0, Math.min(100, percent));
+            updateDownloadInProgress = true;
             if (widgetWindow && !widgetWindow.isDestroyed()) {
                 widgetWindow.setProgressBar(normalized / 100);
             }
             if (tray) {
                 tray.setToolTip(`MemoryFlow Widget（正在下载更新 ${normalized.toFixed(0)}%）`);
             }
+            pushUpdateProgressState({
+                percent: normalized,
+                transferredText: formatBytes(progress?.transferred),
+                totalText: formatBytes(progress?.total),
+                speedText: formatBytes(progress?.bytesPerSecond) + '/s',
+                statusText: `正在下载更新 ${normalized.toFixed(0)}%`
+            });
         } catch (e) { }
     });
 
-    autoUpdater.on('error', async (err) => {
+    updater.on('error', async (err) => {
+        const hadDownloadInProgress = updateDownloadInProgress;
+        const shouldShowError = pendingManualUpdateCheck || updatePromptVisible || hadDownloadInProgress;
         try {
+            updateDownloadInProgress = false;
             if (widgetWindow && !widgetWindow.isDestroyed()) {
                 widgetWindow.setProgressBar(-1);
             }
             if (tray) {
                 tray.setToolTip('MemoryFlow Widget');
             }
+            if (hadDownloadInProgress) {
+                closeUpdateProgressWindow();
+            }
         } catch (e) { }
         if (pendingManualUpdateCheck) {
             pendingManualUpdateCheck = false;
-            await showMessageBox({
-                type: 'error',
-                buttons: ['确定'],
-                defaultId: 0,
-                noLink: true,
+            await showUpdaterErrorDialog({
+                message: '更新发生错误',
+                detail: err?.message ? String(err.message) : '请稍后重试。'
+            });
+        } else if (shouldShowError) {
+            await showUpdaterErrorDialog({
                 message: '更新发生错误',
                 detail: err?.message ? String(err.message) : '请稍后重试。'
             });

@@ -558,18 +558,21 @@ const SquircleCoverThumb: React.FC<{
 const DynamicIslandWidget: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [forceCompactMode, setForceCompactMode] = useState(false);
+    const [forceCompactMode, setForceCompactMode] = useState(true);
     const [isReminderActive, setIsReminderActive] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [greetingText, setGreetingText] = useState<string | null>(null);
     const [isGreetingActive, setIsGreetingActive] = useState(false);
     const islandHitRef = useRef<HTMLDivElement | null>(null);
-    const forceCompactModeRef = useRef<boolean>(false);
+    const forceCompactModeRef = useRef<boolean>(true);
     const isExpandedRef = useRef<boolean>(false);
     const prevIsExpandedRef = useRef<boolean>(false);
     const isModeSwitchAnimatingRef = useRef<boolean>(false);
     const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const reminderCollapseTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const reminderAutoOpenKeyRef = useRef<string | null>(null);
+    const reminderDueRef = useRef<boolean>(false);
+    const reminderCheckInitializedRef = useRef<boolean>(false);
     const modeSwitchLongPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const modeSwitchCompactTimerRef = useRef<NodeJS.Timeout | null>(null);
     const modeSwitchExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1313,6 +1316,11 @@ const DynamicIslandWidget: React.FC = () => {
                         localStorage.setItem('tokenExpiresAt', String(Date.now() + auth.expiresIn * 1000));
                     }
                 }
+                if (modeRef.current === 'app') {
+                    forceCompactModeRef.current = true;
+                    setIsForceCompactTransitioning(false);
+                    setForceCompactMode(true);
+                }
                 setIsLoggedIn(true);
                 fetchData();
                 fetchUserName();
@@ -1401,27 +1409,55 @@ const DynamicIslandWidget: React.FC = () => {
         };
     }, [collapseExpanded]);
 
-    // Time check for reminder
+    // Time check for reminder:
+    // 1. 保留每日提醒时间概念
+    // 2. 到点时如果用户还停留在普通态，则自动展开一次活动态
+    // 3. App 模式的手动活动态开关不再受时间限制
     useEffect(() => {
         const checkTime = () => {
-            if (!data.reminderTime) return;
+            if (!data.reminderTime) {
+                reminderDueRef.current = false;
+                setIsReminderActive(false);
+                return;
+            }
+
+            const [hours, minutes] = data.reminderTime.split(':').map(Number);
+            if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+                reminderDueRef.current = false;
+                setIsReminderActive(false);
+                return;
+            }
 
             const now = new Date();
-            const [hours, minutes] = data.reminderTime.split(':').map(Number);
-            const reminderDate = new Date();
+            const reminderDate = new Date(now);
             reminderDate.setHours(hours, minutes, 0, 0);
 
-            if (now >= reminderDate) {
-                setIsReminderActive(true);
-            } else {
-                setIsReminderActive(false);
+            const isDueToday = now >= reminderDate;
+            const reminderKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${data.reminderTime}`;
+            const hasInitializedReminderCheck = reminderCheckInitializedRef.current;
+            const justReachedReminderTime = hasInitializedReminderCheck && isDueToday && !reminderDueRef.current;
+
+            setIsReminderActive(isDueToday);
+
+            if (
+                justReachedReminderTime
+                && reminderAutoOpenKeyRef.current !== reminderKey
+                && modeRef.current === 'app'
+                && forceCompactModeRef.current
+                && !isExpandedRef.current
+            ) {
+                reminderAutoOpenKeyRef.current = reminderKey;
+                setForceCompactModeWithTransition(false);
             }
+
+            reminderDueRef.current = isDueToday;
+            reminderCheckInitializedRef.current = true;
         };
 
         checkTime();
         const interval = setInterval(checkTime, 10000);
         return () => clearInterval(interval);
-    }, [data.reminderTime]);
+    }, [data.reminderTime, setForceCompactModeWithTransition]);
 
     // Dynamic dimensions
     const expandedWidth = 460;
@@ -1430,7 +1466,7 @@ const DynamicIslandWidget: React.FC = () => {
     const hasPendingTodos = todoPreview.pending > 0;
     // 活动态来源（不受 forceCompactMode 影响）：用于统一手势开关判定
     const hasMusicActivitySource = mode === 'music' && !!musicData;
-    const hasAppActivitySource = mode === 'app' && isReminderActive;
+    const hasAppActivitySource = mode === 'app' && isLoggedIn;
     const hasAnyActivitySource = hasMusicActivitySource || hasAppActivitySource;
     // 当前是否展示活动态（受 forceCompactMode 影响）
     const showMusicActivity = hasMusicActivitySource && !forceCompactMode;
