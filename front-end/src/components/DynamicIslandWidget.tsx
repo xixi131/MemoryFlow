@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import request from '../utils/request';
 
 // 过渡弹簧参数（控制整体动画速度/回弹感）
@@ -575,6 +575,11 @@ const DynamicIslandWidget: React.FC = () => {
     const modeSwitchExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
     const modeSwitchUnlockTimerRef = useRef<NodeJS.Timeout | null>(null);
     const forceCompactTransitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadGestureResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadGestureCooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadDeltaXRef = useRef(0);
+    const trackpadDeltaYRef = useRef(0);
+    const trackpadGestureLockedRef = useRef(false);
 
     // Music state
     const [mode, setMode] = useState<'app' | 'music'>('app');
@@ -613,10 +618,22 @@ const DynamicIslandWidget: React.FC = () => {
         } catch (e) { }
     }, []);
 
-    const collapseExpanded = useCallback(() => {
+    const disableClickThrough = useCallback(() => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            ipcRenderer.send('set-ignore-mouse-events', false);
+        } catch (e) { }
+    }, []);
+
+    const collapseExpanded = useCallback((options?: { preserveHoverFocus?: boolean }) => {
         setIsExpanded(false);
+        if (options?.preserveHoverFocus) {
+            setIsHovered(true);
+            disableClickThrough();
+            return;
+        }
         enableClickThrough();
-    }, [enableClickThrough]);
+    }, [disableClickThrough, enableClickThrough]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
@@ -638,7 +655,6 @@ const DynamicIslandWidget: React.FC = () => {
     const [isModeSwitchAnimating, setIsModeSwitchAnimating] = useState(false);
     const [isForceCompactTransitioning, setIsForceCompactTransitioning] = useState(false);
     const [activityOpenAnimToken, setActivityOpenAnimToken] = useState(0);
-
     // Handle music IPC events
     useEffect(() => {
         let ipcRenderer: any = null;
@@ -673,6 +689,15 @@ const DynamicIslandWidget: React.FC = () => {
                     // Position sync is handled by the dedicated sync useEffect
                     // Do NOT set localPosition here — for apps like NetEase Cloud Music
                     // where data.position is always 0, this would reset the local timer every 500ms
+                    if (modeRef.current !== 'music') {
+                        forceCompactModeRef.current = false;
+                        setForceCompactMode(false);
+                        setIsForceCompactTransitioning(false);
+                        if (forceCompactTransitionTimerRef.current) {
+                            clearTimeout(forceCompactTransitionTimerRef.current);
+                            forceCompactTransitionTimerRef.current = null;
+                        }
+                    }
                     setMode('music');
 
                     // If paused, set a timeout to switch back to app mode after 30 seconds
@@ -900,6 +925,10 @@ const DynamicIslandWidget: React.FC = () => {
     const MODE_SWITCH_LONG_PRESS_MS = 420;
     const MODE_SWITCH_COMPACT_PHASE_MS = 320;
     const MODE_SWITCH_REOPEN_DELAY_MS = 70;
+    const TRACKPAD_VERTICAL_THRESHOLD = 70;
+    const TRACKPAD_HORIZONTAL_THRESHOLD = 70;
+    const TRACKPAD_GESTURE_RESET_MS = 160;
+    const TRACKPAD_GESTURE_COOLDOWN_MS = 320;
 
     const clearModeSwitchLongPressTimer = useCallback(() => {
         if (modeSwitchLongPressTimerRef.current) {
@@ -928,6 +957,26 @@ const DynamicIslandWidget: React.FC = () => {
             clearTimeout(forceCompactTransitionTimerRef.current);
             forceCompactTransitionTimerRef.current = null;
         }
+    }, []);
+
+    const clearTrackpadGestureState = useCallback(() => {
+        trackpadDeltaXRef.current = 0;
+        trackpadDeltaYRef.current = 0;
+        if (trackpadGestureResetTimerRef.current) {
+            clearTimeout(trackpadGestureResetTimerRef.current);
+            trackpadGestureResetTimerRef.current = null;
+        }
+    }, []);
+
+    const lockTrackpadGesture = useCallback(() => {
+        trackpadGestureLockedRef.current = true;
+        if (trackpadGestureCooldownTimerRef.current) {
+            clearTimeout(trackpadGestureCooldownTimerRef.current);
+        }
+        trackpadGestureCooldownTimerRef.current = setTimeout(() => {
+            trackpadGestureLockedRef.current = false;
+            trackpadGestureCooldownTimerRef.current = null;
+        }, TRACKPAD_GESTURE_COOLDOWN_MS);
     }, []);
 
     const setForceCompactModeWithTransition = useCallback((nextCompact: boolean) => {
@@ -1418,6 +1467,85 @@ const DynamicIslandWidget: React.FC = () => {
 
     const shouldShowShadow = isExpanded || isHovered;
 
+    const handleTrackpadWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+        if (!isHovered && !isExpandedRef.current) return;
+        if (trackpadGestureLockedRef.current) return;
+
+        trackpadDeltaXRef.current += e.deltaX;
+        trackpadDeltaYRef.current += e.deltaY;
+
+        if (trackpadGestureResetTimerRef.current) {
+            clearTimeout(trackpadGestureResetTimerRef.current);
+        }
+        trackpadGestureResetTimerRef.current = setTimeout(() => {
+            clearTrackpadGestureState();
+        }, TRACKPAD_GESTURE_RESET_MS);
+
+        const absX = Math.abs(trackpadDeltaXRef.current);
+        const absY = Math.abs(trackpadDeltaYRef.current);
+
+        if (absX >= absY && absX >= TRACKPAD_HORIZONTAL_THRESHOLD) {
+            if (modeRef.current === 'music' && musicData) {
+                e.preventDefault();
+                sendMediaControl(trackpadDeltaXRef.current > 0 ? 'next' : 'prev');
+                clearTrackpadGestureState();
+                lockTrackpadGesture();
+            }
+            return;
+        }
+
+        if (absY > absX && absY >= TRACKPAD_VERTICAL_THRESHOLD) {
+            // Windows precision touchpad on this widget reports vertical wheel delta
+            // opposite to the intended UX mapping here, so we align with observed behavior:
+            // two-finger swipe up => close/collapse, two-finger swipe down => open/expand.
+            const swipingUp = trackpadDeltaYRef.current > 0;
+            const swipingDown = trackpadDeltaYRef.current < 0;
+
+                if (swipingUp) {
+                    if (isExpandedRef.current) {
+                        e.preventDefault();
+                        collapseExpanded({ preserveHoverFocus: true });
+                        clearTrackpadGestureState();
+                        lockTrackpadGesture();
+                        return;
+                    }
+                if (hasAnyActivitySource && !forceCompactModeRef.current) {
+                    e.preventDefault();
+                    setForceCompactModeWithTransition(true);
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                    return;
+                }
+            }
+
+            if (swipingDown) {
+                if (!isExpandedRef.current && hasAnyActivitySource && forceCompactModeRef.current) {
+                    e.preventDefault();
+                    setForceCompactModeWithTransition(false);
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                    return;
+                }
+                if (!isExpandedRef.current && showAnyActivity) {
+                    e.preventDefault();
+                    toggleExpand();
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                }
+            }
+        }
+    }, [
+        isHovered,
+        musicData,
+        sendMediaControl,
+        clearTrackpadGestureState,
+        lockTrackpadGesture,
+        collapseExpanded,
+        hasAnyActivitySource,
+        showAnyActivity,
+        setForceCompactModeWithTransition
+    ]);
+
     // Base width for animation (standard collapsed state)
     const baseWidth = isLoggedIn ? 160 : 180;
     const justCollapsedFromExpanded = !isExpanded && prevIsExpandedRef.current && showAnyActivity;
@@ -1492,8 +1620,14 @@ const DynamicIslandWidget: React.FC = () => {
             clearModeSwitchLongPressTimer();
             clearModeSwitchSequenceTimers();
             clearForceCompactTransitionTimer();
+            clearTrackpadGestureState();
+            if (trackpadGestureCooldownTimerRef.current) {
+                clearTimeout(trackpadGestureCooldownTimerRef.current);
+                trackpadGestureCooldownTimerRef.current = null;
+            }
+            trackpadGestureLockedRef.current = false;
         };
-    }, [clearModeSwitchLongPressTimer, clearModeSwitchSequenceTimers, clearForceCompactTransitionTimer]);
+    }, [clearModeSwitchLongPressTimer, clearModeSwitchSequenceTimers, clearForceCompactTransitionTimer, clearTrackpadGestureState]);
 
     // 固定窗口大小以避免动画时的闪烁问题 (Canvas Strategy)
     // 窗口始终保持最大尺寸，通过忽略鼠标事件(setIgnoreMouseEvents)来实现点击穿透
@@ -1705,6 +1839,7 @@ const DynamicIslandWidget: React.FC = () => {
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerCancel}
+                    onWheel={handleTrackpadWheel}
                     className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
                     variants={{
                         collapsed: {
@@ -1733,6 +1868,7 @@ const DynamicIslandWidget: React.FC = () => {
                     }}
                     onMouseLeave={() => {
                         setIsHovered(false);
+                        clearTrackpadGestureState();
                         if (activePointerIdRef.current !== null || isGestureTrackingRef.current) {
                             return;
                         }
