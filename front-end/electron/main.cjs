@@ -132,6 +132,8 @@ let updatePromptVisible = false;
 let pendingManualUpdateCheck = false;
 let updateProgressWindow = null;
 let updateProgressWindowReady = false;
+let updateCheckingWindow = null;
+let updateCheckingTimeout = null;
 let updateDownloadInProgress = false;
 let updateErrorDialogVisible = false;
 let autoUpdater = null;
@@ -143,6 +145,29 @@ let currentUpdateProgressState = {
     speedText: '0 MB/s',
     statusText: '准备下载更新...'
 };
+
+function getUpdateLogPath() {
+    try {
+        return path.join(app.getPath('userData'), 'update-log.txt');
+    } catch (e) {
+        return null;
+    }
+}
+
+function appendUpdateLog(event, extra = {}) {
+    const logPath = getUpdateLogPath();
+    if (!logPath) return;
+    const payload = {
+        time: new Date().toISOString(),
+        event,
+        ...extra
+    };
+    try {
+        fs.appendFileSync(logPath, `${JSON.stringify(payload)}\n`);
+    } catch (e) {
+        // ignore logging failures
+    }
+}
 
 function getAutoUpdater() {
     const feedUrl = getUpdateFeedUrl();
@@ -341,6 +366,92 @@ function getUpdateProgressWindowHtml() {
 </html>`;
 }
 
+function getUpdateCheckingWindowHtml() {
+    return `
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>MemoryFlow 更新</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-1: #0f1b2d;
+      --bg-2: #1b2c4a;
+      --accent-blue: rgba(96, 165, 250, 0.35);
+      --accent-pink: rgba(244, 114, 182, 0.28);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(226, 232, 240, 0.68);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 20%, var(--accent-blue), transparent 45%),
+        radial-gradient(circle at 85% 10%, var(--accent-pink), transparent 50%),
+        linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+      color: var(--text);
+      position: relative;
+    }
+    .wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+    .content {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .orb {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(148, 163, 184, 0.35);
+      border-top-color: rgba(96, 165, 250, 0.9);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+    .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="content">
+      <div class="orb"></div>
+      <div>
+        <div class="title">正在检查更新…</div>
+        <div class="subtitle">正在连接更新服务器</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 function createUpdateProgressWindow() {
     if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
         return updateProgressWindow;
@@ -384,8 +495,54 @@ function createUpdateProgressWindow() {
     return updateProgressWindow;
 }
 
+function createUpdateCheckingWindow() {
+    if (updateCheckingWindow && !updateCheckingWindow.isDestroyed()) {
+        return updateCheckingWindow;
+    }
+
+    const parent = widgetWindow && !widgetWindow.isDestroyed() ? widgetWindow : null;
+    updateCheckingWindow = new BrowserWindow({
+        width: 260,
+        height: 120,
+        show: false,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        autoHideMenuBar: true,
+        title: 'MemoryFlow 更新',
+        parent: parent || undefined,
+        modal: false,
+        alwaysOnTop: true,
+        backgroundColor: '#f8fafc',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            devTools: false
+        }
+    });
+
+    updateCheckingWindow.on('closed', () => {
+        updateCheckingWindow = null;
+    });
+
+    const html = getUpdateCheckingWindowHtml();
+    updateCheckingWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`);
+    return updateCheckingWindow;
+}
+
 function showUpdateProgressWindow() {
     const win = createUpdateProgressWindow();
+    if (win && !win.isDestroyed()) {
+        if (!win.isVisible()) {
+            win.show();
+        }
+        win.focus();
+    }
+}
+
+function showUpdateCheckingWindow() {
+    const win = createUpdateCheckingWindow();
     if (win && !win.isDestroyed()) {
         if (!win.isVisible()) {
             win.show();
@@ -400,6 +557,20 @@ function closeUpdateProgressWindow() {
     }
     updateProgressWindow = null;
     updateProgressWindowReady = false;
+}
+
+function closeUpdateCheckingWindow() {
+    if (updateCheckingWindow && !updateCheckingWindow.isDestroyed()) {
+        updateCheckingWindow.close();
+    }
+    updateCheckingWindow = null;
+}
+
+function clearUpdateCheckingTimeout() {
+    if (updateCheckingTimeout) {
+        clearTimeout(updateCheckingTimeout);
+        updateCheckingTimeout = null;
+    }
 }
 
 function pushUpdateProgressState(nextState) {
@@ -511,11 +682,16 @@ async function fetchSelfHostedReleaseNotes(version) {
         return null;
     }
 
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
     try {
         const response = await fetch(requestUrl, {
             headers: {
                 'Cache-Control': 'no-cache'
-            }
+            },
+            cache: 'no-store',
+            signal: controller?.signal
         });
 
         if (!response.ok) {
@@ -525,7 +701,41 @@ async function fetchSelfHostedReleaseNotes(version) {
         const payload = await response.json();
         return normalizeReleaseNotesPayload(payload, version);
     } catch (e) {
+        console.warn('[Updater] Failed to fetch self-hosted release notes:', e?.message || e);
         return null;
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+}
+
+async function preflightUpdateFeed() {
+    const feedUrl = getUpdateFeedUrl();
+    if (!feedUrl || typeof fetch !== 'function') {
+        return { ok: false, message: 'no-feed' };
+    }
+
+    const latestUrl = `${feedUrl}/latest.yml`;
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+
+    try {
+        const response = await fetch(latestUrl, {
+            headers: { 'Cache-Control': 'no-cache' },
+            cache: 'no-store',
+            signal: controller?.signal
+        });
+        appendUpdateLog('preflight', { url: latestUrl, status: response.status, ok: response.ok });
+        if (!response.ok) {
+            return { ok: false, message: `HTTP ${response.status}` };
+        }
+        return { ok: true };
+    } catch (e) {
+        appendUpdateLog('preflight-error', { url: latestUrl, message: e?.message ? String(e.message) : 'unknown' });
+        return { ok: false, message: e?.message ? String(e.message) : 'unknown' };
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 }
 
@@ -539,6 +749,8 @@ async function promptUpdateAvailable(updateInfo, manual) {
 
     updatePromptVisible = true;
     try {
+        clearUpdateCheckingTimeout();
+        closeUpdateCheckingWindow();
         const remoteNotes = await fetchSelfHostedReleaseNotes(updateInfo.version);
         const releaseName = remoteNotes?.releaseName || updateInfo.releaseName || '';
         const notes = remoteNotes?.releaseNotes || formatReleaseNotes(updateInfo.releaseNotes);
@@ -625,6 +837,8 @@ async function promptUpdateDownloaded() {
 async function checkForUpdates({ manual, force } = { manual: false, force: false }) {
     if (!app.isPackaged) {
         if (manual) {
+            showUpdateCheckingWindow();
+            setTimeout(() => closeUpdateCheckingWindow(), 200);
             await showMessageBox({
                 type: 'info',
                 buttons: ['确定'],
@@ -640,6 +854,8 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
     const updater = getAutoUpdater();
     if (!updater) {
         if (manual) {
+            showUpdateCheckingWindow();
+            setTimeout(() => closeUpdateCheckingWindow(), 200);
             await showMessageBox({
                 type: 'warning',
                 buttons: ['确定'],
@@ -658,11 +874,50 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
         if (!force && updaterConfig.lastCheckTime && Date.now() - updaterConfig.lastCheckTime < UPDATE_THROTTLE_MS) return;
     }
 
+    if (manual) {
+        showUpdateCheckingWindow();
+        clearUpdateCheckingTimeout();
+        updateCheckingTimeout = setTimeout(() => {
+            if (pendingManualUpdateCheck) {
+                pendingManualUpdateCheck = false;
+                closeUpdateCheckingWindow();
+                appendUpdateLog('check-timeout', { feedUrl: getUpdateFeedUrl() });
+                showMessageBox({
+                    type: 'warning',
+                    buttons: ['确定'],
+                    defaultId: 0,
+                    noLink: true,
+                    message: '检查更新超时',
+                    detail: '请检查网络或更新源是否可用。'
+                }).catch(() => { });
+            }
+        }, 15000);
+    }
     saveUpdaterConfig({ lastCheckTime: Date.now() });
-    pendingManualUpdateCheck = !!manual;
     try {
+        appendUpdateLog('check-start', { manual, feedUrl: getUpdateFeedUrl() });
+        const preflight = await preflightUpdateFeed();
+        if (!preflight.ok) {
+            clearUpdateCheckingTimeout();
+            closeUpdateCheckingWindow();
+            if (manual) {
+                await showMessageBox({
+                    type: 'warning',
+                    buttons: ['确定'],
+                    defaultId: 0,
+                    noLink: true,
+                    message: '更新源不可用',
+                    detail: preflight.message || '无法访问更新源，请检查网络或证书。'
+                });
+            }
+            return;
+        }
+        pendingManualUpdateCheck = !!manual;
         await updater.checkForUpdates();
     } catch (e) {
+        appendUpdateLog('check-error', { message: e?.message ? String(e.message) : 'unknown' });
+        clearUpdateCheckingTimeout();
+        closeUpdateCheckingWindow();
         pendingManualUpdateCheck = false;
         if (manual) {
             await showMessageBox({
@@ -690,14 +945,22 @@ function initUpdater() {
     updater.removeAllListeners('error');
 
     updater.on('update-available', async (info) => {
+        appendUpdateLog('update-available', { version: info?.version || '' });
         const manual = pendingManualUpdateCheck;
         pendingManualUpdateCheck = false;
         await promptUpdateAvailable(info, manual);
     });
 
+    updater.on('checking-for-update', () => {
+        appendUpdateLog('checking-for-update', { feedUrl: getUpdateFeedUrl() });
+    });
+
     updater.on('update-not-available', async () => {
         if (pendingManualUpdateCheck) {
             pendingManualUpdateCheck = false;
+            clearUpdateCheckingTimeout();
+            closeUpdateCheckingWindow();
+            appendUpdateLog('update-not-available', { version: app.getVersion() });
             await showMessageBox({
                 type: 'info',
                 buttons: ['确定'],
@@ -710,6 +973,9 @@ function initUpdater() {
     });
 
     updater.on('update-downloaded', async () => {
+        appendUpdateLog('update-downloaded', {});
+        clearUpdateCheckingTimeout();
+        closeUpdateCheckingWindow();
         try {
             updateDownloadInProgress = false;
             if (widgetWindow && !widgetWindow.isDestroyed()) {
@@ -748,6 +1014,9 @@ function initUpdater() {
         const shouldShowError = pendingManualUpdateCheck || updatePromptVisible || hadDownloadInProgress;
         try {
             updateDownloadInProgress = false;
+            appendUpdateLog('update-error', { message: err?.message ? String(err.message) : 'unknown' });
+            clearUpdateCheckingTimeout();
+            closeUpdateCheckingWindow();
             if (widgetWindow && !widgetWindow.isDestroyed()) {
                 widgetWindow.setProgressBar(-1);
             }
