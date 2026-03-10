@@ -16,38 +16,9 @@ env:
   RELEASE_REPOSITORY: xixi131/MemoryFlow.exe
 
 jobs:
-  build-backend:
-    name: Build Backend Jar
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: maven
-
-      - name: Build backend package
-        working-directory: back-end
-        run: mvn -B -DskipTests package
-
-      - name: Upload backend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-jar
-          path: |
-            back-end/target/*.jar
-            !back-end/target/*.jar.original
-          if-no-files-found: error
-
   release:
     name: Publish Release
     runs-on: windows-latest
-    needs: build-backend
 
     steps:
       - name: Checkout repository
@@ -60,11 +31,35 @@ jobs:
           cache: npm
           cache-dependency-path: front-end/package-lock.json
 
-      - name: Download backend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jar
-          path: release-assets/backend
+      - name: Sync frontend version from tag
+        shell: bash
+        working-directory: front-end
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          NORMALIZED_TAG="${TAG_NAME#v}"
+
+          node -e "
+            const fs = require('fs');
+            const version = process.env.NORMALIZED_TAG;
+            const updateJson = (file, updater) => {
+              const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+              updater(data);
+              fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+            };
+
+            updateJson('./package.json', (data) => {
+              data.version = version;
+            });
+
+            updateJson('./package-lock.json', (data) => {
+              data.version = version;
+              if (data.packages && data.packages['']) {
+                data.packages[''].version = version;
+              }
+            });
+          "
+
+          echo "RELEASE_VERSION=$NORMALIZED_TAG" >> "$GITHUB_ENV"
 
       - name: Check release token
         shell: bash
@@ -75,18 +70,6 @@ jobs:
             echo "Missing GH_RELEASE_TOKEN secret for $RELEASE_REPOSITORY" >&2
             exit 1
           fi
-
-      - name: Create or update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          repository: ${{ env.RELEASE_REPOSITORY }}
-          token: ${{ secrets.GH_RELEASE_TOKEN }}
-          name: ${{ github.ref_name }}
-          body: |
-            Automated release for source tag `${{ github.ref_name }}` from `xixi131/MemoryFlow`.
-          files: |
-            release-assets/backend/*.jar
 
       - name: Install frontend dependencies
         working-directory: front-end

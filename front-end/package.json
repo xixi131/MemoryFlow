@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
     "build": "vite build && electron-builder",
-    "release:win": "vite build && electron-builder --win --x64"
+    "release:win": "vite build && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
     "@coooookies/windows-smtc-monitor": "^1.0.12",
@@ -79,8 +79,10 @@
     },
     "publish": [
       {
-        "provider": "generic",
-        "url": "https://update.memoryflow.tanxhub.com"
+        "provider": "github",
+        "owner": "xixi131",
+        "repo": "MemoryFlow.exe",
+        "releaseType": "release"
       }
     ]
   }

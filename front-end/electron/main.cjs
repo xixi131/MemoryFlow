@@ -92,17 +92,235 @@ function normalizeUpdateFeedUrl(value) {
     return String(value || '').trim().replace(/\/+$/, '');
 }
 
-function getUpdateFeedUrl() {
+const UPDATE_RELEASE_REPOSITORY = 'xixi131/MemoryFlow.exe';
+const GITHUB_RELEASE_DOWNLOAD_URL = `https://github.com/${UPDATE_RELEASE_REPOSITORY}/releases/latest/download`;
+const GITHUB_RELEASE_PAGE_URL = `https://github.com/${UPDATE_RELEASE_REPOSITORY}/releases/latest`;
+const DEFAULT_GHPROXY_PREFIXES = [
+    'https://gh-proxy.com',
+    'https://ghproxy.vip'
+];
+const NETWORK_REGION_CACHE_MS = 30 * 60 * 1000;
+const GEO_LOOKUP_TIMEOUT_MS = 2500;
+
+let activeUpdateSource = null;
+let lastResolvedNetworkRegion = null;
+let boundAutoUpdater = null;
+
+function normalizeUrlList(value) {
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeUpdateFeedUrl(item)).filter(Boolean);
+    }
+    if (typeof value !== 'string') {
+        return [];
+    }
+    return value
+        .split(/[,\n]/)
+        .map((item) => normalizeUpdateFeedUrl(item))
+        .filter(Boolean);
+}
+
+function getSourceHostLabel(url) {
+    try {
+        return new URL(url).host || url;
+    } catch (e) {
+        return url;
+    }
+}
+
+function createUpdateSource({ url, label, kind = 'generic', manualUrl = '', releaseNotesUrl = '' }) {
+    const normalizedUrl = normalizeUpdateFeedUrl(url);
+    if (!normalizedUrl) return null;
+    return {
+        url: normalizedUrl,
+        label: label || getSourceHostLabel(normalizedUrl),
+        kind,
+        manualUrl: manualUrl ? String(manualUrl).trim() : '',
+        releaseNotesUrl: releaseNotesUrl ? String(releaseNotesUrl).trim() : ''
+    };
+}
+
+function dedupeUpdateSources(sources) {
+    const seen = new Set();
+    const result = [];
+    for (const source of sources) {
+        if (!source || !source.url || seen.has(source.url)) continue;
+        seen.add(source.url);
+        result.push(source);
+    }
+    return result;
+}
+
+function buildProxyWrappedUrl(prefix, targetUrl) {
+    const normalizedPrefix = normalizeUpdateFeedUrl(prefix);
+    if (!normalizedPrefix) return '';
+    return `${normalizedPrefix}/${String(targetUrl || '').trim().replace(/^\/+/, '')}`;
+}
+
+function getConfiguredGhProxyPrefixes() {
     const updaterConfig = getUpdaterConfig();
-    return normalizeUpdateFeedUrl(
-        process.env.MEMORYFLOW_UPDATE_URL
-        || updaterConfig.feedUrl
-        || 'https://update.memoryflow.tanxhub.com'
+    const configured = [
+        ...normalizeUrlList(process.env.MEMORYFLOW_GHPROXY_URLS),
+        ...normalizeUrlList(updaterConfig.ghproxyUrls)
+    ];
+    return configured.length > 0 ? configured : DEFAULT_GHPROXY_PREFIXES;
+}
+
+function getConfiguredUpdateSources() {
+    const updaterConfig = getUpdaterConfig();
+    const explicitUrls = [
+        ...normalizeUrlList(process.env.MEMORYFLOW_UPDATE_URLS),
+        ...normalizeUrlList(updaterConfig.feedUrls)
+    ];
+
+    const singletonUrls = [
+        process.env.MEMORYFLOW_UPDATE_URL,
+        updaterConfig.feedUrl
+    ]
+        .map((item) => normalizeUpdateFeedUrl(item))
+        .filter(Boolean);
+
+    return dedupeUpdateSources(
+        [...explicitUrls, ...singletonUrls].map((url, index) => createUpdateSource({
+            url,
+            label: index === 0 ? '自定义更新源' : `自定义更新源 ${index + 1}`,
+            kind: 'custom',
+            manualUrl: GITHUB_RELEASE_PAGE_URL
+        }))
     );
 }
 
-function getReleaseNotesUrl() {
-    return `${getUpdateFeedUrl()}/release-notes.json`;
+function getDefaultUpdateSources(isChinaNetwork) {
+    const proxySources = getConfiguredGhProxyPrefixes().map((prefix) => {
+        const proxyLabel = getSourceHostLabel(prefix);
+        return createUpdateSource({
+            url: buildProxyWrappedUrl(prefix, GITHUB_RELEASE_DOWNLOAD_URL),
+            label: `GitHub 代理 ${proxyLabel}`,
+            kind: 'ghproxy',
+            manualUrl: buildProxyWrappedUrl(prefix, GITHUB_RELEASE_PAGE_URL)
+        });
+    }).filter(Boolean);
+
+    const directGithubSource = createUpdateSource({
+        url: GITHUB_RELEASE_DOWNLOAD_URL,
+        label: 'GitHub Release',
+        kind: 'github',
+        manualUrl: GITHUB_RELEASE_PAGE_URL
+    });
+
+    return isChinaNetwork
+        ? [...proxySources, directGithubSource]
+        : [directGithubSource, ...proxySources];
+}
+
+function getOrderedUpdateSources(region) {
+    const isChinaNetwork = !!region?.isChina;
+    const customSources = getConfiguredUpdateSources();
+    const defaults = getDefaultUpdateSources(isChinaNetwork);
+    const merged = dedupeUpdateSources([...customSources, ...defaults]);
+    const preferredUrl = normalizeUpdateFeedUrl(activeUpdateSource?.url || getUpdaterConfig().lastGoodFeedUrl);
+    if (!preferredUrl) {
+        return merged;
+    }
+    const preferredIndex = merged.findIndex((source) => source.url === preferredUrl);
+    if (preferredIndex <= 0) {
+        return merged;
+    }
+    const [preferredSource] = merged.splice(preferredIndex, 1);
+    return [preferredSource, ...merged];
+}
+
+function getUpdateFeedUrl() {
+    return activeUpdateSource?.url || getOrderedUpdateSources(lastResolvedNetworkRegion)[0]?.url || '';
+}
+
+function getReleaseNotesUrl(source = activeUpdateSource) {
+    return source?.releaseNotesUrl || '';
+}
+
+function getManualDownloadUrl(source = activeUpdateSource) {
+    if (source?.manualUrl) {
+        return source.manualUrl;
+    }
+    const fallbackSource = getOrderedUpdateSources(lastResolvedNetworkRegion).find((item) => item?.manualUrl);
+    return fallbackSource?.manualUrl || GITHUB_RELEASE_PAGE_URL;
+}
+
+function isChinaCountryCode(countryCode) {
+    return String(countryCode || '').trim().toUpperCase() === 'CN';
+}
+
+async function fetchJsonWithTimeout(url, timeoutMs) {
+    if (typeof fetch !== 'function') {
+        throw new Error('fetch-unavailable');
+    }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+        const response = await fetch(url, {
+            headers: { 'Cache-Control': 'no-cache' },
+            cache: 'no-store',
+            signal: controller?.signal
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+
+async function detectNetworkRegion({ force = false } = {}) {
+    if (!force && lastResolvedNetworkRegion && (Date.now() - lastResolvedNetworkRegion.checkedAt) < NETWORK_REGION_CACHE_MS) {
+        return lastResolvedNetworkRegion;
+    }
+
+    const providers = [
+        {
+            name: 'country.is',
+            url: 'https://api.country.is/',
+            readCountryCode: (payload) => payload?.country
+        },
+        {
+            name: 'ipapi.co',
+            url: 'https://ipapi.co/json/',
+            readCountryCode: (payload) => payload?.country_code || payload?.country
+        },
+        {
+            name: 'ipwho.is',
+            url: 'https://ipwho.is/',
+            readCountryCode: (payload) => payload?.country_code
+        }
+    ];
+
+    for (const provider of providers) {
+        try {
+            const payload = await fetchJsonWithTimeout(provider.url, GEO_LOOKUP_TIMEOUT_MS);
+            const countryCode = String(provider.readCountryCode(payload) || '').trim().toUpperCase();
+            if (!countryCode) continue;
+            lastResolvedNetworkRegion = {
+                countryCode,
+                isChina: isChinaCountryCode(countryCode),
+                provider: provider.name,
+                checkedAt: Date.now()
+            };
+            appendUpdateLog('network-region', lastResolvedNetworkRegion);
+            return lastResolvedNetworkRegion;
+        } catch (e) {
+            appendUpdateLog('network-region-error', {
+                provider: provider.name,
+                message: e?.message ? String(e.message) : 'unknown'
+            });
+        }
+    }
+
+    lastResolvedNetworkRegion = {
+        countryCode: '',
+        isChina: false,
+        provider: 'unknown',
+        checkedAt: Date.now()
+    };
+    return lastResolvedNetworkRegion;
 }
 
 // 初始化自启动设置
@@ -185,6 +403,136 @@ function getAutoUpdater() {
     }
 
     return autoUpdater;
+}
+
+function bindUpdaterEvents(updater) {
+    if (!updater || boundAutoUpdater === updater) {
+        return;
+    }
+
+    updater.removeAllListeners('update-available');
+    updater.removeAllListeners('checking-for-update');
+    updater.removeAllListeners('update-not-available');
+    updater.removeAllListeners('update-downloaded');
+    updater.removeAllListeners('download-progress');
+    updater.removeAllListeners('error');
+
+    updater.on('update-available', async (info) => {
+        appendUpdateLog('update-available', {
+            version: info?.version || '',
+            feedUrl: getUpdateFeedUrl(),
+            sourceLabel: activeUpdateSource?.label || ''
+        });
+        const manual = pendingManualUpdateCheck;
+        pendingManualUpdateCheck = false;
+        await promptUpdateAvailable(info, manual);
+    });
+
+    updater.on('checking-for-update', () => {
+        appendUpdateLog('checking-for-update', {
+            feedUrl: getUpdateFeedUrl(),
+            sourceLabel: activeUpdateSource?.label || ''
+        });
+    });
+
+    updater.on('update-not-available', async () => {
+        if (pendingManualUpdateCheck) {
+            pendingManualUpdateCheck = false;
+            clearUpdateCheckingTimeout();
+            closeUpdateCheckingWindow();
+            appendUpdateLog('update-not-available', {
+                version: app.getVersion(),
+                feedUrl: getUpdateFeedUrl(),
+                sourceLabel: activeUpdateSource?.label || ''
+            });
+            await showMessageBox({
+                type: 'info',
+                buttons: ['确定'],
+                defaultId: 0,
+                noLink: true,
+                message: '当前已是最新版本',
+                detail: `版本：v${app.getVersion()}\n更新线路：${activeUpdateSource?.label || '默认'}`
+            });
+        }
+    });
+
+    updater.on('update-downloaded', async () => {
+        appendUpdateLog('update-downloaded', {
+            feedUrl: getUpdateFeedUrl(),
+            sourceLabel: activeUpdateSource?.label || ''
+        });
+        clearUpdateCheckingTimeout();
+        closeUpdateCheckingWindow();
+        try {
+            updateDownloadInProgress = false;
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(-1);
+            }
+            if (tray) {
+                tray.setToolTip('MemoryFlow Widget');
+            }
+        } catch (e) { }
+        await promptUpdateDownloaded();
+    });
+
+    updater.on('download-progress', (progress) => {
+        try {
+            const percent = typeof progress?.percent === 'number' ? progress.percent : 0;
+            const normalized = Math.max(0, Math.min(100, percent));
+            updateDownloadInProgress = true;
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(normalized / 100);
+            }
+            if (tray) {
+                tray.setToolTip(`MemoryFlow Widget（正在下载更新 ${normalized.toFixed(0)}%）`);
+            }
+            pushUpdateProgressState({
+                percent: normalized,
+                transferredText: formatBytes(progress?.transferred),
+                totalText: formatBytes(progress?.total),
+                speedText: formatBytes(progress?.bytesPerSecond) + '/s',
+                statusText: `正在下载更新 ${normalized.toFixed(0)}%`
+            });
+        } catch (e) { }
+    });
+
+    updater.on('error', async (err) => {
+        const hadDownloadInProgress = updateDownloadInProgress;
+        const shouldShowError = pendingManualUpdateCheck || updatePromptVisible || hadDownloadInProgress;
+        try {
+            updateDownloadInProgress = false;
+            appendUpdateLog('update-error', {
+                message: err?.message ? String(err.message) : 'unknown',
+                feedUrl: getUpdateFeedUrl(),
+                sourceLabel: activeUpdateSource?.label || ''
+            });
+            clearUpdateCheckingTimeout();
+            closeUpdateCheckingWindow();
+            if (widgetWindow && !widgetWindow.isDestroyed()) {
+                widgetWindow.setProgressBar(-1);
+            }
+            if (tray) {
+                tray.setToolTip('MemoryFlow Widget');
+            }
+            if (hadDownloadInProgress) {
+                closeUpdateProgressWindow();
+            }
+        } catch (e) { }
+        if (pendingManualUpdateCheck) {
+            pendingManualUpdateCheck = false;
+            await showUpdaterErrorDialog({
+                message: '更新发生错误',
+                detail: err?.message ? String(err.message) : '请稍后重试。'
+            });
+        } else if (shouldShowError) {
+            await showUpdaterErrorDialog({
+                message: '更新发生错误',
+                detail: err?.message ? String(err.message) : '请稍后重试。'
+            });
+        }
+    });
+
+    boundAutoUpdater = updater;
 }
 
 function showMessageBox(options) {
@@ -585,21 +933,28 @@ function pushUpdateProgressState(nextState) {
     ).catch(() => { });
 }
 
-async function showUpdaterErrorDialog({ message, detail }) {
+async function showUpdaterErrorDialog({ message, detail, allowManualDownload = true }) {
     if (updateErrorDialogVisible) {
         return;
     }
 
     updateErrorDialogVisible = true;
     try {
-        await showMessageBox({
+        const buttons = allowManualDownload ? ['关闭', '打开备用下载'] : ['确定'];
+        const { response } = await showMessageBox({
             type: 'error',
-            buttons: ['确定'],
+            buttons,
             defaultId: 0,
+            cancelId: 0,
             noLink: true,
             message,
-            detail
+            detail: activeUpdateSource?.label
+                ? `${detail}\n\n当前更新线路：${activeUpdateSource.label}`
+                : detail
         });
+        if (allowManualDownload && response === 1) {
+            shell.openExternal(getManualDownloadUrl()).catch(() => { });
+        }
     } finally {
         updateErrorDialogVisible = false;
     }
@@ -710,8 +1065,8 @@ async function fetchSelfHostedReleaseNotes(version) {
     }
 }
 
-async function preflightUpdateFeed() {
-    const feedUrl = getUpdateFeedUrl();
+async function preflightUpdateFeed(source) {
+    const feedUrl = typeof source === 'string' ? normalizeUpdateFeedUrl(source) : normalizeUpdateFeedUrl(source?.url);
     if (!feedUrl || typeof fetch !== 'function') {
         return { ok: false, message: 'no-feed' };
     }
@@ -726,17 +1081,58 @@ async function preflightUpdateFeed() {
             cache: 'no-store',
             signal: controller?.signal
         });
-        appendUpdateLog('preflight', { url: latestUrl, status: response.status, ok: response.ok });
+        appendUpdateLog('preflight', {
+            url: latestUrl,
+            status: response.status,
+            ok: response.ok,
+            sourceLabel: source?.label || ''
+        });
         if (!response.ok) {
             return { ok: false, message: `HTTP ${response.status}` };
         }
         return { ok: true };
     } catch (e) {
-        appendUpdateLog('preflight-error', { url: latestUrl, message: e?.message ? String(e.message) : 'unknown' });
+        appendUpdateLog('preflight-error', {
+            url: latestUrl,
+            message: e?.message ? String(e.message) : 'unknown',
+            sourceLabel: source?.label || ''
+        });
         return { ok: false, message: e?.message ? String(e.message) : 'unknown' };
     } finally {
         if (timeoutId) clearTimeout(timeoutId);
     }
+}
+
+async function resolveAvailableUpdateSource({ forceRegionLookup = false } = {}) {
+    const region = await detectNetworkRegion({ force: forceRegionLookup });
+    const candidateSources = getOrderedUpdateSources(region);
+
+    let lastFailure = null;
+    for (const source of candidateSources) {
+        const preflight = await preflightUpdateFeed(source);
+        if (preflight.ok) {
+            activeUpdateSource = source;
+            saveUpdaterConfig({
+                lastGoodFeedUrl: source.url,
+                lastGoodFeedLabel: source.label,
+                lastDetectedCountryCode: region?.countryCode || ''
+            });
+            appendUpdateLog('selected-update-source', {
+                sourceLabel: source.label,
+                feedUrl: source.url,
+                countryCode: region?.countryCode || '',
+                isChina: !!region?.isChina
+            });
+            return { ok: true, source, region };
+        }
+        lastFailure = { source, message: preflight.message };
+    }
+
+    return {
+        ok: false,
+        region,
+        lastFailure
+    };
 }
 
 async function promptUpdateAvailable(updateInfo, manual) {
@@ -766,7 +1162,9 @@ async function promptUpdateAvailable(updateInfo, manual) {
             cancelId: 0,
             noLink: true,
             message: `发现新版本 v${updateInfo.version}`,
-            detail: detail || '有新版本可用。'
+            detail: [detail || '有新版本可用。', activeUpdateSource?.label ? `更新线路：${activeUpdateSource.label}` : '']
+                .filter(Boolean)
+                .join('\n\n')
         });
 
         if (response === 0) {
@@ -785,10 +1183,11 @@ async function promptUpdateAvailable(updateInfo, manual) {
                 if (!updater) {
                     await showUpdaterErrorDialog({
                         message: '未配置更新源',
-                        detail: '请先配置 updater.feedUrl 或环境变量 MEMORYFLOW_UPDATE_URL。'
+                        detail: '当前没有可用的更新线路。'
                     });
                     return;
                 }
+                bindUpdaterEvents(updater);
                 updateDownloadInProgress = true;
                 pushUpdateProgressState({
                     version: updateInfo.version,
@@ -851,23 +1250,6 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
         return;
     }
 
-    const updater = getAutoUpdater();
-    if (!updater) {
-        if (manual) {
-            showUpdateCheckingWindow();
-            setTimeout(() => closeUpdateCheckingWindow(), 200);
-            await showMessageBox({
-                type: 'warning',
-                buttons: ['确定'],
-                defaultId: 0,
-                noLink: true,
-                message: '未配置更新源',
-                detail: '请先配置 updater.feedUrl 或环境变量 MEMORYFLOW_UPDATE_URL。'
-            });
-        }
-        return;
-    }
-
     const updaterConfig = getUpdaterConfig();
     if (!manual) {
         if (updaterConfig.remindLaterUntil && Date.now() < updaterConfig.remindLaterUntil) return;
@@ -896,22 +1278,35 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
     saveUpdaterConfig({ lastCheckTime: Date.now() });
     try {
         appendUpdateLog('check-start', { manual, feedUrl: getUpdateFeedUrl() });
-        const preflight = await preflightUpdateFeed();
-        if (!preflight.ok) {
+        const resolved = await resolveAvailableUpdateSource({ forceRegionLookup: manual || force });
+        if (!resolved.ok || !resolved.source) {
             clearUpdateCheckingTimeout();
             closeUpdateCheckingWindow();
             if (manual) {
-                await showMessageBox({
-                    type: 'warning',
-                    buttons: ['确定'],
-                    defaultId: 0,
-                    noLink: true,
+                const regionText = resolved.region?.countryCode
+                    ? `网络地区：${resolved.region.countryCode}${resolved.region.isChina ? '（中国）' : ''}`
+                    : '网络地区：未识别';
+                await showUpdaterErrorDialog({
                     message: '更新源不可用',
-                    detail: preflight.message || '无法访问更新源，请检查网络或证书。'
+                    detail: [
+                        resolved.lastFailure?.message || '无法访问可用的更新线路，请检查网络。',
+                        regionText
+                    ].filter(Boolean).join('\n')
                 });
             }
             return;
         }
+        const updater = getAutoUpdater();
+        if (!updater) {
+            if (manual) {
+                await showUpdaterErrorDialog({
+                    message: '未配置更新源',
+                    detail: '当前没有可用的更新线路。'
+                });
+            }
+            return;
+        }
+        bindUpdaterEvents(updater);
         pendingManualUpdateCheck = !!manual;
         await updater.checkForUpdates();
     } catch (e) {
@@ -920,11 +1315,7 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
         closeUpdateCheckingWindow();
         pendingManualUpdateCheck = false;
         if (manual) {
-            await showMessageBox({
-                type: 'error',
-                buttons: ['确定'],
-                defaultId: 0,
-                noLink: true,
+            await showUpdaterErrorDialog({
                 message: '检查更新失败',
                 detail: e?.message ? String(e.message) : '请稍后重试。'
             });
@@ -933,114 +1324,6 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
 }
 
 function initUpdater() {
-    const updater = getAutoUpdater();
-    if (!updater) {
-        return;
-    }
-
-    updater.removeAllListeners('update-available');
-    updater.removeAllListeners('update-not-available');
-    updater.removeAllListeners('update-downloaded');
-    updater.removeAllListeners('download-progress');
-    updater.removeAllListeners('error');
-
-    updater.on('update-available', async (info) => {
-        appendUpdateLog('update-available', { version: info?.version || '' });
-        const manual = pendingManualUpdateCheck;
-        pendingManualUpdateCheck = false;
-        await promptUpdateAvailable(info, manual);
-    });
-
-    updater.on('checking-for-update', () => {
-        appendUpdateLog('checking-for-update', { feedUrl: getUpdateFeedUrl() });
-    });
-
-    updater.on('update-not-available', async () => {
-        if (pendingManualUpdateCheck) {
-            pendingManualUpdateCheck = false;
-            clearUpdateCheckingTimeout();
-            closeUpdateCheckingWindow();
-            appendUpdateLog('update-not-available', { version: app.getVersion() });
-            await showMessageBox({
-                type: 'info',
-                buttons: ['确定'],
-                defaultId: 0,
-                noLink: true,
-                message: '当前已是最新版本',
-                detail: `版本：v${app.getVersion()}`
-            });
-        }
-    });
-
-    updater.on('update-downloaded', async () => {
-        appendUpdateLog('update-downloaded', {});
-        clearUpdateCheckingTimeout();
-        closeUpdateCheckingWindow();
-        try {
-            updateDownloadInProgress = false;
-            if (widgetWindow && !widgetWindow.isDestroyed()) {
-                widgetWindow.setProgressBar(-1);
-            }
-            if (tray) {
-                tray.setToolTip('MemoryFlow Widget');
-            }
-        } catch (e) { }
-        await promptUpdateDownloaded();
-    });
-
-    updater.on('download-progress', (progress) => {
-        try {
-            const percent = typeof progress?.percent === 'number' ? progress.percent : 0;
-            const normalized = Math.max(0, Math.min(100, percent));
-            updateDownloadInProgress = true;
-            if (widgetWindow && !widgetWindow.isDestroyed()) {
-                widgetWindow.setProgressBar(normalized / 100);
-            }
-            if (tray) {
-                tray.setToolTip(`MemoryFlow Widget（正在下载更新 ${normalized.toFixed(0)}%）`);
-            }
-            pushUpdateProgressState({
-                percent: normalized,
-                transferredText: formatBytes(progress?.transferred),
-                totalText: formatBytes(progress?.total),
-                speedText: formatBytes(progress?.bytesPerSecond) + '/s',
-                statusText: `正在下载更新 ${normalized.toFixed(0)}%`
-            });
-        } catch (e) { }
-    });
-
-    updater.on('error', async (err) => {
-        const hadDownloadInProgress = updateDownloadInProgress;
-        const shouldShowError = pendingManualUpdateCheck || updatePromptVisible || hadDownloadInProgress;
-        try {
-            updateDownloadInProgress = false;
-            appendUpdateLog('update-error', { message: err?.message ? String(err.message) : 'unknown' });
-            clearUpdateCheckingTimeout();
-            closeUpdateCheckingWindow();
-            if (widgetWindow && !widgetWindow.isDestroyed()) {
-                widgetWindow.setProgressBar(-1);
-            }
-            if (tray) {
-                tray.setToolTip('MemoryFlow Widget');
-            }
-            if (hadDownloadInProgress) {
-                closeUpdateProgressWindow();
-            }
-        } catch (e) { }
-        if (pendingManualUpdateCheck) {
-            pendingManualUpdateCheck = false;
-            await showUpdaterErrorDialog({
-                message: '更新发生错误',
-                detail: err?.message ? String(err.message) : '请稍后重试。'
-            });
-        } else if (shouldShowError) {
-            await showUpdaterErrorDialog({
-                message: '更新发生错误',
-                detail: err?.message ? String(err.message) : '请稍后重试。'
-            });
-        }
-    });
-
     setTimeout(() => {
         checkForUpdates({ manual: false, force: true });
     }, UPDATE_STARTUP_DELAY_MS);
