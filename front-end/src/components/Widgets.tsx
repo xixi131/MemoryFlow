@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { message } from './Message';
 import { useReviewStore } from '../store/useReviewStore';
 
-export const Widgets: React.FC = () => {
+interface WidgetsProps {
+    fixed?: boolean;
+}
+
+export const Widgets: React.FC<WidgetsProps> = ({ fixed = false }) => {
     const navigate = useNavigate();
     
     // --- Timer Logic ---
@@ -107,8 +111,14 @@ export const Widgets: React.FC = () => {
     };
 
     return (
-        <aside className="w-full lg:w-80 xl:w-96 shrink-0 relative">
-            <div className="sticky top-32 md:top-36 lg:top-32 lg:w-80 xl:w-96 flex flex-col gap-6 z-10">
+        <aside
+            className={
+                fixed
+                    ? 'w-full lg:w-80 xl:w-96 shrink-0 relative lg:fixed lg:top-32 lg:z-20 lg:[right:max(2rem,calc((100vw-1600px)/2+2rem))]'
+                    : 'w-full lg:w-80 xl:w-96 shrink-0 relative'
+            }
+        >
+            <div className={fixed ? 'flex flex-col gap-6' : 'sticky top-32 md:top-36 lg:top-32 lg:w-80 xl:w-96 flex flex-col gap-6 z-10'}>
                 {/* Today's Focus Widget */}
                 <div className="glass-panel !border-0 rounded-3xl p-6 flex flex-col gap-6 h-fit shadow-[0_12px_30px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] hover:shadow-[0_20px_50px_rgba(15,23,42,0.14),0_8px_16px_rgba(15,23,42,0.08)] dark:shadow-[0_14px_44px_rgba(0,0,0,0.55),0_4px_14px_rgba(0,0,0,0.30)] dark:hover:shadow-[0_22px_70px_rgba(0,0,0,0.60),0_10px_24px_rgba(0,0,0,0.34)] transition-all">
                 <div className="flex items-center justify-between">

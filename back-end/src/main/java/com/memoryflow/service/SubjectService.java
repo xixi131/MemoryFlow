@@ -322,6 +322,16 @@ public class SubjectService {
 
     @Transactional
     public SubjectDTO appendDsl(Long subjectId, String content, Long userId) {
+        return appendDsl(subjectId, content, userId, null, null);
+    }
+
+    @Transactional
+    public SubjectDTO appendDsl(Long subjectId, String content, Long userId, Long targetChapterId) {
+        return appendDsl(subjectId, content, userId, targetChapterId, null);
+    }
+
+    @Transactional
+    public SubjectDTO appendDsl(Long subjectId, String content, Long userId, Long targetChapterId, Long targetPointId) {
         Subject subject = subjectMapper.selectById(subjectId);
         if (subject == null) {
             throw new BusinessException(ErrorCode.SUBJECT_NOT_FOUND);
@@ -332,7 +342,7 @@ public class SubjectService {
         }
 
         if (content != null && !content.isBlank()) {
-            parseDslContent(content, subject, userId);
+            parseDslContent(content, subject, userId, targetChapterId, targetPointId);
         }
 
         // Recalculate goal progress
@@ -342,15 +352,55 @@ public class SubjectService {
     }
 
     private void parseDslContent(String content, Subject subject, Long userId) {
+        parseDslContent(content, subject, userId, null, null);
+    }
+
+    private void parseDslContent(String content, Subject subject, Long userId, Long targetChapterId) {
+        parseDslContent(content, subject, userId, targetChapterId, null);
+    }
+
+    private void parseDslContent(String content, Subject subject, Long userId, Long targetChapterId, Long targetPointId) {
         String[] lines = content.split("\n");
         Chapter currentChapter = null;
         Point currentPoint = null;
         StringBuilder detailBuilder = new StringBuilder();
         boolean inDetail = false;
-        int chapterOrder = 0;
+        int chapterOrder = chapterMapper.selectCount(new LambdaQueryWrapper<Chapter>()
+                .eq(Chapter::getSubjectId, subject.getId())).intValue();
         int pointOrder = 0;
         int articleOrder = 0;
-        int totalPoints = 0;
+        Chapter forcedChapter = null;
+        Point forcedPoint = null;
+
+        if (targetPointId != null) {
+            Point point = pointMapper.selectById(targetPointId);
+            if (point == null || !point.getSubjectId().equals(subject.getId()) || !point.getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.SUBJECT_ACCESS_DENIED);
+            }
+            if (targetChapterId != null && !point.getChapterId().equals(targetChapterId)) {
+                throw new BusinessException(ErrorCode.SUBJECT_ACCESS_DENIED);
+            }
+            Chapter chapter = chapterMapper.selectById(point.getChapterId());
+            if (chapter == null || !chapter.getSubjectId().equals(subject.getId()) || !chapter.getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.SUBJECT_ACCESS_DENIED);
+            }
+            forcedChapter = chapter;
+            forcedPoint = point;
+            currentChapter = forcedChapter;
+            currentPoint = forcedPoint;
+            pointOrder = pointMapper.selectCount(new LambdaQueryWrapper<Point>()
+                    .eq(Point::getChapterId, currentChapter.getId())).intValue();
+            articleOrder = articleMapper.selectCount(new LambdaQueryWrapper<Article>()
+                    .eq(Article::getPointId, forcedPoint.getId())).intValue();
+        }
+
+        if (targetChapterId != null && forcedPoint == null) {
+            Chapter chapter = chapterMapper.selectById(targetChapterId);
+            if (chapter == null || !chapter.getSubjectId().equals(subject.getId()) || !chapter.getUserId().equals(userId)) {
+                throw new BusinessException(ErrorCode.SUBJECT_ACCESS_DENIED);
+            }
+            forcedChapter = chapter;
+        }
 
         for (String line : lines) {
             String trimmedLine = line.trim();
@@ -393,16 +443,51 @@ public class SubjectService {
             if (trimmedLine.startsWith("@") && !trimmedLine.startsWith("@@")) {
                 String chapterTitle = trimmedLine.substring(1).trim();
                 if (!chapterTitle.isEmpty()) {
-                    currentChapter = Chapter.builder()
-                            .subjectId(subject.getId())
-                            .userId(userId)
-                            .title(chapterTitle)
-                            .sortOrder(chapterOrder++)
-                            .build();
-                    chapterMapper.insert(currentChapter);
+                    if (forcedPoint != null) {
+                        currentChapter = forcedChapter;
+                        currentPoint = forcedPoint;
+                        articleOrder = articleMapper.selectCount(new LambdaQueryWrapper<Article>()
+                                .eq(Article::getPointId, forcedPoint.getId())).intValue();
+                        continue;
+                    }
+
+                    if (forcedChapter != null) {
+                        currentChapter = forcedChapter;
+                        pointOrder = pointMapper.selectCount(new LambdaQueryWrapper<Point>()
+                                .eq(Point::getChapterId, currentChapter.getId())).intValue();
+                        articleOrder = articleMapper.selectCount(new LambdaQueryWrapper<Article>()
+                                .eq(Article::getChapterId, currentChapter.getId())
+                                .isNull(Article::getPointId)).intValue();
+                        currentPoint = null;
+                        continue;
+                    }
+
+                    Chapter existingChapter = chapterMapper.selectOne(new LambdaQueryWrapper<Chapter>()
+                            .eq(Chapter::getSubjectId, subject.getId())
+                            .eq(Chapter::getTitle, chapterTitle)
+                            .orderByAsc(Chapter::getSortOrder)
+                            .last("LIMIT 1"));
+
+                    if (existingChapter != null) {
+                        currentChapter = existingChapter;
+                        pointOrder = pointMapper.selectCount(new LambdaQueryWrapper<Point>()
+                                .eq(Point::getChapterId, currentChapter.getId())).intValue();
+                        articleOrder = articleMapper.selectCount(new LambdaQueryWrapper<Article>()
+                                .eq(Article::getChapterId, currentChapter.getId())
+                                .isNull(Article::getPointId)).intValue();
+                    } else {
+                        currentChapter = Chapter.builder()
+                                .subjectId(subject.getId())
+                                .userId(userId)
+                                .title(chapterTitle)
+                                .sortOrder(chapterOrder++)
+                                .build();
+                        chapterMapper.insert(currentChapter);
+                        pointOrder = 0;
+                        articleOrder = 0;
+                    }
+
                     currentPoint = null; // Reset current point
-                    pointOrder = 0;
-                    articleOrder = 0;
                 }
                 continue;
             }
@@ -410,6 +495,13 @@ public class SubjectService {
             // Check Point (@@)
             if (trimmedLine.startsWith("@@")) {
                 String pointTitle = trimmedLine.substring(2).trim();
+                if (forcedPoint != null) {
+                    currentChapter = forcedChapter;
+                    currentPoint = forcedPoint;
+                    articleOrder = articleMapper.selectCount(new LambdaQueryWrapper<Article>()
+                            .eq(Article::getPointId, forcedPoint.getId())).intValue();
+                    continue;
+                }
                 if (!pointTitle.isEmpty() && currentChapter != null) {
                     currentPoint = Point.builder()
                             .chapterId(currentChapter.getId())
@@ -423,13 +515,16 @@ public class SubjectService {
                             .sortOrder(pointOrder++)
                             .build();
                     pointMapper.insert(currentPoint);
-                    totalPoints++;
                     articleOrder = 0; // Reset article order for new point
                 }
             }
         }
 
-        subject.setTotalPoints(totalPoints);
+        Long totalPoints = pointMapper.selectCount(new LambdaQueryWrapper<Point>()
+                .eq(Point::getSubjectId, subject.getId()));
+        int completedPoints = pointMapper.countLearnedBySubjectId(subject.getId());
+        subject.setTotalPoints(totalPoints.intValue());
+        subject.setCompletedPoints(completedPoints);
         subject.recalculateProgress();
         subjectMapper.updateById(subject);
     }

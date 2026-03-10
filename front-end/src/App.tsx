@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { Login } from './pages/Login';
@@ -9,8 +9,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import { MessageContainer } from './components/Message';
 import { Widgets } from './components/Widgets';
 import { GOALS, SUBJECTS, TOPICS, GOAL_THEMES } from './constants';
-import { AddSubjectModal, EditContentModal, DeleteConfirmModal, AddGoalModal } from './components/Modals';
-import EditArticleModal from './components/EditArticleModal';
+import { EditContentModal, DeleteConfirmModal, AddGoalModal } from './components/Modals';
+import AddSubjectModal from './components/AddSubjectModal';
 import StudySession from './components/StudySession';
 import LearnedHistory from './components/LearnedHistory';
 
@@ -24,9 +24,8 @@ import settingsApis from './services/settingsApis';
 import userApis from './api/userApis';
 import { resolveApiAssetUrl } from './utils/resolveApiAssetUrl';
 import { message } from './components/Message';
-import ReactMarkdown from 'react-markdown';
-import HomePage from './pages/HomePage';
-import DocsPage from './pages/DocsPage';
+import TyporaEditor from './components/TyporaEditor';
+import TodoPage from './pages/TodoPage';
 
 import DynamicIslandWidget from './components/DynamicIslandWidget';
 import { useGoalStore } from './store/useGoalStore';
@@ -37,7 +36,105 @@ import { useSubjectStore } from './store/useSubjectStore';
 
 import { BackgroundGlow } from './components/BackgroundGlow';
 
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
+
+const MarketingPageFallback: React.FC = () => (
+    <div className="mf-shell mf-grid flex min-h-screen items-center justify-center px-6">
+        <div className="mf-glass rounded-[28px] px-6 py-4 text-sm font-medium text-slate-200">Loading...</div>
+    </div>
+);
+
 // --- Page Components ---
+const ArticleInlineEditor: React.FC<{
+    article: { id: string | number; title: string; body: string };
+    onSave: (id: string, title: string, body: string) => Promise<{ title: string; body: string }>;
+}> = ({ article, onSave }) => {
+    const [title, setTitle] = useState(article.title || '');
+    const [body, setBody] = useState(article.body || '');
+    const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const saveTimerRef = useRef<number | null>(null);
+    const lastSavedTitleRef = useRef(article.title || '');
+    const lastSavedBodyRef = useRef(article.body || '');
+
+    useEffect(() => {
+        setTitle(article.title || '');
+        setBody(article.body || '');
+        setStatus('idle');
+        lastSavedTitleRef.current = article.title || '';
+        lastSavedBodyRef.current = article.body || '';
+    }, [article.id, article.title, article.body]);
+
+    useEffect(() => {
+        const hasChanges = title !== lastSavedTitleRef.current || body !== lastSavedBodyRef.current;
+        if (!hasChanges) return;
+
+        if (saveTimerRef.current) {
+            window.clearTimeout(saveTimerRef.current);
+        }
+
+        setStatus('saving');
+        saveTimerRef.current = window.setTimeout(async () => {
+            try {
+                const saved = await onSave(String(article.id), title, body);
+                lastSavedTitleRef.current = saved.title;
+                lastSavedBodyRef.current = saved.body;
+                setTitle(saved.title);
+                setBody(saved.body);
+                setStatus('saved');
+            } catch (error) {
+                console.error(error);
+                setStatus('error');
+            }
+        }, 700);
+
+        return () => {
+            if (saveTimerRef.current) {
+                window.clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+        };
+    }, [article.id, title, body, onSave]);
+
+    return (
+        <div className="space-y-3">
+            <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="内容标题"
+                className="w-full rounded-xl border-0 bg-blue-100/80 dark:bg-[#11213a]/85 px-6 py-3 text-lg font-bold text-slate-900 dark:text-white outline-none ring-0 focus:ring-2 focus:ring-blue-400/35"
+            />
+            <TyporaEditor
+                key={`always-inline-editor-${article.id}`}
+                initialValue={body}
+                onChange={(nextValue) => setBody(nextValue)}
+                placeholder="输入 Markdown，自动保存"
+                flat
+            />
+            <div className="text-xs font-medium">
+                <span
+                    className={
+                        status === 'saving'
+                            ? 'text-slate-500'
+                            : status === 'saved'
+                            ? 'text-emerald-500'
+                            : status === 'error'
+                            ? 'text-red-500'
+                            : 'text-slate-400'
+                    }
+                >
+                                        {status === 'saving'
+                        ? '自动保存中...'
+                        : status === 'saved'
+                        ? '已保存'
+                        : status === 'error'
+                        ? '保存失败，请继续编辑后重试'
+                        : '可直接编辑'}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => void; onGoalClick: (id: string) => void }> = ({ setView, onOpenAddGoal, onGoalClick }) => {
     const { summary, fetchSummary } = useReviewStore();
@@ -51,21 +148,18 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
     return (
         <>
             <section className="flex flex-col gap-4 px-2">
-                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-1">
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug pb-[0.18em]">
-                        {/* Use greeting if available, else default */}
-                        {summary ? (
-                            <span dangerouslySetInnerHTML={{ __html: summary.greeting.replace('你好，', '你好，<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-primary dark:from-blue-200 dark:to-primary">').replace('同学', '同学</span>') }}></span>
-                        ) : (
-                            <>你好，<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-primary dark:from-blue-200 dark:to-primary">同学</span></>
-                        )}
+                        {summary?.greeting || '你好，同学'}
                     </h1>
-                    <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">Keep the flow going. 保持专注，未来可期。</p>
+                    <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">
+                        Keep the flow going. 保持专注，未来可期。
+                    </p>
                 </div>
                 <div className="flex flex-wrap gap-4 mt-2">
                     {[
-                        { icon: 'priority_high', label: `待复习: ${summary ? summary.pendingReviewCount : '-'}`, color: 'text-accent-coral', bg: 'bg-accent-coral/20' },
-                        { icon: 'check_circle', label: `已完成: ${summary ? summary.completedReviewCount : '-'}`, color: 'text-accent-green', bg: 'bg-accent-green/20' },
+                        { icon: 'priority_high', label: `待复习 ${summary ? summary.pendingReviewCount : '-'}`, color: 'text-accent-coral', bg: 'bg-accent-coral/20' },
+                        { icon: 'check_circle', label: `已完成 ${summary ? summary.completedReviewCount : '-'}`, color: 'text-accent-green', bg: 'bg-accent-green/20' },
                         // Removed Focus Time as requested
                     ].map((chip, idx) => (
                         <div key={idx} className="flex items-center gap-3 pl-3 pr-5 py-2 rounded-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner-light transition-colors">
@@ -136,7 +230,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
                         </div>
 
                     <span className="text-lg font-bold text-slate-500 dark:text-text-secondary group-hover:text-primary dark:group-hover:text-white transition-colors">新建目标</span>
-                    <span className="text-sm text-slate-400 dark:text-text-secondary/60 mt-1">开启新的学习旅程</span>
+                    <span className="mt-1 text-sm text-slate-400 dark:text-text-secondary/60">开启新的学习旅程</span>
                 </button>
             </div>
         </section>
@@ -171,7 +265,7 @@ const GoalDetail: React.FC<{
     <div className="flex flex-col gap-10 w-full">
         {/* Breadcrumb */}
         <div className="flex flex-wrap items-center gap-2 text-sm font-medium px-2 min-w-0">
-            <button className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors" onClick={() => setView('dashboard')}>首页</button>
+            <button className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors" onClick={() => setView('dashboard')}>棣栭〉</button>
             <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
             <span className="text-slate-900 dark:text-white">Goals</span>
              <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
@@ -214,7 +308,7 @@ const GoalDetail: React.FC<{
             <div className="flex items-center justify-between px-2">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">library_books</span>
-                    科目 Subjects
+                    绉戠洰 Subjects
                 </h2>
             </div>
             {subjects.length === 0 ? (
@@ -231,15 +325,16 @@ const GoalDetail: React.FC<{
                                 <span className="material-symbols-outlined text-2xl">{subject.icon || theme.icon}</span>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{subject.title}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold ${theme.colorClass} uppercase tracking-wider`}>
-                                        {subject.status === 'Due Today' ? 'Review Today' : `${subject.completedTasks || 0} / ${subject.totalTasks || 0} Tasks`}
-                                    </span>
-                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{subject.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-text-secondary">任务进度 {subject.completedTasks}/{subject.totalTasks}</p>
                             </div>
                         </div>
                         
+
+
+
+
+
                         <div className="flex items-center flex-1 justify-end">
                             {/* Progress Bar */}
                             <div className="hidden sm:flex flex-col gap-1 w-32 md:w-48 mr-32 transition-all duration-300 group-hover:opacity-80">
@@ -304,6 +399,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
     const [checked, setChecked] = useState<Record<string, boolean>>({});
     const [activeTabs, setActiveTabs] = useState<Record<string, number>>({});
     const [showAddModal, setShowAddModal] = useState(false);
+    const [chapterQuickAdd, setChapterQuickAdd] = useState<{ id: string; title: string } | null>(null);
+    const [pointQuickAdd, setPointQuickAdd] = useState<{
+        chapterId: string;
+        chapterTitle: string;
+        pointId: string;
+        pointTitle: string;
+    } | null>(null);
     const [loading, setLoading] = useState(false);
     const [deleteConfig, setDeleteConfig] = useState<{
         show: boolean;
@@ -311,12 +413,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         id: string;
         title: string;
     } | null>(null);
-    const [editingArticle, setEditingArticle] = useState<any>(null);
 
     useEffect(() => {
         if (subjectId) {
             fetchData();
         }
+        setChapterQuickAdd(null);
+        setPointQuickAdd(null);
 
         // Listen for global review updates (e.g. from Widgets)
         const handleReviewUpdate = (event: CustomEvent) => {
@@ -350,7 +453,24 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         return () => window.removeEventListener('review:update', handleReviewUpdate as EventListener);
     }, [subjectId]);
 
-    const fetchData = async () => {
+    const loadChapterDetail = async (chapterId: string) => {
+        try {
+            const res: any = await subjectApis.getChapterDetail(chapterId);
+            if (res.code === 200 && res.data) {
+                setData((prevData) =>
+                    prevData.map((chapter) =>
+                        String(chapter.id) === String(chapterId) ? { ...chapter, ...res.data } : chapter
+                    )
+                );
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load chapter details', error);
+        }
+        return false;
+    };
+
+    const fetchData = async (force: boolean = false, chapterIdsToEnsure: string[] = []) => {
         if (!subjectId) return;
 
         // Check cache first
@@ -362,7 +482,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
         try {
             // This will use cache if available (controlled by store logic)
-            await fetchSubjectDetail(subjectId);
+            await fetchSubjectDetail(subjectId, force);
             
             // Get fresh state
             const currentDetail = useSubjectStore.getState().subjectDetails[subjectId];
@@ -370,7 +490,21 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             if (currentDetail && currentDetail.data) {
                 const detail = currentDetail.data;
                 setSubjectTitle(detail.title);
-                setData(detail.chapters || []);
+                const nextChapters = detail.chapters || [];
+                setData(nextChapters);
+
+                const expandedChapterIds = Object.keys(expanded).filter((id) => expanded[id]);
+                const targetChapterIds = [...expandedChapterIds, ...chapterIdsToEnsure]
+                    .filter((id, index, arr) => id && arr.indexOf(id) === index);
+
+                if (targetChapterIds.length > 0) {
+                    const existingChapterIds = new Set(nextChapters.map((chapter: any) => String(chapter.id)));
+                    await Promise.all(
+                        targetChapterIds
+                            .filter((chapterId) => existingChapterIds.has(String(chapterId)))
+                            .map((chapterId) => loadChapterDetail(String(chapterId)))
+                    );
+                }
                 
                 // Don't auto expand
             } else {
@@ -385,14 +519,28 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         }
     };
 
-    const handleAddSubject = async (title: string, content: string) => {
+    const handleAddSubject = async (
+        title: string,
+        content: string,
+        options?: { targetChapterId?: string; targetPointId?: string }
+    ) => {
         if (!subjectId) return;
         try {
-            const res: any = await subjectApis.appendContent(subjectId, content);
+            const res: any = await subjectApis.appendContent(
+                subjectId,
+                content,
+                options?.targetChapterId,
+                options?.targetPointId
+            );
             if (res.code === 200) {
                 message.success('添加成功');
                 setShowAddModal(false);
-                fetchData();
+                setChapterQuickAdd(null);
+                setPointQuickAdd(null);
+                if (options?.targetChapterId) {
+                    setExpanded((prev) => ({ ...prev, [options.targetChapterId!]: true }));
+                }
+                await fetchData(true, options?.targetChapterId ? [options.targetChapterId] : []);
             } else {
                 message.warning(res.message || '添加失败');
             }
@@ -424,20 +572,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             const needsLoad = !chapter.contents || (chapter.children && chapter.children.length > 0 && !chapter.children[0].contents);
 
             if (chapter && needsLoad) {
-                try {
-                    const res: any = await subjectApis.getChapterDetail(id);
-                    if (res.code === 200 && res.data) {
-                        // Merge data
-                        setData(prevData => prevData.map(c => {
-                            if (String(c.id) === id) {
-                                return { ...c, ...res.data };
-                            }
-                            return c;
-                        }));
-                    }
-                } catch (error) {
-                    console.error("Failed to load chapter details", error);
-                }
+                await loadChapterDetail(id);
             }
         }
     };
@@ -584,7 +719,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
             if (res && res.code === 200) {
                 message.success('删除成功');
-                fetchData();
+                await fetchData(true);
             } else {
                 message.error(res?.message || '删除失败');
             }
@@ -687,31 +822,63 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         } catch (error) {
             console.error(error);
             message.error('操作失败');
-            fetchData(); // Revert on error
+            fetchData(true); // Revert on error
         }
     };
 
-    const handleSaveArticle = async (id: string, title: string, content: string) => {
-        try {
-            const res: any = await subjectApis.updateArticle(id, title, content);
-            if (res.code === 200) {
-                message.success('修改成功');
-                fetchData();
-            } else {
-                message.error(res.message || '修改失败');
-            }
-        } catch (error) {
-            console.error(error);
-            message.error('网络错误');
-        }
+    const patchArticleInView = (articleId: string, title: string, body: string) => {
+        setData((prevData) =>
+            prevData.map((chapter) => ({
+                ...chapter,
+                contents: chapter.contents?.map((article: any) =>
+                    String(article.id) === articleId ? { ...article, title, body } : article
+                ),
+                children: chapter.children?.map((point: any) => ({
+                    ...point,
+                    contents: point.contents?.map((article: any) =>
+                        String(article.id) === articleId ? { ...article, title, body } : article
+                    )
+                }))
+            }))
+        );
     };
 
-    const handleEditArticle = (article: any, e: React.MouseEvent) => {
+    const saveArticleInline = async (id: string, title: string, body: string) => {
+        const normalizedTitle = title.trim() || '未命名内容';
+        const res: any = await subjectApis.updateArticle(id, normalizedTitle, body);
+        if (res.code !== 200) {
+            throw new Error(res.message || '保存失败');
+        }
+        patchArticleInView(id, normalizedTitle, body);
+        return {
+            title: normalizedTitle,
+            body
+        };
+    };
+
+    const handleChapterQuickAdd = (chapterId: string, chapterTitle: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (article) {
-            setEditingArticle(article);
-        }
+        setChapterQuickAdd({ id: chapterId, title: chapterTitle });
     };
+
+    const handlePointQuickAdd = (
+        chapterId: string,
+        chapterTitle: string,
+        pointId: string,
+        pointTitle: string,
+        e: React.MouseEvent
+    ) => {
+        e.stopPropagation();
+        setPointQuickAdd({ chapterId, chapterTitle, pointId, pointTitle });
+    };
+
+    const renderArticleContent = (article: any) => (
+        <ArticleInlineEditor
+            key={`article-inline-${article.id}`}
+            article={article}
+            onSave={saveArticleInline}
+        />
+    );
 
     if (loading && data.length === 0) {
         return <div className="flex justify-center items-center h-full py-20 text-slate-500">Loading...</div>;
@@ -750,22 +917,22 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     // but the logic "showReviewCompleted = !showReviewReminder && reviewedTodayPoints.length > 0" handles priority.
                     // However, we need to ensure reviewedTodayPoints includes points that were reviewed today EVEN IF they are not pending.
                     // The issue "even if checked, Reviewed still shows" -> Wait, user says "Reviewed still shows" -> that's correct behavior for "Reviewed" state.
-                    // User says: "即使已经勾选了复习，在今天这个复习时间中Reviewed还是一直显示着"
+                    // User says: "鍗充娇宸茬粡鍕鹃€変簡澶嶄範锛屽湪浠婂ぉ杩欎釜澶嶄範鏃堕棿涓璕eviewed杩樻槸涓€鐩存樉绀虹潃"
                     // If user means "It should disappear", that's one thing.
                     // If user means "It shows 'Reviewed' correctly", that's good.
-                    // User phrasing: "Review和Reviewed... 即使已经勾选了复习... Reviewed还是一直显示着"
+                    // User phrasing: "Review鍜孯eviewed... 鍗充娇宸茬粡鍕鹃€変簡澶嶄範... Reviewed杩樻槸涓€鐩存樉绀虹潃"
                     // It seems the user implies this is a PROBLEM. Maybe they want it to disappear after some time?
                     // Or maybe they mean "The 'Review' (red) badge still shows"? 
-                    // No, "Reviewed还是一直显示着" means the GREY badge.
+                    // No, "Reviewed杩樻槸涓€鐩存樉绀虹潃" means the GREY badge.
                     // Usually "Reviewed" badge is good feedback. 
                     // UNLESS the user wants it to vanish? 
-                    // Let's re-read: "Review提示要和今日聚焦的状态同步... 即使已经勾选了复习... Reviewed还是一直显示着"
+                    // Let's re-read: "Review鎻愮ず瑕佸拰浠婃棩鑱氱劍鐨勭姸鎬佸悓姝?.. 鍗充娇宸茬粡鍕鹃€変簡澶嶄範... Reviewed杩樻槸涓€鐩存樉绀虹潃"
                     // Maybe the user thinks "Reviewed" badge is clutter?
                     // But if it disappears, how do they UNDO it?
-                    // "点击了某个待复习的点... Review的状态就也要变为已经复习... 同样的点击了这个Review也同步要修改这个今日聚焦的状态"
+                    // "鐐瑰嚮浜嗘煇涓緟澶嶄範鐨勭偣... Review鐨勭姸鎬佸氨涔熻鍙樹负宸茬粡澶嶄範... 鍚屾牱鐨勭偣鍑讳簡杩欎釜Review涔熷悓姝ヨ淇敼杩欎釜浠婃棩鑱氱劍鐨勭姸鎬?
                     // So the GREY badge is the toggle for UNDO. It MUST exist.
                     // Perhaps the user means "The RED badge still shows"? 
-                    // "Review 和 Reviewed ... Reviewed 还是一直显示着" -> This sounds like they see the grey one.
+                    // "Review 鍜?Reviewed ... Reviewed 杩樻槸涓€鐩存樉绀虹潃" -> This sounds like they see the grey one.
                     // If the grey one is always there for ANY learned chapter, that's noise.
                     // It should ONLY show if there was a review task TODAY that was completed.
                     // My logic: `reviewedTodayPoints = ... p.lastReviewAt.startsWith(todayStr)`
@@ -773,7 +940,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     // So if I reviewed it yesterday, today it won't show "Reviewed", it will show nothing (until next review date).
                     // This seems correct.
                     // Maybe the user is reporting a bug where it doesn't update?
-                    // "改成进入页面就显示，不需要手动展开就可以显示" -> This was the main request.
+                    // "鏀规垚杩涘叆椤甸潰灏辨樉绀猴紝涓嶉渶瑕佹墜鍔ㄥ睍寮€灏卞彲浠ユ樉绀? -> This was the main request.
                     // I will focus on fixing the "Entering page shows badges immediately" issue first (Backend change).
                     
                     const reviewedTodayPoints = chapter.children?.filter((p: any) => p.isLearned && p.lastReviewAt && p.lastReviewAt.startsWith(todayStr)) || [];
@@ -806,7 +973,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                 : 'bg-slate-100 text-slate-400 border border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5 grayscale opacity-70'
                                             }`}
                                             onClick={(e) => handleChapterReview(String(chapter.id), pendingPoints, reviewedTodayPoints, e)}
-                                            title={showReviewReminder ? "今日待复习 (Click to Complete)" : "今日复习已完成 (Click to Undo)"}
+                                            title={showReviewReminder ? '今日待复习 (Click to Complete)' : '今日复习已完成 (Click to Undo)'}
                                         >
                                             <span className="material-symbols-outlined text-[16px]">
                                                 {showReviewReminder ? 'notifications_active' : 'check_circle'}
@@ -820,6 +987,13 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                 <div className="flex items-center gap-4">
                                     {/* Level 1 Delete Button */}
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => handleChapterQuickAdd(String(chapter.id), chapter.title, e)}
+                                            className="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-lg"
+                                            title="Add Content"
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">add</span>
+                                        </button>
                                         <button 
                                             onClick={(e) => handleDeleteChapter(String(chapter.id), chapter.title, e)}
                                             className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg"
@@ -870,13 +1044,6 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                                 <div className="flex items-center gap-2 pl-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
-                                                        onClick={(e) => handleEditArticle(chapter.contents[activeTabs[String(chapter.id)] || 0], e)}
-                                                        className="h-9 w-9 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                                        title="Edit Article"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                    </button>
-                                                    <button 
                                                         onClick={(e) => {
                                                             const currentArticle = chapter.contents[activeTabs[String(chapter.id)] || 0];
                                                             if (currentArticle) handleDeleteArticle(String(currentArticle.id), currentArticle.title, e);
@@ -891,10 +1058,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                             
                                             <div className="p-6 md:p-8">
                                                 {chapter.contents[activeTabs[String(chapter.id)] || 0] && (
-                                                    <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#0B1120] prose-pre:border prose-pre:border-white/10">
-                                                        <h1 className="text-3xl font-black mb-6 text-slate-900 dark:text-white">{chapter.contents[activeTabs[String(chapter.id)] || 0].title}</h1>
-                                                        <ReactMarkdown>{chapter.contents[activeTabs[String(chapter.id)] || 0].body}</ReactMarkdown>
-                                                    </div>
+                                                    renderArticleContent(chapter.contents[activeTabs[String(chapter.id)] || 0])
                                                 )}
                                             </div>
                                         </div>
@@ -921,6 +1085,21 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                     <div className="flex items-center gap-4">
                                                         {/* Level 2 Edit/Delete Buttons */}
                                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={(e) =>
+                                                                    handlePointQuickAdd(
+                                                                        String(chapter.id),
+                                                                        chapter.title,
+                                                                        String(point.id),
+                                                                        point.title,
+                                                                        e
+                                                                    )
+                                                                }
+                                                                className="h-9 w-9 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                                                title="Add Point Content"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[18px]">add</span>
+                                                            </button>
                                                             <button 
                                                                 onClick={(e) => handleDeletePoint(String(point.id), point.title, e)}
                                                                 className="h-9 w-9 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
@@ -971,25 +1150,16 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                                                     return (
                                                                         <>
-                                                                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover/article:opacity-100 transition-opacity z-10">
-                                                                                <button 
-                                                                                    onClick={(e) => handleEditArticle(currentArticle, e)}
-                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
-                                                                                >
-                                                                                    <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                                                </button>
-                                                                                <button 
+                                                                            <div className="h-8 mb-2 flex justify-end">
+                                                                                <button
                                                                                     onClick={(e) => handleDeleteArticle(String(currentArticle.id), currentArticle.title, e)}
-                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                                                                    className="h-8 w-8 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all opacity-0 pointer-events-none group-hover/article:opacity-100 group-hover/article:pointer-events-auto"
                                                                                 >
                                                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                                                 </button>
                                                                             </div>
 
-                                                                            <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#0B1120] prose-pre:border prose-pre:border-white/10">
-                                                                                <h1 className="text-3xl font-black mb-6 text-slate-900 dark:text-white">{currentArticle.title}</h1>
-                                                                                <ReactMarkdown>{currentArticle.body}</ReactMarkdown>
-                                                                            </div>
+                                                                            {renderArticleContent(currentArticle)}
                                                                         </>
                                                                     );
                                                                 })()}
@@ -1018,19 +1188,43 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 </button>
             </div>
             
-            {showAddModal && <AddSubjectModal onClose={() => setShowAddModal(false)} onCreate={handleAddSubject} mode="append" subjectTitle={subjectTitle} />}
+            {showAddModal && (
+                <AddSubjectModal
+                    onClose={() => setShowAddModal(false)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                />
+            )}
+            {chapterQuickAdd && (
+                <AddSubjectModal
+                    onClose={() => setChapterQuickAdd(null)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                    initialChapterId={chapterQuickAdd.id}
+                    initialChapterTitle={chapterQuickAdd.title}
+                    restrictToSingleChapter
+                />
+            )}
+            {pointQuickAdd && (
+                <AddSubjectModal
+                    onClose={() => setPointQuickAdd(null)}
+                    onCreate={handleAddSubject}
+                    mode="append"
+                    subjectTitle={subjectTitle}
+                    initialChapterId={pointQuickAdd.chapterId}
+                    initialChapterTitle={pointQuickAdd.chapterTitle}
+                    initialPointId={pointQuickAdd.pointId}
+                    initialPointTitle={pointQuickAdd.pointTitle}
+                    restrictToSinglePoint
+                />
+            )}
             {deleteConfig && deleteConfig.show && (
                 <DeleteConfirmModal 
                     title={deleteConfig.title}
                     onClose={() => setDeleteConfig(null)}
                     onConfirm={performDelete}
-                />
-            )}
-            {editingArticle && (
-                <EditArticleModal
-                    article={editingArticle}
-                    onClose={() => setEditingArticle(null)}
-                    onSave={handleSaveArticle}
                 />
             )}
         </div>
@@ -1075,7 +1269,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
             await updateSettings({ [key]: value });
         } catch (error) {
             console.error("Failed to update setting", key, error);
-            message.error("设置更新失败");
+            message.error('设置更新失败');
         }
     };
 
@@ -1101,7 +1295,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                             <div className={`relative flex flex-col h-full bg-[#0F172A] border-2 ${settings.theme === 'dark' ? 'border-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl p-4 transition-all hover:scale-[1.01] overflow-hidden`}>
                                 <div className="flex justify-between items-center px-2 py-4">
                                     <div>
-                                        <p className="text-white text-lg font-bold">深邃蓝</p>
+                                        <p className="text-white text-lg font-bold">深邃夜幕</p>
                                         <p className="text-slate-400 text-sm">沉浸式夜间学习</p>
                                     </div>
                                     <div className={`size-6 rounded-full ${settings.theme === 'dark' ? 'bg-primary' : 'bg-slate-800'} flex items-center justify-center transition-colors`}>
@@ -1117,7 +1311,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                             <div className={`relative flex flex-col h-full bg-slate-50 border-2 ${settings.theme === 'light' ? 'border-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl p-4 transition-all hover:scale-[1.01] overflow-hidden`}>
                                 <div className="flex justify-between items-center px-2 py-4">
                                     <div>
-                                        <p className="text-slate-900 text-lg font-bold">明亮白</p>
+                                        <p className="text-slate-900 text-lg font-bold">明亮白昼</p>
                                         <p className="text-slate-500 text-sm">高对比度日间模式</p>
                                     </div>
                                     <div className={`size-6 rounded-full ${settings.theme === 'light' ? 'bg-primary' : 'bg-slate-200'} flex items-center justify-center transition-colors`}>
@@ -1152,7 +1346,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                 />
                                 <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-text-secondary pointer-events-none group-hover:text-primary transition-colors">flag</span>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-text-secondary pl-1">推荐: 20-50词/天</p>
+                            <p className="text-xs text-slate-500 dark:text-text-secondary pl-1">推荐: 20-50 词/天</p>
                         </div>
 
                         {/* Time */}
@@ -1278,9 +1472,9 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                     const diff = new Date().getTime() - new Date(settings.lastSyncAt).getTime();
                                     const mins = Math.floor(diff / 60000);
                                     if (mins < 1) return '刚刚已同步';
-                                    if (mins < 60) return `已同步 (${mins}分钟前)`;
+                                    if (mins < 60) return `已同步（${mins} 分钟前）`;
                                     const hours = Math.floor(mins / 60);
-                                    if (hours < 24) return `已同步 (${hours}小时前)`;
+                                    if (hours < 24) return `已同步（${hours} 小时前）`;
                                     return `上次同步: ${new Date(settings.lastSyncAt).toLocaleDateString()}`;
                                 })() : '尚未同步'}
                              </p>
@@ -1289,11 +1483,11 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                      <div className="flex gap-3">
                         <button className="px-6 py-3 rounded-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-900 dark:text-white text-sm font-bold transition-all flex items-center gap-2">
                              <span className="material-symbols-outlined text-[18px]">download</span>
-                             导出数据
+                                导出数据
                         </button>
                          <button className="px-6 py-3 rounded-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 hover:border-red-500/50 hover:text-red-400 text-slate-500 dark:text-text-secondary text-sm font-bold transition-all flex items-center gap-2">
                              <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-                             清除缓存
+                                清除缓存
                         </button>
                     </div>
                 </div>
@@ -1369,10 +1563,10 @@ const Calendar: React.FC = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-baseline gap-3">
-                            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-[-0.03em]">{year}年 <span className="text-slate-400 dark:text-gray-500 font-light">{month}月</span></h1>
-                            <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider border border-primary/20">Learning Mode</span>
-                        </div>
+                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug pb-[0.18em]">学习日历</h1>
+                        <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">回顾每天的学习轨迹与完成情况。</p>
+                    </div>
+                    <div className="flex flex-col items-start md:items-end gap-1">
                         <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal flex items-center gap-2 mt-1">
                             <span className="material-symbols-outlined text-[18px] text-accent-green">check_circle</span>
                             本月已完成 {totalPoints} 个学习单元，保持良好势头！
@@ -1538,7 +1732,7 @@ const Calendar: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3 bg-slate-100 dark:bg-[#0d1117]/50 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5">
                         <div className="size-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(58,127,241,0.8)]"></div>
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">今日 (Today)</span>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">今天 (Today)</span>
                     </div>
                     <div className="flex items-center gap-3 bg-slate-100 dark:bg-[#0d1117]/50 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5">
                         <div className="size-2.5 rounded-full bg-accent-coral shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
@@ -1760,7 +1954,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                      {/* 1. Context Card (Selected Course Data) */}
                     <div className="glass-panel px-5 py-3 rounded-full flex items-center gap-4 mb-10 shadow-lg animate-modal">
                         <div className={`size-8 rounded-full bg-gradient-to-br ${courses.find(c => c.name === selectedTarget) ? getColorClasses(courses.find(c => c.name === selectedTarget)!.colorTheme).wizardGradient : 'from-blue-400 to-blue-600'} flex items-center justify-center shadow-lg text-white`}>
-                            {/* 显示选定课程的图标，默认为 school */}
+                            {/* 鏄剧ず閫夊畾璇剧▼鐨勫浘鏍囷紝榛樿涓?school */}
                             <span className="material-symbols-outlined text-sm font-bold">
                                 {courses.find(c => c.name === selectedTarget)?.icon || 'school'}
                             </span>
@@ -1768,7 +1962,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
                             <span className="text-slate-900 dark:text-white font-bold text-sm tracking-wide">{selectedTarget}</span>
                             <span className="hidden sm:block text-slate-400 dark:text-slate-500 text-xs">•</span>
-                            {/* 显示选定课程的总词汇量 */}
+                            {/* 鏄剧ず閫夊畾璇剧▼鐨勬€昏瘝姹囬噺 */}
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">
                                 {courses.find(c => c.name === selectedTarget)?.wordCount?.toLocaleString() || '3,500'} Words Total
                             </span>
@@ -1801,7 +1995,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                                 value={pace} 
                                 onChange={(e) => {
                                     setPace(Number(e.target.value));
-                                    // 自动建议：当用户手动调整较高时，自动提示是否切换到Cram模式
+                                    // 鑷姩寤鸿锛氬綋鐢ㄦ埛鎵嬪姩璋冩暣杈冮珮鏃讹紝鑷姩鎻愮ず鏄惁鍒囨崲鍒癈ram妯″紡
                                     if (Number(e.target.value) >= 70 && intensity !== 'Cram') {
                                         setIntensity('Cram');
                                     } else if (Number(e.target.value) < 50 && intensity === 'Cram') {
@@ -1956,7 +2150,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                                     </div>
                                     <div className="mt-auto">
                                         <h3 className={`text-2xl font-bold text-slate-900 dark:text-white mb-1 ${colors.hoverText} transition-colors`}>{course.name}</h3>
-                                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{(course as any).totalWords || (course as any).wordCount} Words • {course.description ? course.description.split('-')[0].trim() : 'General'}</p>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{(course as any).totalWords || (course as any).wordCount} Words 鈥?{course.description ? course.description.split('-')[0].trim() : 'General'}</p>
                                         <button className={`w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 ${colors.btnHover} text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 ${colors.btnBorder} transition-all duration-300 flex items-center justify-center gap-2`}>
                                             Start Course
                                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -1966,94 +2160,6 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                             </div>
                         );
                     })}
-                    {/* Old static cards hidden or removed */}
-                    <div className="hidden">
-                    {/* Card 1: IELTS - partially replaced */}
-                    <div onClick={() => handleSelectTarget('IELTS Core Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        {/* Hover Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-[#256af4]/20 flex items-center justify-center text-[#256af4] group-hover:bg-[#256af4] group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">school</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Academic</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-[#256af4] transition-colors">IELTS Core Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">4,000 Words • Essential</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-[#256af4] dark:hover:bg-[#256af4] text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-[#256af4] transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 2: TOEFL */}
-                    <div onClick={() => handleSelectTarget('TOEFL iBT Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">public</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Global</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">TOEFL iBT Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">5,000 Words • Advanced</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-indigo-600 dark:hover:border-indigo-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 3: GRE */}
-                    <div onClick={() => handleSelectTarget('GRE High-Frequency Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-500 dark:text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">menu_book</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Hard</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">GRE High-Frequency Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">High Difficulty • Verbal</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-rose-600 dark:hover:bg-rose-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-rose-600 dark:hover:border-rose-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 4: CET-4/6 */}
-                    <div onClick={() => handleSelectTarget('CET-4 Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">workspace_premium</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Exam Prep</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">CET-4 Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">College English Test</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-emerald-600 dark:hover:border-emerald-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    </div> {/* Close hidden div */}
                 </div>
             </div>
         </div>
@@ -2097,6 +2203,7 @@ const Stats: React.FC = () => (
 );
 
 const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: User | null; onUpdate: () => void }> = ({ isOpen, onClose, user, onUpdate }) => {
+    const defaultAvatarUrl = resolveApiAssetUrl('/uploads/avatars/default-avatar.svg');
     const [nickname, setNickname] = useState('');
     const [profession, setProfession] = useState('');
     const [age, setAge] = useState('');
@@ -2138,13 +2245,13 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
             const res: any = await userApis.uploadAvatar(file);
             if (res.url) {
                  setAvatarUrl(resolveApiAssetUrl(res.url));
-                 message.success('头像上传成功');
+                  message.success('头像上传成功');
             } else {
-                 message.error('上传失败');
+                  message.error('上传失败');
             }
         } catch (error) {
             console.error(error);
-            message.error('上传出错');
+              message.error('上传出错');
         }
     };
 
@@ -2158,11 +2265,11 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
                 message.success(`验证码已发送至 ${user.email}`);
                 setCountdown(60);
             } else {
-                message.error(res.message || "发送失败");
+                message.error(res.message || '发送失败');
             }
         } catch (e) {
             console.error(e);
-            message.error("发送失败，请稍后重试");
+            message.error('发送失败，请稍后重试');
         } finally {
             setSendingCode(false);
         }
@@ -2170,7 +2277,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
 
     const handleChangeEmail = async () => {
         if (!emailCode || !newEmail) {
-            return message.warning("请填写完整信息");
+            return message.warning('请填写完整信息');
         }
         try {
             const res = await authService.changeEmail({ code: emailCode, newEmail });
@@ -2219,7 +2326,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
                     <div className="flex flex-col items-center mb-6">
                         <div className="relative size-24 rounded-full overflow-hidden border-4 border-white dark:border-white/10 shadow-lg mb-4 group cursor-pointer">
                             <img 
-                                src={avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuBTEclYR8F_pkLAtS8wLfPT3QVwCMd5RhwSJjSY28e1PF7nHKZDXgzGQ0FV4peEV087BZVCvaPbPbgxQMbz81RuIXy7-pk7sniURUZrLqeRD0xRcANqR5YixFMj2V0UzBi28Z8ASy0fcXdkZP9g6Ym3SqqcAxkkLmtY15vtYjB-AKPa3msQWCbQs9XGyqG65y_UH1UIj4MYVuguZhyot-H03zomY8toB-6TbkdZRgwZFeQt1ba2iBPCm5j73JqVjYGFr7n-a_QyoOHw"} 
+                                src={avatarUrl || defaultAvatarUrl}
                                 alt="Avatar" 
                                 className="w-full h-full object-cover"
                             />
@@ -2316,6 +2423,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
 const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
     const { user, fetchUser, logout } = useUserStore();
     const [showEditModal, setShowEditModal] = useState(false);
+    const defaultAvatarUrl = resolveApiAssetUrl('/uploads/avatars/default-avatar.svg');
 
     useEffect(() => {
         fetchUser();
@@ -2335,7 +2443,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
             <div className="bg-white dark:bg-surface-dark rounded-[2.5rem] p-8 border border-slate-200 dark:border-white/5 shadow-lg relative overflow-hidden">
                  <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary/20 to-blue-400/20"></div>
                  <div className="relative flex flex-col items-center mt-12">
-                    <div className="size-32 rounded-full border-4 border-white dark:border-surface-dark shadow-xl bg-cover bg-center mb-4" style={{ backgroundImage: `url('${user.avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuBTEclYR8F_pkLAtS8wLfPT3QVwCMd5RhwSJjSY28e1PF7nHKZDXgzGQ0FV4peEV087BZVCvaPbPbgxQMbz81RuIXy7-pk7sniURUZrLqeRD0xRcANqR5YixFMj2V0UzBi28Z8ASy0fcXdkZP9g6Ym3SqqcAxkkLmtY15vtYjB-AKPa3msQWCbQs9XGyqG65y_UH1UIj4MYVuguZhyot-H03zomY8toB-6TbkdZRgwZFeQt1ba2iBPCm5j73JqVjYGFr7n-a_QyoOHw"}')` }}></div>
+                    <div className="size-32 rounded-full border-4 border-white dark:border-surface-dark shadow-xl bg-cover bg-center mb-4" style={{ backgroundImage: `url('${user.avatarUrl || defaultAvatarUrl}')` }}></div>
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{user.nickname || (user as any).username || 'User'}</h3>
                     <p className="text-slate-500 dark:text-text-secondary">{user.profession || 'Student'}</p>
                     <div className="flex gap-4 mt-6">
@@ -2380,7 +2488,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                     </a>
                      <button onClick={() => { logout(); setView('login'); }} className="w-full py-3 rounded-xl border border-red-500/20 text-red-500 font-bold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
                         <span className="material-symbols-outlined">logout</span>
-                        退出登录
+                                退出登录
                     </button>
                  </div>
             </div>
@@ -2421,7 +2529,10 @@ const App: React.FC = () => {
         }
         
         const route = path.substring(1);
-        if (['calendar', 'stats', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
+        if (route === 'stats') {
+            return { view: 'todo', subjectId: null, goalId: null };
+        }
+        if (['calendar', 'todo', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
             return { view: route, subjectId: null, goalId: null };
         }
         
@@ -2429,6 +2540,7 @@ const App: React.FC = () => {
     };
 
     const { view, goalId: selectedGoalId, subjectId: selectedSubjectId } = getViewFromPath(location.pathname);
+    const publicMarketingView = view === 'homepage' || view === 'docs';
 
     // State
     const { addGoal, deleteGoal, addSubject, deleteSubject } = useGoalStore();
@@ -2475,7 +2587,7 @@ const App: React.FC = () => {
              if (view === 'admin') {
                  // If user data is loaded and not admin, redirect
                  if (user && user.role !== 'ADMIN' && user.email !== 'admin@gmail.com') {
-                     message.error("无权访问管理后台");
+                     message.error('无权访问管理后台');
                      navigate('/');
                  }
              } else {
@@ -2494,7 +2606,7 @@ const App: React.FC = () => {
     // useEffect(() => {
     //     if (view === 'admin' && user) {
     //          if (user.role !== 'ADMIN') {
-    //              message.error("无权访问管理后台");
+    //              message.error("鏃犳潈璁块棶绠＄悊鍚庡彴");
     //              navigate('/');
     //          }
     //     }
@@ -2512,7 +2624,7 @@ const App: React.FC = () => {
             }
 
             navigate('/login');
-            message.error("会话已过期，请重新登录");
+            message.error('会话已过期，请重新登录');
         };
 
         window.addEventListener('auth:logout', handleAuthLogout);
@@ -2651,10 +2763,16 @@ const App: React.FC = () => {
 
     return (
         <div 
-            className={view === 'widget' ? 'bg-transparent h-fit flex justify-center items-start pt-0 pointer-events-none' : 'bg-slate-50 dark:bg-background-dark text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-hidden z-0'}
+            className={
+                view === 'widget'
+                    ? 'bg-transparent h-fit flex justify-center items-start pt-0 pointer-events-none'
+                    : publicMarketingView
+                    ? 'bg-transparent text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-x-hidden z-0'
+                    : 'bg-slate-50 dark:bg-background-dark text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-hidden z-0'
+            }
             style={view === 'widget' ? { background: 'transparent', backgroundColor: 'transparent' } : {}}
         >
-            {view !== 'widget' && <BackgroundGlow />}
+            {!publicMarketingView && view !== 'widget' && <BackgroundGlow />}
             <MessageContainer />
             {view === 'widget' ? (
                 <DynamicIslandWidget />
@@ -2667,9 +2785,13 @@ const App: React.FC = () => {
             ) : view === 'security-check' ? (
                 <SecurityCheck />
             ) : view === 'homepage' ? (
-                <HomePage />
+                <Suspense fallback={<MarketingPageFallback />}>
+                    <HomePage />
+                </Suspense>
             ) : view === 'docs' ? (
-                <DocsPage />
+                <Suspense fallback={<MarketingPageFallback />}>
+                    <DocsPage />
+                </Suspense>
             ) : view === 'admin' ? (
                 <AdminDashboard />
             ) : (
@@ -2677,7 +2799,7 @@ const App: React.FC = () => {
                     <Navigation />
             
                     <main className="flex flex-col lg:flex-row gap-8 flex-1">
-                <div className="flex flex-col flex-1 gap-10">
+                <div className={`flex flex-col flex-1 gap-10 ${view !== 'english' && view !== 'todo' ? 'lg:pr-[22rem] xl:pr-[26rem]' : ''}`}>
                     {view === 'dashboard' && <Dashboard setView={setView} onOpenAddGoal={() => setShowAddGoalModal(true)} onGoalClick={handleGoalClick} />}
                     {view === 'goal' && (
                         <GoalDetail 
@@ -2693,15 +2815,15 @@ const App: React.FC = () => {
                     {view === 'detail' && <SubjectDetail subjectId={selectedSubjectId} setView={setView} onEdit={(title) => setEditModalTitle(title)} />}
                     {view === 'settings' && <Settings theme={theme} setTheme={setTheme} />}
                     {view === 'calendar' && <Calendar />}
-                    {view === 'stats' && <Stats />}
+                    {view === 'todo' && <TodoPage />}
                     {view === 'english' && <English setView={setView} />}
                     {view === 'history' && <LearnedHistory onBack={() => setView('english')} />}
                     {view === 'profile' && <Profile setView={setView} />}
-                    {view !== 'dashboard' && view !== 'goal' && view !== 'detail' && view !== 'settings' && view !== 'profile' && view !== 'calendar' && view !== 'stats' && view !== 'english' && view !== 'history' && (
+                    {view !== 'dashboard' && view !== 'goal' && view !== 'detail' && view !== 'settings' && view !== 'profile' && view !== 'calendar' && view !== 'todo' && view !== 'english' && view !== 'history' && (
                         <div className="flex items-center justify-center h-full text-text-secondary">Work in progress...</div>
                     )}
                 </div>
-                {view !== 'english' && <Widgets />}
+                {view !== 'english' && view !== 'todo' && <Widgets fixed />}
             </main>
             </div>
             )}
@@ -2728,3 +2850,15 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+

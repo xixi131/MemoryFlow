@@ -1,0 +1,83 @@
+.typora-editor-shell {
+    position: relative;
+    width: 100%;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 0;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+
+.dark .typora-editor-shell {
+    background: #0f172a;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+.typora-editor-shell .milkdown {
+    min-height: 260px;
+}
+
+.typora-editor-shell .milkdown .editor {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+.typora-editor-shell .ProseMirror {
+    min-height: 260px;
+    padding: 20px 24px;
+    font-size: 18px;
+    line-height: 1.85;
+    color: #0f172a;
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.dark .typora-editor-shell .ProseMirror {
+    color: #e2e8f0;
+}
+
+.typora-editor-shell .ProseMirror h1,
+.typora-editor-shell .ProseMirror h2,
+.typora-editor-shell .ProseMirror h3 {
+    line-height: 1.25;
+    margin: 0.5em 0 0.26em;
+}
+
+.typora-editor-shell .ProseMirror p {
+    margin: 0.24em 0;
+}
+
+.typora-editor-shell .ProseMirror h1 + h1,
+.typora-editor-shell .ProseMirror h2 + h2,
+.typora-editor-shell .ProseMirror h3 + h3,
+.typora-editor-shell .ProseMirror h1 + p,
+.typora-editor-shell .ProseMirror h2 + p,
+.typora-editor-shell .ProseMirror h3 + p {
+    margin-top: 0.2em;
+}
+
+.typora-editor-shell .typora-editor-placeholder {
+    position: absolute;
+    top: 22px;
+    left: 24px;
+    color: #94a3b8;
+    pointer-events: none;
+    user-select: none;
+    z-index: 5;
+    font-size: 18px;
+}
+
+.typora-editor-shell.typora-editor-shell-flat {
+    background: #ffffff;
+    box-shadow: none;
+    border-radius: 12px;
+}
+
+.dark .typora-editor-shell.typora-editor-shell-flat {
+    background: #0f172a;
+    box-shadow: none;
+}

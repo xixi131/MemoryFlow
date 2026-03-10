@@ -33,7 +33,7 @@ export const useSubjectStore = create<SubjectState>((set, get) => ({
         }
 
         // 2. Check Deduplication
-        if (loadingDetails[subjectId]) {
+        if (!force && loadingDetails[subjectId]) {
             console.log(`[SubjectStore] Request already in progress for ${subjectId}, skipping duplicate.`);
             return;
         }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './MarkdownRenderer';
+import MarkdownTyporaEditor from './MarkdownTyporaEditor';
 
 interface EditArticleModalProps {
     article: { id: string; title: string; body: string } | null;
@@ -38,7 +39,10 @@ const EditArticleModal: React.FC<EditArticleModalProps> = ({ article, onClose, o
 
     const insertText = (before: string, after: string = '') => {
         const textarea = textareaRef.current;
-        if (!textarea) return;
+        if (!textarea) {
+            setContent((prev) => `${prev}${prev.endsWith('\n') || prev.length === 0 ? '' : '\n'}${before}${after}`);
+            return;
+        }
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
@@ -119,13 +123,13 @@ const EditArticleModal: React.FC<EditArticleModalProps> = ({ article, onClose, o
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left: Editor */}
                     <div className={`flex-1 flex flex-col h-full ${showPreview ? 'hidden md:flex' : 'flex'}`}>
-                        <textarea 
-                            ref={textareaRef}
+                        <MarkdownTyporaEditor
+                            externalTextareaRef={textareaRef}
                             value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            className="w-full h-full p-8 bg-white dark:bg-[#0F172A] text-base text-slate-700 dark:text-slate-300 font-mono focus:outline-none resize-none leading-relaxed"
+                            onChange={(nextValue) => setContent(nextValue)}
                             placeholder="# Start writing..."
-                            spellCheck={false}
+                            minHeightClassName="min-h-full"
+                            className="h-full rounded-none bg-white dark:bg-[#0F172A]"
                         />
                     </div>
 
@@ -134,9 +138,9 @@ const EditArticleModal: React.FC<EditArticleModalProps> = ({ article, onClose, o
 
                     {/* Right: Preview */}
                     <div className={`flex-1 bg-slate-50 dark:bg-[#0B1120] overflow-y-auto p-8 ${showPreview ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="prose prose-slate dark:prose-invert max-w-none w-full prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#1E293B]">
+                        <div className="w-full">
                             <h1 className="mb-8">{title}</h1>
-                            <ReactMarkdown>{content}</ReactMarkdown>
+                            <MarkdownRenderer content={content} className="prose prose-slate dark:prose-invert max-w-none w-full prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-a:text-primary prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:dark:bg-[#1E293B]" />
                         </div>
                     </div>
                 </div>

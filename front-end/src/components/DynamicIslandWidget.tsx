@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
+import { motion } from 'framer-motion';
 import request from '../utils/request';
-import logo from '../assets/logo.png';
 
-// Spring configuration for container
+// 过渡弹簧参数（控制整体动画速度/回弹感）
 const containerSpring: any = {
     type: "spring",
     stiffness: 280,
@@ -11,26 +10,62 @@ const containerSpring: any = {
     mass: 1.2,
 };
 
-// SQUIRCLE SMOOTHNESS CONFIGURATION
-// 3.5: Very round (接近圆形)
-// 4.0: Balanced (平衡，像 iOS App 图标)
-// 4.8: Sleek/Modern (更接近 iOS 灵动岛的硬朗感，默认推荐)
-const SQUIRCLE_SMOOTHNESS = 2.25; // 修改此处数值以调整圆角平滑度
+// ==========================
+// 灵动岛形态控制参数（可手动调节）
+// ==========================
+// 连续曲率（superellipse smoothness）：
+// 数值越小越圆润，数值越大越“硬朗”
+const SQUIRCLE_SMOOTHNESS = 3.5; // 普通态底部连续曲率
+const SQUIRCLE_SMOOTHNESS_ACTIVITY = 2.3; // 活动态（音乐/复习/待办）底部连续曲率
 
 // --- 状态 1: 静止/空闲态 (Idle/Empty) ---
 // 只有小胶囊，无任何活动时
-const EAR_TENSION_IDLE = 0.6;       // 张力较小
-const EAR_BLEND_HEIGHT_IDLE = 14;    // 融合高度最小 (e.g. 4-8px)
+const EAR_TENSION_IDLE = 0.4;       // 张力较小
+const EAR_BLEND_HEIGHT_IDLE = 11;    // 融合高度最小 (e.g. 4-8px)
 
 // --- 状态 2: 活动/音乐态 (Activity/Music) ---
-// 胶囊变宽显示波形或封面时
-const EAR_TENSION_ACTIVITY = 0.2;   // 张力适中
-const EAR_BLEND_HEIGHT_ACTIVITY = 26; // 融合高度中等 (e.g. 10-16px)
+// 胶囊变宽显示活动信息时（音乐/提醒都归活动态）
+const EAR_TENSION_ACTIVITY = 0.3;   // 左上/右上液态连接“开口角度”强度（越大越外张）
+const EAR_BLEND_HEIGHT_ACTIVITY = 22; // 左上/右上液态连接“下垂融合高度”（越大越圆润）
 
 // --- 状态 3: 展开态 (Expanded) ---
 // 完整的大卡片面板
 const EAR_TENSION_EXPANDED = 0.7;   // 张力最大 (液态感最强)
 const EAR_BLEND_HEIGHT_EXPANDED = 32; // 融合高度最大，消除大转角的夹角感 (e.g. 20-30px)
+
+// 底部圆角半径（左下/右下）
+const COLLAPSED_RADIUS_DEFAULT = 22; // 普通态底部圆角半径
+const COLLAPSED_RADIUS_ACTIVITY = 50; // 活动态底部圆角半径（音乐/复习/待办）
+
+// 已停用（提醒态独立形态参数）：提醒态已并入活动态统一控制，保留作备用
+// const EAR_TENSION_REMINDER = 0.2;
+// const EAR_BLEND_HEIGHT_REMINDER = 18;
+// const COLLAPSED_RADIUS_REMINDER = 22;
+
+// 活动态（音乐/复习/待办）统一收起动画参数
+// 后续新增活动态时，只需要纳入 hasAnyActivitySource/showAnyActivity 判定即可复用
+const ACTIVITY_COLLAPSE_DURATION_SECONDS = 0.85;
+const ACTIVITY_COLLAPSE_CONTENT_DELAY_SECONDS = 0.47;
+const ACTIVITY_SEGMENTED_TIMES = [0, 0.45, 0.55, 1];
+const ACTIVITY_OPEN_DURATION_SECONDS = 0.56; // 活动态开启（普通态 -> 活动态）时长
+const ACTIVITY_OPEN_CONTENT_DELAY_SECONDS = 0.1; // 活动态内容出现延迟（先扩展后显内容）
+const ACTIVITY_OPEN_CONTENT_DURATION_SECONDS = 0.26; // 活动态内容淡入时长
+const ACTIVITY_COLLAPSED_WIDTH = 240; // 活动态统一宽度（音乐/复习/待办/未来新增活动态）
+const COLLAPSED_MUSIC_COVER_WIDTH = 24;
+const COLLAPSED_MUSIC_COVER_HEIGHT = 27;
+const COLLAPSED_MUSIC_COVER_RADIUS = 6.4;
+const COLLAPSED_MUSIC_COVER_SMOOTHNESS = 1.92;
+const EXPANDED_MUSIC_COVER_WIDTH = 72;
+const EXPANDED_MUSIC_COVER_HEIGHT = 80;
+const EXPANDED_MUSIC_COVER_RADIUS = 16;
+const EXPANDED_MUSIC_COVER_SMOOTHNESS = 1.85;
+const DEBUG_MUSIC_PIPELINE = false;
+
+const musicDebugLog = (...args: any[]) => {
+    if (DEBUG_MUSIC_PIPELINE) {
+        console.log(...args);
+    }
+};
 
 // Path generation function for liquid ears
 const generateEarPath = (isLeft: boolean, tension: number, blendHeight: number) => {
@@ -113,39 +148,15 @@ const MusicWaveform: React.FC<{ color: string; isPlaying: boolean; count?: numbe
     );
 };
 
-// Electric Current Animation Component - Internal Right Side
-const ElectricCurrent = () => {
+// Review Mode Icon (line style)
+const ReviewModeIcon = () => {
     return (
-        <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-            <motion.svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]"
-            >
-                <motion.path
-                    d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
-                    stroke="#22d3ee"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{
-                        pathLength: [0, 1, 1, 0],
-                        opacity: [0, 1, 1, 0],
-                        strokeWidth: [2, 3, 2]
-                    }}
-                    transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        times: [0, 0.4, 0.6, 1]
-                    }}
-                />
-            </motion.svg>
-        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6.5 4.5H17.5C18.3284 4.5 19 5.17157 19 6V18C19 18.8284 18.3284 19.5 17.5 19.5H6.5C5.67157 19.5 5 18.8284 5 18V6C5 5.17157 5.67157 4.5 6.5 4.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M9.5 4.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 8H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 11H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
     );
 };
 
@@ -169,12 +180,45 @@ interface WidgetData {
     reminderTime?: string;
 }
 
+interface TodoPreviewTask {
+    id: number;
+    title: string;
+    status: 'todo' | 'completed';
+    priority: 'high' | 'medium' | 'low' | 'none';
+    dueDate?: string;
+    dueTime?: string;
+    overdue?: boolean;
+    dueToday?: boolean;
+}
+
+interface TodoPreviewData {
+    pending: number;
+    dueToday: number;
+    overdue: number;
+    tasks: TodoPreviewTask[];
+}
+
 // Format time in mm:ss
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
+
+const formatTodoDue = (task: TodoPreviewTask): string => {
+    if (task.status === 'completed') return '已完成';
+    if (!task.dueDate) return '无截止日期';
+    const date = String(task.dueDate).slice(5, 10);
+    const time = task.dueTime ? String(task.dueTime).slice(0, 5) : '';
+    return time ? `${date} ${time}` : date;
+};
+
+const createEmptyTodoPreview = (): TodoPreviewData => ({
+    pending: 0,
+    dueToday: 0,
+    overdue: 0,
+    tasks: []
+});
 
 // Helper to generate squircle path (bottom corners only, top flat)
 // Using Superellipse Parametric Equation for iOS-like "Straight-to-Squircle" smoothness
@@ -310,20 +354,239 @@ const generateRightCapPath = (height: number, radius: number, smoothness: number
     return path;
 };
 
+// Full squircle path (4 rounded corners) for small cover/thumb visuals.
+const generateFullSquirclePath = (width: number, height: number, radius: number, smoothness: number = 2.8) => {
+    const r = Math.min(radius, width / 2, height / 2);
+    const steps = 24;
+
+    let path = `M ${r} 0 L ${width - r} 0`;
+
+    // Top-right
+    const cx1 = width - r;
+    const cy1 = r;
+    for (let i = 1; i <= steps; i++) {
+        const t = -Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx1 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy1 + Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L ${width} ${height - r}`;
+
+    // Bottom-right
+    const cx2 = width - r;
+    const cy2 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx2 + Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy2 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L ${r} ${height}`;
+
+    // Bottom-left
+    const cx3 = r;
+    const cy3 = height - r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI / 2 + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx3 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy3 + Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` L 0 ${r}`;
+
+    // Top-left
+    const cx4 = r;
+    const cy4 = r;
+    for (let i = 1; i <= steps; i++) {
+        const t = Math.PI + (Math.PI / 2) * (i / steps);
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx4 + Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / smoothness) * r;
+        const y = cy4 + Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / smoothness) * r;
+        path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+
+    path += ` Z`;
+    return path;
+};
+
+// Puffy cover path: all four edges participate in the curve, so the sides feel slightly "inflated".
+const generatePuffyCoverPath = (width: number, height: number, radius: number, smoothness: number = 2) => {
+    const steps = 72;
+    const cx = width / 2;
+    const cy = height / 2;
+    const minSide = Math.min(width, height);
+    const normalizedRadius = Math.max(0.1, Math.min(0.34, radius / minSide));
+    const superellipseN = Math.max(
+        3.8,
+        Math.min(7.2, 3.9 + normalizedRadius * 8.5 + (2.4 - smoothness) * 2.2)
+    );
+    const exponent = 2 / superellipseN;
+
+    let path = '';
+    for (let i = 0; i <= steps; i++) {
+        const t = -Math.PI / 2 + (Math.PI * 2 * i) / steps;
+        const cosT = Math.cos(t);
+        const sinT = Math.sin(t);
+        const x = cx + (width / 2) * Math.sign(cosT) * Math.pow(Math.abs(cosT), exponent);
+        const y = cy + (height / 2) * Math.sign(sinT) * Math.pow(Math.abs(sinT), exponent);
+        path += `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)} `;
+    }
+    path += 'Z';
+    return path;
+};
+
+const SquircleCoverThumb: React.FC<{
+    src?: string;
+    width?: number;
+    height?: number;
+    radius?: number;
+    smoothness?: number;
+    shapeVariant?: 'rounded' | 'puffy';
+    showGloss?: boolean;
+    showRim?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
+    backgroundFill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    placeholderIconClassName?: string;
+}> = ({
+    src,
+    width = 22,
+    height = 26,
+    radius = 8.6,
+    smoothness = 2.35,
+    shapeVariant = 'rounded',
+    showGloss = false,
+    showRim = false,
+    className,
+    style,
+    backgroundFill = 'rgba(255,255,255,0.1)',
+    stroke = 'transparent',
+    strokeWidth = 0.9,
+    placeholderIconClassName = 'material-symbols-outlined text-[13px] text-white/50'
+}) => {
+    const rawId = useId();
+    const clipId = useMemo(() => `cover-squircle-${rawId.replace(/:/g, '')}`, [rawId]);
+    const glossId = useMemo(() => `cover-gloss-${rawId.replace(/:/g, '')}`, [rawId]);
+    const shadeId = useMemo(() => `cover-shade-${rawId.replace(/:/g, '')}`, [rawId]);
+    const rimId = useMemo(() => `cover-rim-${rawId.replace(/:/g, '')}`, [rawId]);
+    const squirclePath = useMemo(
+        () => shapeVariant === 'puffy'
+            ? generatePuffyCoverPath(width, height, radius, smoothness)
+            : generateFullSquirclePath(width, height, radius, smoothness),
+        [width, height, radius, smoothness, shapeVariant]
+    );
+
+    return (
+        <div
+            className={`relative shrink-0 ${className || ''}`.trim()}
+            style={{ width, height, ...style }}
+        >
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
+                <defs>
+                    <clipPath id={clipId}>
+                        <path d={squirclePath} />
+                    </clipPath>
+                    <linearGradient id={glossId} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(255,255,255,0.34)" />
+                        <stop offset="22%" stopColor="rgba(255,255,255,0.14)" />
+                        <stop offset="48%" stopColor="rgba(255,255,255,0.03)" />
+                        <stop offset="70%" stopColor="rgba(255,255,255,0)" />
+                    </linearGradient>
+                    <linearGradient id={shadeId} x1="100%" y1="100%" x2="0%" y2="0%">
+                        <stop offset="0%" stopColor="rgba(0,0,0,0.22)" />
+                        <stop offset="28%" stopColor="rgba(0,0,0,0.1)" />
+                        <stop offset="58%" stopColor="rgba(0,0,0,0)" />
+                    </linearGradient>
+                    <linearGradient id={rimId} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(255,255,255,0.36)" />
+                        <stop offset="35%" stopColor="rgba(255,255,255,0.12)" />
+                        <stop offset="70%" stopColor="rgba(255,255,255,0.06)" />
+                        <stop offset="100%" stopColor="rgba(255,255,255,0.14)" />
+                    </linearGradient>
+                </defs>
+
+                <path d={squirclePath} fill={backgroundFill} />
+
+                {src ? (
+                    <image
+                        href={src}
+                        width={width}
+                        height={height}
+                        preserveAspectRatio="xMidYMid slice"
+                        clipPath={`url(#${clipId})`}
+                    />
+                ) : null}
+
+                {showGloss ? (
+                    <>
+                        <rect width={width} height={height} fill={`url(#${glossId})`} clipPath={`url(#${clipId})`} />
+                        <rect width={width} height={height} fill={`url(#${shadeId})`} clipPath={`url(#${clipId})`} />
+                    </>
+                ) : null}
+
+                <path
+                    d={squirclePath}
+                    fill="none"
+                    stroke={showGloss && showRim ? `url(#${rimId})` : stroke}
+                    strokeWidth={strokeWidth}
+                    vectorEffect="non-scaling-stroke"
+                />
+
+            </svg>
+
+            {!src ? (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className={placeholderIconClassName}>music_note</span>
+                </div>
+            ) : null}
+        </div>
+    );
+};
+
 const DynamicIslandWidget: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [forceCompactMode, setForceCompactMode] = useState(false);
+    const [forceCompactMode, setForceCompactMode] = useState(true);
     const [isReminderActive, setIsReminderActive] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [greetingText, setGreetingText] = useState<string | null>(null);
     const [isGreetingActive, setIsGreetingActive] = useState(false);
     const islandHitRef = useRef<HTMLDivElement | null>(null);
+    const forceCompactModeRef = useRef<boolean>(true);
     const isExpandedRef = useRef<boolean>(false);
+    const prevIsExpandedRef = useRef<boolean>(false);
+    const isModeSwitchAnimatingRef = useRef<boolean>(false);
     const greetingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const reminderCollapseTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const reminderAutoOpenKeyRef = useRef<string | null>(null);
+    const reminderDueRef = useRef<boolean>(false);
+    const reminderCheckInitializedRef = useRef<boolean>(false);
+    const modeSwitchLongPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const modeSwitchCompactTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const modeSwitchExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const modeSwitchUnlockTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const forceCompactTransitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadGestureResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadGestureCooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const trackpadDeltaXRef = useRef(0);
+    const trackpadDeltaYRef = useRef(0);
+    const trackpadGestureLockedRef = useRef(false);
 
     // Music state
     const [mode, setMode] = useState<'app' | 'music'>('app');
+    const [appDisplayMode, setAppDisplayMode] = useState<'review' | 'todo'>('review');
     const [musicData, setMusicData] = useState<MusicData | null>(null);
     const [localPosition, setLocalPosition] = useState(0);
 
@@ -347,6 +610,10 @@ const DynamicIslandWidget: React.FC = () => {
         isExpandedRef.current = isExpanded;
     }, [isExpanded]);
 
+    useEffect(() => {
+        forceCompactModeRef.current = forceCompactMode;
+    }, [forceCompactMode]);
+
     const enableClickThrough = useCallback(() => {
         try {
             const { ipcRenderer } = (window as any).require('electron');
@@ -354,23 +621,43 @@ const DynamicIslandWidget: React.FC = () => {
         } catch (e) { }
     }, []);
 
-    const collapseExpanded = useCallback(() => {
+    const disableClickThrough = useCallback(() => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            ipcRenderer.send('set-ignore-mouse-events', false);
+        } catch (e) { }
+    }, []);
+
+    const collapseExpanded = useCallback((options?: { preserveHoverFocus?: boolean }) => {
         setIsExpanded(false);
+        if (options?.preserveHoverFocus) {
+            setIsHovered(true);
+            disableClickThrough();
+            return;
+        }
         enableClickThrough();
-    }, [enableClickThrough]);
+    }, [disableClickThrough, enableClickThrough]);
     const musicTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track when playback started (for simulating progress when server doesn't provide it)
     const playStartTimeRef = useRef<number | null>(null);
     const playStartPositionRef = useRef<number>(0);
 
-    const startX = useRef(0);
+    const startX = useRef<number | null>(null);
+    const lastPointerXRef = useRef<number | null>(null);
+    const activePointerIdRef = useRef<number | null>(null);
+    const isGestureTrackingRef = useRef(false);
     const [data, setData] = useState<WidgetData>({
         totalPendingReviews: 0,
         totalCompletedToday: 0,
         subjects: []
     });
-
+    const [todoPreview, setTodoPreview] = useState<TodoPreviewData>(createEmptyTodoPreview());
+    const [todoPendingOps, setTodoPendingOps] = useState<Record<number, boolean>>({});
+    const [isReminderCollapsing, setIsReminderCollapsing] = useState(false);
+    const [isModeSwitchAnimating, setIsModeSwitchAnimating] = useState(false);
+    const [isForceCompactTransitioning, setIsForceCompactTransitioning] = useState(false);
+    const [activityOpenAnimToken, setActivityOpenAnimToken] = useState(0);
     // Handle music IPC events
     useEffect(() => {
         let ipcRenderer: any = null;
@@ -378,8 +665,8 @@ const DynamicIslandWidget: React.FC = () => {
             ipcRenderer = (window as any).require('electron').ipcRenderer;
 
             const handleMusicUpdate = (_event: any, data: MusicData) => {
-                console.log('[DynamicIsland] 🎵 Received music data:', data);
-                console.log('[DynamicIsland] 📊 Data breakdown:', {
+                musicDebugLog('[DynamicIsland] 🎵 Received music data:', data);
+                musicDebugLog('[DynamicIsland] 📊 Data breakdown:', {
                     title: data.title,
                     position: data.position,
                     duration: data.duration,
@@ -397,7 +684,7 @@ const DynamicIslandWidget: React.FC = () => {
                     // 只有登录状态才允许首次接管音乐（从 app 模式切换到 music 模式）
                     // 如果已经在 music 模式，则始终允许数据更新（保持歌曲切换、播放状态、进度同步）
                     if (!isLoggedInRef.current && modeRef.current !== 'music') {
-                        console.log('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
+                        musicDebugLog('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
                         return;
                     }
 
@@ -405,6 +692,15 @@ const DynamicIslandWidget: React.FC = () => {
                     // Position sync is handled by the dedicated sync useEffect
                     // Do NOT set localPosition here — for apps like NetEase Cloud Music
                     // where data.position is always 0, this would reset the local timer every 500ms
+                    if (modeRef.current !== 'music') {
+                        forceCompactModeRef.current = false;
+                        setForceCompactMode(false);
+                        setIsForceCompactTransitioning(false);
+                        if (forceCompactTransitionTimerRef.current) {
+                            clearTimeout(forceCompactTransitionTimerRef.current);
+                            forceCompactTransitionTimerRef.current = null;
+                        }
+                    }
                     setMode('music');
 
                     // If paused, set a timeout to switch back to app mode after 30 seconds
@@ -431,6 +727,31 @@ const DynamicIslandWidget: React.FC = () => {
             };
         } catch (e) {
             console.warn('Electron IPC not available for music');
+        }
+    }, []);
+
+    useEffect(() => {
+        let ipcRenderer: any = null;
+        try {
+            ipcRenderer = (window as any).require('electron').ipcRenderer;
+            const handleDisplayModeChange = (_event: any, nextMode: 'review' | 'todo') => {
+                setAppDisplayMode(nextMode === 'todo' ? 'todo' : 'review');
+                setIsExpanded(false);
+                // 复习/待办模式切换统一规则：
+                // 切换后默认回到活动态，不记忆该模式之前的“普通态/活动态”开关状态
+                // （长按切换序列中由专用动画控制，避免被这里打断）
+                if (!isModeSwitchAnimatingRef.current) {
+                    forceCompactModeRef.current = false;
+                    setForceCompactMode(false);
+                }
+            };
+            ipcRenderer.on('widget-display-mode-changed', handleDisplayModeChange);
+            ipcRenderer.send('get-widget-display-mode');
+            return () => {
+                ipcRenderer.removeListener('widget-display-mode-changed', handleDisplayModeChange);
+            };
+        } catch (e) {
+            return;
         }
     }, []);
 
@@ -469,7 +790,7 @@ const DynamicIslandWidget: React.FC = () => {
 
             // 歌曲切换 → 直接同步 (处理网易云进度记忆：切歌回来从上次位置继续)
             if (titleChanged) {
-                console.log('[DynamicIsland] 🎼 Title changed, syncing position to:', serverPos);
+                musicDebugLog('[DynamicIsland] 🎼 Title changed, syncing position to:', serverPos);
                 setLocalPosition(serverPos);
                 lastTitleRef.current = musicData.title;
                 initialSyncDoneRef.current = true;
@@ -485,7 +806,7 @@ const DynamicIslandWidget: React.FC = () => {
 
             // 首次加载 → 直接同步
             if (!initialSyncDoneRef.current) {
-                console.log('[DynamicIsland] 🆕 Initial sync, setting position to:', serverPos);
+                musicDebugLog('[DynamicIsland] 🆕 Initial sync, setting position to:', serverPos);
                 setLocalPosition(serverPos);
                 initialSyncDoneRef.current = true;
                 lastServerPosRef.current = serverPos;
@@ -506,7 +827,7 @@ const DynamicIslandWidget: React.FC = () => {
                 // 这处理了：拖动进度条、正常播放推进、进度记忆恢复
                 const drift = Math.abs(serverPos - localPosition);
                 if (drift > 2) {
-                    console.log('[DynamicIsland] ⏩ Server position changed, syncing:', serverPos, '(drift:', drift, ')');
+                    musicDebugLog('[DynamicIsland] ⏩ Server position changed, syncing:', serverPos, '(drift:', drift, ')');
                     setLocalPosition(serverPos);
                     playStartTimeRef.current = Date.now();
                     playStartPositionRef.current = serverPos;
@@ -515,7 +836,7 @@ const DynamicIslandWidget: React.FC = () => {
                 // 暂停状态 + 服务端位置未变 → 但如果跟本地差太多也同步 (处理暂停后拖动)
                 const drift = Math.abs(serverPos - localPosition);
                 if (drift > 1) {
-                    console.log('[DynamicIsland] ⏸️ Paused drift detected, syncing:', serverPos);
+                    musicDebugLog('[DynamicIsland] ⏸️ Paused drift detected, syncing:', serverPos);
                     setLocalPosition(serverPos);
                 }
             }
@@ -548,29 +869,271 @@ const DynamicIslandWidget: React.FC = () => {
         sendMediaControl('next');
     }, [sendMediaControl]);
 
+    const applyTodoTaskStatus = useCallback((preview: TodoPreviewData, taskId: number, completed: boolean): TodoPreviewData => {
+        const target = preview.tasks.find(t => t.id === taskId);
+        if (!target) return preview;
+
+        const prevCompleted = target.status === 'completed';
+        if (prevCompleted === completed) return preview;
+
+        const nextTasks = preview.tasks.map(task =>
+            task.id === taskId ? { ...task, status: completed ? 'completed' : 'todo' } : task
+        );
+
+        const pendingDelta = completed ? -1 : 1;
+        const dueTodayDelta = target.dueToday ? pendingDelta : 0;
+        const overdueDelta = target.overdue ? pendingDelta : 0;
+
+        return {
+            ...preview,
+            pending: Math.max(0, preview.pending + pendingDelta),
+            dueToday: Math.max(0, preview.dueToday + dueTodayDelta),
+            overdue: Math.max(0, preview.overdue + overdueDelta),
+            tasks: nextTasks
+        };
+    }, []);
+
+    const handleToggleTodoTask = useCallback(async (e: React.MouseEvent, taskId: number) => {
+        e.stopPropagation();
+        if (todoPendingOps[taskId]) return;
+
+        const targetTask = todoPreview.tasks.find(task => task.id === taskId);
+        if (!targetTask) return;
+        const willComplete = targetTask.status !== 'completed';
+
+        setTodoPendingOps(prev => ({ ...prev, [taskId]: true }));
+        setTodoPreview(prev => applyTodoTaskStatus(prev, taskId, willComplete));
+
+        try {
+            await request({
+                url: `/todos/tasks/${taskId}/status`,
+                method: 'patch',
+                data: { completed: willComplete }
+            });
+        } catch (error) {
+            console.error('Toggle todo status failed', error);
+            setTodoPreview(prev => applyTodoTaskStatus(prev, taskId, !willComplete));
+        } finally {
+            setTodoPendingOps(prev => {
+                const next = { ...prev };
+                delete next[taskId];
+                return next;
+            });
+        }
+    }, [todoPendingOps, todoPreview.tasks, applyTodoTaskStatus]);
+
     // Handle gestures
+    const GESTURE_SWITCH_THRESHOLD = 26;
+    const TAP_THRESHOLD = 10;
+    const MODE_SWITCH_LONG_PRESS_MS = 420;
+    const MODE_SWITCH_COMPACT_PHASE_MS = 320;
+    const MODE_SWITCH_REOPEN_DELAY_MS = 70;
+    const TRACKPAD_VERTICAL_THRESHOLD = 70;
+    const TRACKPAD_HORIZONTAL_THRESHOLD = 70;
+    const TRACKPAD_GESTURE_RESET_MS = 160;
+    const TRACKPAD_GESTURE_COOLDOWN_MS = 320;
+
+    const clearModeSwitchLongPressTimer = useCallback(() => {
+        if (modeSwitchLongPressTimerRef.current) {
+            clearTimeout(modeSwitchLongPressTimerRef.current);
+            modeSwitchLongPressTimerRef.current = null;
+        }
+    }, []);
+
+    const clearModeSwitchSequenceTimers = useCallback(() => {
+        if (modeSwitchCompactTimerRef.current) {
+            clearTimeout(modeSwitchCompactTimerRef.current);
+            modeSwitchCompactTimerRef.current = null;
+        }
+        if (modeSwitchExpandTimerRef.current) {
+            clearTimeout(modeSwitchExpandTimerRef.current);
+            modeSwitchExpandTimerRef.current = null;
+        }
+        if (modeSwitchUnlockTimerRef.current) {
+            clearTimeout(modeSwitchUnlockTimerRef.current);
+            modeSwitchUnlockTimerRef.current = null;
+        }
+    }, []);
+
+    const clearForceCompactTransitionTimer = useCallback(() => {
+        if (forceCompactTransitionTimerRef.current) {
+            clearTimeout(forceCompactTransitionTimerRef.current);
+            forceCompactTransitionTimerRef.current = null;
+        }
+    }, []);
+
+    const clearTrackpadGestureState = useCallback(() => {
+        trackpadDeltaXRef.current = 0;
+        trackpadDeltaYRef.current = 0;
+        if (trackpadGestureResetTimerRef.current) {
+            clearTimeout(trackpadGestureResetTimerRef.current);
+            trackpadGestureResetTimerRef.current = null;
+        }
+    }, []);
+
+    const lockTrackpadGesture = useCallback(() => {
+        trackpadGestureLockedRef.current = true;
+        if (trackpadGestureCooldownTimerRef.current) {
+            clearTimeout(trackpadGestureCooldownTimerRef.current);
+        }
+        trackpadGestureCooldownTimerRef.current = setTimeout(() => {
+            trackpadGestureLockedRef.current = false;
+            trackpadGestureCooldownTimerRef.current = null;
+        }, TRACKPAD_GESTURE_COOLDOWN_MS);
+    }, []);
+
+    const setForceCompactModeWithTransition = useCallback((nextCompact: boolean) => {
+        if (forceCompactModeRef.current === nextCompact) return;
+        if (!nextCompact) {
+            // 普通态 -> 活动态时，触发一次内容淡入动画（避免“先出内容再停顿”）
+            setActivityOpenAnimToken(prev => prev + 1);
+        }
+        setIsForceCompactTransitioning(true);
+        forceCompactModeRef.current = nextCompact;
+        setForceCompactMode(nextCompact);
+        clearForceCompactTransitionTimer();
+        const transitionDurationMs = (nextCompact ? ACTIVITY_COLLAPSE_DURATION_SECONDS : ACTIVITY_OPEN_DURATION_SECONDS) * 1000;
+        const openSettleBufferMs = nextCompact ? 0 : 80; // 给开启动画一个收尾缓冲，避免末尾切状态产生“第二段”错觉
+        forceCompactTransitionTimerRef.current = setTimeout(() => {
+            setIsForceCompactTransitioning(false);
+            forceCompactTransitionTimerRef.current = null;
+        }, transitionDurationMs + openSettleBufferMs);
+    }, [clearForceCompactTransitionTimer]);
+
+    const syncDisplayModeToMain = useCallback((nextMode: 'review' | 'todo') => {
+        try {
+            const { ipcRenderer } = (window as any).require('electron');
+            ipcRenderer.send('set-widget-display-mode', nextMode);
+        } catch (e) {
+            // Electron IPC unavailable时退化为本地状态切换
+            setAppDisplayMode(nextMode);
+        }
+    }, []);
+
+    const triggerActivityModeSwitch = () => {
+        if (mode !== 'app') return;
+        if (!showAppActivity) return;
+        if (isExpandedRef.current) return;
+        if (isModeSwitchAnimating) return;
+
+        const nextMode: 'review' | 'todo' = appDisplayMode === 'review' ? 'todo' : 'review';
+        isModeSwitchAnimatingRef.current = true;
+        setIsModeSwitchAnimating(true);
+        setForceCompactModeWithTransition(true);
+        clearModeSwitchSequenceTimers();
+
+        // 先收起活动态，再切换模式并展开回活动态
+        modeSwitchCompactTimerRef.current = setTimeout(() => {
+            setAppDisplayMode(nextMode);
+            syncDisplayModeToMain(nextMode);
+
+            modeSwitchExpandTimerRef.current = setTimeout(() => {
+                setForceCompactModeWithTransition(false);
+            }, MODE_SWITCH_REOPEN_DELAY_MS);
+        }, MODE_SWITCH_COMPACT_PHASE_MS);
+
+        const unlockDelay = MODE_SWITCH_COMPACT_PHASE_MS + MODE_SWITCH_REOPEN_DELAY_MS + Math.round(ACTIVITY_COLLAPSE_DURATION_SECONDS * 1000);
+        modeSwitchUnlockTimerRef.current = setTimeout(() => {
+            isModeSwitchAnimatingRef.current = false;
+            setIsModeSwitchAnimating(false);
+        }, unlockDelay);
+    };
+
+    const handleActivityLeftIconPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        if (e.button !== 0) return;
+        if (!showAppActivity || isExpanded || isModeSwitchAnimating) return;
+
+        clearModeSwitchLongPressTimer();
+        modeSwitchLongPressTimerRef.current = setTimeout(() => {
+            modeSwitchLongPressTimerRef.current = null;
+            triggerActivityModeSwitch();
+        }, MODE_SWITCH_LONG_PRESS_MS);
+    };
+
+    const handleActivityLeftIconPointerEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        clearModeSwitchLongPressTimer();
+    };
+
+    const finalizeGesture = (currentTarget: EventTarget | null) => {
+        startX.current = null;
+        lastPointerXRef.current = null;
+        activePointerIdRef.current = null;
+        isGestureTrackingRef.current = false;
+
+        const targetEl = currentTarget as HTMLElement | null;
+        const isHovering = !!targetEl && typeof targetEl.matches === 'function' && targetEl.matches(':hover');
+        if (!isExpandedRef.current && !isHovering) {
+            enableClickThrough();
+        }
+    };
+
     const handlePointerDown = (e: React.PointerEvent) => {
         // Prevent interaction if clicking on a button
         if ((e.target as HTMLElement).closest('button')) return;
+        activePointerIdRef.current = e.pointerId;
         startX.current = e.clientX;
+        lastPointerXRef.current = e.clientX;
+        isGestureTrackingRef.current = true;
+        try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+        } catch (error) {
+            // Ignore pointer capture failures
+        }
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isGestureTrackingRef.current) return;
+        if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+        if (startX.current === null) return;
+        lastPointerXRef.current = e.clientX;
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
-        // Prevent interaction if clicking on a button
-        if ((e.target as HTMLElement).closest('button')) return;
+        if (!isGestureTrackingRef.current) return;
+        if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+        if (startX.current === null) {
+            finalizeGesture(e.currentTarget);
+            return;
+        }
 
-        const diff = e.clientX - startX.current;
-        if (Math.abs(diff) < 10) {
-            toggleExpand();
-        } else if (diff > 50) {
-            if (hasPendingReviews && !forceCompactMode) {
-                setForceCompactMode(true);
+        const currentX = lastPointerXRef.current ?? e.clientX;
+        const diff = currentX - startX.current;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (error) {
+            // Ignore pointer capture release failures
+        }
+        finalizeGesture(e.currentTarget);
+
+        // 活动态通用手势：
+        // 右滑 -> 收起到普通态；左滑 -> 从普通态展开回活动态
+        const canToggleActivityByGesture = hasAnyActivitySource;
+        if (canToggleActivityByGesture) {
+            if (diff > GESTURE_SWITCH_THRESHOLD && showAnyActivity) {
+                setForceCompactModeWithTransition(true);
+                return;
             }
-        } else if (diff < -50) {
-            if (hasPendingReviews && forceCompactMode) {
-                setForceCompactMode(false);
+            if (diff < -GESTURE_SWITCH_THRESHOLD && forceCompactMode) {
+                setForceCompactModeWithTransition(false);
+                return;
             }
         }
+
+        if (Math.abs(diff) < TAP_THRESHOLD) {
+            toggleExpand();
+        }
+    };
+
+    const handlePointerCancel = (e: React.PointerEvent) => {
+        if (!isGestureTrackingRef.current) return;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (error) {
+            // Ignore pointer capture release failures
+        }
+        finalizeGesture(e.currentTarget);
     };
 
     // Helper to open login
@@ -634,23 +1197,73 @@ const DynamicIslandWidget: React.FC = () => {
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('tokenExpiresAt');
+            clearModeSwitchLongPressTimer();
+            clearModeSwitchSequenceTimers();
+            clearForceCompactTransitionTimer();
+            forceCompactModeRef.current = false;
+            isModeSwitchAnimatingRef.current = false;
+            setIsModeSwitchAnimating(false);
+            setIsForceCompactTransitioning(false);
+            setForceCompactMode(false);
             setIsLoggedIn(false);
             setIsExpanded(false);
             setMode('app');
+            setTodoPreview(createEmptyTodoPreview());
+            setTodoPendingOps({});
         };
         window.addEventListener('auth:logout', handleAuthLogout);
 
         const fetchData = async () => {
             try {
-                const res: any = await request({
-                    url: '/widget/summary',
-                    method: 'get'
-                });
+                const [summaryRes, todoStatsRes, todoTasksRes] = await Promise.all([
+                    request({
+                        url: '/widget/summary',
+                        method: 'get'
+                    }),
+                    request({
+                        url: '/todos/stats',
+                        method: 'get'
+                    }),
+                    request({
+                        url: '/todos/tasks',
+                        method: 'get',
+                        params: {
+                            status: 'todo',
+                            sortBy: 'due',
+                            sortOrder: 'asc'
+                        }
+                    })
+                ]);
 
-                if (res.code === 200) {
-                    setData(res.data);
-                } else {
-                    if (res.code === 401 || res.code === 403) {
+                if (summaryRes?.code === 200) {
+                    setData(summaryRes.data);
+                } else if (summaryRes?.code === 401 || summaryRes?.code === 403) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refreshToken');
+                    localStorage.removeItem('tokenExpiresAt');
+                    setIsLoggedIn(false);
+                }
+
+                if (todoStatsRes?.code === 200 || todoTasksRes?.code === 200) {
+                    const stats = todoStatsRes?.data || {};
+                    const todoTasks = Array.isArray(todoTasksRes?.data) ? todoTasksRes.data : [];
+                    setTodoPreview({
+                        pending: Number(stats.pendingTasks || 0),
+                        dueToday: Number(stats.dueToday || 0),
+                        overdue: Number(stats.overdueTasks || 0),
+                        tasks: todoTasks.slice(0, 6).map((task: any) => ({
+                            id: Number(task.id),
+                            title: String(task.title || ''),
+                            status: task.status === 'completed' ? 'completed' : 'todo',
+                            priority: task.priority || 'none',
+                            dueDate: task.dueDate,
+                            dueTime: task.dueTime,
+                            overdue: !!task.overdue,
+                            dueToday: !!task.dueToday
+                        }))
+                    });
+                } else if (todoStatsRes?.code === 401 || todoTasksRes?.code === 401 || todoStatsRes?.code === 403 || todoTasksRes?.code === 403) {
+                    if (!summaryRes || (summaryRes.code !== 401 && summaryRes.code !== 403)) {
                         localStorage.removeItem('token');
                         localStorage.removeItem('refreshToken');
                         localStorage.removeItem('tokenExpiresAt');
@@ -703,6 +1316,11 @@ const DynamicIslandWidget: React.FC = () => {
                         localStorage.setItem('tokenExpiresAt', String(Date.now() + auth.expiresIn * 1000));
                     }
                 }
+                if (modeRef.current === 'app') {
+                    forceCompactModeRef.current = true;
+                    setIsForceCompactTransitioning(false);
+                    setForceCompactMode(true);
+                }
                 setIsLoggedIn(true);
                 fetchData();
                 fetchUserName();
@@ -711,9 +1329,19 @@ const DynamicIslandWidget: React.FC = () => {
                 localStorage.removeItem('token');
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('tokenExpiresAt');
+                clearModeSwitchLongPressTimer();
+                clearModeSwitchSequenceTimers();
+                clearForceCompactTransitionTimer();
+                forceCompactModeRef.current = false;
+                isModeSwitchAnimatingRef.current = false;
+                setIsModeSwitchAnimating(false);
+                setIsForceCompactTransitioning(false);
+                setForceCompactMode(false);
                 setIsLoggedIn(false);
                 setIsExpanded(false);
                 setMode('app');
+                setTodoPreview(createEmptyTodoPreview());
+                setTodoPendingOps({});
             });
         } catch (e) {
             console.warn('Electron IPC not available');
@@ -735,7 +1363,7 @@ const DynamicIslandWidget: React.FC = () => {
                 ipcRenderer.removeAllListeners('auth-logout');
             }
         };
-    }, []);
+    }, [clearModeSwitchLongPressTimer, clearModeSwitchSequenceTimers, clearForceCompactTransitionTimer]);
 
     useEffect(() => {
         if (mode === 'music' && isGreetingActive) {
@@ -781,45 +1409,92 @@ const DynamicIslandWidget: React.FC = () => {
         };
     }, [collapseExpanded]);
 
-    // Time check for reminder
+    // Time check for reminder:
+    // 1. 保留每日提醒时间概念
+    // 2. 到点时如果用户还停留在普通态，则自动展开一次活动态
+    // 3. App 模式的手动活动态开关不再受时间限制
     useEffect(() => {
         const checkTime = () => {
-            if (!data.reminderTime) return;
+            if (!data.reminderTime) {
+                reminderDueRef.current = false;
+                setIsReminderActive(false);
+                return;
+            }
+
+            const [hours, minutes] = data.reminderTime.split(':').map(Number);
+            if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+                reminderDueRef.current = false;
+                setIsReminderActive(false);
+                return;
+            }
 
             const now = new Date();
-            const [hours, minutes] = data.reminderTime.split(':').map(Number);
-            const reminderDate = new Date();
+            const reminderDate = new Date(now);
             reminderDate.setHours(hours, minutes, 0, 0);
 
-            if (now >= reminderDate) {
-                setIsReminderActive(true);
-            } else {
-                setIsReminderActive(false);
+            const isDueToday = now >= reminderDate;
+            const reminderKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${data.reminderTime}`;
+            const hasInitializedReminderCheck = reminderCheckInitializedRef.current;
+            const justReachedReminderTime = hasInitializedReminderCheck && isDueToday && !reminderDueRef.current;
+
+            setIsReminderActive(isDueToday);
+
+            if (
+                justReachedReminderTime
+                && reminderAutoOpenKeyRef.current !== reminderKey
+                && modeRef.current === 'app'
+                && forceCompactModeRef.current
+                && !isExpandedRef.current
+            ) {
+                reminderAutoOpenKeyRef.current = reminderKey;
+                setForceCompactModeWithTransition(false);
             }
+
+            reminderDueRef.current = isDueToday;
+            reminderCheckInitializedRef.current = true;
         };
 
         checkTime();
         const interval = setInterval(checkTime, 10000);
         return () => clearInterval(interval);
-    }, [data.reminderTime]);
+    }, [data.reminderTime, setForceCompactModeWithTransition]);
 
     // Dynamic dimensions
     const expandedWidth = 460;
     const expandedMusicHeight = 210;
-    const expandedAppHeight = 328; // Fixed height for App mode (fits 4 items + stats)
-    const hasPendingReviews = data.totalPendingReviews > 0;
-    const showReminder = hasPendingReviews && isReminderActive && !forceCompactMode && mode === 'app';
+    const expandedAppHeight = 320; // Fixed height for App mode (review/todo)
+    const hasPendingTodos = todoPreview.pending > 0;
+    // 活动态来源（不受 forceCompactMode 影响）：用于统一手势开关判定
+    const hasMusicActivitySource = mode === 'music' && !!musicData;
+    const hasAppActivitySource = mode === 'app' && isLoggedIn;
+    const hasAnyActivitySource = hasMusicActivitySource || hasAppActivitySource;
+    // 当前是否展示活动态（受 forceCompactMode 影响）
+    const showMusicActivity = hasMusicActivitySource && !forceCompactMode;
+    const showReminder = appDisplayMode === 'review' && hasAppActivitySource && !forceCompactMode;
+    const showTodoActivity = appDisplayMode === 'todo' && hasAppActivitySource && !forceCompactMode;
+    const showAppActivity = showReminder || showTodoActivity;
+    const showAnyActivity = showMusicActivity || showAppActivity;
+    const isActivityVisualState = showAnyActivity;
+    // 活动态可独立控制底部圆角与连续曲率
+    const collapsedCornerRadius = isActivityVisualState ? COLLAPSED_RADIUS_ACTIVITY : COLLAPSED_RADIUS_DEFAULT;
+    const collapsedCornerSmoothness = isActivityVisualState ? SQUIRCLE_SMOOTHNESS_ACTIVITY : SQUIRCLE_SMOOTHNESS;
 
     // Determine collapsed width based on mode
     const getCollapsedWidth = () => {
-        if (mode === 'music' && musicData) {
-            return 210; // Wider for music mode (Cover + Space + Waveform)
+        // 活动态统一宽度入口：音乐/复习/待办/未来活动态都复用同一宽度
+        if (showAnyActivity) {
+            return ACTIVITY_COLLAPSED_WIDTH;
         }
-        if (isGreetingActive && isLoggedIn && greetingText) {
+        if (mode === 'app' && isGreetingActive && isLoggedIn && greetingText) {
             const estimated = Math.ceil(greetingText.length * 14 + 40);
             return Math.max(220, Math.min(300, estimated));
         }
-        return isLoggedIn ? (showReminder ? 240 : 160) : 180;
+        // 待办在“无活动源”时保留原普通态宽度；
+        // 若存在活动源但被手势收起(forceCompactMode)，则与复习普通态完全一致（避免视觉像又回到活动态）
+        if (mode === 'app' && isLoggedIn && appDisplayMode === 'todo' && !hasAppActivitySource) {
+            return 230;
+        }
+        return isLoggedIn ? 160 : 180;
     };
     const collapsedWidth = getCollapsedWidth();
 
@@ -828,8 +1503,167 @@ const DynamicIslandWidget: React.FC = () => {
 
     const shouldShowShadow = isExpanded || isHovered;
 
+    const handleTrackpadWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+        if (!isHovered && !isExpandedRef.current) return;
+        if (trackpadGestureLockedRef.current) return;
+
+        trackpadDeltaXRef.current += e.deltaX;
+        trackpadDeltaYRef.current += e.deltaY;
+
+        if (trackpadGestureResetTimerRef.current) {
+            clearTimeout(trackpadGestureResetTimerRef.current);
+        }
+        trackpadGestureResetTimerRef.current = setTimeout(() => {
+            clearTrackpadGestureState();
+        }, TRACKPAD_GESTURE_RESET_MS);
+
+        const absX = Math.abs(trackpadDeltaXRef.current);
+        const absY = Math.abs(trackpadDeltaYRef.current);
+
+        if (absX >= absY && absX >= TRACKPAD_HORIZONTAL_THRESHOLD) {
+            if (modeRef.current === 'music' && musicData) {
+                e.preventDefault();
+                sendMediaControl(trackpadDeltaXRef.current > 0 ? 'next' : 'prev');
+                clearTrackpadGestureState();
+                lockTrackpadGesture();
+            }
+            return;
+        }
+
+        if (absY > absX && absY >= TRACKPAD_VERTICAL_THRESHOLD) {
+            // Windows precision touchpad on this widget reports vertical wheel delta
+            // opposite to the intended UX mapping here, so we align with observed behavior:
+            // two-finger swipe up => close/collapse, two-finger swipe down => open/expand.
+            const swipingUp = trackpadDeltaYRef.current > 0;
+            const swipingDown = trackpadDeltaYRef.current < 0;
+
+                if (swipingUp) {
+                    if (isExpandedRef.current) {
+                        e.preventDefault();
+                        collapseExpanded({ preserveHoverFocus: true });
+                        clearTrackpadGestureState();
+                        lockTrackpadGesture();
+                        return;
+                    }
+                if (hasAnyActivitySource && !forceCompactModeRef.current) {
+                    e.preventDefault();
+                    setForceCompactModeWithTransition(true);
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                    return;
+                }
+            }
+
+            if (swipingDown) {
+                if (!isExpandedRef.current && hasAnyActivitySource && forceCompactModeRef.current) {
+                    e.preventDefault();
+                    setForceCompactModeWithTransition(false);
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                    return;
+                }
+                if (!isExpandedRef.current && showAnyActivity) {
+                    e.preventDefault();
+                    toggleExpand();
+                    clearTrackpadGestureState();
+                    lockTrackpadGesture();
+                }
+            }
+        }
+    }, [
+        isHovered,
+        musicData,
+        sendMediaControl,
+        clearTrackpadGestureState,
+        lockTrackpadGesture,
+        collapseExpanded,
+        hasAnyActivitySource,
+        showAnyActivity,
+        setForceCompactModeWithTransition
+    ]);
+
     // Base width for animation (standard collapsed state)
     const baseWidth = isLoggedIn ? 160 : 180;
+    const justCollapsedFromExpanded = !isExpanded && prevIsExpandedRef.current && showAnyActivity;
+    const isReminderCollapseTransition = isReminderCollapsing || justCollapsedFromExpanded;
+    const isActivityCloseTransition = isForceCompactTransitioning && forceCompactMode && hasAnyActivitySource;
+    const isActivityOpenTransition = isForceCompactTransitioning && !forceCompactMode && hasAnyActivitySource;
+    // 分段收起动画只在“真正的收起过程”触发，稳定活动态不再重复执行
+    const isActivitySegmentedTransition = isReminderCollapseTransition || isActivityCloseTransition;
+    const collapseMidWidth = isActivitySegmentedTransition ? 155 : baseWidth;
+    const segmentedDuration = isActivitySegmentedTransition ? ACTIVITY_COLLAPSE_DURATION_SECONDS : 0.56;
+    const segmentedTimes = isActivitySegmentedTransition ? ACTIVITY_SEGMENTED_TIMES : [0, 0.2, 0.34, 1];
+    const segmentedWidthKeyframes = [null, collapseMidWidth, collapseMidWidth, collapsedWidth];
+    const segmentedHeightKeyframes = [null, 36, 36, 36];
+    const leftCapCollapsedPath = [
+        null,
+        generateLeftCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateLeftCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateLeftCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness)
+    ];
+    const rightCapCollapsedPath = [
+        null,
+        generateRightCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateRightCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateRightCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness)
+    ];
+    const squircleCollapsedPath = [
+        null,
+        generateSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness)
+    ];
+    const openSquircleCollapsedPath = [
+        null,
+        generateOpenSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateOpenSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
+        generateOpenSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness)
+    ];
+    const collapsedContentDelay = (!isExpanded && isActivitySegmentedTransition)
+        ? ACTIVITY_COLLAPSE_CONTENT_DELAY_SECONDS
+        : 0;
+    const expandedContentFadeDuration = isExpanded ? 0.3 : 0.15;
+
+    useEffect(() => {
+        const startedFromExpanded = prevIsExpandedRef.current && !isExpanded && showAnyActivity;
+
+        if (startedFromExpanded) {
+            setIsReminderCollapsing(true);
+            if (reminderCollapseTimerRef.current) {
+                clearTimeout(reminderCollapseTimerRef.current);
+            }
+            reminderCollapseTimerRef.current = setTimeout(() => {
+                setIsReminderCollapsing(false);
+                reminderCollapseTimerRef.current = null;
+            }, ACTIVITY_COLLAPSE_DURATION_SECONDS * 1000);
+        } else if (isExpanded || !showAnyActivity) {
+            if (reminderCollapseTimerRef.current) {
+                clearTimeout(reminderCollapseTimerRef.current);
+                reminderCollapseTimerRef.current = null;
+            }
+            setIsReminderCollapsing(false);
+        }
+
+        prevIsExpandedRef.current = isExpanded;
+    }, [isExpanded, showAnyActivity]);
+
+    useEffect(() => {
+        return () => {
+            if (reminderCollapseTimerRef.current) {
+                clearTimeout(reminderCollapseTimerRef.current);
+                reminderCollapseTimerRef.current = null;
+            }
+            clearModeSwitchLongPressTimer();
+            clearModeSwitchSequenceTimers();
+            clearForceCompactTransitionTimer();
+            clearTrackpadGestureState();
+            if (trackpadGestureCooldownTimerRef.current) {
+                clearTimeout(trackpadGestureCooldownTimerRef.current);
+                trackpadGestureCooldownTimerRef.current = null;
+            }
+            trackpadGestureLockedRef.current = false;
+        };
+    }, [clearModeSwitchLongPressTimer, clearModeSwitchSequenceTimers, clearForceCompactTransitionTimer, clearTrackpadGestureState]);
 
     // 固定窗口大小以避免动画时的闪烁问题 (Canvas Strategy)
     // 窗口始终保持最大尺寸，通过忽略鼠标事件(setIgnoreMouseEvents)来实现点击穿透
@@ -903,15 +1737,19 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? "expanded" : "collapsed"}
                 variants={{
                     collapsed: {
-                        width: mode === 'music' ? [null, 155, 155, collapsedWidth] : collapsedWidth,
-                        height: mode === 'music' ? [null, 36, 36, 36] : 36,
+                        width: isActivitySegmentedTransition ? segmentedWidthKeyframes : collapsedWidth,
+                        height: isActivitySegmentedTransition ? segmentedHeightKeyframes : 36,
                         scale: isHovered ? 1.06 : 1,
                         originY: 0,
-                        transition: mode === 'music' ? {
-                            width: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
-                            height: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" },
+                        transition: isActivityOpenTransition ? {
+                            width: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" },
+                            height: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" },
                             scale: { ...containerSpring }
-                        } : undefined
+                        } : (isActivitySegmentedTransition ? {
+                            width: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" },
+                            height: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" },
+                            scale: { ...containerSpring }
+                        } : undefined)
                     },
                     expanded: {
                         width: expandedWidth,
@@ -933,12 +1771,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: mode === 'music'
-                                            ? [null, generateLeftCapPath(36, 18), generateLeftCapPath(36, 18), generateLeftCapPath(36, 18)]
-                                            : generateLeftCapPath(36, 18),
-                                        transition: mode === 'music' ? {
-                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                        } : undefined
+                                        d: isActivitySegmentedTransition
+                                            ? leftCapCollapsedPath
+                                            : generateLeftCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                        transition: isActivityOpenTransition ? {
+                                            d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
+                                        } : (isActivitySegmentedTransition ? {
+                                            d: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" }
+                                        } : undefined)
                                     },
                                     expanded: { d: generateLeftCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
@@ -959,12 +1799,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: mode === 'music'
-                                            ? [null, generateRightCapPath(36, 18), generateRightCapPath(36, 18), generateRightCapPath(36, 18)]
-                                            : generateRightCapPath(36, 18),
-                                        transition: mode === 'music' ? {
-                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                        } : undefined
+                                        d: isActivitySegmentedTransition
+                                            ? rightCapCollapsedPath
+                                            : generateRightCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                        transition: isActivityOpenTransition ? {
+                                            d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
+                                        } : (isActivitySegmentedTransition ? {
+                                            d: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" }
+                                        } : undefined)
                                     },
                                     expanded: { d: generateRightCapPath(mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48) }
                                 }}
@@ -979,11 +1821,13 @@ const DynamicIslandWidget: React.FC = () => {
                     // Calculate ear parameters based on state
                     let currentTension = EAR_TENSION_IDLE;
                     let currentBlendHeight = EAR_BLEND_HEIGHT_IDLE;
+                    const isActivityEarState = showAnyActivity || (isGreetingActive && isLoggedIn);
 
                     if (isExpanded) {
                         currentTension = EAR_TENSION_EXPANDED;
                         currentBlendHeight = EAR_BLEND_HEIGHT_EXPANDED;
-                    } else if ((mode === 'music' && musicData) || (isGreetingActive && isLoggedIn)) {
+                    } else if (isActivityEarState) {
+                        // 活动态（音乐/复习/待办）统一使用同一组液态连接角度参数
                         currentTension = EAR_TENSION_ACTIVITY;
                         currentBlendHeight = EAR_BLEND_HEIGHT_ACTIVITY;
                     }
@@ -1028,7 +1872,10 @@ const DynamicIslandWidget: React.FC = () => {
                 <motion.div
                     ref={islandHitRef}
                     onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerCancel}
+                    onWheel={handleTrackpadWheel}
                     className="w-full h-full flex flex-col items-center justify-start text-white select-none drag-region group pointer-events-auto"
                     variants={{
                         collapsed: {
@@ -1057,6 +1904,10 @@ const DynamicIslandWidget: React.FC = () => {
                     }}
                     onMouseLeave={() => {
                         setIsHovered(false);
+                        clearTrackpadGestureState();
+                        if (activePointerIdRef.current !== null || isGestureTrackingRef.current) {
+                            return;
+                        }
                         try {
                             const { ipcRenderer } = (window as any).require('electron');
                             if (!isExpandedRef.current) {
@@ -1078,12 +1929,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: mode === 'music'
-                                            ? [null, generateSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS)]
-                                            : generateSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS),
-                                        transition: mode === 'music' ? {
-                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                        } : undefined
+                                        d: isActivitySegmentedTransition
+                                            ? squircleCollapsedPath
+                                            : generateSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                        transition: isActivityOpenTransition ? {
+                                            d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
+                                        } : (isActivitySegmentedTransition ? {
+                                            d: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" }
+                                        } : undefined)
                                     },
                                     expanded: {
                                         d: generateSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48, SQUIRCLE_SMOOTHNESS)
@@ -1121,12 +1974,14 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? "expanded" : "collapsed"}
                                 variants={{
                                     collapsed: {
-                                        d: mode === 'music'
-                                            ? [null, generateOpenSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateOpenSquirclePath(155, 36, 18, SQUIRCLE_SMOOTHNESS), generateOpenSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS)]
-                                            : generateOpenSquirclePath(collapsedWidth, 36, 18, SQUIRCLE_SMOOTHNESS),
-                                        transition: mode === 'music' ? {
-                                            d: { times: [0, 0.45, 0.55, 1], duration: 0.85, ease: "easeInOut" }
-                                        } : undefined
+                                        d: isActivitySegmentedTransition
+                                            ? openSquircleCollapsedPath
+                                            : generateOpenSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                        transition: isActivityOpenTransition ? {
+                                            d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
+                                        } : (isActivitySegmentedTransition ? {
+                                            d: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" }
+                                        } : undefined)
                                     },
                                     expanded: {
                                         d: generateOpenSquirclePath(expandedWidth, mode === 'music' ? expandedMusicHeight : expandedAppHeight, 48, SQUIRCLE_SMOOTHNESS)
@@ -1151,36 +2006,44 @@ const DynamicIslandWidget: React.FC = () => {
                                 pointerEvents: isExpanded ? 'none' : 'auto',
                             }}
                             transition={{
-                                duration: 0.38, // Match the expansion duration (0.45s to 0.85s is 0.38s)
-                                delay: (!isExpanded && mode === 'music') ? 0.47 : 0
+                                duration: 0.38,
+                                delay: collapsedContentDelay
                             }}
                             className="absolute inset-0 w-full h-full z-20"
                         >
-                            {mode === 'music' && musicData ? (
+                            {showMusicActivity ? (
                                 // MUSIC COLLAPSED STATE
-                                <div className="flex items-center justify-between w-full h-full px-2">
-                                    {/* Left: Album Cover */}
-                                    <div className="flex items-center pl-1">
-                                        <div className="w-7 h-7 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
-                                            {musicData.coverUrl ? (
-                                                <img
-                                                    src={musicData.coverUrl}
-                                                    alt="Album"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <span className="material-symbols-outlined text-sm text-white/50">music_note</span>
-                                                </div>
-                                            )}
+                                <motion.div
+                                    key={`music-activity-${activityOpenAnimToken}`}
+                                    initial={isActivityOpenTransition ? { opacity: 0, filter: 'blur(4px)' } : false}
+                                    animate={{ opacity: 1, filter: 'blur(0px)' }}
+                                    transition={isActivityOpenTransition
+                                        ? { duration: ACTIVITY_OPEN_CONTENT_DURATION_SECONDS, delay: ACTIVITY_OPEN_CONTENT_DELAY_SECONDS, ease: "easeOut" }
+                                        : { duration: 0.12 }}
+                                    className="w-full h-full"
+                                >
+                                    <div className="flex items-center justify-between w-full h-full px-2">
+                                        {/* Left: Album Cover */}
+                                        <div className="flex items-center pl-[6px]">
+                                            <SquircleCoverThumb
+                                                src={musicData.coverUrl}
+                                                width={COLLAPSED_MUSIC_COVER_WIDTH}
+                                                height={COLLAPSED_MUSIC_COVER_HEIGHT}
+                                                radius={COLLAPSED_MUSIC_COVER_RADIUS}
+                                                smoothness={COLLAPSED_MUSIC_COVER_SMOOTHNESS}
+                                                shapeVariant="puffy"
+                                                showGloss
+                                                backgroundFill="rgba(255,255,255,0.1)"
+                                                placeholderIconClassName="material-symbols-outlined text-[14px] text-white/50"
+                                            />
+                                        </div>
+
+                                        {/* Right: Waveform */}
+                                        <div className="pr-[6px]">
+                                            <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} count={4} />
                                         </div>
                                     </div>
-
-                                    {/* Right: Waveform */}
-                                    <div className="pr-1">
-                                        <MusicWaveform color={themeColor} isPlaying={musicData.isPlaying} count={4} />
-                                    </div>
-                                </div>
+                                </motion.div>
                             ) : !isLoggedIn ? (
                                 <div className="flex items-center justify-center w-full h-full gap-2 px-3">
                                     <span className="material-symbols-outlined text-sm">login</span>
@@ -1201,22 +2064,66 @@ const DynamicIslandWidget: React.FC = () => {
                                         </div>
                                     </motion.div>
                                 </div>
-                            ) : showReminder ? (
-                                // REMINDER STATE
-                                <>
-                                    <div className="absolute left-0 top-0 h-full flex items-center justify-center w-[40px] pl-1.5">
-                                        <div className="bg-white rounded-[6px] p-[2px] w-6 h-6 flex items-center justify-center shadow-lg">
-                                            <img
-                                                src={logo}
-                                                alt="MemoryFlow"
-                                                className="w-full h-full object-contain"
-                                            />
+                            ) : showAppActivity ? (
+                                // APP ACTIVITY STATE（复习/待办融合态）
+                                <motion.div
+                                    key={`app-activity-${appDisplayMode}-${activityOpenAnimToken}`}
+                                    initial={isActivityOpenTransition ? { opacity: 0, filter: 'blur(4px)' } : false}
+                                    animate={{ opacity: 1, filter: 'blur(0px)' }}
+                                    transition={isActivityOpenTransition
+                                        ? { duration: ACTIVITY_OPEN_CONTENT_DURATION_SECONDS, delay: ACTIVITY_OPEN_CONTENT_DELAY_SECONDS, ease: "easeOut" }
+                                        : { duration: 0.12 }}
+                                    className="w-full h-full"
+                                >
+                                    <div className="flex items-center justify-between w-full h-full px-3">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <button
+                                                type="button"
+                                                onPointerDown={handleActivityLeftIconPointerDown}
+                                                onPointerUp={handleActivityLeftIconPointerEnd}
+                                                onPointerLeave={handleActivityLeftIconPointerEnd}
+                                                onPointerCancel={handleActivityLeftIconPointerEnd}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onContextMenu={(e) => e.preventDefault()}
+                                                title={appDisplayMode === 'todo' ? '长按切换到复习模式' : '长按切换到待办模式'}
+                                                className="flex items-center justify-center rounded-md text-white/90 active:scale-95 transition-transform"
+                                            >
+                                                {appDisplayMode === 'todo' ? (
+                                                    <span className="material-symbols-outlined text-sm text-cyan-300">checklist</span>
+                                                ) : (
+                                                    <div className="text-amber-300 flex items-center justify-center">
+                                                        <ReviewModeIcon />
+                                                    </div>
+                                                )}
+                                            </button>
+                                            <span className="text-xs font-semibold text-white/90 truncate">
+                                                {appDisplayMode === 'todo'
+                                                    ? `待办 ${todoPreview.pending} 项`
+                                                    : `复习 ${data.totalPendingReviews} 项`}
+                                            </span>
+                                        </div>
+                                        <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${appDisplayMode === 'todo'
+                                            ? (todoPreview.overdue > 0 ? 'bg-red-500/20 text-red-300' : 'bg-cyan-500/20 text-cyan-200')
+                                            : 'bg-amber-500/20 text-amber-200'
+                                            }`}>
+                                            {appDisplayMode === 'todo'
+                                                ? (todoPreview.overdue > 0 ? `${todoPreview.overdue} 逾期` : `${todoPreview.pending}`)
+                                                : `${data.totalPendingReviews}`}
                                         </div>
                                     </div>
-                                    <div className="absolute right-0 top-0 h-full flex items-center justify-center w-[40px] pr-1.5">
-                                        <ElectricCurrent />
+                                </motion.div>
+                            ) : mode === 'app' && appDisplayMode === 'todo' && !hasAppActivitySource ? (
+                                <div className="flex items-center justify-between w-full h-full px-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="material-symbols-outlined text-sm text-cyan-300">checklist</span>
+                                        <span className="text-xs font-semibold text-white/90 truncate">
+                                            {hasPendingTodos ? `待办 ${todoPreview.pending} 项` : '待办模式'}
+                                        </span>
                                     </div>
-                                </>
+                                    <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${todoPreview.overdue > 0 ? 'bg-red-500/20 text-red-300' : 'bg-cyan-500/20 text-cyan-200'}`}>
+                                        {todoPreview.overdue > 0 ? `${todoPreview.overdue} 逾期` : `${todoPreview.pending}`}
+                                    </div>
+                                </div>
                             ) : (
                                 // INITIAL STATE
                                 <div className="w-full h-full"></div>
@@ -1231,7 +2138,7 @@ const DynamicIslandWidget: React.FC = () => {
                                 filter: isExpanded ? 'blur(0px)' : 'blur(5px)',
                                 pointerEvents: isExpanded ? 'auto' : 'none',
                             }}
-                            transition={{ duration: isExpanded ? 0.3 : 0.15 }}
+                            transition={{ duration: expandedContentFadeDuration }}
                             className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
                             style={{ width: expandedWidth, minWidth: expandedWidth }}
                         >
@@ -1240,21 +2147,22 @@ const DynamicIslandWidget: React.FC = () => {
                                 <div className="flex flex-col gap-2">
                                     {/* Layer 1: Top Metadata Section */}
                                     <div className="flex gap-4">
-                                        {/* Album Art */}
-                                        {/* Album Art - Squircle-like smooth corners + Soft diffuse shadow */}
-                                        <div className="w-20 h-20 rounded-[18px] overflow-hidden bg-white/10 flex-shrink-0 shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-                                            {musicData.coverUrl ? (
-                                                <img
-                                                    src={musicData.coverUrl}
-                                                    alt="Album"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/20 to-white/5">
-                                                    <span className="material-symbols-outlined text-3xl text-white/50">music_note</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Album Art - Continuous curvature squircle with taller proportion */}
+                                        <SquircleCoverThumb
+                                            src={musicData.coverUrl}
+                                            width={EXPANDED_MUSIC_COVER_WIDTH}
+                                            height={EXPANDED_MUSIC_COVER_HEIGHT}
+                                            radius={EXPANDED_MUSIC_COVER_RADIUS}
+                                            smoothness={EXPANDED_MUSIC_COVER_SMOOTHNESS}
+                                            shapeVariant="puffy"
+                                            showGloss
+                                            className="flex-shrink-0"
+                                            style={{
+                                                filter: 'drop-shadow(0 10px 22px rgba(0,0,0,0.46)) drop-shadow(0 3px 10px rgba(0,0,0,0.2))'
+                                            }}
+                                            backgroundFill="rgba(255,255,255,0.12)"
+                                            placeholderIconClassName="material-symbols-outlined text-[30px] text-white/50"
+                                        />
 
                                         {/* Info + Waveform */}
                                         <div className="flex-1 flex flex-col justify-center min-w-0">
@@ -1378,8 +2286,85 @@ const DynamicIslandWidget: React.FC = () => {
                                         </motion.button>
                                     </div>
                                 </div>
+                            ) : appDisplayMode === 'todo' ? (
+                                // TODO MODE EXPANDED UI
+                                <div className="flex flex-col h-full">
+                                    <div className="grid grid-cols-3 gap-3 mb-4">
+                                        <div className="flex flex-col items-start justify-between h-20 rounded-xl bg-white/5 p-3">
+                                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">待办中</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-bold text-cyan-300 tracking-tight">{todoPreview.pending}</span>
+                                                <span className="text-xs text-cyan-200/70 font-medium">项</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-start justify-between h-20 rounded-xl bg-white/5 p-3">
+                                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">今日到期</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-bold text-amber-300 tracking-tight">{todoPreview.dueToday}</span>
+                                                <span className="text-xs text-amber-200/70 font-medium">项</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-start justify-between h-20 rounded-xl bg-white/5 p-3">
+                                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">已逾期</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-bold text-red-400 tracking-tight">{todoPreview.overdue}</span>
+                                                <span className="text-xs text-red-300/70 font-medium">项</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between mb-3 px-1">
+                                        <span className="text-sm font-bold text-white/80 tracking-wide">待办清单</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{new Date().toLocaleDateString('zh-CN', { weekday: 'long' })}</span>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1">
+                                        {todoPreview.tasks.length === 0 ? (
+                                            <div className="h-full flex items-center justify-center text-xs text-white/35">当前暂无待办任务</div>
+                                        ) : (
+                                            todoPreview.tasks.map((task) => (
+                                                <div
+                                                    key={task.id}
+                                                    className={`flex items-center gap-3 bg-white/5 p-2 rounded-xl transition-colors ${task.status === 'completed' ? 'opacity-70' : 'hover:bg-white/10'}`}
+                                                >
+                                                    <button
+                                                        onClick={(e) => handleToggleTodoTask(e, task.id)}
+                                                        disabled={!!todoPendingOps[task.id]}
+                                                        className="size-5 rounded-full border-2 border-white/35 flex items-center justify-center hover:border-cyan-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {task.status === 'completed' ? (
+                                                            <span className="material-symbols-outlined text-[14px] text-cyan-300">check</span>
+                                                        ) : (
+                                                            <div className="size-2 rounded-full bg-cyan-300/70" />
+                                                        )}
+                                                    </button>
+
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <span className={`text-xs font-bold truncate ${task.status === 'completed' ? 'text-white/45 line-through' : 'text-white'}`}>
+                                                            {task.title || '未命名任务'}
+                                                        </span>
+                                                        <span className="text-[10px] text-white/40 truncate">{formatTodoDue(task)}</span>
+                                                    </div>
+
+                                                    <div
+                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${task.priority === 'high'
+                                                            ? 'bg-red-500/20 text-red-300'
+                                                            : task.priority === 'medium'
+                                                            ? 'bg-amber-500/20 text-amber-300'
+                                                            : task.priority === 'low'
+                                                            ? 'bg-blue-500/20 text-blue-300'
+                                                            : 'bg-slate-500/20 text-slate-300'
+                                                            }`}
+                                                    >
+                                                        {task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : task.priority === 'low' ? '低' : '无'}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             ) : (
-                                // APP MODE EXPANDED UI (Original Reminder UI)
+                                // REVIEW MODE EXPANDED UI
                                 <>
                                     {/* Top Row: Overview Cards */}
                                     <div className="flex gap-4 mb-6">

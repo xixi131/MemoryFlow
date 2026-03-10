@@ -51,7 +51,7 @@ public class AuthService {
     private static final String LOGIN_LOCK_PREFIX = "auth:login:lock:";
     private static final String REGISTER_IP_PREFIX = "auth:register:ip:";
     private static final String VERIFY_CODE_PREFIX = "auth:verify:code:";
-    private static final String DEFAULT_AVATAR_URL = "/uploads/avatars/default-avatar.png";
+    private static final String DEFAULT_AVATAR_URL = "/uploads/avatars/default-avatar.svg";
 
     /**
      * 发送验证码
@@ -364,7 +364,7 @@ public class AuthService {
 
         String newFileName = extractAvatarFileName(newAvatarUrl);
         if (oldFileName.equals(newFileName)) return;
-        if ("default-avatar.png".equalsIgnoreCase(oldFileName)) return;
+        if (isDefaultAvatarFile(oldFileName)) return;
 
         try {
             String dir = uploadDir;
@@ -404,6 +404,12 @@ public class AuthService {
         String tail = path.substring(start + base.length());
         if (tail.isEmpty() || tail.contains("/") || tail.contains("\\")) return null;
         return tail;
+    }
+
+    private boolean isDefaultAvatarFile(String fileName) {
+        if (fileName == null) return false;
+        return "default-avatar.png".equalsIgnoreCase(fileName)
+                || "default-avatar.svg".equalsIgnoreCase(fileName);
     }
 
     /**
