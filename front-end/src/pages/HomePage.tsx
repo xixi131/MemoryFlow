@@ -137,7 +137,7 @@ const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/home')}
-              className="mf-button-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all md:px-5"
+              className="mf-button-primary inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all md:px-5"
             >
               {content.nav.openApp}
               <ArrowRight className="h-4 w-4" />
@@ -153,10 +153,18 @@ const HomePage: React.FC = () => {
             style={reducedMotion ? undefined : { y: heroYOffset }}
             className="flex flex-col items-center gap-6"
           >
-            <Reveal>
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.78, ease: [0.22, 1, 0.36, 1] }}
+            >
               <span className="mf-kicker">{content.hero.badge}</span>
-            </Reveal>
-            <Reveal delay={0.05}>
+            </motion.div>
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.78, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            >
               <div className="space-y-5">
                 <h1 className={`mf-hero-title text-5xl font-semibold ${heroTracking} text-white sm:text-6xl lg:text-7xl`}>
                   <span className="block">{content.hero.title[0]}</span>
@@ -167,8 +175,12 @@ const HomePage: React.FC = () => {
                   {content.hero.subtitle}
                 </p>
               </div>
-            </Reveal>
-            <Reveal delay={0.1}>
+            </motion.div>
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.78, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            >
               <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <button
                   type="button"
@@ -187,14 +199,18 @@ const HomePage: React.FC = () => {
                   {content.hero.secondaryCta}
                 </button>
               </div>
-            </Reveal>
-            <Reveal delay={0.15}>
+            </motion.div>
+            <motion.div
+              initial={reducedMotion ? false : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.78, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            >
               <div className="flex h-6 items-center justify-center overflow-hidden">
                 <p className="text-sm text-slate-500">
                   <TypewriterQuote key={lang} lang={lang} />
                 </p>
               </div>
-            </Reveal>
+            </motion.div>
           </motion.div>
         </section>
 
