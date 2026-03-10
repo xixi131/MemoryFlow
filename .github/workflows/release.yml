@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_REPOSITORY: xixi131/MemoryFlow.exe
+
+jobs:
+  build-backend:
+    name: Build Backend Jar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build backend package
+        working-directory: back-end
+        run: mvn -B -DskipTests package
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: |
+            back-end/target/*.jar
+            !back-end/target/*.jar.original
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    runs-on: windows-latest
+    needs: build-backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: front-end/package-lock.json
+
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: release-assets/backend
+
+      - name: Check release token
+        shell: bash
+        env:
+          GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          if [ -z "$GH_RELEASE_TOKEN" ]; then
+            echo "Missing GH_RELEASE_TOKEN secret for $RELEASE_REPOSITORY" >&2
+            exit 1
+          fi
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          repository: ${{ env.RELEASE_REPOSITORY }}
+          token: ${{ secrets.GH_RELEASE_TOKEN }}
+          name: ${{ github.ref_name }}
+          body: |
+            Automated release for source tag `${{ github.ref_name }}` from `xixi131/MemoryFlow`.
+          files: |
+            release-assets/backend/*.jar
+
+      - name: Install frontend dependencies
+        working-directory: front-end
+        run: npm ci
+
+      - name: Build and publish Windows package
+        working-directory: front-end
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run release:win
