@@ -82,6 +82,9 @@ const HomePage: React.FC = () => {
   const [lang, setLang] = useState<HomeLocale>('zh');
   const content = HOME_CONTENT[lang];
   const { scrollY } = useScroll();
+  const heroTracking = lang === 'zh' ? 'tracking-[-0.08em]' : 'tracking-tight';
+  const headingTracking = lang === 'zh' ? 'tracking-[-0.06em]' : 'tracking-normal';
+  const headingWordSpacing = lang === 'en' ? '[word-spacing:0.18em]' : '';
   const heroYOffset = useSpring(useTransform(scrollY, [0, 400], [0, 72]), {
     stiffness: 120,
     damping: 20,
@@ -155,7 +158,7 @@ const HomePage: React.FC = () => {
             </Reveal>
             <Reveal delay={0.05}>
               <div className="space-y-5">
-                <h1 className="mf-hero-title text-5xl font-semibold tracking-[-0.08em] text-white sm:text-6xl lg:text-7xl">
+                <h1 className={`mf-hero-title text-5xl font-semibold ${heroTracking} text-white sm:text-6xl lg:text-7xl`}>
                   <span className="block">{content.hero.title[0]}</span>
                   <span className="mf-gradient-text block pb-2">{content.hero.title[1]}</span>
                   <span className="block text-slate-300">{content.hero.title[2]}</span>
@@ -236,7 +239,7 @@ const HomePage: React.FC = () => {
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 lg:p-8">
               <div className="mb-8 max-w-2xl space-y-4">
                 <span className="mf-kicker">{content.showcase.eyebrow}</span>
-                <h2 className="text-3xl font-semibold tracking-[-0.06em] text-white md:text-4xl">
+                <h2 className={`text-3xl font-semibold ${headingTracking} ${headingWordSpacing} text-white md:text-4xl`}>
                   {content.showcase.title}
                 </h2>
                 <p className="text-base leading-8 text-slate-300">{content.showcase.description}</p>
@@ -348,7 +351,7 @@ const HomePage: React.FC = () => {
               <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_auto] lg:items-end">
                 <div className="space-y-5">
                   <span className="mf-kicker">MemoryFlow</span>
-                  <h2 className="max-w-3xl text-3xl font-semibold tracking-[-0.06em] text-white md:text-5xl">
+                  <h2 className={`max-w-3xl text-3xl font-semibold ${headingTracking} ${headingWordSpacing} text-white md:text-5xl`}>
                     {content.closing.title}
                   </h2>
                   <p className="max-w-2xl text-base leading-8 text-slate-300">{content.closing.description}</p>
