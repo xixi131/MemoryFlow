@@ -68,31 +68,20 @@ jobs:
           TAG_NAME="${GITHUB_REF_NAME}"
           NORMALIZED_TAG="${TAG_NAME#v}"
 
-          NORMALIZED_TAG="$NORMALIZED_TAG" node -e "
-            const fs = require('fs');
-            const version = process.env.NORMALIZED_TAG;
+          if [ -z "$NORMALIZED_TAG" ]; then
+            echo "NORMALIZED_TAG is empty; cannot set package.json version" >&2
+            exit 1
+          fi
 
-            if (!version) {
-              console.error('NORMALIZED_TAG is empty; cannot set package.json version');
+          npm version "$NORMALIZED_TAG" --no-git-tag-version --allow-same-version
+
+          node -e "
+            const pkg = require('./package.json');
+            if (!pkg.version) {
+              console.error('package.json version is empty after npm version');
               process.exit(1);
             }
-
-            const updateJson = (file, updater) => {
-              const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-              updater(data);
-              fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
-            };
-
-            updateJson('./package.json', (data) => {
-              data.version = version;
-            });
-
-            updateJson('./package-lock.json', (data) => {
-              data.version = version;
-              if (data.packages && data.packages['']) {
-                data.packages[''].version = version;
-              }
-            });
+            console.log(\`Resolved frontend version: \${pkg.version}\`);
           "
 
           echo "RELEASE_VERSION=$NORMALIZED_TAG" >> "$GITHUB_ENV"
