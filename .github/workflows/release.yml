@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '**'
+      - 'v*'
 
 permissions:
   contents: write
@@ -11,9 +11,6 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
-
-env:
-  RELEASE_REPOSITORY: xixi131/MemoryFlow.exe
 
 jobs:
   release:
@@ -30,6 +27,39 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: front-end/package-lock.json
+
+      - name: Load release config
+        id: release_config
+        shell: bash
+        working-directory: front-end
+        run: |
+          node -e "
+            const fs = require('fs');
+            const {
+              RELEASE_REPOSITORY,
+              RELEASE_TAG_PATTERN_SOURCE
+            } = require('./electron/release-config.cjs');
+
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, \`release_repository=\${RELEASE_REPOSITORY}\\n\`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, \`release_tag_pattern=\${RELEASE_TAG_PATTERN_SOURCE}\\n\`);
+          "
+
+      - name: Validate release tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          RELEASE_TAG_PATTERN: ${{ steps.release_config.outputs.release_tag_pattern }}
+        run: |
+          node -e "
+            const tag = process.env.TAG_NAME;
+            const pattern = new RegExp(process.env.RELEASE_TAG_PATTERN);
+
+            if (!pattern.test(tag)) {
+              console.error(\`Invalid release tag: \${tag}\`);
+              console.error('Expected format: vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-prerelease');
+              process.exit(1);
+            }
+          "
 
       - name: Sync frontend version from tag
         shell: bash
@@ -65,6 +95,7 @@ jobs:
         shell: bash
         env:
           GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          RELEASE_REPOSITORY: ${{ steps.release_config.outputs.release_repository }}
         run: |
           if [ -z "$GH_RELEASE_TOKEN" ]; then
             echo "Missing GH_RELEASE_TOKEN secret for $RELEASE_REPOSITORY" >&2

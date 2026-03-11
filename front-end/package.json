@@ -9,8 +9,8 @@
     "build:web": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
-    "build": "vite build && electron-builder",
-    "release:win": "vite build && electron-builder --win --x64 --publish always"
+    "build": "vite build && electron-builder --config electron-builder.config.cjs",
+    "release:win": "vite build && electron-builder --config electron-builder.config.cjs --win --x64 --publish always"
   },
   "dependencies": {
     "@coooookies/windows-smtc-monitor": "^1.0.12",
@@ -48,42 +48,5 @@
     "wait-on": "^6.0.1"
   },
   "description": "基于艾宾浩斯遗忘曲线的学习计划管理系统",
-  "author": "MemoryFlow Team",
-  "build": {
-    "appId": "com.yourname.memoryflow",
-    "productName": "MemoryFlow",
-    "artifactName": "${productName}-Setup-${version}.${ext}",
-    "directories": {
-      "output": "release_v2"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "MemoryFlow"
-    },
-    "protocols": {
-      "name": "MemoryFlow Protocol",
-      "schemes": [
-        "memoryflow"
-      ]
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "xixi131",
-        "repo": "MemoryFlow.exe",
-        "releaseType": "release"
-      }
-    ]
-  }
+  "author": "MemoryFlow Team"
 }

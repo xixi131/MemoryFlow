@@ -4,6 +4,7 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 const { startMusicListener, stopMusicListener } = require('./MusicService.cjs');
 const { NsisUpdater } = require('electron-updater');
+const { RELEASE_REPOSITORY: UPDATE_RELEASE_REPOSITORY } = require('./release-config.cjs');
 
 let widgetWindow;
 let tray;
@@ -92,7 +93,6 @@ function normalizeUpdateFeedUrl(value) {
     return String(value || '').trim().replace(/\/+$/, '');
 }
 
-const UPDATE_RELEASE_REPOSITORY = 'xixi131/MemoryFlow.exe';
 const GITHUB_RELEASE_DOWNLOAD_URL = `https://github.com/${UPDATE_RELEASE_REPOSITORY}/releases/latest/download`;
 const GITHUB_RELEASE_PAGE_URL = `https://github.com/${UPDATE_RELEASE_REPOSITORY}/releases/latest`;
 const DEFAULT_GHPROXY_PREFIXES = [
