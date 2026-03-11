@@ -105,6 +105,8 @@ const GEO_LOOKUP_TIMEOUT_MS = 2500;
 let activeUpdateSource = null;
 let lastResolvedNetworkRegion = null;
 let boundAutoUpdater = null;
+let autoUpdaterFeedUrl = '';
+let pendingUpdateContext = null;
 
 function normalizeUrlList(value) {
     if (Array.isArray(value)) {
@@ -156,6 +158,73 @@ function buildProxyWrappedUrl(prefix, targetUrl) {
     return `${normalizedPrefix}/${String(targetUrl || '').trim().replace(/^\/+/, '')}`;
 }
 
+function stripYamlScalar(value) {
+    return String(value || '')
+        .trim()
+        .replace(/^['"]|['"]$/g, '');
+}
+
+function parseLatestYml(text) {
+    const content = String(text || '');
+    const versionMatch = content.match(/^version:\s*(.+)$/m);
+    const pathMatch = content.match(/^path:\s*(.+)$/m);
+    const fileUrlMatch = content.match(/^\s+url:\s*(.+)$/m);
+    const fileName = stripYamlScalar(pathMatch?.[1] || fileUrlMatch?.[1] || '');
+
+    return {
+        version: stripYamlScalar(versionMatch?.[1] || ''),
+        fileName
+    };
+}
+
+function resolveUpdateAssetUrl(feedUrl, fileName) {
+    const normalizedFeedUrl = normalizeUpdateFeedUrl(feedUrl);
+    const normalizedFileName = String(fileName || '').trim().replace(/^\/+/, '');
+    if (!normalizedFeedUrl || !normalizedFileName) {
+        return '';
+    }
+
+    try {
+        return new URL(normalizedFileName, `${normalizedFeedUrl}/`).toString();
+    } catch (e) {
+        return `${normalizedFeedUrl}/${normalizedFileName}`;
+    }
+}
+
+function clearPendingUpdateContext() {
+    pendingUpdateContext = null;
+}
+
+function setPendingUpdateContext(updater, updateInfo) {
+    if (!updater || !updateInfo?.version) {
+        clearPendingUpdateContext();
+        return;
+    }
+
+    pendingUpdateContext = {
+        updater,
+        version: String(updateInfo.version),
+        sourceUrl: normalizeUpdateFeedUrl(activeUpdateSource?.url || autoUpdaterFeedUrl)
+    };
+}
+
+function getPendingUpdateContext(updateInfo) {
+    if (!pendingUpdateContext) {
+        return null;
+    }
+
+    if (updateInfo?.version && pendingUpdateContext.version !== String(updateInfo.version)) {
+        return null;
+    }
+
+    const currentSourceUrl = normalizeUpdateFeedUrl(activeUpdateSource?.url || autoUpdaterFeedUrl);
+    if (pendingUpdateContext.sourceUrl && currentSourceUrl && pendingUpdateContext.sourceUrl !== currentSourceUrl) {
+        return null;
+    }
+
+    return pendingUpdateContext;
+}
+
 function getConfiguredGhProxyPrefixes() {
     const updaterConfig = getUpdaterConfig();
     const configured = [
@@ -196,7 +265,7 @@ function getDefaultUpdateSources(isChinaNetwork) {
             url: buildProxyWrappedUrl(prefix, GITHUB_RELEASE_DOWNLOAD_URL),
             label: `GitHub 代理 ${proxyLabel}`,
             kind: 'ghproxy',
-            manualUrl: buildProxyWrappedUrl(prefix, GITHUB_RELEASE_PAGE_URL)
+            manualUrl: GITHUB_RELEASE_PAGE_URL
         });
     }).filter(Boolean);
 
@@ -393,13 +462,16 @@ function getAutoUpdater() {
         return null;
     }
 
-    if (!autoUpdater || autoUpdater.getFeedURL() !== feedUrl) {
+    if (!autoUpdater || autoUpdaterFeedUrl !== feedUrl) {
         autoUpdater = new NsisUpdater({
             provider: 'generic',
             url: feedUrl
         });
         autoUpdater.autoDownload = false;
         autoUpdater.disableDifferentialDownload = true;
+        autoUpdater.allowPrerelease = false;
+        autoUpdaterFeedUrl = feedUrl;
+        clearPendingUpdateContext();
     }
 
     return autoUpdater;
@@ -425,6 +497,7 @@ function bindUpdaterEvents(updater) {
         });
         const manual = pendingManualUpdateCheck;
         pendingManualUpdateCheck = false;
+        setPendingUpdateContext(updater, info);
         await promptUpdateAvailable(info, manual);
     });
 
@@ -436,6 +509,7 @@ function bindUpdaterEvents(updater) {
     });
 
     updater.on('update-not-available', async () => {
+        clearPendingUpdateContext();
         if (pendingManualUpdateCheck) {
             pendingManualUpdateCheck = false;
             clearUpdateCheckingTimeout();
@@ -457,6 +531,7 @@ function bindUpdaterEvents(updater) {
     });
 
     updater.on('update-downloaded', async () => {
+        clearPendingUpdateContext();
         appendUpdateLog('update-downloaded', {
             feedUrl: getUpdateFeedUrl(),
             sourceLabel: activeUpdateSource?.label || ''
@@ -499,6 +574,7 @@ function bindUpdaterEvents(updater) {
     updater.on('error', async (err) => {
         const hadDownloadInProgress = updateDownloadInProgress;
         const shouldShowError = pendingManualUpdateCheck || updatePromptVisible || hadDownloadInProgress;
+        clearPendingUpdateContext();
         try {
             updateDownloadInProgress = false;
             appendUpdateLog('update-error', {
@@ -1090,7 +1166,14 @@ async function preflightUpdateFeed(source) {
         if (!response.ok) {
             return { ok: false, message: `HTTP ${response.status}` };
         }
-        return { ok: true };
+        const latestYml = await response.text();
+        const latestMeta = parseLatestYml(latestYml);
+        const resolvedAssetUrl = resolveUpdateAssetUrl(feedUrl, latestMeta.fileName);
+        return {
+            ok: true,
+            latestMeta,
+            manualUrl: resolvedAssetUrl || source?.manualUrl || GITHUB_RELEASE_PAGE_URL
+        };
     } catch (e) {
         appendUpdateLog('preflight-error', {
             url: latestUrl,
@@ -1111,7 +1194,11 @@ async function resolveAvailableUpdateSource({ forceRegionLookup = false } = {}) 
     for (const source of candidateSources) {
         const preflight = await preflightUpdateFeed(source);
         if (preflight.ok) {
-            activeUpdateSource = source;
+            activeUpdateSource = {
+                ...source,
+                manualUrl: preflight.manualUrl || source.manualUrl,
+                latestMeta: preflight.latestMeta || null
+            };
             saveUpdaterConfig({
                 lastGoodFeedUrl: source.url,
                 lastGoodFeedLabel: source.label,
@@ -1120,10 +1207,12 @@ async function resolveAvailableUpdateSource({ forceRegionLookup = false } = {}) 
             appendUpdateLog('selected-update-source', {
                 sourceLabel: source.label,
                 feedUrl: source.url,
+                manualUrl: activeUpdateSource.manualUrl || '',
+                version: activeUpdateSource.latestMeta?.version || '',
                 countryCode: region?.countryCode || '',
                 isChina: !!region?.isChina
             });
-            return { ok: true, source, region };
+            return { ok: true, source: activeUpdateSource, region };
         }
         lastFailure = { source, message: preflight.message };
     }
@@ -1168,18 +1257,21 @@ async function promptUpdateAvailable(updateInfo, manual) {
         });
 
         if (response === 0) {
+            clearPendingUpdateContext();
             saveUpdaterConfig({ remindLaterUntil: Date.now() + UPDATE_REMIND_LATER_MS });
             return;
         }
 
         if (response === 1) {
+            clearPendingUpdateContext();
             saveUpdaterConfig({ skipVersion: updateInfo.version, remindLaterUntil: 0 });
             return;
         }
 
         if (response === 2) {
             try {
-                const updater = getAutoUpdater();
+                const pendingContext = getPendingUpdateContext(updateInfo);
+                const updater = pendingContext?.updater || getAutoUpdater();
                 if (!updater) {
                     await showUpdaterErrorDialog({
                         message: '未配置更新源',
@@ -1277,6 +1369,8 @@ async function checkForUpdates({ manual, force } = { manual: false, force: false
     }
     saveUpdaterConfig({ lastCheckTime: Date.now() });
     try {
+        clearPendingUpdateContext();
+        activeUpdateSource = null;
         appendUpdateLog('check-start', { manual, feedUrl: getUpdateFeedUrl() });
         const resolved = await resolveAvailableUpdateSource({ forceRegionLookup: manual || force });
         if (!resolved.ok || !resolved.source) {
