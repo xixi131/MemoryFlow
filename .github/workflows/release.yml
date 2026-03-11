@@ -68,9 +68,15 @@ jobs:
           TAG_NAME="${GITHUB_REF_NAME}"
           NORMALIZED_TAG="${TAG_NAME#v}"
 
-          node -e "
+          NORMALIZED_TAG="$NORMALIZED_TAG" node -e "
             const fs = require('fs');
             const version = process.env.NORMALIZED_TAG;
+
+            if (!version) {
+              console.error('NORMALIZED_TAG is empty; cannot set package.json version');
+              process.exit(1);
+            }
+
             const updateJson = (file, updater) => {
               const data = JSON.parse(fs.readFileSync(file, 'utf8'));
               updater(data);
