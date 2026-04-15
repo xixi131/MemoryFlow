@@ -52,7 +52,7 @@
       "Check that the shell is documentation-only and contains no unverified runtime conclusions."
     ],
     "budget_minutes": 6,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

@@ -69,3 +69,18 @@
   - Opened file content from repository root using `sed -n`.
 - Important follow-up notes:
   - This is a shell-only document and intentionally contains no runtime behavior conclusions.
+
+## 2026-04-16 - Music spec doc shell
+
+- Task: Create the music takeover specification document shell for playback-driven island behavior.
+- What was done:
+  - Created `docs/mac-island-music-spec.md`.
+  - Added section headings in order: `Providers/Inputs`, `Mode Switching`, `Playback States`, `Degraded Fallback`.
+  - Added a behavior matrix template under each section with fields for `Media Event`, `Widget State Change`, and `User-Visible Output`.
+- How it was tested:
+  - Confirmed file exists from repository root.
+  - Verified heading order with `rg '^# ' docs/mac-island-music-spec.md`.
+  - Verified template header consistency with `rg '^\\| Media Event \\| Widget State Change \\| User-Visible Output \\| Evidence \\|' docs/mac-island-music-spec.md`.
+  - Opened file content from repository root using `sed -n`.
+- Important follow-up notes:
+  - This is a shell-only document and intentionally contains no unverified runtime conclusions.
