@@ -63,7 +63,7 @@
       "Check that checklist status defaults are unset and ready for later fill tasks."
     ],
     "budget_minutes": 6,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

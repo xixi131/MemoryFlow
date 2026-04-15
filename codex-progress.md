@@ -84,3 +84,18 @@
   - Opened file content from repository root using `sed -n`.
 - Important follow-up notes:
   - This is a shell-only document and intentionally contains no unverified runtime conclusions.
+
+## 2026-04-16 - Migration checklist doc shell
+
+- Task: Create the Phase 0 migration checklist shell used to gate the move into Phase 1.
+- What was done:
+  - Created `docs/mac-island-migration-checklist.md`.
+  - Added sections: `State Coverage`, `Interaction Coverage`, `Animation Coverage`, `Reminder Coverage`, `Music Coverage`.
+  - Added checklist table rows with fields: `Item`, `Expected Behavior`, `Evidence Link`, `Status`.
+- How it was tested:
+  - Confirmed file exists from repository root.
+  - Verified section order with `rg '^# ' docs/mac-island-migration-checklist.md`.
+  - Verified table header consistency with `rg '^\\| Item \\| Expected Behavior \\| Evidence Link \\| Status \\|' docs/mac-island-migration-checklist.md`.
+  - Opened file content from repository root using `sed -n`.
+- Important follow-up notes:
+  - Checklist status fields are intentionally left unset (empty) for later completion tasks.
