@@ -39,3 +39,18 @@
   - Opened file content from repository root using `sed -n`.
 - Important follow-up notes:
   - This is a shell-only document and intentionally contains no behavior conclusions.
+
+## 2026-04-16 - Interaction spec doc shell
+
+- Task: Create the interaction specification document shell for hover, click-through, pointer, and gesture behavior.
+- What was done:
+  - Created `docs/mac-island-interaction-spec.md`.
+  - Added section headings in order: `Hover Activation`, `Click-Through Toggle`, `Pointer Gestures`, `Trackpad Gestures`.
+  - Added a reusable behavior row template under each section with fields for `Trigger Threshold`, `Debounce`, and `Recovery Behavior`.
+- How it was tested:
+  - Confirmed file exists from repository root.
+  - Verified heading order with `rg '^# ' docs/mac-island-interaction-spec.md`.
+  - Verified template header consistency with `rg '^\\| Interaction \\| Trigger Threshold \\| Debounce \\| Recovery Behavior \\| Evidence \\|' docs/mac-island-interaction-spec.md`.
+  - Opened file content from repository root using `sed -n`.
+- Important follow-up notes:
+  - This is a shell-only document and intentionally contains no behavior claims.
