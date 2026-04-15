@@ -54,3 +54,18 @@
   - Opened file content from repository root using `sed -n`.
 - Important follow-up notes:
   - This is a shell-only document and intentionally contains no behavior claims.
+
+## 2026-04-16 - Animation spec doc shell
+
+- Task: Create the animation specification document shell for transition timing and motion sequencing.
+- What was done:
+  - Created `docs/mac-island-animation-spec.md`.
+  - Added section headings in order: `Expand/Collapse`, `Mode Switch`, `Hover Motion`, `Reminder-Triggered Motion`.
+  - Added an animation table template under each section with fields for `Duration`, `Easing`, `Trigger`, and `Observed Result`.
+- How it was tested:
+  - Confirmed file exists from repository root.
+  - Verified heading order with `rg '^# ' docs/mac-island-animation-spec.md`.
+  - Verified template header consistency with `rg '^\\| Animation Step \\| Duration \\| Easing \\| Trigger \\| Observed Result \\| Evidence \\|' docs/mac-island-animation-spec.md`.
+  - Opened file content from repository root using `sed -n`.
+- Important follow-up notes:
+  - This is a shell-only document and intentionally contains no runtime behavior conclusions.

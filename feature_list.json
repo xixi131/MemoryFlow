@@ -41,7 +41,7 @@
       "Check that all headings and table columns are present and readable in markdown preview."
     ],
     "budget_minutes": 6,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
