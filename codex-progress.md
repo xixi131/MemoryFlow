@@ -156,3 +156,18 @@
   - Verified the section includes an explicit scope note that this task is static-code/schema based and does not claim runtime DB verification.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `awk`) and did not run browser MCP, API runtime checks, or `init.sh`.
+
+## 2026-04-16 - Visual state machine transition matrix in state spec
+
+- Task: Add the Visual State Machine transition matrix from component state logic.
+- What was done:
+  - Traced collapsed/activity/expanded transition triggers in `front-end/src/components/DynamicIslandWidget.tsx`.
+  - Replaced the placeholder row under `Visual State Machine` in `docs/mac-island-state-spec.md` with 5 transition rules.
+  - Added an explicit reminder row stating auto-open is a trigger path into review activity state, not a standalone display mode.
+- How it was tested:
+  - Extracted `Visual State Machine` section via `awk` and verified 5 populated rows exist.
+  - Verified no placeholder empty row remains in `Visual State Machine`.
+  - Verified explicit reminder trigger-path wording and evidence references are present.
+  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static code tracing only (`rg`/`sed`/`nl -ba`/`awk`) and did not run browser MCP, API runtime checks, or `init.sh`.

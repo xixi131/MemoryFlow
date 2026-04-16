@@ -119,7 +119,7 @@
       "Check that one explicit row states reminder auto-open is a trigger path instead of a standalone mode."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
