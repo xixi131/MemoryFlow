@@ -259,3 +259,18 @@
   - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `apply_patch`) and did not run `init.sh`, browser MCP, or API/runtime checks.
+
+## 2026-04-16 - Phase 0 migration checklist population
+
+- Task: Populate the migration checklist with concrete evidence links from all Phase 0 spec documents.
+- What was done:
+  - Replaced all template rows in `docs/mac-island-migration-checklist.md` with concrete checklist items for `State`, `Interaction`, `Animation`, `Reminder`, and `Music` coverage.
+  - Added explicit pass-condition phrasing (`Pass when ...`) to each checklist row.
+  - Linked every checklist item to specific section rows in Phase 0 spec docs: `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, `docs/mac-island-animation-spec.md`, and `docs/mac-island-music-spec.md`.
+  - Set task index 17 to `passes: true` in `feature_list.json` after documentation validation.
+- How it was tested:
+  - Verified template rows are removed and no empty placeholder row remains using `rg -n "Template Item|\|\s*\|\s*$" docs/mac-island-migration-checklist.md` (no matches).
+  - Manually reviewed the updated checklist sections with `sed -n` to confirm each prepared row has non-empty `Status` (`Prepared`) and at least one evidence link.
+  - Verified `feature_list.json` task index 17 now reports `passes=true`.
+- Important follow-up notes:
+  - Validation followed docs lightweight path only (no `init.sh`, browser MCP, or API runtime checks), matching the task execution contract.

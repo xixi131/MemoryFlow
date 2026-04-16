@@ -196,7 +196,7 @@
       "Check that every checklist item has a clear pass condition and no empty status fields for prepared rows."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "planning",
