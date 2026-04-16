@@ -186,6 +186,21 @@
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
 
+## 2026-04-16 - Expand/Collapse and mode-switch animation rows in animation spec
+
+- Task: Add Expand/Collapse and Mode Switch animation rows from current UI animation definitions.
+- What was done:
+  - Traced expand/collapse animation constants, segmented/open transition flags, and Framer Motion transition branches in `front-end/src/components/DynamicIslandWidget.tsx`.
+  - Traced mode-switch long-press and sequence timers (`compact -> mode flip -> reopen -> unlock`) in `front-end/src/components/DynamicIslandWidget.tsx`.
+  - Replaced template rows in `docs/mac-island-animation-spec.md` under `Expand/Collapse` and `Mode Switch` with concrete duration/easing/trigger/observed-result entries and code evidence.
+- How it was tested:
+  - Verified step-1 tracing coverage by checking referenced constants/timers/transition branches with `nl -ba` on `DynamicIslandWidget.tsx`.
+  - Verified step-2 completion by inspecting both updated sections in `docs/mac-island-animation-spec.md` and confirming populated rows include required fields.
+  - Ran `rg -n 'Template Row' docs/mac-island-animation-spec.md` and confirmed no placeholder remains in `Expand/Collapse` and `Mode Switch`.
+  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run `init.sh`, browser MCP, or API runtime checks.
+
 ## 2026-04-16 - Hover activation and click-through toggle in interaction spec
 
 - Task: Add Hover Activation and Click-Through Toggle rules from renderer and Electron bridge code.

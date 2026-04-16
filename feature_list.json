@@ -163,7 +163,7 @@
       "Check rows contain concrete code references and no placeholder entries remain in those two sections."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
