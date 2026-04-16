@@ -9,6 +9,8 @@
     "build:web": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npx cross-env BROWSER=none vite\" \"npx wait-on tcp:3000 && npx cross-env ELECTRON_START_URL=http://localhost:3000 electron .\"",
+    "build:mac": "vite build && electron-builder --mac --arm64",
+    "test:packaged:mac": "open release_v2/mac-arm64/MemoryFlow.app",
     "build": "vite build && electron-builder",
     "release:win": "vite build && electron-builder --win --x64"
   },
