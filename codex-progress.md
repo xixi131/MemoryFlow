@@ -244,3 +244,18 @@
   - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run `init.sh`, browser MCP, or API runtime checks.
+
+## 2026-04-16 - Music behavior rows in mac island music spec
+
+- Task: Add music behavior rows from `MusicService`, `MusicWorker`, and renderer IPC listeners.
+- What was done:
+  - Traced end-to-end music payload flow from worker SMTC events/polling (`front-end/electron/MusicWorker.cjs`) to main-process forwarding and dedupe (`front-end/electron/MusicService.cjs`) and renderer listener/mode updates (`front-end/src/components/DynamicIslandWidget.tsx`).
+  - Replaced template rows in `docs/mac-island-music-spec.md` with concrete rows for `Providers/Inputs`, `Mode Switching`, `Playback States`, and `Degraded Fallback`.
+  - Ensured each row explicitly states event trigger, state effect, user-visible result, and concrete code evidence references.
+- How it was tested:
+  - Verified Step 1 tracing coverage by checking source locations for worker payload emit, service IPC forwarding, and renderer `music-data-update` handling.
+  - Verified Step 2 completion by inspecting all four updated sections in `docs/mac-island-music-spec.md` and confirming placeholder rows are removed.
+  - Verified Step 3 quality by reviewing each inserted row includes all required fields and at least one direct code location reference.
+  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `apply_patch`) and did not run `init.sh`, browser MCP, or API/runtime checks.

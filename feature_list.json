@@ -185,7 +185,7 @@
       "Check each row includes event trigger, state effect, user-visible result, and code evidence."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
