@@ -174,7 +174,7 @@
       "Check that each row links to a specific code location and avoids inferred timing without source evidence."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

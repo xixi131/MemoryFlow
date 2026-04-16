@@ -229,3 +229,18 @@
   - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
+
+## 2026-04-16 - Hover and reminder-triggered motion rows in animation spec
+
+- Task: Add Hover Motion and Reminder-Triggered Motion animation rows from existing implementation.
+- What was done:
+  - Traced hover-motion state and render paths in `front-end/src/components/DynamicIslandWidget.tsx`, including hover enter/leave handlers, collapsed-scale branch, shadow transition style, and shared spring config.
+  - Traced reminder-triggered auto-open and reminder-collapse animation paths in `front-end/src/components/DynamicIslandWidget.tsx`, including reminder due guards, `setForceCompactModeWithTransition(false)`, open/collapse duration constants, and segmented collapse transition branches.
+  - Replaced template rows under `Hover Motion` and `Reminder-Triggered Motion` in `docs/mac-island-animation-spec.md` with source-backed entries and explicit code location evidence.
+- How it was tested:
+  - Verified step-1 tracing coverage with `rg -n` and `nl -ba` on `DynamicIslandWidget.tsx` for hover handlers, reminder guards, transition flags/constants, and Framer Motion variants.
+  - Verified step-2 completion by inspecting the updated `Hover Motion` and `Reminder-Triggered Motion` sections in `docs/mac-island-animation-spec.md`.
+  - Verified step-3 evidence quality by checking each new row contains concrete `DynamicIslandWidget.tsx:<line>` references and uses only durations/easing present in source (or explicitly marks no fixed duration in source).
+  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run `init.sh`, browser MCP, or API runtime checks.
