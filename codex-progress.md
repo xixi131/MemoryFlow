@@ -142,3 +142,17 @@
   - Confirmed markdown section order/structure remains valid in `docs/mac-island-state-spec.md`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`/`sed`/`awk`) and did not run browser/API runtime sampling.
+
+## 2026-04-16 - Todo status-update persistence contract in state spec
+
+- Task: Add Todo status-update persistence assumptions from code contracts and local schema references.
+- What was done:
+  - Traced todo status-update request flow from widget click handling to API call in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/src/services/todoApis.ts`.
+  - Traced backend `/todos/tasks/{id}/status` controller and service update path in `back-end/src/main/java/com/memoryflow/controller/TodoController.java` and `back-end/src/main/java/com/memoryflow/service/TodoService.java`.
+  - Added `Todo status-update persistence contract (code-derived)` under `Todo Rules` in `docs/mac-island-state-spec.md`, documenting write intent, persisted field effects, and read-after-write expectation using local schema references.
+- How it was tested:
+  - Extracted the `Todo Rules` section with `awk` and confirmed the new contract subsection is present.
+  - Verified the note includes concrete code references for frontend callsites, backend controller/service write path, and schema/entity fields (`todo_tasks.status`, `todo_tasks.completed_at`).
+  - Verified the section includes an explicit scope note that this task is static-code/schema based and does not claim runtime DB verification.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `awk`) and did not run browser MCP, API runtime checks, or `init.sh`.

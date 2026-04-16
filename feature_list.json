@@ -108,7 +108,7 @@
       "Check the note references concrete code paths and avoids unverified runtime claims."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
