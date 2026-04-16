@@ -273,7 +273,7 @@
       "Check that menu bar icon appears and menu actions are callable without app crash."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

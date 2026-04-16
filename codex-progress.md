@@ -422,3 +422,41 @@
 - Important follow-up notes:
   - This task is limited to placeholder rendering host wiring only; no business data/UI migration was introduced.
   - Task index 23 in `feature_list.json` is now set to `passes: true`.
+
+## 2026-04-16 - Phase 1 menu bar controller and base entries
+
+- Task: Add menu bar controller and base menu entries for the native app shell.
+- Execution mode:
+  - Single-agent execution in current thread.
+- What was done:
+  - Added `mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift`.
+  - Added `mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`.
+  - Implemented base menu entries with action handlers:
+    - `Show/Hide Island` (toggles `IslandWindowControlling.show()/hide()` and updates menu title),
+    - `Preferences` (stub handler with log output),
+    - `Quit` (default terminate handler, injectable for smoke validation).
+  - Updated `mac-island/MemoryFlowIsland/App/SceneCoordinator.swift` to use `StatusBarController` as default `MenuBarControlling`.
+  - Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` to include MenuBar files in group and `PBXSourcesBuildPhase`.
+- How it was tested:
+  - Full-path initialization check (frontend task contract):
+    - Ran `zsh ./init.sh`.
+    - Observed Vite ready (`http://localhost:3001/`) and backend running on `8080`.
+  - Step 1 verification:
+    - Verified both files exist:
+      - `ls -la mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`
+  - Step 2 verification:
+    - Verified menu entries and action handlers in source:
+      - `rg -n "Show Island|Hide Island|Preferences|Quit|toggleIslandMenuItemClicked|preferencesMenuItemClicked|quitMenuItemClicked" mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`
+    - Verified coordinator and target membership wiring:
+      - `rg -n "StatusBarController.swift|StatusMenuBuilder.swift|StatusBarController\\(windowController" mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj mac-island/MemoryFlowIsland/App/SceneCoordinator.swift`
+    - Verified pbxproj syntax:
+      - `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` -> `OK`
+  - Step 3 verification (GUI-limited fallback chain):
+    - Ran compile validation:
+      - `swiftc -typecheck -module-cache-path /tmp/swift-module-cache $(find mac-island/MemoryFlowIsland -name '*.swift' | sort)` -> exit `0`
+    - Ran executable smoke validation for action callability without crash:
+      - Built and executed `/tmp/statusbar_action_smoke` using current MenuBar + Window + SceneCoordinator sources.
+      - Script exercised `install()`, `toggleIslandMenuItemClicked`, `preferencesMenuItemClicked`, `quitMenuItemClicked`, and `uninstall()` with injected quit closure, exit `0`.
+- Important follow-up notes:
+  - GUI icon visibility was not captured with screenshot because this environment does not provide a GUI assertion path for the native app shell; fallback verification used source-path checks plus executable action smoke test.
+  - Task index 24 in `feature_list.json` is now set to `passes: true`.

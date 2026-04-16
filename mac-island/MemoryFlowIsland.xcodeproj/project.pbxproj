@@ -15,6 +15,8 @@
 		B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101060000000000000001 /* NotchLayoutEngine.swift */; };
 		B00102070000000000000001 /* DisplayObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101070000000000000001 /* DisplayObserver.swift */; };
 		B00102080000000000000001 /* IslandRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101080000000000000001 /* IslandRootView.swift */; };
+		B00102090000000000000001 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101090000000000000001 /* StatusBarController.swift */; };
+		B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010A0000000000000001 /* StatusMenuBuilder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 		B00101060000000000000001 /* NotchLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchLayoutEngine.swift; sourceTree = "<group>"; };
 		B00101070000000000000001 /* DisplayObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayObserver.swift; sourceTree = "<group>"; };
 		B00101080000000000000001 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
+		B00101090000000000000001 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
+		B001010A0000000000000001 /* StatusMenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuBuilder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +94,15 @@
 			path = Window;
 			sourceTree = "<group>";
 		};
-		B00100080000000000000001 /* MenuBar */ = {isa = PBXGroup; path = MenuBar; sourceTree = "<group>"; };
+		B00100080000000000000001 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				B00101090000000000000001 /* StatusBarController.swift */,
+				B001010A0000000000000001 /* StatusMenuBuilder.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
 		B00100090000000000000001 /* Preferences */ = {isa = PBXGroup; path = Preferences; sourceTree = "<group>"; };
 		B001000A0000000000000001 /* UI */ = {
 			isa = PBXGroup;
@@ -177,6 +189,8 @@
 				B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */,
 				B00102070000000000000001 /* DisplayObserver.swift in Sources */,
 				B00102080000000000000001 /* IslandRootView.swift in Sources */,
+				B00102090000000000000001 /* StatusBarController.swift in Sources */,
+				B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
