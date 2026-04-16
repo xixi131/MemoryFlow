@@ -288,3 +288,28 @@
   - Confirmed assigned task `feature_list.json` index 18 is now `passes: true`.
 - Important follow-up notes:
   - This planning fast-path task used static document cross-checking only and intentionally did not run `init.sh`, browser MCP, or API checks.
+
+## 2026-04-16 - Phase 1 mac-island project skeleton and Xcode container
+
+- Task: Create the mac-island project skeleton directory and Xcode project container for a standalone macOS app.
+- Execution mode:
+  - Degraded single-agent mode (continued without worker by explicit human request after repeated worker timeout).
+- What was done:
+  - Created `mac-island/` and `MemoryFlowIsland.xcodeproj` container with:
+    - `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj`
+    - `mac-island/MemoryFlowIsland.xcodeproj/project.xcworkspace/contents.xcworkspacedata`
+  - Added initial target/group skeleton in `project.pbxproj` for `MemoryFlowIsland` with top-level groups:
+    - `App`, `Window`, `MenuBar`, `Preferences`, `UI`, `Resources`
+  - Created initial folder layout under `mac-island/MemoryFlowIsland/`:
+    - `App/`, `Window/`, `MenuBar/`, `Preferences/`, `UI/`, `Resources/`
+- How it was tested:
+  - Full-path initialization check (frontend task contract): ran `zsh init.sh` and captured startup evidence:
+    - Spring Boot started on `8080`.
+    - Vite dev server started with local URL `http://localhost:3000/`.
+  - Verified folder layout with `find mac-island -maxdepth 3 -type d | sort` and required directory presence check script.
+  - Verified project file syntax with `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` (`OK`).
+  - Verified target/group structure exists in pbxproj via `rg` on `PBXNativeTarget` and group names.
+  - Verified structure consistency against `灵动岛迁移方案.md` section `推荐目录结构` (subset required by task 19).
+- Important follow-up notes:
+  - `xcodebuild` validation is currently unavailable in this environment because active developer directory is CommandLineTools only; Xcode app is required for `xcodebuild -list`.
+  - Task index 19 in `feature_list.json` is now set to `passes: true`.

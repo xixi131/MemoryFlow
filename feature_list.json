@@ -208,5 +208,115 @@
     ],
     "budget_minutes": 5,
     "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the mac-island project skeleton directory and Xcode project container for a standalone macOS app.",
+    "steps": [
+      "Create mac-island/ with MemoryFlowIsland.xcodeproj and MemoryFlowIsland target group structure.",
+      "Create initial folder layout: App, Window, MenuBar, Preferences, UI, Resources under mac-island/MemoryFlowIsland/.",
+      "Check that project and group paths are consistent with the Phase 1 structure plan in 灵动岛迁移方案.md."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add app bootstrap entry files for the native app startup path.",
+    "steps": [
+      "Add MemoryFlowIslandApp.swift, AppDelegate.swift, and SceneCoordinator.swift under mac-island/MemoryFlowIsland/App/.",
+      "Wire app launch flow so SceneCoordinator can initialize menu bar and window controllers.",
+      "Check that bootstrap files compile in target membership and have no unresolved symbols."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create native island window shell classes with transparent floating window behavior.",
+    "steps": [
+      "Add IslandPanel.swift and IslandWindowController.swift under mac-island/MemoryFlowIsland/Window/.",
+      "Configure a transparent, borderless, always-on-top style suitable for island shell behavior.",
+      "Check that window shell classes can instantiate and expose show/hide entry methods without business logic coupling."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add notch-position helper placeholders for Phase 1 geometry readiness.",
+    "steps": [
+      "Add NotchLayoutEngine.swift and DisplayObserver.swift under mac-island/MemoryFlowIsland/Window/.",
+      "Implement minimal API surfaces for screen bounds input and top-center placement output.",
+      "Check that IslandWindowController can reference the helper APIs without compile errors."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add SwiftUI island placeholder view and connect it to the native window host.",
+    "steps": [
+      "Create UI/IslandRootView.swift with a simple placeholder island appearance and static text marker.",
+      "Embed IslandRootView in the native window content pipeline from IslandWindowController.",
+      "Check that app launch can render the placeholder island content inside the native window shell."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add menu bar controller and base menu entries for the native app shell.",
+    "steps": [
+      "Create StatusBarController.swift and StatusMenuBuilder.swift under mac-island/MemoryFlowIsland/MenuBar/.",
+      "Add base menu entries: Show/Hide Island, Preferences, and Quit with stub action handlers.",
+      "Check that menu bar icon appears and menu actions are callable without app crash."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add empty preferences window skeleton and wire menu action entry.",
+    "steps": [
+      "Create PreferencesWindowController.swift and PreferencesView.swift under mac-island/MemoryFlowIsland/Preferences/.",
+      "Wire the Preferences menu item to open the preferences window controller.",
+      "Check that preferences window can be opened repeatedly without duplicate controller lifecycle issues."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add app resource placeholders and basic mac app metadata for standalone launch.",
+    "steps": [
+      "Create Resources/Info.plist and Assets.xcassets placeholders under mac-island/MemoryFlowIsland/Resources/.",
+      "Set minimal bundle metadata required for app launch and menu bar presentation.",
+      "Check that project build settings point to the new resource files correctly."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add a short Phase 1 scaffold handoff note describing generated native app modules.",
+    "steps": [
+      "Create or update a Phase 1 note under docs/ describing App, Window, MenuBar, Preferences, UI, and Resources modules.",
+      "Document explicit non-goals for this phase: no review/todo feature migration, no auth/API integration, no music provider migration.",
+      "Check that file paths in the handoff note match actual project skeleton paths."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "planning",
+    "description": "Append Phase 1 acceptance-gate checklist items for native shell readiness.",
+    "steps": [
+      "Add checklist items for: app can launch, menu bar icon is visible, and a basic top island window can be shown.",
+      "Place the checklist in an existing migration tracking doc used by this repository.",
+      "Check that each checklist item has a clear pass condition and is scoped only to Phase 1 skeleton goals."
+    ],
+    "budget_minutes": 5,
+    "passes": false
   }
 ]
