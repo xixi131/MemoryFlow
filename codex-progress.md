@@ -313,3 +313,27 @@
 - Important follow-up notes:
   - `xcodebuild` validation is currently unavailable in this environment because active developer directory is CommandLineTools only; Xcode app is required for `xcodebuild -list`.
   - Task index 19 in `feature_list.json` is now set to `passes: true`.
+
+## 2026-04-16 - Phase 1 app bootstrap entry files
+
+- Task: Add app bootstrap entry files for the native app startup path.
+- Execution mode:
+  - Degraded single-agent mode (continued without child workers by explicit human request).
+- What was done:
+  - Added bootstrap files under `mac-island/MemoryFlowIsland/App/`:
+    - `MemoryFlowIslandApp.swift`
+    - `AppDelegate.swift`
+    - `SceneCoordinator.swift`
+  - Wired launch flow so `AppDelegate` creates `SceneCoordinator` on app start and tears it down on app termination.
+  - Implemented coordinator-driven startup hooks that initialize menu bar and window controller interfaces (`MenuBarControlling` and `IslandWindowControlling`) with temporary placeholders for this phase.
+  - Added the three App files into `MemoryFlowIsland` target membership in `project.pbxproj` (`PBXBuildFile` + `PBXSourcesBuildPhase`).
+- How it was tested:
+  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
+  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
+  - Target membership validation: verified the three App files are present in `PBXSourcesBuildPhase` using `rg` on `project.pbxproj`.
+  - Compile symbol validation: ran
+    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift`
+    - result: exit `0`, no unresolved symbol errors.
+- Important follow-up notes:
+  - Placeholder menu-bar/window controller implementations are intentionally minimal and will be replaced by concrete module controllers in subsequent tasks.
+  - Task index 20 in `feature_list.json` is now set to `passes: true`.

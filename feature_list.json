@@ -229,7 +229,7 @@
       "Check that bootstrap files compile in target membership and have no unresolved symbols."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
