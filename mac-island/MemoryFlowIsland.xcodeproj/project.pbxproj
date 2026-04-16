@@ -14,6 +14,7 @@
 		B00102050000000000000001 /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101050000000000000001 /* IslandWindowController.swift */; };
 		B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101060000000000000001 /* NotchLayoutEngine.swift */; };
 		B00102070000000000000001 /* DisplayObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101070000000000000001 /* DisplayObserver.swift */; };
+		B00102080000000000000001 /* IslandRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101080000000000000001 /* IslandRootView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		B00101050000000000000001 /* IslandWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowController.swift; sourceTree = "<group>"; };
 		B00101060000000000000001 /* NotchLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchLayoutEngine.swift; sourceTree = "<group>"; };
 		B00101070000000000000001 /* DisplayObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayObserver.swift; sourceTree = "<group>"; };
+		B00101080000000000000001 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +92,14 @@
 		};
 		B00100080000000000000001 /* MenuBar */ = {isa = PBXGroup; path = MenuBar; sourceTree = "<group>"; };
 		B00100090000000000000001 /* Preferences */ = {isa = PBXGroup; path = Preferences; sourceTree = "<group>"; };
-		B001000A0000000000000001 /* UI */ = {isa = PBXGroup; path = UI; sourceTree = "<group>"; };
+		B001000A0000000000000001 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B00101080000000000000001 /* IslandRootView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
 		B001000B0000000000000001 /* Resources */ = {isa = PBXGroup; path = Resources; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -167,6 +176,7 @@
 				B00102050000000000000001 /* IslandWindowController.swift in Sources */,
 				B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */,
 				B00102070000000000000001 /* DisplayObserver.swift in Sources */,
+				B00102080000000000000001 /* IslandRootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

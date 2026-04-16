@@ -262,7 +262,7 @@
       "Check that app launch can render the placeholder island content inside the native window shell."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

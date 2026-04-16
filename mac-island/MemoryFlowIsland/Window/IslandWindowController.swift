@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 final class IslandWindowController: NSWindowController, IslandWindowControlling {
     private let islandPanel: IslandPanel
@@ -14,6 +15,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         self.notchLayoutEngine = notchLayoutEngine
         self.displayObserver = displayObserver
         super.init(window: panel)
+        configureContentView()
         applyInitialWindowState()
         beginDisplayObservation()
     }
@@ -35,6 +37,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     func hide() {
         window?.orderOut(nil)
+    }
+
+    private func configureContentView() {
+        let hostingView = NSHostingView(rootView: IslandRootView())
+        hostingView.frame = NSRect(origin: .zero, size: islandPanel.frame.size)
+        hostingView.autoresizingMask = [.width, .height]
+        islandPanel.contentView = hostingView
     }
 
     private func applyInitialWindowState() {

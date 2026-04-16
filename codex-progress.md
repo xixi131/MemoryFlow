@@ -389,3 +389,36 @@
 - Important follow-up notes:
   - The notch placement APIs are placeholders for Phase 1 geometry readiness and intentionally keep scope to screen-bounds input and top-center output.
   - Task index 22 in `feature_list.json` is now set to `passes: true`.
+
+## 2026-04-16 - Phase 1 island placeholder view host wiring
+
+- Task: Add SwiftUI island placeholder view and connect it to the native window host.
+- Execution mode:
+  - Single-agent execution in current thread.
+- What was done:
+  - Added `mac-island/MemoryFlowIsland/UI/IslandRootView.swift` with a simple capsule-style placeholder island UI and static text marker `MEMORYFLOW_ISLAND_PLACEHOLDER`.
+  - Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to mount `IslandRootView` through `NSHostingView(rootView: IslandRootView())` in `configureContentView()`.
+  - Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` to include `IslandRootView.swift` in `PBXFileReference`, `UI` group children, `PBXBuildFile`, and `PBXSourcesBuildPhase` target membership.
+- How it was tested:
+  - Step 1 (placeholder view + static marker):
+    - Verified file exists and inspected content:
+      - `sed -n '1,220p' mac-island/MemoryFlowIsland/UI/IslandRootView.swift`
+    - Confirmed marker text exists: `MEMORYFLOW_ISLAND_PLACEHOLDER`.
+  - Step 2 (embed into native window content pipeline):
+    - Verified `IslandWindowController` contains `NSHostingView(rootView: IslandRootView())` and calls `configureContentView()` during initialization.
+    - Verified `project.pbxproj` includes `IslandRootView.swift` in `PBXSourcesBuildPhase`.
+    - Commands:
+      - `rg -n "IslandRootView.swift|IslandRootView\\(\\)|IslandRootView.swift in Sources" mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`
+      - `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` -> `OK`
+  - Step 3 (launch-time render path for placeholder content):
+    - Verified launch pipeline references:
+      - `AppDelegate.applicationDidFinishLaunching` -> `sceneCoordinator?.start()` -> `windowController.show()`
+      - `IslandWindowController.init` -> `configureContentView()` -> `NSHostingView(rootView: IslandRootView())`
+    - Compile/typecheck validation passed for full mac-island Swift file set including `IslandRootView.swift`:
+      - `swiftc -typecheck -module-cache-path /tmp/swift-module-cache ...`
+      - result: exit `0`.
+    - Note:
+      - `xcodebuild` launch validation is unavailable in current environment because active developer directory is CommandLineTools only (no full Xcode app).
+- Important follow-up notes:
+  - This task is limited to placeholder rendering host wiring only; no business data/UI migration was introduced.
+  - Task index 23 in `feature_list.json` is now set to `passes: true`.
