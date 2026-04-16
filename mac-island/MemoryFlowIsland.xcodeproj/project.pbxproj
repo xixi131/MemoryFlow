@@ -12,6 +12,8 @@
 		B00102030000000000000001 /* SceneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101030000000000000001 /* SceneCoordinator.swift */; };
 		B00102040000000000000001 /* IslandPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101040000000000000001 /* IslandPanel.swift */; };
 		B00102050000000000000001 /* IslandWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101050000000000000001 /* IslandWindowController.swift */; };
+		B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101060000000000000001 /* NotchLayoutEngine.swift */; };
+		B00102070000000000000001 /* DisplayObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101070000000000000001 /* DisplayObserver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +23,8 @@
 		B00101030000000000000001 /* SceneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneCoordinator.swift; sourceTree = "<group>"; };
 		B00101040000000000000001 /* IslandPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPanel.swift; sourceTree = "<group>"; };
 		B00101050000000000000001 /* IslandWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowController.swift; sourceTree = "<group>"; };
+		B00101060000000000000001 /* NotchLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchLayoutEngine.swift; sourceTree = "<group>"; };
+		B00101070000000000000001 /* DisplayObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayObserver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +82,8 @@
 			children = (
 				B00101040000000000000001 /* IslandPanel.swift */,
 				B00101050000000000000001 /* IslandWindowController.swift */,
+				B00101060000000000000001 /* NotchLayoutEngine.swift */,
+				B00101070000000000000001 /* DisplayObserver.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -159,6 +165,8 @@
 				B00102030000000000000001 /* SceneCoordinator.swift in Sources */,
 				B00102040000000000000001 /* IslandPanel.swift in Sources */,
 				B00102050000000000000001 /* IslandWindowController.swift in Sources */,
+				B00102060000000000000001 /* NotchLayoutEngine.swift in Sources */,
+				B00102070000000000000001 /* DisplayObserver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

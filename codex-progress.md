@@ -361,3 +361,31 @@
 - Important follow-up notes:
   - Window shell currently focuses on container behavior only; business rendering/content is intentionally deferred to subsequent UI tasks.
   - Task index 21 in `feature_list.json` is now set to `passes: true`.
+
+## 2026-04-16 - Phase 1 notch helper placeholders
+
+- Task: Add notch-position helper placeholders for Phase 1 geometry readiness.
+- Execution mode:
+  - Single-agent execution in current thread.
+- What was done:
+  - Added `mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift`.
+  - Added `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift`.
+  - Implemented minimal helper APIs:
+    - `NotchLayoutEngine.islandOrigin(screenFrame:islandSize:)`
+    - `NotchLayoutEngine.islandFrame(screenFrame:islandSize:)`
+    - `DisplayObserver.startObserving(onChange:)`
+    - `DisplayObserver.stopObserving()`
+    - `DisplayObserver.currentScreenFrame()`
+  - Updated `IslandWindowController` to reference helper APIs for top-center repositioning on show and on display-parameter changes.
+  - Added new Window helper files into target membership in `project.pbxproj` (`PBXBuildFile`, `PBXFileReference`, `PBXGroup`, `PBXSourcesBuildPhase`).
+- How it was tested:
+  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
+  - Verified helper files exist at required paths with `ls`.
+  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
+  - Helper/controller wiring validation: `rg` confirmed `IslandWindowController` references `NotchLayoutEngine` and `DisplayObserver` APIs.
+  - Compile symbol validation: ran
+    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift mac-island/MemoryFlowIsland/Window/IslandPanel.swift mac-island/MemoryFlowIsland/Window/IslandWindowController.swift mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift mac-island/MemoryFlowIsland/Window/DisplayObserver.swift`
+    - result: exit `0`, no unresolved symbol errors.
+- Important follow-up notes:
+  - The notch placement APIs are placeholders for Phase 1 geometry readiness and intentionally keep scope to screen-bounds input and top-center output.
+  - Task index 22 in `feature_list.json` is now set to `passes: true`.
