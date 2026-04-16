@@ -127,3 +127,18 @@
   - Checked markdown heading structure/order remains valid in `docs/mac-island-state-spec.md`.
 - Important follow-up notes:
   - This task used static code tracing only (no runtime/browser/API sampling) per docs fast-path requirements.
+
+## 2026-04-16 - Todo rules in state spec
+
+- Task: Add Todo Rules endpoint and rendering rows from existing frontend and API code.
+- What was done:
+  - Traced todo-related request and rendering paths in `front-end/src/components/DynamicIslandWidget.tsx` and API mapping in `front-end/src/services/todoApis.ts`.
+  - Replaced the placeholder row under `Todo Rules` in `docs/mac-island-state-spec.md` with 3 endpoint-specific rules for `/todos/stats`, `/todos/tasks`, and `/todos/tasks/:id/status`.
+  - Added explicit expected UI impact per endpoint, covering collapsed activity badges, expanded todo summary/list rendering, and optimistic status-toggle behavior with rollback.
+- How it was tested:
+  - Extracted `Todo Rules` section via `awk` and confirmed all three required endpoints are present as populated rows.
+  - Verified placeholder empty row was removed from `Todo Rules`.
+  - Checked each new row includes direct code evidence references (`DynamicIslandWidget.tsx:<line>` and API callsite references in `todoApis.ts:<line>`).
+  - Confirmed markdown section order/structure remains valid in `docs/mac-island-state-spec.md`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`/`sed`/`awk`) and did not run browser/API runtime sampling.

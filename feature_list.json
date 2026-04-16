@@ -97,7 +97,7 @@
       "Check that each row contains endpoint, trigger, expected UI, and a direct code evidence reference."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
