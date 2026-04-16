@@ -7,7 +7,7 @@
       "Add a one-sentence scope note that the document records current Windows behavior before mac migration implementation.",
       "Check that every heading is unique and the file opens correctly from repository root."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -18,7 +18,7 @@
       "Add an empty table template under each heading with columns: Condition, Trigger, Expected UI, Evidence.",
       "Check markdown structure consistency and confirm heading order matches the Phase 0 scope."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -29,7 +29,7 @@
       "Add a reusable behavior row template with fields for trigger threshold, debounce, and recovery behavior.",
       "Check that the document contains no behavior claims yet and only shell content."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -40,7 +40,7 @@
       "Add an animation table template with fields for duration, easing, trigger, and observed result.",
       "Check that all headings and table columns are present and readable in markdown preview."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -51,7 +51,7 @@
       "Add a behavior matrix template with fields for media event, widget state change, and user-visible output.",
       "Check that the shell is documentation-only and contains no unverified runtime conclusions."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -62,7 +62,7 @@
       "Add checklist rows with fields: Item, Expected Behavior, Evidence Link, Status.",
       "Check that checklist status defaults are unset and ready for later fill tasks."
     ],
-    "budget_minutes": 6,
+    "budget_minutes": 5,
     "passes": true
   },
   {
@@ -75,7 +75,7 @@
       "Check that each documented rule includes at least one concrete code or runtime evidence reference."
     ],
     "budget_minutes": 20,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "backend",
@@ -146,7 +146,7 @@
       "Verify post-trigger recovery behavior, including dismissal path and return to normal state.",
       "Document trigger preconditions, expansion result, and recovery rules in docs/mac-island-state-spec.md under Reminder Trigger Rules."
     ],
-    "budget_minutes": 26,
+    "budget_minutes": 25,
     "passes": false
   },
   {

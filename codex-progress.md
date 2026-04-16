@@ -99,3 +99,17 @@
   - Opened file content from repository root using `sed -n`.
 - Important follow-up notes:
   - Checklist status fields are intentionally left unset (empty) for later completion tasks.
+
+## 2026-04-16 - Startup/Auth rules in state spec
+
+- Task: Add startup and authentication behavior details to the state spec from current widget code and visible runtime behavior.
+- What was done:
+  - Filled `docs/mac-island-state-spec.md` under `Startup/Auth` with condition-to-UI mapping rules.
+  - Traced startup/auth flows in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/electron/main.cjs` (token bootstrap, IPC auth-token, unauth fallback handling).
+  - Added explicit evidence notes per rule (code path + runtime observation).
+- How it was tested:
+  - Browser MCP unauth startup observation at `http://localhost:3002/#/widget`: confirmed visible `点击登录`.
+  - Browser MCP authenticated-context observation: local token presence confirmed and browser-side authenticated fetch to `/api/widget/summary` returned `code=200`.
+  - Verified Startup/Auth table rows each include concrete evidence references.
+- Important follow-up notes:
+  - `init.sh` frontend started on `3002`; backend launch from `init.sh` hit `8080` conflict, so runtime verification reused the already-listening local backend on `8080`.
