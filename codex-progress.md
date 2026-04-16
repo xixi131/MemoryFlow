@@ -337,3 +337,27 @@
 - Important follow-up notes:
   - Placeholder menu-bar/window controller implementations are intentionally minimal and will be replaced by concrete module controllers in subsequent tasks.
   - Task index 20 in `feature_list.json` is now set to `passes: true`.
+
+## 2026-04-16 - Phase 1 native island window shell classes
+
+- Task: Create native island window shell classes with transparent floating window behavior.
+- Execution mode:
+  - Degraded single-agent mode (continued without child workers by explicit human request).
+- What was done:
+  - Added `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` as a transparent borderless panel shell.
+  - Added `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` with lightweight `show()` / `hide()` entry methods and no business-domain coupling.
+  - Wired `SceneCoordinator` to instantiate `IslandWindowController` as the default window controller.
+  - Added both Window files to target membership in `project.pbxproj` (`PBXBuildFile`, `PBXGroup`, and `PBXSourcesBuildPhase`).
+- How it was tested:
+  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
+  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
+  - Style/behavior code checks:
+    - Verified `IslandPanel` uses `styleMask: [.borderless, .nonactivatingPanel]`.
+    - Verified floating window level `level = .statusBar` and transparent appearance settings.
+    - Verified `IslandWindowController` exposes `show()` and `hide()` methods.
+  - Compile symbol validation: ran
+    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift mac-island/MemoryFlowIsland/Window/IslandPanel.swift mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`
+    - result: exit `0`, no unresolved symbol errors.
+- Important follow-up notes:
+  - Window shell currently focuses on container behavior only; business rendering/content is intentionally deferred to subsequent UI tasks.
+  - Task index 21 in `feature_list.json` is now set to `passes: true`.

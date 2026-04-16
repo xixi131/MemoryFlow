@@ -15,7 +15,7 @@ final class SceneCoordinator {
     private let menuBarController: MenuBarControlling
 
     init(
-        windowController: IslandWindowControlling = PlaceholderWindowController(),
+        windowController: IslandWindowControlling = IslandWindowController(),
         menuBarController: MenuBarControlling = PlaceholderMenuBarController()
     ) {
         self.windowController = windowController
@@ -31,11 +31,6 @@ final class SceneCoordinator {
         windowController.hide()
         menuBarController.uninstall()
     }
-}
-
-private final class PlaceholderWindowController: IslandWindowControlling {
-    func show() {}
-    func hide() {}
 }
 
 private final class PlaceholderMenuBarController: MenuBarControlling {

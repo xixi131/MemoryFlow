@@ -240,7 +240,7 @@
       "Check that window shell classes can instantiate and expose show/hide entry methods without business logic coupling."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
