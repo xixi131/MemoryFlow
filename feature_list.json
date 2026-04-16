@@ -78,133 +78,135 @@
     "passes": true
   },
   {
-    "task_type": "backend",
-    "description": "Add /widget/summary API contract details to the state spec with request and response evidence.",
+    "task_type": "docs",
+    "description": "Add Review Rules rows from static code paths without runtime sampling.",
     "steps": [
-      "Call /widget/summary with an API request tool using a valid session and capture response fields used by the widget.",
-      "Call /widget/summary with an invalid or expired token and capture the error response pattern.",
-      "Document request conditions, response schema highlights, and error handling expectations in docs/mac-island-state-spec.md.",
-      "Check that the documented contract can be mapped directly to review UI sections."
+      "Trace review-related data and rendering branches in front-end/src/components/DynamicIslandWidget.tsx.",
+      "Fill Review Rules in docs/mac-island-state-spec.md with condition, trigger, expected UI, and code evidence columns.",
+      "Check that placeholder rows are removed and every new row includes at least one concrete code location."
     ],
-    "budget_minutes": 20,
-    "passes": false
+    "budget_minutes": 5,
+    "passes": true
   },
   {
-    "task_type": "frontend",
-    "description": "Add review mode display rules to the state spec with explicit rules for collapsed, activity, and expanded states.",
+    "task_type": "docs",
+    "description": "Add Todo Rules endpoint and rendering rows from existing frontend and API code.",
     "steps": [
-      "Identify review-mode rendering branches in front-end/src/components/DynamicIslandWidget.tsx.",
-      "Use browser MCP to observe review mode in collapsed, activity, and expanded visual states.",
-      "Document condition-based rendering rules and fallback behavior in docs/mac-island-state-spec.md under Review Rules.",
-      "Check that each visual state has at least one reproducible trigger and expected output entry."
+      "Trace todo-related request and rendering paths in DynamicIslandWidget.tsx and related API call sites.",
+      "Fill Todo Rules in docs/mac-island-state-spec.md for /todos/stats, /todos/tasks, and /todos/tasks/:id/status with expected UI impact.",
+      "Check that each row contains endpoint, trigger, expected UI, and a direct code evidence reference."
     ],
-    "budget_minutes": 20,
-    "passes": false
-  },
-  {
-    "task_type": "backend",
-    "description": "Add todo endpoint contract details to the state spec for list, stats, and status update behavior.",
-    "steps": [
-      "Use API request tools to call /todos/stats, /todos/tasks, and /todos/tasks/:id/status with valid authentication.",
-      "Capture success and common failure response patterns for each endpoint and note required fields.",
-      "Document endpoint-specific contract rows in docs/mac-island-state-spec.md under Todo Rules.",
-      "Check that each endpoint row contains method, expected payload shape, and widget-consumed fields."
-    ],
-    "budget_minutes": 22,
-    "passes": false
-  },
-  {
-    "task_type": "e2e",
-    "description": "Add end-to-end todo interaction behavior with persisted result verification.",
-    "steps": [
-      "Use browser MCP to toggle at least one todo item from incomplete to complete in the current widget flow.",
-      "Verify the corresponding /todos/tasks/:id/status API request and response for the same action.",
-      "Check persisted result consistency by reading the updated task state through /todos/tasks after the toggle.",
-      "Document the end-to-end trigger, API side effect, and final visible state in docs/mac-island-state-spec.md."
-    ],
-    "budget_minutes": 28,
-    "passes": false
-  },
-  {
-    "task_type": "frontend",
-    "description": "Add the visual state transition matrix for collapsed, activity, and expanded behavior.",
-    "steps": [
-      "Extract transition triggers and guards from existing widget state logic in front-end/src/components/DynamicIslandWidget.tsx.",
-      "Use browser MCP to reproduce each transition path and confirm actual target state behavior.",
-      "Document a full transition matrix in docs/mac-island-state-spec.md under Visual State Machine.",
-      "Check that reminder-triggered expansion is recorded as a trigger path instead of a separate mode."
-    ],
-    "budget_minutes": 22,
-    "passes": false
-  },
-  {
-    "task_type": "e2e",
-    "description": "Add reminder-trigger behavior details with timed runtime evidence and recovery rules.",
-    "steps": [
-      "Prepare reminder timing conditions through existing settings or data so an automatic expansion event can be triggered.",
-      "Use browser MCP to observe the reminder-triggered expansion event and capture visible timing behavior.",
-      "Verify post-trigger recovery behavior, including dismissal path and return to normal state.",
-      "Document trigger preconditions, expansion result, and recovery rules in docs/mac-island-state-spec.md under Reminder Trigger Rules."
-    ],
-    "budget_minutes": 25,
-    "passes": false
-  },
-  {
-    "task_type": "frontend",
-    "description": "Add hover, click-through, pointer, and trackpad threshold rules to the interaction spec.",
-    "steps": [
-      "Trace hover and click-through related logic in front-end/src/components/DynamicIslandWidget.tsx and front-end/electron/main.cjs.",
-      "Use browser MCP with runtime observation to verify hover activation, click-through toggling, and pointer/trackpad gesture reactions.",
-      "Document threshold, debounce, and recovery behavior entries in docs/mac-island-interaction-spec.md.",
-      "Check that each interaction rule includes trigger condition, expected state change, and failure-safe behavior."
-    ],
-    "budget_minutes": 22,
-    "passes": false
-  },
-  {
-    "task_type": "frontend",
-    "description": "Add animation timing and sequencing details to the animation spec for all core transitions.",
-    "steps": [
-      "Inspect animation-related definitions in the current widget UI code and list candidate transitions.",
-      "Use browser MCP to replay expand/collapse, mode switch, and hover motion transitions and capture observed timing.",
-      "Document duration, easing, trigger, and observed result rows in docs/mac-island-animation-spec.md.",
-      "Check that every core transition in Phase 0 focus points has a documented animation entry."
-    ],
-    "budget_minutes": 20,
-    "passes": false
-  },
-  {
-    "task_type": "e2e",
-    "description": "Add music takeover behavior and fallback handling details to the music spec.",
-    "steps": [
-      "Trace music flow logic in front-end/electron/MusicService.cjs and front-end/electron/MusicWorker.cjs.",
-      "Run one supported playback scenario and use browser MCP plus runtime observation to confirm widget state changes for play, pause, and stop.",
-      "Run one unsupported or unavailable-player scenario and confirm degradation behavior does not break widget state transitions.",
-      "Document event-to-state mapping and fallback rules in docs/mac-island-music-spec.md."
-    ],
-    "budget_minutes": 30,
+    "budget_minutes": 5,
     "passes": false
   },
   {
     "task_type": "docs",
-    "description": "Add concrete Phase 0 checklist items and evidence links into the migration checklist document.",
+    "description": "Add Todo status-update persistence assumptions from code contracts and local schema references.",
     "steps": [
-      "Fill docs/mac-island-migration-checklist.md with checklist items covering review/todo rules, visual states, reminder trigger semantics, interaction thresholds, animations, and music takeover.",
-      "Link each checklist item to at least one concrete section in the generated spec documents.",
-      "Check that checklist rows are actionable and each row has a clear expected behavior statement."
+      "Trace todo status update call flow in front-end code and backend controller/service path where available.",
+      "Add a concise contract note in docs/mac-island-state-spec.md describing write intent and expected persisted state effect.",
+      "Check the note references concrete code paths and avoids unverified runtime claims."
     ],
-    "budget_minutes": 8,
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add the Visual State Machine transition matrix from component state logic.",
+    "steps": [
+      "Trace collapsed, activity, and expanded transition triggers in DynamicIslandWidget.tsx.",
+      "Fill Visual State Machine rows in docs/mac-island-state-spec.md with source condition, trigger, expected state, and evidence.",
+      "Check that one explicit row states reminder auto-open is a trigger path instead of a standalone mode."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Reminder Trigger Rules from reminderTime and guard refs in widget code.",
+    "steps": [
+      "Trace reminder-related refs, key guards, and auto-open conditions in DynamicIslandWidget.tsx.",
+      "Fill Reminder Trigger Rules in docs/mac-island-state-spec.md with due condition, trigger, recovery expectation, and evidence.",
+      "Check that the section distinguishes time trigger logic from display mode definitions."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Hover Activation and Click-Through Toggle rules from renderer and Electron bridge code.",
+    "steps": [
+      "Trace hover handling and ignore mouse event toggling in DynamicIslandWidget.tsx and front-end/electron/main.cjs.",
+      "Fill Hover Activation and Click-Through Toggle sections in docs/mac-island-interaction-spec.md.",
+      "Check each row includes trigger threshold or guard, recovery behavior, and evidence link."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Pointer and Trackpad gesture rules from gesture accumulators and cooldown logic.",
+    "steps": [
+      "Trace gesture delta accumulators, lock flags, and cooldown timers in DynamicIslandWidget.tsx.",
+      "Fill Pointer Gestures and Trackpad Gestures sections in docs/mac-island-interaction-spec.md with action mapping.",
+      "Check that all template rows are replaced and each rule includes code evidence."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Expand/Collapse and Mode Switch animation rows from current UI animation definitions.",
+    "steps": [
+      "Trace expand/collapse and mode-switch animation configuration in DynamicIslandWidget.tsx and related style hooks.",
+      "Fill corresponding sections in docs/mac-island-animation-spec.md with duration/easing/trigger/observed-result fields.",
+      "Check rows contain concrete code references and no placeholder entries remain in those two sections."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Hover Motion and Reminder-Triggered Motion animation rows from existing implementation.",
+    "steps": [
+      "Trace hover-related motion and reminder-triggered open/collapse animation paths in DynamicIslandWidget.tsx.",
+      "Fill Hover Motion and Reminder-Triggered Motion sections in docs/mac-island-animation-spec.md.",
+      "Check that each row links to a specific code location and avoids inferred timing without source evidence."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add music behavior rows from MusicService, MusicWorker, and renderer IPC listeners.",
+    "steps": [
+      "Trace music event payload flow across front-end/electron/MusicService.cjs, MusicWorker.cjs, and DynamicIslandWidget.tsx listeners.",
+      "Fill Providers/Inputs, Mode Switching, Playback States, and Degraded Fallback in docs/mac-island-music-spec.md.",
+      "Check each row includes event trigger, state effect, user-visible result, and code evidence."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Populate the migration checklist with concrete evidence links from all Phase 0 spec documents.",
+    "steps": [
+      "Replace template rows in docs/mac-island-migration-checklist.md with concrete checklist items for state, interaction, animation, reminder, and music.",
+      "Link each checklist item to at least one specific section row in the spec documents.",
+      "Check that every checklist item has a clear pass condition and no empty status fields for prepared rows."
+    ],
+    "budget_minutes": 5,
     "passes": false
   },
   {
     "task_type": "planning",
-    "description": "Check Phase 0 coverage completeness against the migration plan acceptance statement before Phase 1 starts.",
+    "description": "Add a Phase 1 entry gate note after checking Phase 0 checklist coverage.",
     "steps": [
-      "Compare docs/mac-island-migration-checklist.md against the Phase 0 outputs and focus points in 灵动岛迁移方案.md.",
-      "Verify that every required output category has at least one completed checklist item and linked evidence section.",
-      "Add a short Phase 0 readiness note in docs/mac-island-phase0-baseline.md summarizing pass/fail gating criteria for entering Phase 1."
+      "Compare completed checklist categories with Phase 0 outputs and focus points in 灵动岛迁移方案.md.",
+      "Write a concise go/no-go note in docs/mac-island-phase0-baseline.md under Phase 0 Acceptance.",
+      "Check that the gate note lists explicit completion criteria and references checklist sections."
     ],
-    "budget_minutes": 8,
+    "budget_minutes": 5,
     "passes": false
   }
 ]

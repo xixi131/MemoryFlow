@@ -113,3 +113,17 @@
   - Verified Startup/Auth table rows each include concrete evidence references.
 - Important follow-up notes:
   - `init.sh` frontend started on `3002`; backend launch from `init.sh` hit `8080` conflict, so runtime verification reused the already-listening local backend on `8080`.
+
+## 2026-04-16 - Review rules in state spec
+
+- Task: Add Review Rules rows from static code paths without runtime sampling.
+- What was done:
+  - Traced review-mode data and render branches in `front-end/src/components/DynamicIslandWidget.tsx` (mode state, activity gating, summary fetch path, and expanded review panel rendering).
+  - Replaced the placeholder row under `Review Rules` in `docs/mac-island-state-spec.md` with 5 concrete rules.
+  - Added concrete code evidence with file+line references in every new Review Rules row.
+- How it was tested:
+  - Extracted the `Review Rules` section and confirmed the table contains populated rows with no empty placeholder row.
+  - Verified each new row contains at least one concrete code location via `DynamicIslandWidget.tsx:<line>` matches.
+  - Checked markdown heading structure/order remains valid in `docs/mac-island-state-spec.md`.
+- Important follow-up notes:
+  - This task used static code tracing only (no runtime/browser/API sampling) per docs fast-path requirements.
