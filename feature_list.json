@@ -152,7 +152,7 @@
       "Check that all template rows are replaced and each rule includes code evidence."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

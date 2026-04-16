@@ -199,3 +199,18 @@
   - Confirmed `feature_list.json` for this task was updated to `passes: true`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
+
+## 2026-04-16 - Pointer and trackpad gesture rules in interaction spec
+
+- Task: Add Pointer and Trackpad gesture rules from gesture accumulators and cooldown logic.
+- What was done:
+  - Traced pointer gesture deltas and guards in `front-end/src/components/DynamicIslandWidget.tsx`, including `startX`, `lastPointerXRef`, `activePointerIdRef`, `GESTURE_SWITCH_THRESHOLD`, and `TAP_THRESHOLD`.
+  - Traced trackpad gesture accumulators and cooldown logic in `front-end/src/components/DynamicIslandWidget.tsx`, including `trackpadDeltaXRef`, `trackpadDeltaYRef`, `trackpadGestureLockedRef`, `TRACKPAD_GESTURE_RESET_MS`, and `TRACKPAD_GESTURE_COOLDOWN_MS`.
+  - Replaced template rows in `docs/mac-island-interaction-spec.md` under `Pointer Gestures` and `Trackpad Gestures` with action-mapped rules and code evidence links.
+- How it was tested:
+  - Verified `Pointer Gestures` and `Trackpad Gestures` sections contain populated behavior rows by inspecting the updated markdown table content.
+  - Ran `rg -n 'Template Row' docs/mac-island-interaction-spec.md` and confirmed no placeholder rows remain.
+  - Verified each new row includes concrete evidence references to gesture thresholds, accumulator/reset paths, and lock/cooldown code locations in `DynamicIslandWidget.tsx`.
+  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
