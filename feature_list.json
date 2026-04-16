@@ -207,6 +207,6 @@
       "Check that the gate note lists explicit completion criteria and references checklist sections."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]

@@ -274,3 +274,17 @@
   - Verified `feature_list.json` task index 17 now reports `passes=true`.
 - Important follow-up notes:
   - Validation followed docs lightweight path only (no `init.sh`, browser MCP, or API runtime checks), matching the task execution contract.
+
+## 2026-04-16 - Phase 1 entry gate note after Phase 0 checklist coverage check
+
+- Task: Add a Phase 1 entry gate note after checking Phase 0 checklist coverage.
+- What was done:
+  - Compared Phase 0 outputs/focus points in `灵动岛迁移方案.md` (state, gestures/interaction, animation, mode-switch behavior, reminder trigger logic, music takeover) against `docs/mac-island-migration-checklist.md` coverage categories.
+  - Added a concise `Phase 1 Entry Gate (Go/No-Go)` note under `Phase 0 Acceptance` in `docs/mac-island-phase0-baseline.md`.
+  - Included explicit completion criteria and direct checklist section references for `State Coverage`, `Interaction Coverage`, `Animation Coverage`, `Reminder Coverage`, and `Music Coverage`.
+- How it was tested:
+  - Verified the new gate note is under `Phase 0 Acceptance` and includes explicit go/no-go criteria text.
+  - Verified the note references checklist section anchors in `docs/mac-island-migration-checklist.md`.
+  - Confirmed assigned task `feature_list.json` index 18 is now `passes: true`.
+- Important follow-up notes:
+  - This planning fast-path task used static document cross-checking only and intentionally did not run `init.sh`, browser MCP, or API checks.
