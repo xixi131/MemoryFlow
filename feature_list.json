@@ -130,7 +130,7 @@
       "Check that the section distinguishes time trigger logic from display mode definitions."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

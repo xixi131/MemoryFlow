@@ -171,3 +171,17 @@
   - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
 - Important follow-up notes:
   - This task used docs fast-path static code tracing only (`rg`/`sed`/`nl -ba`/`awk`) and did not run browser MCP, API runtime checks, or `init.sh`.
+
+## 2026-04-16 - Reminder trigger rules in state spec
+
+- Task: Add Reminder Trigger Rules from `reminderTime` and guard refs in widget code.
+- What was done:
+  - Traced reminder-related refs and guards in `front-end/src/components/DynamicIslandWidget.tsx` (`reminderAutoOpenKeyRef`, `reminderDueRef`, `reminderCheckInitializedRef`, `justReachedReminderTime`, and the compact/app/review guards).
+  - Replaced the placeholder row under `Reminder Trigger Rules` in `docs/mac-island-state-spec.md` with 2 static rules covering invalid/missing reminder time and the one-per-day auto-open transition.
+  - Added a note clarifying that reminder timing is separate from the `appDisplayMode` display-mode enum.
+- How it was tested:
+  - Extracted the `Reminder Trigger Rules` section with `nl -ba` and confirmed both populated rows are present.
+  - Verified the section includes an explicit separation note for time-trigger logic vs display-mode definitions.
+  - Checked the assigned task status was updated to `passes: true` in `feature_list.json`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
