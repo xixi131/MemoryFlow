@@ -141,7 +141,7 @@
       "Check each row includes trigger threshold or guard, recovery behavior, and evidence link."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

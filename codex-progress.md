@@ -185,3 +185,17 @@
   - Checked the assigned task status was updated to `passes: true` in `feature_list.json`.
 - Important follow-up notes:
   - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
+
+## 2026-04-16 - Hover activation and click-through toggle in interaction spec
+
+- Task: Add Hover Activation and Click-Through Toggle rules from renderer and Electron bridge code.
+- What was done:
+  - Traced hover handling in `front-end/src/components/DynamicIslandWidget.tsx`, including `isHovered`, the `:hover` guard used during gesture finalization, and the mouse-enter/mouse-leave handlers that gate hover state.
+  - Traced click-through toggling in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/electron/main.cjs`, including `set-ignore-mouse-events` IPC calls and the Electron bridge that forwards them to `BrowserWindow.setIgnoreMouseEvents()`.
+  - Filled `docs/mac-island-interaction-spec.md` with concrete Hover Activation and Click-Through Toggle rows, including trigger guards, recovery behavior, and evidence links.
+- How it was tested:
+  - Verified the `Hover Activation` and `Click-Through Toggle` sections now contain populated rows instead of template placeholders.
+  - Confirmed each row includes a trigger threshold or guard, recovery behavior, and an evidence link to concrete code locations.
+  - Confirmed `feature_list.json` for this task was updated to `passes: true`.
+- Important follow-up notes:
+  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
