@@ -3,15 +3,18 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
+- Phase 2 native macOS window-system work is now in progress, starting with reusable screen metrics and upcoming notch-classification/layout tasks.
 
 ### Queue snapshot
-- There is no pending task in the current `feature_list.json` queue.
-- The next automation step should be either reporting queue completion or regenerating the queue for the next migration slice.
+- The completed task is `Expose reusable screen metrics for native island positioning.`
+- The next pending task is `Detect whether the target display needs notch-aware placement.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
 - Default validation path is web unless a task explicitly needs Electron or native-shell verification.
 - `xcodebuild` is unavailable in the current environment because the active developer directory is CommandLineTools only.
+- For native-shell tasks, `swiftc -module-cache-path /tmp/... -typecheck` is the practical compile-level validation path in this environment.
+- `init.sh` can start the backend on an alternate port, but the sandbox currently blocks Vite from binding `0.0.0.0:3000` with `EPERM`.
 - Treat git commit or post-processing failures as workflow blockers, not as evidence that implementation work failed.
 
 ### Archive note
@@ -19,6 +22,13 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-23 - Window-layer screen metrics model landed for Phase 2 positioning
+
+- Added `mac-island/MemoryFlowIsland/Window/ScreenMetrics.swift` with frame, visible frame, safe-area insets, backing scale, and stable display identity derived from `NSScreen`.
+- Updated `DisplayObserver` to return `ScreenMetrics` for a window-aware current screen lookup, and updated `IslandWindowController` plus `NotchLayoutEngine` to consume the model without controller-side `NSScreen` parsing.
+- Added `ScreenMetrics.swift` to `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` so the model is part of the native app target.
+- Validation: `init.sh` was exercised, recovered with `MEMORYFLOW_BACKEND_PORT=18080`, and then hit an environment-only Vite bind failure (`EPERM` on `0.0.0.0:3000`); native validation passed via `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` and `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` across the app/window/menu/preferences/UI Swift sources including the new metrics model.
 
 ## 2026-04-23 - Phase 1 acceptance-gate checklist items added for native shell readiness
 

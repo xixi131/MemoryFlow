@@ -58,9 +58,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func repositionToTopCenter() {
-        guard let screenFrame = displayObserver.currentScreenFrame() else { return }
+        guard let screenMetrics = displayObserver.currentScreenMetrics(for: islandPanel) else { return }
         let targetFrame = notchLayoutEngine.islandFrame(
-            screenFrame: screenFrame,
+            screenMetrics: screenMetrics,
             islandSize: islandPanel.frame.size
         )
         islandPanel.setFrame(targetFrame, display: true)

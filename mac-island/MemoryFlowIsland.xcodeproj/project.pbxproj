@@ -20,6 +20,7 @@
 		B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010A0000000000000001 /* StatusMenuBuilder.swift */; };
 		B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010B0000000000000001 /* PreferencesWindowController.swift */; };
 		B001020C0000000000000001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010C0000000000000001 /* PreferencesView.swift */; };
+		B001020D0000000000000001 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010E0000000000000001 /* ScreenMetrics.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		B001010B0000000000000001 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 		B001010C0000000000000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		B001010D0000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B001010E0000000000000001 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +99,7 @@
 				B00101050000000000000001 /* IslandWindowController.swift */,
 				B00101060000000000000001 /* NotchLayoutEngine.swift */,
 				B00101070000000000000001 /* DisplayObserver.swift */,
+				B001010E0000000000000001 /* ScreenMetrics.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -217,6 +220,7 @@
 				B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */,
 				B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */,
 				B001020C0000000000000001 /* PreferencesView.swift in Sources */,
+				B001020D0000000000000001 /* ScreenMetrics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

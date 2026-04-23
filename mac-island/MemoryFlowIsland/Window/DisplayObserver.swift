@@ -25,7 +25,12 @@ final class DisplayObserver {
         self.observer = nil
     }
 
-    func currentScreenFrame() -> CGRect? {
-        NSScreen.main?.visibleFrame ?? NSScreen.screens.first?.visibleFrame
+    func currentScreenMetrics(for window: NSWindow? = nil) -> ScreenMetrics? {
+        guard let screen = currentScreen(for: window) else { return nil }
+        return ScreenMetrics(screen: screen)
+    }
+
+    private func currentScreen(for window: NSWindow?) -> NSScreen? {
+        window?.screen ?? NSScreen.main ?? NSScreen.screens.first
     }
 }

@@ -318,5 +318,192 @@
     ],
     "budget_minutes": 5,
     "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose reusable screen metrics for native island positioning.",
+    "steps": [
+      "Add a Window-layer screen metrics model that carries frame, visible frame, safe-area insets, backing scale, and a stable display identity.",
+      "Update DisplayObserver to return the screen metrics model instead of only a raw frame.",
+      "Check IslandWindowController can request the metrics model without parsing NSScreen directly."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Detect whether the target display needs notch-aware placement.",
+    "steps": [
+      "Add a helper in the Window layer that marks a screen as notch-bearing or flat-top from the collected metrics.",
+      "Keep the decision isolated from IslandWindowController so later phases can reuse the same display classification.",
+      "Check both notch and non-notch sample inputs compile through the placement path."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Center the island shell against the notch-safe top region on notch displays.",
+    "steps": [
+      "Update NotchLayoutEngine to compute the island origin from the top safe region instead of raw visible-frame midpoint placement.",
+      "Keep Phase 2 top-margin constants explicit inside the layout engine.",
+      "Check the engine returns a centered frame for a notch-display metrics fixture."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Place the island shell in a stable top-center fallback on non-notch displays.",
+    "steps": [
+      "Add a separate fallback calculation for flat-top displays that keeps the entire shell inside the visible area.",
+      "Route the non-notch path through the same layout result type used by notch displays.",
+      "Check the fallback frame stays fully visible for a flat-top metrics fixture."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Show the island on the correct display using the new placement result.",
+    "steps": [
+      "Update IslandWindowController show-path logic to request screen metrics and apply the layout-engine result before ordering the panel front.",
+      "Store the last applied display identity and frame in the controller for later re-anchor work.",
+      "Check repeated show calls reuse the new placement path without duplicate setup."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Keep the island on the same display when screen parameters change.",
+    "steps": [
+      "Extend the Window/display layer to resolve the preferred screen by the last applied display identity when that screen still exists.",
+      "Fall back to the current main screen only when the previous target screen disappears.",
+      "Check a screen reorder or display attach-or-detach event can still produce one valid target display."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Re-anchor the island after display arrangement or resolution changes.",
+    "steps": [
+      "Extend DisplayObserver callback wiring so IslandWindowController receives a single reposition signal for screen-parameter changes.",
+      "Reapply the latest layout result when the display configuration changes.",
+      "Check the observer path still compiles and triggers one reposition entry point."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Re-anchor the island after the Mac wakes from sleep.",
+    "steps": [
+      "Register workspace wake notifications in DisplayObserver and map them to the same reposition callback used by display changes.",
+      "Keep observer cleanup symmetrical for app shutdown and controller deinit.",
+      "Check wake observation can be started and stopped without leaked observers."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Keep the island panel floating above normal windows without stealing focus.",
+    "steps": [
+      "Refine IslandPanel style, collection behavior, and activation flags for a nonactivating, all-spaces, fullscreen-safe shell.",
+      "Keep the panel compatible with later hover interaction work.",
+      "Check showing the island does not require making the app the main active window."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add shell size presets for collapsed and expanded placeholder frames.",
+    "steps": [
+      "Define explicit shell size constants or presets in the Window layer for compact and expanded placeholder states.",
+      "Expose a controller path that can switch between the presets without introducing Phase 3 business state.",
+      "Check the window frame changes compile cleanly and remain centered after a preset switch."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Prevent the expanded shell shadow from being cropped by the panel frame.",
+    "steps": [
+      "Adjust panel content hosting, padding, or shadow margins so the larger shell can render without clipping rounded edges or shadow.",
+      "Keep the visual fix inside the native shell layer rather than future business views.",
+      "Check the expanded preset keeps its visible bounds and shadow inside the panel frame."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose a native click-through toggle for the island panel.",
+    "steps": [
+      "Add a controller or panel API that switches ignoresMouseEvents on and off without recreating the window.",
+      "Keep the API callable from later hover coordination code.",
+      "Check the toggle can flip in both directions while the panel remains visible."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add pointer-entry detection that works while the island is in click-through mode.",
+    "steps": [
+      "Introduce a small hover monitor in the native shell layer that can detect pointer entry into the island hotspot even when the panel is not accepting mouse events.",
+      "Send hover-start callbacks into IslandWindowController instead of mutating UI state directly.",
+      "Check the hover monitor lifecycle starts and stops with the window controller."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Switch the island into interactive hover mode when the pointer enters the hotspot.",
+    "steps": [
+      "Wire hover-start events to disable click-through and keep the panel interactive while the pointer is over the island.",
+      "Keep the hover activation path isolated from later Phase 6 gesture logic.",
+      "Check entering the hotspot leads to the interactive window path without reopening the panel."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Return the island to click-through mode after hover exit.",
+    "steps": [
+      "Add hover-exit handling and a small recovery rule that re-enables click-through after the pointer leaves the island.",
+      "Keep the recovery path in IslandWindowController so future gesture code can share it.",
+      "Check repeated enter-and-exit cycles do not leave the panel stuck in interactive mode."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "planning",
+    "description": "Append Phase 2 acceptance items for window positioning and recovery behavior.",
+    "steps": [
+      "Add checklist items for notch placement, non-notch fallback, display attach-or-detach recovery, resolution-change recovery, wake recovery, click-through, and hover activation in the existing migration tracking doc.",
+      "Keep each checklist item scoped to one observable window behavior with a clear pass condition.",
+      "Check the new checklist items cover only Phase 2 shell behavior and not later business-state work."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Add a short Phase 2 window-system handoff note for the next implementation slice.",
+    "steps": [
+      "Create or update a Phase 2 note under docs/ that names the active Window-layer files and the expected acceptance path.",
+      "Record explicit non-goals: no review-or-todo data migration, no auth flow, no music takeover, and no Phase 6 gesture polish in this slice.",
+      "Check the note points only to files and behaviors that belong to the Phase 2 shell."
+    ],
+    "budget_minutes": 5,
+    "passes": false
   }
 ]
