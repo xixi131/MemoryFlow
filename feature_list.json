@@ -306,7 +306,7 @@
       "Check that file paths in the handoff note match actual project skeleton paths."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "planning",

@@ -6,22 +6,20 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is in Phase 1 native macOS shell scaffolding. Phase 0 baseline/spec capture is complete enough to support implementation, and the active queue is now filling out the standalone native shell around `mac-island/`.
 
 ## First pending task
-* `docs`
-* `Add a short Phase 1 scaffold handoff note describing generated native app modules.`
+* `planning`
+* `Append Phase 1 acceptance-gate checklist items for native shell readiness.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read the first pending item in `feature_list.json`.
-4. If the pending task is still the Phase 1 scaffold handoff note, read:
-   * `docs/`
+4. If the pending task is still the Phase 1 acceptance-gate checklist task, read:
+   * `docs/mac-island-migration-checklist.md`
+   * `docs/mac-island-phase1-scaffold-handoff.md`
    * `灵动岛迁移方案.md`
    * `mac-island/MemoryFlowIsland/App/`
    * `mac-island/MemoryFlowIsland/Window/`
    * `mac-island/MemoryFlowIsland/MenuBar/`
-   * `mac-island/MemoryFlowIsland/Preferences/`
-   * `mac-island/MemoryFlowIsland/UI/`
-   * `mac-island/MemoryFlowIsland/Resources/`
 5. Read `codex-progress.md` for the compressed recent log.
 6. Read `codex-progress-archive.md` only if you need full historical detail.
 

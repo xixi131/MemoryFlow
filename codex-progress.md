@@ -2,14 +2,14 @@
 
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
-- Phase 1 is focused on the native macOS shell under `mac-island/`, and the scaffold now reaches the Phase 1 handoff-note task.
+- Phase 1 is focused on the native macOS shell under `mac-island/`, and the scaffold now reaches the acceptance-gate checklist task.
 
 ### Queue snapshot
 - First pending task:
-  - `docs`
-  - `Add a short Phase 1 scaffold handoff note describing generated native app modules.`
+  - `planning`
+  - `Append Phase 1 acceptance-gate checklist items for native shell readiness.`
 - Remaining queued tasks after that:
-  - Append Phase 1 acceptance-gate checklist items for native shell readiness.
+  - None in the current queue after the acceptance-gate task.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-23 - Phase 1 scaffold handoff note added for native shell modules
+
+- Added `docs/mac-island-phase1-scaffold-handoff.md` to describe the generated `App`, `Window`, `MenuBar`, `Preferences`, `UI`, and `Resources` modules under `mac-island/`.
+- Documented explicit Phase 1 non-goals: no `review` or `todo` feature migration, no auth or API integration, and no music provider migration in the native shell yet.
+- Validation: docs fast-path checks confirmed the note exists under `docs/`, all referenced module paths match the current project skeleton, and the note stays scoped to shell modules that already exist in `mac-island/`.
 
 ## 2026-04-23 - Native app resources and bundle metadata placeholders landed
 
