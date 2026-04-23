@@ -17,6 +17,8 @@
 		B00102080000000000000001 /* IslandRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101080000000000000001 /* IslandRootView.swift */; };
 		B00102090000000000000001 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101090000000000000001 /* StatusBarController.swift */; };
 		B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010A0000000000000001 /* StatusMenuBuilder.swift */; };
+		B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010B0000000000000001 /* PreferencesWindowController.swift */; };
+		B001020C0000000000000001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010C0000000000000001 /* PreferencesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 		B00101080000000000000001 /* IslandRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandRootView.swift; sourceTree = "<group>"; };
 		B00101090000000000000001 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		B001010A0000000000000001 /* StatusMenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuBuilder.swift; sourceTree = "<group>"; };
+		B001010B0000000000000001 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
+		B001010C0000000000000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,7 +107,15 @@
 			path = MenuBar;
 			sourceTree = "<group>";
 		};
-		B00100090000000000000001 /* Preferences */ = {isa = PBXGroup; path = Preferences; sourceTree = "<group>"; };
+		B00100090000000000000001 /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				B001010B0000000000000001 /* PreferencesWindowController.swift */,
+				B001010C0000000000000001 /* PreferencesView.swift */,
+			);
+			path = Preferences;
+			sourceTree = "<group>";
+		};
 		B001000A0000000000000001 /* UI */ = {
 			isa = PBXGroup;
 			children = (
@@ -191,6 +203,8 @@
 				B00102080000000000000001 /* IslandRootView.swift in Sources */,
 				B00102090000000000000001 /* StatusBarController.swift in Sources */,
 				B001020A0000000000000001 /* StatusMenuBuilder.swift in Sources */,
+				B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */,
+				B001020C0000000000000001 /* PreferencesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,462 +1,56 @@
-## Bootstrap
+## Current Summary
 
-### What this file is for:
-- Record completed tasks, validations, and important implementation notes.
-- Help newly started agents recover recent context quickly.
+### Current phase
+- Phase 0 baseline/spec capture is complete enough for implementation handoff.
+- Phase 1 is focused on the native macOS shell under `mac-island/`, and the scaffold now reaches the app-resources task.
 
-### Suggested entry format:
-- Date and task name
-- What was done
-- How it was tested
-- Important follow-up notes
+### Queue snapshot
+- First pending task:
+  - `frontend`
+  - `Add app resource placeholders and basic mac app metadata for standalone launch.`
+- Remaining queued tasks after that:
+  - Add a short Phase 1 scaffold handoff note describing generated native app modules.
+  - Append Phase 1 acceptance-gate checklist items for native shell readiness.
 
-## 2026-04-16 - Phase 0 baseline doc shell
+### Runtime / environment notes
+- [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
+- Default validation path is web unless a task explicitly needs Electron or native-shell verification.
+- `xcodebuild` is unavailable in the current environment because the active developer directory is CommandLineTools only.
+- Treat git commit or post-processing failures as workflow blockers, not as evidence that implementation work failed.
 
-- Task: Create the Phase 0 baseline document shell for the current Windows Electron Dynamic Island behavior.
-- What was done:
-  - Created `docs/mac-island-phase0-baseline.md`.
-  - Added top-level headings: `Scope`, `Runtime Environment`, `Evidence Index`, `Phase 0 Acceptance`.
-  - Added one-sentence scope note stating this captures current Windows behavior before macOS migration implementation.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified heading set with `rg '^# ' docs/mac-island-phase0-baseline.md`.
-  - Verified heading uniqueness with duplicate-heading check (`sort | uniq -d` returned empty).
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - This file is a shell only; runtime evidence and acceptance details are intentionally left for later tasks.
+### Archive note
+- Older detailed logs live in [`codex-progress-archive.md`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/codex-progress-archive.md).
+- Keep this file to summary plus recent key records only.
 
-## 2026-04-16 - State spec doc shell
+## Recent Key Records
 
-- Task: Create the state specification document shell for review, todo, and visual state behavior.
-- What was done:
-  - Created `docs/mac-island-state-spec.md`.
-  - Added section headings in order: `Startup/Auth`, `Review Rules`, `Todo Rules`, `Visual State Machine`, `Reminder Trigger Rules`.
-  - Added an empty table template under each section with columns: `Condition`, `Trigger`, `Expected UI`, `Evidence`.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified heading order with `rg '^# ' docs/mac-island-state-spec.md`.
-  - Verified table header consistency with `rg '^\\| Condition \\| Trigger \\| Expected UI \\| Evidence \\|' docs/mac-island-state-spec.md`.
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - This is a shell-only document and intentionally contains no behavior conclusions.
+## 2026-04-23 - Preferences window skeleton wired into the native menu bar
 
-## 2026-04-16 - Interaction spec doc shell
+- Added `Preferences/PreferencesWindowController.swift` and `Preferences/PreferencesView.swift` to provide a reusable native preferences window skeleton.
+- Updated `SceneCoordinator` and `StatusBarController` so the `Preferences` menu action opens the shared preferences controller instance instead of the old stub handler.
+- Validation: `init.sh` was exercised successfully outside the sandbox, `project.pbxproj` passed `plutil -lint`, full `mac-island/MemoryFlowIsland` Swift sources typechecked with local module cache overrides, and a compiled smoke executable verified repeated Preferences actions reused the injected controller path without duplicate lifecycle issues.
 
-- Task: Create the interaction specification document shell for hover, click-through, pointer, and gesture behavior.
-- What was done:
-  - Created `docs/mac-island-interaction-spec.md`.
-  - Added section headings in order: `Hover Activation`, `Click-Through Toggle`, `Pointer Gestures`, `Trackpad Gestures`.
-  - Added a reusable behavior row template under each section with fields for `Trigger Threshold`, `Debounce`, and `Recovery Behavior`.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified heading order with `rg '^# ' docs/mac-island-interaction-spec.md`.
-  - Verified template header consistency with `rg '^\\| Interaction \\| Trigger Threshold \\| Debounce \\| Recovery Behavior \\| Evidence \\|' docs/mac-island-interaction-spec.md`.
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - This is a shell-only document and intentionally contains no behavior claims.
+## 2026-04-16 - Phase 1 gate confirmed and native shell queue opened
 
-## 2026-04-16 - Animation spec doc shell
+- Added the Phase 1 entry gate note to `docs/mac-island-phase0-baseline.md` after cross-checking Phase 0 checklist coverage.
+- Result: the queue legitimately moved from Windows-behavior capture into native shell implementation tasks.
+- Validation: checklist section references and gate wording were verified in docs; task 18 is marked complete in `feature_list.json`.
 
-- Task: Create the animation specification document shell for transition timing and motion sequencing.
-- What was done:
-  - Created `docs/mac-island-animation-spec.md`.
-  - Added section headings in order: `Expand/Collapse`, `Mode Switch`, `Hover Motion`, `Reminder-Triggered Motion`.
-  - Added an animation table template under each section with fields for `Duration`, `Easing`, `Trigger`, and `Observed Result`.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified heading order with `rg '^# ' docs/mac-island-animation-spec.md`.
-  - Verified template header consistency with `rg '^\\| Animation Step \\| Duration \\| Easing \\| Trigger \\| Observed Result \\| Evidence \\|' docs/mac-island-animation-spec.md`.
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - This is a shell-only document and intentionally contains no runtime behavior conclusions.
+## 2026-04-16 - Native app container and bootstrap scaffold landed
 
-## 2026-04-16 - Music spec doc shell
+- Created `mac-island/MemoryFlowIsland.xcodeproj` and the base module folders `App/`, `Window/`, `MenuBar/`, `Preferences/`, `UI/`, and `Resources/`.
+- Added bootstrap entry files `MemoryFlowIslandApp.swift`, `AppDelegate.swift`, and `SceneCoordinator.swift` so the native shell has a launch path and module wiring point.
+- Validation: `init.sh` startup path was exercised, `project.pbxproj` passed `plutil -lint`, and targeted `swiftc -typecheck` checks passed.
 
-- Task: Create the music takeover specification document shell for playback-driven island behavior.
-- What was done:
-  - Created `docs/mac-island-music-spec.md`.
-  - Added section headings in order: `Providers/Inputs`, `Mode Switching`, `Playback States`, `Degraded Fallback`.
-  - Added a behavior matrix template under each section with fields for `Media Event`, `Widget State Change`, and `User-Visible Output`.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified heading order with `rg '^# ' docs/mac-island-music-spec.md`.
-  - Verified template header consistency with `rg '^\\| Media Event \\| Widget State Change \\| User-Visible Output \\| Evidence \\|' docs/mac-island-music-spec.md`.
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - This is a shell-only document and intentionally contains no unverified runtime conclusions.
+## 2026-04-16 - Window shell and geometry placeholders landed
 
-## 2026-04-16 - Migration checklist doc shell
+- Added `IslandPanel.swift` and `IslandWindowController.swift` for a transparent floating shell with `show()` / `hide()` entry points.
+- Added `NotchLayoutEngine.swift` and `DisplayObserver.swift` as geometry/display placeholders and wired them into the window controller.
+- Validation: pbxproj membership and symbol references were checked, and the assembled Swift set typechecked successfully.
 
-- Task: Create the Phase 0 migration checklist shell used to gate the move into Phase 1.
-- What was done:
-  - Created `docs/mac-island-migration-checklist.md`.
-  - Added sections: `State Coverage`, `Interaction Coverage`, `Animation Coverage`, `Reminder Coverage`, `Music Coverage`.
-  - Added checklist table rows with fields: `Item`, `Expected Behavior`, `Evidence Link`, `Status`.
-- How it was tested:
-  - Confirmed file exists from repository root.
-  - Verified section order with `rg '^# ' docs/mac-island-migration-checklist.md`.
-  - Verified table header consistency with `rg '^\\| Item \\| Expected Behavior \\| Evidence Link \\| Status \\|' docs/mac-island-migration-checklist.md`.
-  - Opened file content from repository root using `sed -n`.
-- Important follow-up notes:
-  - Checklist status fields are intentionally left unset (empty) for later completion tasks.
+## 2026-04-16 - Placeholder UI and menu bar shell reached preferences handoff
 
-## 2026-04-16 - Startup/Auth rules in state spec
-
-- Task: Add startup and authentication behavior details to the state spec from current widget code and visible runtime behavior.
-- What was done:
-  - Filled `docs/mac-island-state-spec.md` under `Startup/Auth` with condition-to-UI mapping rules.
-  - Traced startup/auth flows in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/electron/main.cjs` (token bootstrap, IPC auth-token, unauth fallback handling).
-  - Added explicit evidence notes per rule (code path + runtime observation).
-- How it was tested:
-  - Browser MCP unauth startup observation at `http://localhost:3002/#/widget`: confirmed visible `点击登录`.
-  - Browser MCP authenticated-context observation: local token presence confirmed and browser-side authenticated fetch to `/api/widget/summary` returned `code=200`.
-  - Verified Startup/Auth table rows each include concrete evidence references.
-- Important follow-up notes:
-  - `init.sh` frontend started on `3002`; backend launch from `init.sh` hit `8080` conflict, so runtime verification reused the already-listening local backend on `8080`.
-
-## 2026-04-16 - Review rules in state spec
-
-- Task: Add Review Rules rows from static code paths without runtime sampling.
-- What was done:
-  - Traced review-mode data and render branches in `front-end/src/components/DynamicIslandWidget.tsx` (mode state, activity gating, summary fetch path, and expanded review panel rendering).
-  - Replaced the placeholder row under `Review Rules` in `docs/mac-island-state-spec.md` with 5 concrete rules.
-  - Added concrete code evidence with file+line references in every new Review Rules row.
-- How it was tested:
-  - Extracted the `Review Rules` section and confirmed the table contains populated rows with no empty placeholder row.
-  - Verified each new row contains at least one concrete code location via `DynamicIslandWidget.tsx:<line>` matches.
-  - Checked markdown heading structure/order remains valid in `docs/mac-island-state-spec.md`.
-- Important follow-up notes:
-  - This task used static code tracing only (no runtime/browser/API sampling) per docs fast-path requirements.
-
-## 2026-04-16 - Todo rules in state spec
-
-- Task: Add Todo Rules endpoint and rendering rows from existing frontend and API code.
-- What was done:
-  - Traced todo-related request and rendering paths in `front-end/src/components/DynamicIslandWidget.tsx` and API mapping in `front-end/src/services/todoApis.ts`.
-  - Replaced the placeholder row under `Todo Rules` in `docs/mac-island-state-spec.md` with 3 endpoint-specific rules for `/todos/stats`, `/todos/tasks`, and `/todos/tasks/:id/status`.
-  - Added explicit expected UI impact per endpoint, covering collapsed activity badges, expanded todo summary/list rendering, and optimistic status-toggle behavior with rollback.
-- How it was tested:
-  - Extracted `Todo Rules` section via `awk` and confirmed all three required endpoints are present as populated rows.
-  - Verified placeholder empty row was removed from `Todo Rules`.
-  - Checked each new row includes direct code evidence references (`DynamicIslandWidget.tsx:<line>` and API callsite references in `todoApis.ts:<line>`).
-  - Confirmed markdown section order/structure remains valid in `docs/mac-island-state-spec.md`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`/`sed`/`awk`) and did not run browser/API runtime sampling.
-
-## 2026-04-16 - Todo status-update persistence contract in state spec
-
-- Task: Add Todo status-update persistence assumptions from code contracts and local schema references.
-- What was done:
-  - Traced todo status-update request flow from widget click handling to API call in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/src/services/todoApis.ts`.
-  - Traced backend `/todos/tasks/{id}/status` controller and service update path in `back-end/src/main/java/com/memoryflow/controller/TodoController.java` and `back-end/src/main/java/com/memoryflow/service/TodoService.java`.
-  - Added `Todo status-update persistence contract (code-derived)` under `Todo Rules` in `docs/mac-island-state-spec.md`, documenting write intent, persisted field effects, and read-after-write expectation using local schema references.
-- How it was tested:
-  - Extracted the `Todo Rules` section with `awk` and confirmed the new contract subsection is present.
-  - Verified the note includes concrete code references for frontend callsites, backend controller/service write path, and schema/entity fields (`todo_tasks.status`, `todo_tasks.completed_at`).
-  - Verified the section includes an explicit scope note that this task is static-code/schema based and does not claim runtime DB verification.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `awk`) and did not run browser MCP, API runtime checks, or `init.sh`.
-
-## 2026-04-16 - Visual state machine transition matrix in state spec
-
-- Task: Add the Visual State Machine transition matrix from component state logic.
-- What was done:
-  - Traced collapsed/activity/expanded transition triggers in `front-end/src/components/DynamicIslandWidget.tsx`.
-  - Replaced the placeholder row under `Visual State Machine` in `docs/mac-island-state-spec.md` with 5 transition rules.
-  - Added an explicit reminder row stating auto-open is a trigger path into review activity state, not a standalone display mode.
-- How it was tested:
-  - Extracted `Visual State Machine` section via `awk` and verified 5 populated rows exist.
-  - Verified no placeholder empty row remains in `Visual State Machine`.
-  - Verified explicit reminder trigger-path wording and evidence references are present.
-  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static code tracing only (`rg`/`sed`/`nl -ba`/`awk`) and did not run browser MCP, API runtime checks, or `init.sh`.
-
-## 2026-04-16 - Reminder trigger rules in state spec
-
-- Task: Add Reminder Trigger Rules from `reminderTime` and guard refs in widget code.
-- What was done:
-  - Traced reminder-related refs and guards in `front-end/src/components/DynamicIslandWidget.tsx` (`reminderAutoOpenKeyRef`, `reminderDueRef`, `reminderCheckInitializedRef`, `justReachedReminderTime`, and the compact/app/review guards).
-  - Replaced the placeholder row under `Reminder Trigger Rules` in `docs/mac-island-state-spec.md` with 2 static rules covering invalid/missing reminder time and the one-per-day auto-open transition.
-  - Added a note clarifying that reminder timing is separate from the `appDisplayMode` display-mode enum.
-- How it was tested:
-  - Extracted the `Reminder Trigger Rules` section with `nl -ba` and confirmed both populated rows are present.
-  - Verified the section includes an explicit separation note for time-trigger logic vs display-mode definitions.
-  - Checked the assigned task status was updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
-
-## 2026-04-16 - Expand/Collapse and mode-switch animation rows in animation spec
-
-- Task: Add Expand/Collapse and Mode Switch animation rows from current UI animation definitions.
-- What was done:
-  - Traced expand/collapse animation constants, segmented/open transition flags, and Framer Motion transition branches in `front-end/src/components/DynamicIslandWidget.tsx`.
-  - Traced mode-switch long-press and sequence timers (`compact -> mode flip -> reopen -> unlock`) in `front-end/src/components/DynamicIslandWidget.tsx`.
-  - Replaced template rows in `docs/mac-island-animation-spec.md` under `Expand/Collapse` and `Mode Switch` with concrete duration/easing/trigger/observed-result entries and code evidence.
-- How it was tested:
-  - Verified step-1 tracing coverage by checking referenced constants/timers/transition branches with `nl -ba` on `DynamicIslandWidget.tsx`.
-  - Verified step-2 completion by inspecting both updated sections in `docs/mac-island-animation-spec.md` and confirming populated rows include required fields.
-  - Ran `rg -n 'Template Row' docs/mac-island-animation-spec.md` and confirmed no placeholder remains in `Expand/Collapse` and `Mode Switch`.
-  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run `init.sh`, browser MCP, or API runtime checks.
-
-## 2026-04-16 - Hover activation and click-through toggle in interaction spec
-
-- Task: Add Hover Activation and Click-Through Toggle rules from renderer and Electron bridge code.
-- What was done:
-  - Traced hover handling in `front-end/src/components/DynamicIslandWidget.tsx`, including `isHovered`, the `:hover` guard used during gesture finalization, and the mouse-enter/mouse-leave handlers that gate hover state.
-  - Traced click-through toggling in `front-end/src/components/DynamicIslandWidget.tsx` and `front-end/electron/main.cjs`, including `set-ignore-mouse-events` IPC calls and the Electron bridge that forwards them to `BrowserWindow.setIgnoreMouseEvents()`.
-  - Filled `docs/mac-island-interaction-spec.md` with concrete Hover Activation and Click-Through Toggle rows, including trigger guards, recovery behavior, and evidence links.
-- How it was tested:
-  - Verified the `Hover Activation` and `Click-Through Toggle` sections now contain populated rows instead of template placeholders.
-  - Confirmed each row includes a trigger threshold or guard, recovery behavior, and an evidence link to concrete code locations.
-  - Confirmed `feature_list.json` for this task was updated to `passes: true`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
-
-## 2026-04-16 - Pointer and trackpad gesture rules in interaction spec
-
-- Task: Add Pointer and Trackpad gesture rules from gesture accumulators and cooldown logic.
-- What was done:
-  - Traced pointer gesture deltas and guards in `front-end/src/components/DynamicIslandWidget.tsx`, including `startX`, `lastPointerXRef`, `activePointerIdRef`, `GESTURE_SWITCH_THRESHOLD`, and `TAP_THRESHOLD`.
-  - Traced trackpad gesture accumulators and cooldown logic in `front-end/src/components/DynamicIslandWidget.tsx`, including `trackpadDeltaXRef`, `trackpadDeltaYRef`, `trackpadGestureLockedRef`, `TRACKPAD_GESTURE_RESET_MS`, and `TRACKPAD_GESTURE_COOLDOWN_MS`.
-  - Replaced template rows in `docs/mac-island-interaction-spec.md` under `Pointer Gestures` and `Trackpad Gestures` with action-mapped rules and code evidence links.
-- How it was tested:
-  - Verified `Pointer Gestures` and `Trackpad Gestures` sections contain populated behavior rows by inspecting the updated markdown table content.
-  - Ran `rg -n 'Template Row' docs/mac-island-interaction-spec.md` and confirmed no placeholder rows remain.
-  - Verified each new row includes concrete evidence references to gesture thresholds, accumulator/reset paths, and lock/cooldown code locations in `DynamicIslandWidget.tsx`.
-  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run browser MCP, API runtime checks, or `init.sh`.
-
-## 2026-04-16 - Hover and reminder-triggered motion rows in animation spec
-
-- Task: Add Hover Motion and Reminder-Triggered Motion animation rows from existing implementation.
-- What was done:
-  - Traced hover-motion state and render paths in `front-end/src/components/DynamicIslandWidget.tsx`, including hover enter/leave handlers, collapsed-scale branch, shadow transition style, and shared spring config.
-  - Traced reminder-triggered auto-open and reminder-collapse animation paths in `front-end/src/components/DynamicIslandWidget.tsx`, including reminder due guards, `setForceCompactModeWithTransition(false)`, open/collapse duration constants, and segmented collapse transition branches.
-  - Replaced template rows under `Hover Motion` and `Reminder-Triggered Motion` in `docs/mac-island-animation-spec.md` with source-backed entries and explicit code location evidence.
-- How it was tested:
-  - Verified step-1 tracing coverage with `rg -n` and `nl -ba` on `DynamicIslandWidget.tsx` for hover handlers, reminder guards, transition flags/constants, and Framer Motion variants.
-  - Verified step-2 completion by inspecting the updated `Hover Motion` and `Reminder-Triggered Motion` sections in `docs/mac-island-animation-spec.md`.
-  - Verified step-3 evidence quality by checking each new row contains concrete `DynamicIslandWidget.tsx:<line>` references and uses only durations/easing present in source (or explicitly marks no fixed duration in source).
-  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`) and did not run `init.sh`, browser MCP, or API runtime checks.
-
-## 2026-04-16 - Music behavior rows in mac island music spec
-
-- Task: Add music behavior rows from `MusicService`, `MusicWorker`, and renderer IPC listeners.
-- What was done:
-  - Traced end-to-end music payload flow from worker SMTC events/polling (`front-end/electron/MusicWorker.cjs`) to main-process forwarding and dedupe (`front-end/electron/MusicService.cjs`) and renderer listener/mode updates (`front-end/src/components/DynamicIslandWidget.tsx`).
-  - Replaced template rows in `docs/mac-island-music-spec.md` with concrete rows for `Providers/Inputs`, `Mode Switching`, `Playback States`, and `Degraded Fallback`.
-  - Ensured each row explicitly states event trigger, state effect, user-visible result, and concrete code evidence references.
-- How it was tested:
-  - Verified Step 1 tracing coverage by checking source locations for worker payload emit, service IPC forwarding, and renderer `music-data-update` handling.
-  - Verified Step 2 completion by inspecting all four updated sections in `docs/mac-island-music-spec.md` and confirming placeholder rows are removed.
-  - Verified Step 3 quality by reviewing each inserted row includes all required fields and at least one direct code location reference.
-  - Confirmed assigned task status is updated to `passes: true` in `feature_list.json`.
-- Important follow-up notes:
-  - This task used docs fast-path static tracing only (`rg`, `sed`, `nl -ba`, `apply_patch`) and did not run `init.sh`, browser MCP, or API/runtime checks.
-
-## 2026-04-16 - Phase 0 migration checklist population
-
-- Task: Populate the migration checklist with concrete evidence links from all Phase 0 spec documents.
-- What was done:
-  - Replaced all template rows in `docs/mac-island-migration-checklist.md` with concrete checklist items for `State`, `Interaction`, `Animation`, `Reminder`, and `Music` coverage.
-  - Added explicit pass-condition phrasing (`Pass when ...`) to each checklist row.
-  - Linked every checklist item to specific section rows in Phase 0 spec docs: `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, `docs/mac-island-animation-spec.md`, and `docs/mac-island-music-spec.md`.
-  - Set task index 17 to `passes: true` in `feature_list.json` after documentation validation.
-- How it was tested:
-  - Verified template rows are removed and no empty placeholder row remains using `rg -n "Template Item|\|\s*\|\s*$" docs/mac-island-migration-checklist.md` (no matches).
-  - Manually reviewed the updated checklist sections with `sed -n` to confirm each prepared row has non-empty `Status` (`Prepared`) and at least one evidence link.
-  - Verified `feature_list.json` task index 17 now reports `passes=true`.
-- Important follow-up notes:
-  - Validation followed docs lightweight path only (no `init.sh`, browser MCP, or API runtime checks), matching the task execution contract.
-
-## 2026-04-16 - Phase 1 entry gate note after Phase 0 checklist coverage check
-
-- Task: Add a Phase 1 entry gate note after checking Phase 0 checklist coverage.
-- What was done:
-  - Compared Phase 0 outputs/focus points in `灵动岛迁移方案.md` (state, gestures/interaction, animation, mode-switch behavior, reminder trigger logic, music takeover) against `docs/mac-island-migration-checklist.md` coverage categories.
-  - Added a concise `Phase 1 Entry Gate (Go/No-Go)` note under `Phase 0 Acceptance` in `docs/mac-island-phase0-baseline.md`.
-  - Included explicit completion criteria and direct checklist section references for `State Coverage`, `Interaction Coverage`, `Animation Coverage`, `Reminder Coverage`, and `Music Coverage`.
-- How it was tested:
-  - Verified the new gate note is under `Phase 0 Acceptance` and includes explicit go/no-go criteria text.
-  - Verified the note references checklist section anchors in `docs/mac-island-migration-checklist.md`.
-  - Confirmed assigned task `feature_list.json` index 18 is now `passes: true`.
-- Important follow-up notes:
-  - This planning fast-path task used static document cross-checking only and intentionally did not run `init.sh`, browser MCP, or API checks.
-
-## 2026-04-16 - Phase 1 mac-island project skeleton and Xcode container
-
-- Task: Create the mac-island project skeleton directory and Xcode project container for a standalone macOS app.
-- Execution mode:
-  - Degraded single-agent mode (continued without worker by explicit human request after repeated worker timeout).
-- What was done:
-  - Created `mac-island/` and `MemoryFlowIsland.xcodeproj` container with:
-    - `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj`
-    - `mac-island/MemoryFlowIsland.xcodeproj/project.xcworkspace/contents.xcworkspacedata`
-  - Added initial target/group skeleton in `project.pbxproj` for `MemoryFlowIsland` with top-level groups:
-    - `App`, `Window`, `MenuBar`, `Preferences`, `UI`, `Resources`
-  - Created initial folder layout under `mac-island/MemoryFlowIsland/`:
-    - `App/`, `Window/`, `MenuBar/`, `Preferences/`, `UI/`, `Resources/`
-- How it was tested:
-  - Full-path initialization check (frontend task contract): ran `zsh init.sh` and captured startup evidence:
-    - Spring Boot started on `8080`.
-    - Vite dev server started with local URL `http://localhost:3000/`.
-  - Verified folder layout with `find mac-island -maxdepth 3 -type d | sort` and required directory presence check script.
-  - Verified project file syntax with `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` (`OK`).
-  - Verified target/group structure exists in pbxproj via `rg` on `PBXNativeTarget` and group names.
-  - Verified structure consistency against `灵动岛迁移方案.md` section `推荐目录结构` (subset required by task 19).
-- Important follow-up notes:
-  - `xcodebuild` validation is currently unavailable in this environment because active developer directory is CommandLineTools only; Xcode app is required for `xcodebuild -list`.
-  - Task index 19 in `feature_list.json` is now set to `passes: true`.
-
-## 2026-04-16 - Phase 1 app bootstrap entry files
-
-- Task: Add app bootstrap entry files for the native app startup path.
-- Execution mode:
-  - Degraded single-agent mode (continued without child workers by explicit human request).
-- What was done:
-  - Added bootstrap files under `mac-island/MemoryFlowIsland/App/`:
-    - `MemoryFlowIslandApp.swift`
-    - `AppDelegate.swift`
-    - `SceneCoordinator.swift`
-  - Wired launch flow so `AppDelegate` creates `SceneCoordinator` on app start and tears it down on app termination.
-  - Implemented coordinator-driven startup hooks that initialize menu bar and window controller interfaces (`MenuBarControlling` and `IslandWindowControlling`) with temporary placeholders for this phase.
-  - Added the three App files into `MemoryFlowIsland` target membership in `project.pbxproj` (`PBXBuildFile` + `PBXSourcesBuildPhase`).
-- How it was tested:
-  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
-  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
-  - Target membership validation: verified the three App files are present in `PBXSourcesBuildPhase` using `rg` on `project.pbxproj`.
-  - Compile symbol validation: ran
-    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift`
-    - result: exit `0`, no unresolved symbol errors.
-- Important follow-up notes:
-  - Placeholder menu-bar/window controller implementations are intentionally minimal and will be replaced by concrete module controllers in subsequent tasks.
-  - Task index 20 in `feature_list.json` is now set to `passes: true`.
-
-## 2026-04-16 - Phase 1 native island window shell classes
-
-- Task: Create native island window shell classes with transparent floating window behavior.
-- Execution mode:
-  - Degraded single-agent mode (continued without child workers by explicit human request).
-- What was done:
-  - Added `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` as a transparent borderless panel shell.
-  - Added `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` with lightweight `show()` / `hide()` entry methods and no business-domain coupling.
-  - Wired `SceneCoordinator` to instantiate `IslandWindowController` as the default window controller.
-  - Added both Window files to target membership in `project.pbxproj` (`PBXBuildFile`, `PBXGroup`, and `PBXSourcesBuildPhase`).
-- How it was tested:
-  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
-  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
-  - Style/behavior code checks:
-    - Verified `IslandPanel` uses `styleMask: [.borderless, .nonactivatingPanel]`.
-    - Verified floating window level `level = .statusBar` and transparent appearance settings.
-    - Verified `IslandWindowController` exposes `show()` and `hide()` methods.
-  - Compile symbol validation: ran
-    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift mac-island/MemoryFlowIsland/Window/IslandPanel.swift mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`
-    - result: exit `0`, no unresolved symbol errors.
-- Important follow-up notes:
-  - Window shell currently focuses on container behavior only; business rendering/content is intentionally deferred to subsequent UI tasks.
-  - Task index 21 in `feature_list.json` is now set to `passes: true`.
-
-## 2026-04-16 - Phase 1 notch helper placeholders
-
-- Task: Add notch-position helper placeholders for Phase 1 geometry readiness.
-- Execution mode:
-  - Single-agent execution in current thread.
-- What was done:
-  - Added `mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift`.
-  - Added `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift`.
-  - Implemented minimal helper APIs:
-    - `NotchLayoutEngine.islandOrigin(screenFrame:islandSize:)`
-    - `NotchLayoutEngine.islandFrame(screenFrame:islandSize:)`
-    - `DisplayObserver.startObserving(onChange:)`
-    - `DisplayObserver.stopObserving()`
-    - `DisplayObserver.currentScreenFrame()`
-  - Updated `IslandWindowController` to reference helper APIs for top-center repositioning on show and on display-parameter changes.
-  - Added new Window helper files into target membership in `project.pbxproj` (`PBXBuildFile`, `PBXFileReference`, `PBXGroup`, `PBXSourcesBuildPhase`).
-- How it was tested:
-  - Full-path startup validation: ran `zsh init.sh`; confirmed Vite ready at `http://localhost:3000/` and backend started on `8080`.
-  - Verified helper files exist at required paths with `ls`.
-  - Project format validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` returned `OK`.
-  - Helper/controller wiring validation: `rg` confirmed `IslandWindowController` references `NotchLayoutEngine` and `DisplayObserver` APIs.
-  - Compile symbol validation: ran
-    - `SWIFT_MODULE_CACHE_PATH=/tmp/swift-module-cache swiftc -typecheck -sdk /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-macosx26.4 mac-island/MemoryFlowIsland/App/MemoryFlowIslandApp.swift mac-island/MemoryFlowIsland/App/AppDelegate.swift mac-island/MemoryFlowIsland/App/SceneCoordinator.swift mac-island/MemoryFlowIsland/Window/IslandPanel.swift mac-island/MemoryFlowIsland/Window/IslandWindowController.swift mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift mac-island/MemoryFlowIsland/Window/DisplayObserver.swift`
-    - result: exit `0`, no unresolved symbol errors.
-- Important follow-up notes:
-  - The notch placement APIs are placeholders for Phase 1 geometry readiness and intentionally keep scope to screen-bounds input and top-center output.
-  - Task index 22 in `feature_list.json` is now set to `passes: true`.
-
-## 2026-04-16 - Phase 1 island placeholder view host wiring
-
-- Task: Add SwiftUI island placeholder view and connect it to the native window host.
-- Execution mode:
-  - Single-agent execution in current thread.
-- What was done:
-  - Added `mac-island/MemoryFlowIsland/UI/IslandRootView.swift` with a simple capsule-style placeholder island UI and static text marker `MEMORYFLOW_ISLAND_PLACEHOLDER`.
-  - Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to mount `IslandRootView` through `NSHostingView(rootView: IslandRootView())` in `configureContentView()`.
-  - Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` to include `IslandRootView.swift` in `PBXFileReference`, `UI` group children, `PBXBuildFile`, and `PBXSourcesBuildPhase` target membership.
-- How it was tested:
-  - Step 1 (placeholder view + static marker):
-    - Verified file exists and inspected content:
-      - `sed -n '1,220p' mac-island/MemoryFlowIsland/UI/IslandRootView.swift`
-    - Confirmed marker text exists: `MEMORYFLOW_ISLAND_PLACEHOLDER`.
-  - Step 2 (embed into native window content pipeline):
-    - Verified `IslandWindowController` contains `NSHostingView(rootView: IslandRootView())` and calls `configureContentView()` during initialization.
-    - Verified `project.pbxproj` includes `IslandRootView.swift` in `PBXSourcesBuildPhase`.
-    - Commands:
-      - `rg -n "IslandRootView.swift|IslandRootView\\(\\)|IslandRootView.swift in Sources" mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`
-      - `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` -> `OK`
-  - Step 3 (launch-time render path for placeholder content):
-    - Verified launch pipeline references:
-      - `AppDelegate.applicationDidFinishLaunching` -> `sceneCoordinator?.start()` -> `windowController.show()`
-      - `IslandWindowController.init` -> `configureContentView()` -> `NSHostingView(rootView: IslandRootView())`
-    - Compile/typecheck validation passed for full mac-island Swift file set including `IslandRootView.swift`:
-      - `swiftc -typecheck -module-cache-path /tmp/swift-module-cache ...`
-      - result: exit `0`.
-    - Note:
-      - `xcodebuild` launch validation is unavailable in current environment because active developer directory is CommandLineTools only (no full Xcode app).
-- Important follow-up notes:
-  - This task is limited to placeholder rendering host wiring only; no business data/UI migration was introduced.
-  - Task index 23 in `feature_list.json` is now set to `passes: true`.
-
-## 2026-04-16 - Phase 1 menu bar controller and base entries
-
-- Task: Add menu bar controller and base menu entries for the native app shell.
-- Execution mode:
-  - Single-agent execution in current thread.
-- What was done:
-  - Added `mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift`.
-  - Added `mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`.
-  - Implemented base menu entries with action handlers:
-    - `Show/Hide Island` (toggles `IslandWindowControlling.show()/hide()` and updates menu title),
-    - `Preferences` (stub handler with log output),
-    - `Quit` (default terminate handler, injectable for smoke validation).
-  - Updated `mac-island/MemoryFlowIsland/App/SceneCoordinator.swift` to use `StatusBarController` as default `MenuBarControlling`.
-  - Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` to include MenuBar files in group and `PBXSourcesBuildPhase`.
-- How it was tested:
-  - Full-path initialization check (frontend task contract):
-    - Ran `zsh ./init.sh`.
-    - Observed Vite ready (`http://localhost:3001/`) and backend running on `8080`.
-  - Step 1 verification:
-    - Verified both files exist:
-      - `ls -la mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`
-  - Step 2 verification:
-    - Verified menu entries and action handlers in source:
-      - `rg -n "Show Island|Hide Island|Preferences|Quit|toggleIslandMenuItemClicked|preferencesMenuItemClicked|quitMenuItemClicked" mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`
-    - Verified coordinator and target membership wiring:
-      - `rg -n "StatusBarController.swift|StatusMenuBuilder.swift|StatusBarController\\(windowController" mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj mac-island/MemoryFlowIsland/App/SceneCoordinator.swift`
-    - Verified pbxproj syntax:
-      - `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` -> `OK`
-  - Step 3 verification (GUI-limited fallback chain):
-    - Ran compile validation:
-      - `swiftc -typecheck -module-cache-path /tmp/swift-module-cache $(find mac-island/MemoryFlowIsland -name '*.swift' | sort)` -> exit `0`
-    - Ran executable smoke validation for action callability without crash:
-      - Built and executed `/tmp/statusbar_action_smoke` using current MenuBar + Window + SceneCoordinator sources.
-      - Script exercised `install()`, `toggleIslandMenuItemClicked`, `preferencesMenuItemClicked`, `quitMenuItemClicked`, and `uninstall()` with injected quit closure, exit `0`.
-- Important follow-up notes:
-  - GUI icon visibility was not captured with screenshot because this environment does not provide a GUI assertion path for the native app shell; fallback verification used source-path checks plus executable action smoke test.
-  - Task index 24 in `feature_list.json` is now set to `passes: true`.
+- Added `UI/IslandRootView.swift` and hosted it through `NSHostingView(rootView: IslandRootView())` inside `IslandWindowController`.
+- Added `MenuBar/StatusBarController.swift` and `MenuBar/StatusMenuBuilder.swift` with `Show/Hide Island`, `Preferences`, and `Quit` actions.
+- Validation: pbxproj wiring passed lint, full Swift sources typechecked, and a smoke executable exercised the menu actions without crash.
+- Follow-up: the next implementation step is to replace the stub `Preferences` action with a real preferences window controller lifecycle.

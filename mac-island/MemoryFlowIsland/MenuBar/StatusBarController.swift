@@ -3,17 +3,20 @@ import AppKit
 final class StatusBarController: NSObject, MenuBarControlling {
     private var statusItem: NSStatusItem?
     private let windowController: IslandWindowControlling
+    private let preferencesWindowController: PreferencesWindowControlling
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
     private var isIslandVisible: Bool
 
     init(
         windowController: IslandWindowControlling,
+        preferencesWindowController: PreferencesWindowControlling,
         menuBuilder: StatusMenuBuilding = StatusMenuBuilder(),
         isIslandVisible: Bool = true,
         quitHandler: @escaping () -> Void = { NSApp.terminate(nil) }
     ) {
         self.windowController = windowController
+        self.preferencesWindowController = preferencesWindowController
         self.menuBuilder = menuBuilder
         self.isIslandVisible = isIslandVisible
         self.quitHandler = quitHandler
@@ -47,8 +50,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
     }
 
     @objc func preferencesMenuItemClicked(_ sender: Any?) {
-        // Stub handler for next preferences task.
-        NSLog("Preferences action is not wired yet.")
+        preferencesWindowController.show()
     }
 
     @objc func quitMenuItemClicked(_ sender: Any?) {

@@ -284,7 +284,7 @@
       "Check that preferences window can be opened repeatedly without duplicate controller lifecycle issues."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
