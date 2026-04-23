@@ -2,9 +2,19 @@ import AppKit
 
 struct NotchLayoutEngine {
     var topMargin: CGFloat = 10
+    var displayTopEdgeClassifier: DisplayTopEdgeClassifier = DisplayTopEdgeClassifier()
+
+    func displayTopEdge(for screenMetrics: ScreenMetrics) -> DisplayTopEdge {
+        displayTopEdgeClassifier.classify(screenMetrics)
+    }
 
     func islandOrigin(screenMetrics: ScreenMetrics, islandSize: CGSize) -> CGPoint {
-        islandOrigin(screenFrame: screenMetrics.visibleFrame, islandSize: islandSize)
+        switch displayTopEdge(for: screenMetrics) {
+        case .notchBearing:
+            return islandOrigin(screenFrame: screenMetrics.visibleFrame, islandSize: islandSize)
+        case .flatTop:
+            return islandOrigin(screenFrame: screenMetrics.visibleFrame, islandSize: islandSize)
+        }
     }
 
     func islandOrigin(screenFrame: CGRect, islandSize: CGSize) -> CGPoint {

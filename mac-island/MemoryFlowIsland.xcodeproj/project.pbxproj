@@ -21,6 +21,7 @@
 		B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010B0000000000000001 /* PreferencesWindowController.swift */; };
 		B001020C0000000000000001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010C0000000000000001 /* PreferencesView.swift */; };
 		B001020D0000000000000001 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010E0000000000000001 /* ScreenMetrics.swift */; };
+		B001020E0000000000000001 /* DisplayTopEdgeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010F0000000000000001 /* DisplayTopEdgeClassifier.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		B001010C0000000000000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		B001010D0000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B001010E0000000000000001 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
+		B001010F0000000000000001 /* DisplayTopEdgeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayTopEdgeClassifier.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +102,7 @@
 				B00101060000000000000001 /* NotchLayoutEngine.swift */,
 				B00101070000000000000001 /* DisplayObserver.swift */,
 				B001010E0000000000000001 /* ScreenMetrics.swift */,
+				B001010F0000000000000001 /* DisplayTopEdgeClassifier.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -221,6 +224,7 @@
 				B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */,
 				B001020C0000000000000001 /* PreferencesView.swift in Sources */,
 				B001020D0000000000000001 /* ScreenMetrics.swift in Sources */,
+				B001020E0000000000000001 /* DisplayTopEdgeClassifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

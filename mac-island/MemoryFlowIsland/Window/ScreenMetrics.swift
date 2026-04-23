@@ -12,6 +12,20 @@ struct ScreenMetrics: Equatable {
     let backingScaleFactor: CGFloat
     let displayIdentity: DisplayIdentity
 
+    init(
+        frame: CGRect,
+        visibleFrame: CGRect,
+        safeAreaInsets: NSEdgeInsets,
+        backingScaleFactor: CGFloat,
+        displayIdentity: DisplayIdentity
+    ) {
+        self.frame = frame
+        self.visibleFrame = visibleFrame
+        self.safeAreaInsets = safeAreaInsets
+        self.backingScaleFactor = backingScaleFactor
+        self.displayIdentity = displayIdentity
+    }
+
     init?(screen: NSScreen) {
         guard
             let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber

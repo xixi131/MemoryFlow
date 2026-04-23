@@ -339,7 +339,7 @@
       "Check both notch and non-notch sample inputs compile through the placement path."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

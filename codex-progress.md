@@ -3,11 +3,11 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
-- Phase 2 native macOS window-system work is now in progress, starting with reusable screen metrics and upcoming notch-classification/layout tasks.
+- Phase 2 native macOS window-system work is now in progress, with reusable screen metrics and display-top classification in place ahead of notch-safe layout work.
 
 ### Queue snapshot
-- The completed task is `Expose reusable screen metrics for native island positioning.`
-- The next pending task is `Detect whether the target display needs notch-aware placement.`
+- The completed task is `Detect whether the target display needs notch-aware placement.`
+- The next pending task is `Center the island shell against the notch-safe top region on notch displays.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,13 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-23 - Display top-edge classification landed for Phase 2 notch routing
+
+- Added `mac-island/MemoryFlowIsland/Window/DisplayTopEdgeClassifier.swift` with a reusable `notchBearing` / `flatTop` classification for `ScreenMetrics`.
+- Extended `ScreenMetrics` with a direct initializer for compile-time fixtures, and updated `NotchLayoutEngine` to route `ScreenMetrics` placement through the new classifier instead of leaving that decision in `IslandWindowController`.
+- Added `DisplayTopEdgeClassifier.swift` to `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` so the classifier is part of the native app target.
+- Validation: `MEMORYFLOW_BACKEND_PORT=18080 ./init.sh` was exercised and again hit the known sandbox-only Vite bind failure (`EPERM` on `0.0.0.0:3000`) after backend startup; native validation passed via `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` and `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` on the full native Swift source set plus a fixture harness that compiled both notch and flat-top `ScreenMetrics` through the placement path.
 
 ## 2026-04-23 - Window-layer screen metrics model landed for Phase 2 positioning
 
