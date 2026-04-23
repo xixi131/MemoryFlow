@@ -295,7 +295,7 @@
       "Check that project build settings point to the new resource files correctly."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
