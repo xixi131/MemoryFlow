@@ -2,14 +2,11 @@
 
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
-- Phase 1 is focused on the native macOS shell under `mac-island/`, and the scaffold now reaches the acceptance-gate checklist task.
+- Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
 
 ### Queue snapshot
-- First pending task:
-  - `planning`
-  - `Append Phase 1 acceptance-gate checklist items for native shell readiness.`
-- Remaining queued tasks after that:
-  - None in the current queue after the acceptance-gate task.
+- There is no pending task in the current `feature_list.json` queue.
+- The next automation step should be either reporting queue completion or regenerating the queue for the next migration slice.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +19,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-23 - Phase 1 acceptance-gate checklist items added for native shell readiness
+
+- Appended a `Phase 1 Shell Readiness` section to `docs/mac-island-migration-checklist.md`.
+- Added prepared checklist items for standalone app launch wiring, menu bar icon/menu shell presence, and basic top island window show-path readiness.
+- Validation: planning fast-path checks confirmed the checklist was added to the existing migration tracking doc, each item includes an explicit pass condition scoped to Phase 1 shell goals, and the evidence references point to existing docs/code paths under `mac-island/`.
 
 ## 2026-04-23 - Phase 1 scaffold handoff note added for native shell modules
 

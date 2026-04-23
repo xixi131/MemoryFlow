@@ -317,6 +317,6 @@
       "Check that each checklist item has a clear pass condition and is scoped only to Phase 1 skeleton goals."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]
