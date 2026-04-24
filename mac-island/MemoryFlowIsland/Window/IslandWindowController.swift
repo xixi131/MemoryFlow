@@ -5,15 +5,23 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
+    private let screenMetricsResolver: (NSWindow?) -> ScreenMetrics?
+
+    private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
+    private(set) var lastAppliedFrame: CGRect?
 
     init(
         panel: IslandPanel = IslandPanel(),
         notchLayoutEngine: NotchLayoutEngine = NotchLayoutEngine(),
-        displayObserver: DisplayObserver = DisplayObserver()
+        displayObserver: DisplayObserver = DisplayObserver(),
+        screenMetricsResolver: ((NSWindow?) -> ScreenMetrics?)? = nil
     ) {
         self.islandPanel = panel
         self.notchLayoutEngine = notchLayoutEngine
         self.displayObserver = displayObserver
+        self.screenMetricsResolver = screenMetricsResolver ?? { window in
+            displayObserver.currentScreenMetrics(for: window)
+        }
         super.init(window: panel)
         configureContentView()
         applyInitialWindowState()
@@ -58,11 +66,17 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func repositionToTopCenter() {
-        guard let screenMetrics = displayObserver.currentScreenMetrics(for: islandPanel) else { return }
-        let targetFrame = notchLayoutEngine.islandFrame(
+        guard let screenMetrics = screenMetricsResolver(islandPanel) else { return }
+        let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
             islandSize: islandPanel.frame.size
         )
-        islandPanel.setFrame(targetFrame, display: true)
+        applyPlacement(placementResult, on: screenMetrics)
+    }
+
+    private func applyPlacement(_ placementResult: IslandPlacementResult, on screenMetrics: ScreenMetrics) {
+        islandPanel.setFrame(placementResult.frame, display: true)
+        lastAppliedDisplayIdentity = screenMetrics.displayIdentity
+        lastAppliedFrame = placementResult.frame
     }
 }

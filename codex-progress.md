@@ -3,11 +3,11 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
-- Phase 2 native macOS window-system work is now in progress, with notch and flat-top placement paths both established ahead of display-target persistence work.
+- Phase 2 native macOS window-system work is now in progress, with placement paths wired into the show path and display-target persistence next in queue.
 
 ### Queue snapshot
-- The completed task is `Place the island shell in a stable top-center fallback on non-notch displays.`
-- The next pending task is `Show the island on the correct display using the new placement result.`
+- The completed task is `Show the island on the correct display using the new placement result.`
+- The next pending task is `Keep the island on the same display when screen parameters change.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-24 - Island show path now applies the placement result on the target display
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` so `show()` resolves `ScreenMetrics`, applies `NotchLayoutEngine.placementResult`, and stores the last applied display identity and frame for later re-anchor work.
+- Added an injectable screen-metrics resolver to the controller so native placement flow can be smoke-tested without changing the controller’s production entry path.
+- Validation: `MEMORYFLOW_BACKEND_PORT=18080 ./init.sh` ran successfully outside the sandbox, with the frontend falling forward to port `3001`; native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` across the full `mac-island/MemoryFlowIsland` Swift source set plus a compiled AppKit harness that called `show()` twice and verified the controller reused the same placement path without duplicating content setup.
 
 ## 2026-04-24 - Flat-top fallback placement landed for the native island shell
 
