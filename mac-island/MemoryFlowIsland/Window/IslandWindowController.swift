@@ -6,6 +6,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
     private let screenMetricsResolver: (NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?
+    private var applicationTerminationObserver: NSObjectProtocol?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
     private(set) var lastAppliedFrame: CGRect?
@@ -29,10 +30,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         configureContentView()
         applyInitialWindowState()
         beginDisplayObservation()
+        beginApplicationTerminationObservation()
     }
 
     deinit {
-        displayObserver.stopObserving()
+        stopObservation()
     }
 
     @available(*, unavailable)
@@ -68,16 +70,35 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
     }
 
+    private func beginApplicationTerminationObservation() {
+        NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
+        applicationTerminationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.stopObservation()
+        }
+    }
+
+    private func stopObservation() {
+        displayObserver.stopObserving()
+        NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
+        applicationTerminationObserver = nil
+    }
+
     private func handleDisplayChange(_ changeSignal: DisplayObserver.ChangeSignal) {
         switch changeSignal {
-        case .screenParametersChanged:
+        case .screenParametersChanged, .workspaceDidWake:
             repositionToTopCenter(reapplyLatestLayoutResult: true)
         }
     }
 
     private func repositionToTopCenter(reapplyLatestLayoutResult: Bool = false) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
-        let islandSize = reapplyLatestLayoutResult ? (lastAppliedFrame?.size ?? islandPanel.frame.size) : islandPanel.frame.size
+        let islandSize = reapplyLatestLayoutResult
+            ? (lastAppliedFrame?.size ?? islandPanel.frame.size)
+            : islandPanel.frame.size
         let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
             islandSize: islandSize
@@ -89,5 +110,12 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         islandPanel.setFrame(placementResult.frame, display: true)
         lastAppliedDisplayIdentity = screenMetrics.displayIdentity
         lastAppliedFrame = placementResult.frame
+    }
+}
+
+private extension NotificationCenter {
+    func removeObserverIfNeeded(_ observer: NSObjectProtocol?) {
+        guard let observer else { return }
+        removeObserver(observer)
     }
 }

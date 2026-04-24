@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Re-anchor the island after display arrangement or resolution changes.`
-- The next pending task is `Re-anchor the island after the Mac wakes from sleep.`
+- The completed task is `Re-anchor the island after the Mac wakes from sleep.`
+- The next pending task is `Add shell size presets for collapsed and expanded placeholder frames.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Wake recovery now reuses the display-change re-anchor path
+
+- Updated `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift` so `NSWorkspace.didWakeNotification` emits through the same typed `ChangeSignal` channel as screen-parameter changes, with start/stop observation now managing both notification registrations symmetrically.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to stop observers on app termination and controller teardown, and to route wake recovery through the existing `repositionToTopCenter(reapplyLatestLayoutResult: true)` path instead of introducing a second re-anchor flow.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')`, confirming the wake-notification observer path compiles cleanly across the full native source set.
 
 ## 2026-04-25 - Island panel now stays floating without taking app focus
 

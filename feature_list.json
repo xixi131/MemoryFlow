@@ -405,7 +405,7 @@
       "Check wake observation can be started and stopped without leaked observers."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

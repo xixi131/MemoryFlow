@@ -3,30 +3,49 @@ import AppKit
 final class DisplayObserver {
     enum ChangeSignal {
         case screenParametersChanged
+        case workspaceDidWake
     }
 
-    private var observer: NSObjectProtocol?
-    private let center: NotificationCenter
+    private struct ObservationRegistration {
+        let center: NotificationCenter
+        let token: NSObjectProtocol
+    }
 
-    init(center: NotificationCenter = .default) {
+    private var observationRegistrations: [ObservationRegistration] = []
+    private let center: NotificationCenter
+    private let workspaceCenter: NotificationCenter
+
+    init(
+        center: NotificationCenter = .default,
+        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
         self.center = center
+        self.workspaceCenter = workspaceCenter
     }
 
     func startObserving(onChange: @escaping (ChangeSignal) -> Void) {
         stopObserving()
-        observer = center.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            onChange(.screenParametersChanged)
-        }
+        observationRegistrations = [
+            registerObserver(
+                center: center,
+                name: NSApplication.didChangeScreenParametersNotification,
+                signal: .screenParametersChanged,
+                onChange: onChange
+            ),
+            registerObserver(
+                center: workspaceCenter,
+                name: NSWorkspace.didWakeNotification,
+                signal: .workspaceDidWake,
+                onChange: onChange
+            )
+        ]
     }
 
     func stopObserving() {
-        guard let observer else { return }
-        center.removeObserver(observer)
-        self.observer = nil
+        observationRegistrations.forEach { registration in
+            registration.center.removeObserver(registration.token)
+        }
+        observationRegistrations.removeAll()
     }
 
     func preferredScreenMetrics(
@@ -44,6 +63,23 @@ final class DisplayObserver {
 
     private func currentScreen(for window: NSWindow?) -> NSScreen? {
         window?.screen ?? NSScreen.main ?? NSScreen.screens.first
+    }
+
+    private func registerObserver(
+        center: NotificationCenter,
+        name: NSNotification.Name,
+        signal: ChangeSignal,
+        onChange: @escaping (ChangeSignal) -> Void
+    ) -> ObservationRegistration {
+        let token = center.addObserver(
+            forName: name,
+            object: nil,
+            queue: .main
+        ) { _ in
+            onChange(signal)
+        }
+
+        return ObservationRegistration(center: center, token: token)
     }
 
     func resolvePreferredScreenMetrics(

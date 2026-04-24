@@ -6,14 +6,14 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is in the Phase 2 native macOS window-system queue for notch-aware positioning, window anchoring, click-through, and hover behavior in `mac-island/`.
 
 ## First pending task
-* Re-anchor the island after the Mac wakes from sleep.
+* Add shell size presets for collapsed and expanded placeholder frames.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json`.
 4. Read the Phase 2 section in `灵动岛迁移方案.md`.
-5. Read `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift` and `IslandWindowController.swift`, then trace how wake notifications should reuse the existing display-change reposition path.
+5. Read `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` and `IslandWindowController.swift`, then trace how placeholder shell sizing can stay on the existing placement path before the shadow-clipping fix.
 6. Read `codex-progress.md` only if you need the recent Phase 1 implementation trail or acceptance context.
 
 ## Runtime notes
