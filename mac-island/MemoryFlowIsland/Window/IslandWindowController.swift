@@ -5,6 +5,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
+    private let hoverMonitor: IslandHoverMonitor
     private let screenMetricsResolver: (NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?
     private let hostingView: NSHostingView<IslandRootView>
     private var applicationTerminationObserver: NSObjectProtocol?
@@ -16,11 +17,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         panel: IslandPanel = IslandPanel(),
         notchLayoutEngine: NotchLayoutEngine = NotchLayoutEngine(),
         displayObserver: DisplayObserver = DisplayObserver(),
+        hoverMonitor: IslandHoverMonitor = IslandHoverMonitor(),
         screenMetricsResolver: ((NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?)? = nil
     ) {
         self.islandPanel = panel
         self.notchLayoutEngine = notchLayoutEngine
         self.displayObserver = displayObserver
+        self.hoverMonitor = hoverMonitor
         self.hostingView = NSHostingView(rootView: IslandRootView())
         self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
             displayObserver.preferredScreenMetrics(
@@ -48,15 +51,25 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         repositionToTopCenter()
         guard let window else { return }
         window.orderFrontRegardless()
+        beginHoverMonitoring()
     }
 
     func hide() {
+        hoverMonitor.stopMonitoring()
         window?.orderOut(nil)
     }
 
     func setShellSizePreset(_ shellSizePreset: IslandShellSizePreset) {
         islandPanel.setShellSizePreset(shellSizePreset)
         repositionToTopCenter()
+    }
+
+    var isPanelClickThroughEnabled: Bool {
+        islandPanel.isClickThroughEnabled
+    }
+
+    func setPanelClickThroughEnabled(_ isEnabled: Bool) {
+        islandPanel.setClickThroughEnabled(isEnabled)
     }
 
     private func configureContentView() {
@@ -78,6 +91,17 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
     }
 
+    private func beginHoverMonitoring() {
+        hoverMonitor.startMonitoring(
+            hotspotFrameProvider: { [weak self] in
+                self?.hoverHotspotFrameForMonitoring()
+            },
+            onHoverStart: { [weak self] in
+                self?.handleHoverStart()
+            }
+        )
+    }
+
     private func beginApplicationTerminationObservation() {
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
         applicationTerminationObserver = NotificationCenter.default.addObserver(
@@ -91,6 +115,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func stopObservation() {
         displayObserver.stopObserving()
+        hoverMonitor.stopMonitoring()
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
         applicationTerminationObserver = nil
     }
@@ -118,6 +143,15 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         islandPanel.setFrame(islandPanel.panelFrame(forVisibleShellFrame: placementResult.frame), display: true)
         lastAppliedDisplayIdentity = screenMetrics.displayIdentity
         lastAppliedFrame = placementResult.frame
+    }
+
+    private func hoverHotspotFrameForMonitoring() -> CGRect? {
+        guard islandPanel.isVisible, islandPanel.isClickThroughEnabled else { return nil }
+        return islandPanel.hoverHotspotFrame
+    }
+
+    private func handleHoverStart() {
+        guard islandPanel.isClickThroughEnabled else { return }
     }
 }
 

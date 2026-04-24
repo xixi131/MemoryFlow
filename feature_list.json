@@ -449,7 +449,7 @@
       "Check the toggle can flip in both directions while the panel remains visible."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

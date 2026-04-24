@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Prevent the expanded shell shadow from being cropped by the panel frame.`
-- The next pending task is `Expose a native click-through toggle for the island panel.`
+- The completed task is `Expose a native click-through toggle for the island panel.`
+- The next pending task is `Add pointer-entry detection that works while the island is in click-through mode.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Native click-through toggle landed for the island panel
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` with an in-place click-through surface that exposes current `ignoresMouseEvents` state and toggles it without recreating the panel.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` with `isPanelClickThroughEnabled` and `setPanelClickThroughEnabled(_:)` so later hover-monitor work can coordinate click-through entirely inside the native shell layer.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swiftcheck.9l9h9X -typecheck` over the full `mac-island/MemoryFlowIsland` Swift source set, and the worker-reported runtime toggle check printed `click-through-toggle-ok` while the panel stayed visible.
 
 ## 2026-04-25 - Expanded shell shadow now has native panel breathing room
 

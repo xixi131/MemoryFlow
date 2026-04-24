@@ -27,8 +27,21 @@ final class IslandPanel: NSPanel {
 
     private(set) var shellSizePreset: IslandShellSizePreset
 
+    var isClickThroughEnabled: Bool {
+        ignoresMouseEvents
+    }
+
     var visibleShellSize: NSSize {
         shellSizePreset.visibleShellSize
+    }
+
+    var hoverHotspotFrame: CGRect {
+        CGRect(
+            x: frame.minX + Self.shellShadowMargin,
+            y: frame.minY + Self.shellShadowMargin,
+            width: visibleShellSize.width,
+            height: visibleShellSize.height
+        )
     }
 
     init(shellSizePreset: IslandShellSizePreset = .compactPlaceholder) {
@@ -59,6 +72,11 @@ final class IslandPanel: NSPanel {
         self.shellSizePreset = shellSizePreset
     }
 
+    func setClickThroughEnabled(_ isEnabled: Bool) {
+        guard ignoresMouseEvents != isEnabled else { return }
+        ignoresMouseEvents = isEnabled
+    }
+
     func panelFrame(forVisibleShellFrame visibleShellFrame: CGRect) -> CGRect {
         CGRect(
             x: visibleShellFrame.minX - Self.shellShadowMargin,
@@ -85,5 +103,6 @@ final class IslandPanel: NSPanel {
         isMovable = false
         isMovableByWindowBackground = false
         isExcludedFromWindowsMenu = true
+        ignoresMouseEvents = false
     }
 }
