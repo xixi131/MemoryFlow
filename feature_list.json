@@ -350,7 +350,7 @@
       "Check the engine returns a centered frame for a notch-display metrics fixture."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

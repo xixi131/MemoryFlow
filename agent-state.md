@@ -6,7 +6,7 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is in the Phase 2 native macOS window-system queue for notch-aware positioning, window anchoring, click-through, and hover behavior in `mac-island/`.
 
 ## First pending task
-* Center the island shell against the notch-safe top region on notch displays.
+* Place the island shell in a stable top-center fallback on non-notch displays.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

@@ -3,11 +3,11 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
-- Phase 2 native macOS window-system work is now in progress, with reusable screen metrics and display-top classification in place ahead of notch-safe layout work.
+- Phase 2 native macOS window-system work is now in progress, with notch-safe centering on notch displays in place ahead of the non-notch fallback path.
 
 ### Queue snapshot
-- The completed task is `Detect whether the target display needs notch-aware placement.`
-- The next pending task is `Center the island shell against the notch-safe top region on notch displays.`
+- The completed task is `Center the island shell against the notch-safe top region on notch displays.`
+- The next pending task is `Place the island shell in a stable top-center fallback on non-notch displays.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-24 - Notch-safe top-region centering landed for the native island shell
+
+- Updated `mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift` so notch-bearing displays derive the island `x` origin from a computed top safe region instead of the raw `visibleFrame` midpoint.
+- Kept the Phase 2 layout margins explicit in the engine with separate `phase2NotchTopMargin` and `phase2FlatTopMargin` constants while leaving the flat-top fallback path scoped for the next queue item.
+- Validation: `init.sh` was exercised but stopped because backend port `8080` was already occupied in the current environment, so native validation used the documented compile path: `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` across the full `mac-island/MemoryFlowIsland` Swift source set plus a compiled fixture harness that asserted a notch-bearing `ScreenMetrics` sample returns the centered frame derived from the top safe region.
 
 ## 2026-04-23 - Display top-edge classification landed for Phase 2 notch routing
 
