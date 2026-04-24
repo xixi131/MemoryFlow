@@ -493,7 +493,7 @@
       "Check the new checklist items cover only Phase 2 shell behavior and not later business-state work."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

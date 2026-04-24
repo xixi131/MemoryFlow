@@ -6,7 +6,7 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Expose a native click-through toggle for the island panel.`
+- The completed task is `Append Phase 2 acceptance items for window positioning and recovery behavior.`
 - The next pending task is `Add pointer-entry detection that works while the island is in click-through mode.`
 
 ### Runtime / environment notes
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 2 acceptance checklist now covers shell recovery and hover behaviors
+
+- Updated `docs/mac-island-migration-checklist.md` with a new `Phase 2 Window Positioning and Recovery` section containing prepared checklist items for notch placement, non-notch fallback, display attach/detach recovery, resolution-change recovery, wake recovery, click-through toggling, and hover activation.
+- Kept each item scoped to one observable window-shell behavior with a concrete pass condition and evidence links into the migration plan or native Window-layer files.
+- Validation: lightweight checklist review confirmed all seven requested behaviors are present and remain scoped to Phase 2 shell work only.
 
 ## 2026-04-25 - Native click-through toggle landed for the island panel
 
