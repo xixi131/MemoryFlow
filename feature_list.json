@@ -361,7 +361,7 @@
       "Check the fallback frame stays fully visible for a flat-top metrics fixture."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

@@ -1,5 +1,9 @@
 import AppKit
 
+struct IslandPlacementResult {
+    let frame: CGRect
+}
+
 struct NotchLayoutEngine {
     let phase2NotchTopMargin: CGFloat = 10
     let phase2FlatTopMargin: CGFloat = 10
@@ -9,21 +13,17 @@ struct NotchLayoutEngine {
         displayTopEdgeClassifier.classify(screenMetrics)
     }
 
-    func islandOrigin(screenMetrics: ScreenMetrics, islandSize: CGSize) -> CGPoint {
+    func placementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
         switch displayTopEdge(for: screenMetrics) {
         case .notchBearing:
-            return islandOrigin(
-                topSafeRegion: topSafeRegion(for: screenMetrics),
-                islandSize: islandSize,
-                topMargin: phase2NotchTopMargin
-            )
+            return notchPlacementResult(screenMetrics: screenMetrics, islandSize: islandSize)
         case .flatTop:
-            return islandOrigin(
-                screenFrame: screenMetrics.visibleFrame,
-                islandSize: islandSize,
-                topMargin: phase2FlatTopMargin
-            )
+            return flatTopPlacementResult(screenMetrics: screenMetrics, islandSize: islandSize)
         }
+    }
+
+    func islandOrigin(screenMetrics: ScreenMetrics, islandSize: CGSize) -> CGPoint {
+        placementResult(screenMetrics: screenMetrics, islandSize: islandSize).frame.origin
     }
 
     func islandOrigin(screenFrame: CGRect, islandSize: CGSize) -> CGPoint {
@@ -42,6 +42,18 @@ struct NotchLayoutEngine {
         return CGPoint(x: x, y: y)
     }
 
+    func flatTopFallbackOrigin(visibleFrame: CGRect, islandSize: CGSize, topMargin: CGFloat) -> CGPoint {
+        let proposedX = visibleFrame.midX - (islandSize.width / 2)
+        let maxOriginX = max(visibleFrame.maxX - islandSize.width, visibleFrame.minX)
+        let x = min(max(proposedX, visibleFrame.minX), maxOriginX)
+
+        let proposedY = visibleFrame.maxY - islandSize.height - topMargin
+        let maxOriginY = max(visibleFrame.maxY - islandSize.height, visibleFrame.minY)
+        let y = min(max(proposedY, visibleFrame.minY), maxOriginY)
+
+        return CGPoint(x: x, y: y)
+    }
+
     func topSafeRegion(for screenMetrics: ScreenMetrics) -> CGRect {
         let insetLeft = max(screenMetrics.safeAreaInsets.left, 0)
         let insetRight = max(screenMetrics.safeAreaInsets.right, 0)
@@ -57,10 +69,34 @@ struct NotchLayoutEngine {
     }
 
     func islandFrame(screenMetrics: ScreenMetrics, islandSize: CGSize) -> CGRect {
-        CGRect(origin: islandOrigin(screenMetrics: screenMetrics, islandSize: islandSize), size: islandSize)
+        placementResult(screenMetrics: screenMetrics, islandSize: islandSize).frame
     }
 
     func islandFrame(screenFrame: CGRect, islandSize: CGSize) -> CGRect {
         CGRect(origin: islandOrigin(screenFrame: screenFrame, islandSize: islandSize), size: islandSize)
+    }
+
+    private func notchPlacementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
+        let frame = CGRect(
+            origin: islandOrigin(
+                topSafeRegion: topSafeRegion(for: screenMetrics),
+                islandSize: islandSize,
+                topMargin: phase2NotchTopMargin
+            ),
+            size: islandSize
+        )
+        return IslandPlacementResult(frame: frame)
+    }
+
+    private func flatTopPlacementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
+        let frame = CGRect(
+            origin: flatTopFallbackOrigin(
+                visibleFrame: screenMetrics.visibleFrame,
+                islandSize: islandSize,
+                topMargin: phase2FlatTopMargin
+            ),
+            size: islandSize
+        )
+        return IslandPlacementResult(frame: frame)
     }
 }

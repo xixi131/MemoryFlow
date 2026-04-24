@@ -3,11 +3,11 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
-- Phase 2 native macOS window-system work is now in progress, with notch-safe centering on notch displays in place ahead of the non-notch fallback path.
+- Phase 2 native macOS window-system work is now in progress, with notch and flat-top placement paths both established ahead of display-target persistence work.
 
 ### Queue snapshot
-- The completed task is `Center the island shell against the notch-safe top region on notch displays.`
-- The next pending task is `Place the island shell in a stable top-center fallback on non-notch displays.`
+- The completed task is `Place the island shell in a stable top-center fallback on non-notch displays.`
+- The next pending task is `Show the island on the correct display using the new placement result.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-24 - Flat-top fallback placement landed for the native island shell
+
+- Updated `mac-island/MemoryFlowIsland/Window/NotchLayoutEngine.swift` so flat-top displays use a dedicated visible-area fallback calculation instead of sharing the notch path.
+- Added a shared `IslandPlacementResult` path in the layout engine so both notch-bearing and flat-top displays now resolve through the same placement result type.
+- Validation: `MEMORYFLOW_BACKEND_PORT=18080 ./init.sh` was exercised and again stopped at the known sandbox-only Vite bind failure (`EPERM` on `0.0.0.0:3000`); native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` across the full `mac-island/MemoryFlowIsland` Swift source set plus a compiled flat-top fixture harness that verified the resulting frame stays fully inside `visibleFrame`.
 
 ## 2026-04-24 - Notch-safe top-region centering landed for the native island shell
 
