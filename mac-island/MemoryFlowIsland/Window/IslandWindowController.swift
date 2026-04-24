@@ -63,16 +63,24 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func beginDisplayObservation() {
-        displayObserver.startObserving { [weak self] in
-            self?.repositionToTopCenter()
+        displayObserver.startObserving { [weak self] changeSignal in
+            self?.handleDisplayChange(changeSignal)
         }
     }
 
-    private func repositionToTopCenter() {
+    private func handleDisplayChange(_ changeSignal: DisplayObserver.ChangeSignal) {
+        switch changeSignal {
+        case .screenParametersChanged:
+            repositionToTopCenter(reapplyLatestLayoutResult: true)
+        }
+    }
+
+    private func repositionToTopCenter(reapplyLatestLayoutResult: Bool = false) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
+        let islandSize = reapplyLatestLayoutResult ? (lastAppliedFrame?.size ?? islandPanel.frame.size) : islandPanel.frame.size
         let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
-            islandSize: islandPanel.frame.size
+            islandSize: islandSize
         )
         applyPlacement(placementResult, on: screenMetrics)
     }

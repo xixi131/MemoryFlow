@@ -394,7 +394,7 @@
       "Check the observer path still compiles and triggers one reposition entry point."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

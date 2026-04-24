@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Keep the island on the same display when screen parameters change.`
-- The next pending task is `Re-anchor the island after display arrangement or resolution changes.`
+- The completed task is `Re-anchor the island after display arrangement or resolution changes.`
+- The next pending task is `Re-anchor the island after the Mac wakes from sleep.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Display-change re-anchor now reuses one native reposition path
+
+- Updated `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift` so screen-parameter notifications emit a typed change signal instead of a bare callback, giving the native shell one explicit display-change event path.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to route that signal through a single handler and reapply the latest layout size when screen arrangement or resolution changes trigger a fresh placement.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g'*.swift')`, and path-shape verification via `rg -n "repositionToTopCenter|handleDisplayChange|screenParametersChanged"` confirmed display-change events land in one reposition entry point.
 
 ## 2026-04-24 - Display-target persistence landed for screen-parameter changes
 

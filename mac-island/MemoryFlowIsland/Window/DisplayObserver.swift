@@ -1,6 +1,10 @@
 import AppKit
 
 final class DisplayObserver {
+    enum ChangeSignal {
+        case screenParametersChanged
+    }
+
     private var observer: NSObjectProtocol?
     private let center: NotificationCenter
 
@@ -8,14 +12,14 @@ final class DisplayObserver {
         self.center = center
     }
 
-    func startObserving(onChange: @escaping () -> Void) {
+    func startObserving(onChange: @escaping (ChangeSignal) -> Void) {
         stopObserving()
         observer = center.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
             queue: .main
         ) { _ in
-            onChange()
+            onChange(.screenParametersChanged)
         }
     }
 
