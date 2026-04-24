@@ -6,14 +6,14 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is in the Phase 2 native macOS window-system queue for notch-aware positioning, window anchoring, click-through, and hover behavior in `mac-island/`.
 
 ## First pending task
-* Add pointer-entry detection that works while the island is in click-through mode.
+* Switch the island into interactive hover mode when the pointer enters the hotspot.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json`.
 4. Read the Phase 2 section in `灵动岛迁移方案.md`.
-5. Read `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` and `IslandWindowController.swift`, then trace how a native hover monitor can detect entry while the panel stays click-through and route callbacks through the controller.
+5. Read `mac-island/MemoryFlowIsland/Window/IslandHoverMonitor.swift`, `IslandPanel.swift`, and `IslandWindowController.swift`, then trace how hover-start should disable click-through and keep the shell interactive without reopening the panel.
 6. Read `codex-progress.md` only if you need the recent Phase 1 implementation trail or acceptance context.
 
 ## Runtime notes

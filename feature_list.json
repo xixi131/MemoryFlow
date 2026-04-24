@@ -460,7 +460,7 @@
       "Check the hover monitor lifecycle starts and stops with the window controller."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

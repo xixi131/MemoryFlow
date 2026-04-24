@@ -152,6 +152,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handleHoverStart() {
         guard islandPanel.isClickThroughEnabled else { return }
+        // Future hover activation stays controller-owned so later tasks can switch modes here.
     }
 }
 
