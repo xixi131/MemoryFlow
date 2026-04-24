@@ -3,11 +3,11 @@
 ### Current phase
 - Phase 0 baseline/spec capture is complete enough for implementation handoff.
 - Phase 1 native macOS shell scaffolding queue is complete, including the acceptance-gate checklist for the shell entry slice.
-- Phase 2 native macOS window-system work is now in progress, with placement paths wired into the show path and display-target persistence next in queue.
+- Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Show the island on the correct display using the new placement result.`
-- The next pending task is `Keep the island on the same display when screen parameters change.`
+- The completed task is `Keep the island on the same display when screen parameters change.`
+- The next pending task is `Re-anchor the island after display arrangement or resolution changes.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-24 - Display-target persistence landed for screen-parameter changes
+
+- Updated `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift` so the Window/display layer resolves a preferred screen by the last applied `displayIdentity` when that screen still exists, and only falls back to the current screen when the previous target disappears.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to pass the last applied display identity back through the resolver during repositioning instead of always following the current main screen.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` across the full `mac-island/MemoryFlowIsland` Swift source set plus a compiled fixture harness that simulated both a screen reorder and a display detach, confirming the preferred target stayed on display `2` when present and fell back to display `1` when it disappeared.
 
 ## 2026-04-24 - Island show path now applies the placement result on the target display
 

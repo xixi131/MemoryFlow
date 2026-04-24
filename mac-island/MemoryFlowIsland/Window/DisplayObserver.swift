@@ -25,12 +25,33 @@ final class DisplayObserver {
         self.observer = nil
     }
 
-    func currentScreenMetrics(for window: NSWindow? = nil) -> ScreenMetrics? {
-        guard let screen = currentScreen(for: window) else { return nil }
-        return ScreenMetrics(screen: screen)
+    func preferredScreenMetrics(
+        for window: NSWindow? = nil,
+        preferredDisplayIdentity: ScreenMetrics.DisplayIdentity? = nil
+    ) -> ScreenMetrics? {
+        let availableMetrics = NSScreen.screens.compactMap(ScreenMetrics.init(screen:))
+        let fallbackMetrics = currentScreen(for: window).flatMap(ScreenMetrics.init(screen:))
+        return resolvePreferredScreenMetrics(
+            availableMetrics: availableMetrics,
+            preferredDisplayIdentity: preferredDisplayIdentity,
+            fallbackMetrics: fallbackMetrics
+        )
     }
 
     private func currentScreen(for window: NSWindow?) -> NSScreen? {
         window?.screen ?? NSScreen.main ?? NSScreen.screens.first
+    }
+
+    func resolvePreferredScreenMetrics(
+        availableMetrics: [ScreenMetrics],
+        preferredDisplayIdentity: ScreenMetrics.DisplayIdentity?,
+        fallbackMetrics: ScreenMetrics?
+    ) -> ScreenMetrics? {
+        if let preferredDisplayIdentity,
+           let matchedMetrics = availableMetrics.first(where: { $0.displayIdentity == preferredDisplayIdentity }) {
+            return matchedMetrics
+        }
+
+        return fallbackMetrics ?? availableMetrics.first
     }
 }

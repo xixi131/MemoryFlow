@@ -5,7 +5,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
-    private let screenMetricsResolver: (NSWindow?) -> ScreenMetrics?
+    private let screenMetricsResolver: (NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
     private(set) var lastAppliedFrame: CGRect?
@@ -14,13 +14,16 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         panel: IslandPanel = IslandPanel(),
         notchLayoutEngine: NotchLayoutEngine = NotchLayoutEngine(),
         displayObserver: DisplayObserver = DisplayObserver(),
-        screenMetricsResolver: ((NSWindow?) -> ScreenMetrics?)? = nil
+        screenMetricsResolver: ((NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?)? = nil
     ) {
         self.islandPanel = panel
         self.notchLayoutEngine = notchLayoutEngine
         self.displayObserver = displayObserver
-        self.screenMetricsResolver = screenMetricsResolver ?? { window in
-            displayObserver.currentScreenMetrics(for: window)
+        self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
+            displayObserver.preferredScreenMetrics(
+                for: window,
+                preferredDisplayIdentity: preferredDisplayIdentity
+            )
         }
         super.init(window: panel)
         configureContentView()
@@ -66,7 +69,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func repositionToTopCenter() {
-        guard let screenMetrics = screenMetricsResolver(islandPanel) else { return }
+        guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
         let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
             islandSize: islandPanel.frame.size

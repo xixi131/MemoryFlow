@@ -383,7 +383,7 @@
       "Check a screen reorder or display attach-or-detach event can still produce one valid target display."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
