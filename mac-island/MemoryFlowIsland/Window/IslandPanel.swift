@@ -77,6 +77,10 @@ final class IslandPanel: NSPanel {
         ignoresMouseEvents = isEnabled
     }
 
+    func activateInteractiveHoverMode() {
+        setClickThroughEnabled(false)
+    }
+
     func panelFrame(forVisibleShellFrame visibleShellFrame: CGRect) -> CGRect {
         CGRect(
             x: visibleShellFrame.minX - Self.shellShadowMargin,

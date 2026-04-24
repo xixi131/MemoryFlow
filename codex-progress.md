@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Add pointer-entry detection that works while the island is in click-through mode.`
-- The next pending task is `Switch the island into interactive hover mode when the pointer enters the hotspot.`
+- The completed task is `Switch the island into interactive hover mode when the pointer enters the hotspot.`
+- The next pending task is `Return the island to click-through mode after hover exit.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Hover entry now transitions the shell into interactive mode
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` so hover-start routes through a dedicated controller-owned `activateInteractiveHoverMode()` path instead of keeping the activation stubbed at the callback boundary.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` with a small in-place `activateInteractiveHoverMode()` helper that disables click-through without recreating the panel, and adjusted `show()` so it only orders the panel front when needed instead of reopening it during hover entry.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/mf-task43-module-cache -typecheck $(find mac-island/MemoryFlowIsland -name '*.swift' -print)`, confirming the hover-entry activation path compiles cleanly across the full native source set.
 
 ## 2026-04-25 - Hover hotspot monitoring now works while the shell stays click-through
 

@@ -471,7 +471,7 @@
       "Check entering the hotspot leads to the interactive window path without reopening the panel."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

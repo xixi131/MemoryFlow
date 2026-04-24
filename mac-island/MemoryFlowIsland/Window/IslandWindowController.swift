@@ -49,8 +49,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     func show() {
         repositionToTopCenter()
-        guard let window else { return }
-        window.orderFrontRegardless()
+        presentPanelIfNeeded()
         beginHoverMonitoring()
     }
 
@@ -89,6 +88,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         displayObserver.startObserving { [weak self] changeSignal in
             self?.handleDisplayChange(changeSignal)
         }
+    }
+
+    private func presentPanelIfNeeded() {
+        guard let window, window.isVisible == false else { return }
+        window.orderFrontRegardless()
     }
 
     private func beginHoverMonitoring() {
@@ -151,8 +155,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func handleHoverStart() {
-        guard islandPanel.isClickThroughEnabled else { return }
-        // Future hover activation stays controller-owned so later tasks can switch modes here.
+        activateInteractiveHoverMode()
+    }
+
+    private func activateInteractiveHoverMode() {
+        guard islandPanel.isVisible, islandPanel.isClickThroughEnabled else { return }
+        // Keep hover activation controller-owned so later gesture/state work can extend this path.
+        islandPanel.activateInteractiveHoverMode()
     }
 }
 
