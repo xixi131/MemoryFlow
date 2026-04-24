@@ -504,6 +504,6 @@
       "Check the note points only to files and behaviors that belong to the Phase 2 shell."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]

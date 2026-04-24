@@ -6,7 +6,7 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Append Phase 2 acceptance items for window positioning and recovery behavior.`
+- The completed task is `Add a short Phase 2 window-system handoff note for the next implementation slice.`
 - The next pending task is `Add pointer-entry detection that works while the island is in click-through mode.`
 
 ### Runtime / environment notes
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 2 window-system handoff note added for the next native shell slice
+
+- Added `docs/mac-island-phase2-window-handoff.md` to name the active Phase 2 Window-layer files and the expected acceptance path for notch placement, non-notch fallback, display/recovery behavior, click-through, and hover-ready shell work.
+- Captured explicit non-goals for this slice: no review/todo data migration, no auth flow, no music takeover, and no Phase 6 gesture polish.
+- Validation: lightweight doc checks confirmed the note points only to Phase 2 shell files and references, and that later-phase topics appear only as non-goals.
 
 ## 2026-04-25 - Phase 2 acceptance checklist now covers shell recovery and hover behaviors
 
