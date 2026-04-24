@@ -4,7 +4,7 @@ enum IslandShellSizePreset {
     case compactPlaceholder
     case expandedPlaceholder
 
-    var frameSize: NSSize {
+    var visibleShellSize: NSSize {
         switch self {
         case .compactPlaceholder:
             return NSSize(width: 360, height: 96)
@@ -12,15 +12,29 @@ enum IslandShellSizePreset {
             return NSSize(width: 460, height: 320)
         }
     }
+
+    var panelFrameSize: NSSize {
+        let inset = IslandPanel.shellShadowMargin * 2
+        return NSSize(
+            width: visibleShellSize.width + inset,
+            height: visibleShellSize.height + inset
+        )
+    }
 }
 
 final class IslandPanel: NSPanel {
+    static let shellShadowMargin: CGFloat = 12
+
     private(set) var shellSizePreset: IslandShellSizePreset
+
+    var visibleShellSize: NSSize {
+        shellSizePreset.visibleShellSize
+    }
 
     init(shellSizePreset: IslandShellSizePreset = .compactPlaceholder) {
         self.shellSizePreset = shellSizePreset
         super.init(
-            contentRect: NSRect(origin: .zero, size: shellSizePreset.frameSize),
+            contentRect: NSRect(origin: .zero, size: shellSizePreset.panelFrameSize),
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -43,6 +57,15 @@ final class IslandPanel: NSPanel {
 
     func setShellSizePreset(_ shellSizePreset: IslandShellSizePreset) {
         self.shellSizePreset = shellSizePreset
+    }
+
+    func panelFrame(forVisibleShellFrame visibleShellFrame: CGRect) -> CGRect {
+        CGRect(
+            x: visibleShellFrame.minX - Self.shellShadowMargin,
+            y: visibleShellFrame.minY - Self.shellShadowMargin,
+            width: visibleShellFrame.width + (Self.shellShadowMargin * 2),
+            height: visibleShellFrame.height + (Self.shellShadowMargin * 2)
+        )
     }
 
     private func configureAppearance() {

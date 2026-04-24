@@ -438,7 +438,7 @@
       "Check the expanded preset keeps its visible bounds and shadow inside the panel frame."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

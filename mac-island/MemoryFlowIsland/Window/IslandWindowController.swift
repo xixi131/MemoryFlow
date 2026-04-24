@@ -6,6 +6,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
     private let screenMetricsResolver: (NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?
+    private let hostingView: NSHostingView<IslandRootView>
     private var applicationTerminationObserver: NSObjectProtocol?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
@@ -20,6 +21,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         self.islandPanel = panel
         self.notchLayoutEngine = notchLayoutEngine
         self.displayObserver = displayObserver
+        self.hostingView = NSHostingView(rootView: IslandRootView())
         self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
             displayObserver.preferredScreenMetrics(
                 for: window,
@@ -58,9 +60,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func configureContentView() {
-        let hostingView = NSHostingView(rootView: IslandRootView())
         hostingView.frame = NSRect(origin: .zero, size: islandPanel.frame.size)
         hostingView.autoresizingMask = [.width, .height]
+        hostingView.wantsLayer = true
+        hostingView.layer?.masksToBounds = false
         islandPanel.contentView = hostingView
     }
 
@@ -102,8 +105,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func repositionToTopCenter(reapplyLatestLayoutResult: Bool = false) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
         let islandSize = reapplyLatestLayoutResult
-            ? (lastAppliedFrame?.size ?? islandPanel.shellSizePreset.frameSize)
-            : islandPanel.shellSizePreset.frameSize
+            ? (lastAppliedFrame?.size ?? islandPanel.visibleShellSize)
+            : islandPanel.visibleShellSize
         let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
             islandSize: islandSize
@@ -112,7 +115,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func applyPlacement(_ placementResult: IslandPlacementResult, on screenMetrics: ScreenMetrics) {
-        islandPanel.setFrame(placementResult.frame, display: true)
+        islandPanel.setFrame(islandPanel.panelFrame(forVisibleShellFrame: placementResult.frame), display: true)
         lastAppliedDisplayIdentity = screenMetrics.displayIdentity
         lastAppliedFrame = placementResult.frame
     }

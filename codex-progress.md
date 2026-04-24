@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Add shell size presets for collapsed and expanded placeholder frames.`
-- The next pending task is `Prevent the expanded shell shadow from being cropped by the panel frame.`
+- The completed task is `Prevent the expanded shell shadow from being cropped by the panel frame.`
+- The next pending task is `Expose a native click-through toggle for the island panel.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Expanded shell shadow now has native panel breathing room
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` to split visible shell size from the outer panel frame, adding a native-shell `shellShadowMargin` and a `panelFrame(forVisibleShellFrame:)` helper so expanded shells reserve transparent space for rounded edges and shadow.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to keep placement math centered on the visible shell while applying the larger padded panel frame, and updated `mac-island/MemoryFlowIsland/UI/IslandRootView.swift` to align its inset with the shared margin.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')`; a follow-up search confirmed there are no remaining references to the old `frameSize` accessor in `mac-island/MemoryFlowIsland`.
 
 ## 2026-04-25 - Placeholder shell size presets now switch through the controller path
 

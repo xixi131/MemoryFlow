@@ -17,7 +17,7 @@ struct IslandRootView: View {
             Capsule(style: .continuous)
                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
         )
-        .padding(8)
+        .padding(IslandPanel.shellShadowMargin)
         .background(Color.clear)
     }
 }
