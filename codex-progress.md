@@ -23,6 +23,12 @@
 
 ## Recent Key Records
 
+## 2026-04-25 - Island panel now stays floating without taking app focus
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` to keep the native shell nonactivating while adding `fullSizeContentView`, all-spaces/fullscreen-safe collection behavior, and shell flags such as `ignoresCycle`, `isExcludedFromWindowsMenu`, and disabled panel movement.
+- Left the controller show path untouched so the island still appears via `orderFrontRegardless()` instead of a key-window or app-activation flow, keeping the shell compatible with later hover work.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck mac-island/MemoryFlowIsland/Window/IslandPanel.swift`, and a code-path check confirmed `IslandWindowController.show()` does not call `makeKeyAndOrderFront` or `NSApp.activate`.
+
 ## 2026-04-25 - Display-change re-anchor now reuses one native reposition path
 
 - Updated `mac-island/MemoryFlowIsland/Window/DisplayObserver.swift` so screen-parameter notifications emit a typed change signal instead of a bare callback, giving the native shell one explicit display-change event path.

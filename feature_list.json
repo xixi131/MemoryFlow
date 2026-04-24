@@ -416,7 +416,7 @@
       "Check showing the island does not require making the app the main active window."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

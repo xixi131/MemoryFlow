@@ -1,10 +1,27 @@
 import AppKit
 
+enum IslandShellSizePreset {
+    case compactPlaceholder
+    case expandedPlaceholder
+
+    var frameSize: NSSize {
+        switch self {
+        case .compactPlaceholder:
+            return NSSize(width: 360, height: 96)
+        case .expandedPlaceholder:
+            return NSSize(width: 460, height: 320)
+        }
+    }
+}
+
 final class IslandPanel: NSPanel {
-    init(frame: NSRect = NSRect(x: 0, y: 0, width: 360, height: 96)) {
+    private(set) var shellSizePreset: IslandShellSizePreset
+
+    init(shellSizePreset: IslandShellSizePreset = .compactPlaceholder) {
+        self.shellSizePreset = shellSizePreset
         super.init(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
+            contentRect: NSRect(origin: .zero, size: shellSizePreset.frameSize),
+            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -17,11 +34,15 @@ final class IslandPanel: NSPanel {
     }
 
     override var canBecomeKey: Bool {
-        true
+        false
     }
 
     override var canBecomeMain: Bool {
         false
+    }
+
+    func setShellSizePreset(_ shellSizePreset: IslandShellSizePreset) {
+        self.shellSizePreset = shellSizePreset
     }
 
     private func configureAppearance() {
@@ -30,10 +51,16 @@ final class IslandPanel: NSPanel {
         hasShadow = true
         isFloatingPanel = true
         level = .statusBar
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         hidesOnDeactivate = false
         animationBehavior = .utilityWindow
+        acceptsMouseMovedEvents = true
+        becomesKeyOnlyIfNeeded = true
+        worksWhenModal = true
+        isMovable = false
+        isMovableByWindowBackground = false
+        isExcludedFromWindowsMenu = true
     }
 }
