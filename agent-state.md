@@ -6,14 +6,14 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is in the Phase 2 native macOS window-system queue for notch-aware positioning, window anchoring, click-through, and hover behavior in `mac-island/`.
 
 ## First pending task
-* Return the island to click-through mode after hover exit.
+* No pending Phase 2 window-system task remains in the current queue.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json`.
 4. Read the Phase 2 section in `灵动岛迁移方案.md`.
-5. Read `mac-island/MemoryFlowIsland/Window/IslandHoverMonitor.swift`, `IslandPanel.swift`, and `IslandWindowController.swift`, then trace how hover-exit can restore click-through through the controller without leaving the shell stuck interactive.
+5. If a new queue item is added, start from the matching Phase 2 Window-layer files and read `codex-progress.md` only for the most recent acceptance trail.
 6. Read `codex-progress.md` only if you need the recent Phase 1 implementation trail or acceptance context.
 
 ## Runtime notes

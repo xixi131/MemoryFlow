@@ -482,7 +482,7 @@
       "Check repeated enter-and-exit cycles do not leave the panel stuck in interactive mode."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "planning",

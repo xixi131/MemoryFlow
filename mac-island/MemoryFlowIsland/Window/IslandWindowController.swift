@@ -102,6 +102,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             },
             onHoverStart: { [weak self] in
                 self?.handleHoverStart()
+            },
+            onHoverEnd: { [weak self] in
+                self?.handleHoverEnd()
             }
         )
     }
@@ -150,7 +153,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func hoverHotspotFrameForMonitoring() -> CGRect? {
-        guard islandPanel.isVisible, islandPanel.isClickThroughEnabled else { return nil }
+        guard islandPanel.isVisible else { return nil }
         return islandPanel.hoverHotspotFrame
     }
 
@@ -158,10 +161,21 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         activateInteractiveHoverMode()
     }
 
+    private func handleHoverEnd() {
+        recoverClickThroughAfterHoverExit()
+    }
+
     private func activateInteractiveHoverMode() {
         guard islandPanel.isVisible, islandPanel.isClickThroughEnabled else { return }
         // Keep hover activation controller-owned so later gesture/state work can extend this path.
         islandPanel.activateInteractiveHoverMode()
+    }
+
+    private func recoverClickThroughAfterHoverExit() {
+        guard islandPanel.isVisible, islandPanel.isClickThroughEnabled == false else { return }
+        guard islandPanel.hoverHotspotFrame.contains(NSEvent.mouseLocation) == false else { return }
+        // Keep hover-exit recovery controller-owned so later gesture/state work can share this gate.
+        islandPanel.setClickThroughEnabled(true)
     }
 }
 

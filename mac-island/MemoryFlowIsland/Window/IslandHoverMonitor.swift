@@ -6,6 +6,7 @@ final class IslandHoverMonitor {
     private var timer: Timer?
     private var hotspotFrameProvider: (() -> CGRect?)?
     private var onHoverStart: (() -> Void)?
+    private var onHoverEnd: (() -> Void)?
     private var isPointerInsideHotspot = false
 
     init(
@@ -18,11 +19,13 @@ final class IslandHoverMonitor {
 
     func startMonitoring(
         hotspotFrameProvider: @escaping () -> CGRect?,
-        onHoverStart: @escaping () -> Void
+        onHoverStart: @escaping () -> Void,
+        onHoverEnd: @escaping () -> Void
     ) {
         stopMonitoring()
         self.hotspotFrameProvider = hotspotFrameProvider
         self.onHoverStart = onHoverStart
+        self.onHoverEnd = onHoverEnd
         isPointerInsideHotspot = currentHoverState()
 
         let timer = Timer(timeInterval: pollInterval, repeats: true) { [weak self] _ in
@@ -37,6 +40,7 @@ final class IslandHoverMonitor {
         timer = nil
         hotspotFrameProvider = nil
         onHoverStart = nil
+        onHoverEnd = nil
         isPointerInsideHotspot = false
     }
 
@@ -44,8 +48,14 @@ final class IslandHoverMonitor {
         let isPointerInsideHotspotNow = currentHoverState()
         defer { isPointerInsideHotspot = isPointerInsideHotspotNow }
 
-        guard isPointerInsideHotspotNow, isPointerInsideHotspot == false else { return }
-        onHoverStart?()
+        switch (isPointerInsideHotspot, isPointerInsideHotspotNow) {
+        case (false, true):
+            onHoverStart?()
+        case (true, false):
+            onHoverEnd?()
+        default:
+            break
+        }
     }
 
     private func currentHoverState() -> Bool {
