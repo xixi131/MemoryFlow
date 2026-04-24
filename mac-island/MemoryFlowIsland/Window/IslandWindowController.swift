@@ -52,6 +52,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         window?.orderOut(nil)
     }
 
+    func setShellSizePreset(_ shellSizePreset: IslandShellSizePreset) {
+        islandPanel.setShellSizePreset(shellSizePreset)
+        repositionToTopCenter()
+    }
+
     private func configureContentView() {
         let hostingView = NSHostingView(rootView: IslandRootView())
         hostingView.frame = NSRect(origin: .zero, size: islandPanel.frame.size)
@@ -97,8 +102,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func repositionToTopCenter(reapplyLatestLayoutResult: Bool = false) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
         let islandSize = reapplyLatestLayoutResult
-            ? (lastAppliedFrame?.size ?? islandPanel.frame.size)
-            : islandPanel.frame.size
+            ? (lastAppliedFrame?.size ?? islandPanel.shellSizePreset.frameSize)
+            : islandPanel.shellSizePreset.frameSize
         let placementResult = notchLayoutEngine.placementResult(
             screenMetrics: screenMetrics,
             islandSize: islandSize

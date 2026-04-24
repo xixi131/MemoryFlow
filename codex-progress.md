@@ -6,8 +6,8 @@
 - Phase 2 native macOS window-system work is now in progress, with persisted display targeting in place ahead of explicit re-anchor callbacks.
 
 ### Queue snapshot
-- The completed task is `Re-anchor the island after the Mac wakes from sleep.`
-- The next pending task is `Add shell size presets for collapsed and expanded placeholder frames.`
+- The completed task is `Add shell size presets for collapsed and expanded placeholder frames.`
+- The next pending task is `Prevent the expanded shell shadow from being cropped by the panel frame.`
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) is the repository runtime entry point.
@@ -22,6 +22,12 @@
 - Keep this file to summary plus recent key records only.
 
 ## Recent Key Records
+
+## 2026-04-25 - Placeholder shell size presets now switch through the controller path
+
+- Extended `mac-island/MemoryFlowIsland/Window/IslandPanel.swift` with explicit `IslandShellSizePreset` placeholder sizes for compact (`360x96`) and expanded (`460x320`) shell frames.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` to expose `setShellSizePreset(_:)` and keep both preset switching and display-change recovery on the existing placement path, so frame changes stay centered without introducing Phase 3 business state.
+- Validation: native validation passed via `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')`; the worker also reported an ad hoc controller check where compact-to-expanded preset switching kept `midXDelta=0.0`.
 
 ## 2026-04-25 - Wake recovery now reuses the display-change re-anchor path
 
