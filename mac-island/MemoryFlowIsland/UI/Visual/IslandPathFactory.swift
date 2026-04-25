@@ -139,6 +139,40 @@ enum IslandPathFactory {
         )
     }
 
+    static func rightCapPath(height: CGFloat, radius: CGFloat, smoothness: CGFloat) -> CGPath {
+        let resolvedHeight = max(height, 0)
+        let resolvedRadius = max(radius, 0)
+        let resolvedSmoothness = max(smoothness, 0.01)
+
+        let path = CGMutablePath()
+        path.move(to: .zero)
+        path.addLine(to: CGPoint(x: capWidth, y: 0))
+        path.addLine(to: CGPoint(x: capWidth, y: resolvedHeight - resolvedRadius))
+
+        let bottomRightCenter = CGPoint(x: capWidth - resolvedRadius, y: resolvedHeight - resolvedRadius)
+        for index in 1...squircleSteps {
+            let angle = (.pi / 2) * (CGFloat(index) / CGFloat(squircleSteps))
+            path.addLine(
+                to: CGPoint(
+                    x: bottomRightCenter.x + superellipseComponent(for: cos(angle), smoothness: resolvedSmoothness) * resolvedRadius,
+                    y: bottomRightCenter.y + superellipseComponent(for: sin(angle), smoothness: resolvedSmoothness) * resolvedRadius
+                )
+            )
+        }
+
+        path.addLine(to: CGPoint(x: 0, y: resolvedHeight))
+        path.closeSubpath()
+        return path
+    }
+
+    static func rightCapPath(metrics: IslandShapeMetrics) -> CGPath {
+        rightCapPath(
+            height: metrics.height,
+            radius: metrics.radius,
+            smoothness: metrics.smoothness
+        )
+    }
+
     private static func superellipseComponent(for value: CGFloat, smoothness: CGFloat) -> CGFloat {
         pow(abs(value), 2 / smoothness)
     }
