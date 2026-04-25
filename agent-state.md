@@ -6,7 +6,7 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is now in the Phase 3 native visual-geometry queue for token mapping, path parity, preview shells, and top-band-aware scaling in `mac-island/MemoryFlowIsland/UI/`.
 
 ## First pending task
-* Create the `mac-island/MemoryFlowIsland/UI/Visual/` scaffolding for Phase 3 native geometry work.
+* Implement `IslandVisualTokens.swift` as the single Swift geometry-token source for Phase 3 previews.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

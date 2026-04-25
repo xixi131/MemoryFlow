@@ -85,7 +85,7 @@
       "Check that the project references compile with empty type shells and no unresolved file-path references."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

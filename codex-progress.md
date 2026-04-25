@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Create the native visual-geometry module scaffolding under mac-island for Phase 3 work.`
+- First pending task: `Add a single Swift token source for compact, activity, expanded, hover, and shadow geometry values.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after the scaffolding task: add the shared Swift visual token source, then preview-only visual state cases and shared shape metrics.
+- Immediate follow-up tasks after the shared token source: preview-only visual state cases, shared shape metrics, and then the first path-factory port.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 3 visual-geometry scaffolding landed under UI/Visual
+
+- Added `mac-island/MemoryFlowIsland/UI/Visual/` with placeholder files for `IslandVisualTokens.swift`, `IslandVisualState.swift`, `IslandShapeMetrics.swift`, `IslandPathFactory.swift`, `IslandShapeEngine.swift`, and `IslandVisualStatePreview.swift`.
+- Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` so the new Visual files are present in the `UI` group and the native app target sources without disturbing the existing Phase 2 window-layer files.
+- Validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` passed and `swiftc -module-cache-path /tmp/mf-task8-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` completed successfully.
 
 ## 2026-04-25 - Phase 3 checklist gates were added to the migration checklist
 
