@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Record the Windows expanded, hover, and shadow token values needed for the native geometry engine.`
+- First pending task: `Record the Windows path-function sources and seam constraints that the native path factory must preserve.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after expanded/hover/shadow token capture: path-function and seam documentation, then Phase 3 geometry acceptance shell work.
+- Immediate follow-up tasks after path-function and seam documentation: Phase 3 geometry acceptance shell work, then Phase 3 acceptance matrix fill-in.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Expanded, hover, and shadow geometry tokens were mapped for the Phase 3 native engine
+
+- Updated `docs/mac-island-visual-token-map.md` so the `Expanded Shell Tokens` section now records width `460`, music height `210`, app height `320`, and expanded radius `48` from the Windows widget path.
+- Added `Hover and Shadow Rules` rows for collapsed hover scale `1.06`, the `isExpanded || isHovered` shadow visibility gate, and the `260ms ease-out` shadow transition timing.
+- Validation: confirmed both sections contain direct code references and explicitly mark which rules are preview-direct in Phase 3 versus deferred until later business-state migration.
 
 ## 2026-04-25 - Compact and activity shell token values were mapped for Phase 3 native previews
 

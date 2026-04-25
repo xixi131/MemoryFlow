@@ -24,11 +24,18 @@ This document covers only the Phase 3 visual geometry migration and excludes aut
 
 | Token | Windows source | Expected Phase 3 preview usage | Notes |
 | --- | --- | --- | --- |
+| `expandedWidth = 460` | `front-end/src/components/DynamicIslandWidget.tsx:1463` and `front-end/src/components/DynamicIslandWidget.tsx:1754-1756` | Render both expanded preview shells at width `460`. | This is a direct Phase 3 preview token and does not depend on auth, reminder, todo, or music-provider state. |
+| `expandedMusicHeight = 210` | `front-end/src/components/DynamicIslandWidget.tsx:1464` and `front-end/src/components/DynamicIslandWidget.tsx:1754-1756` | Render the `expandedMusic` preview shell at height `210`. | This height is preview-ready in Phase 3; the real music data that eventually fills the shell is deferred to later business-state work. |
+| `expandedAppHeight = 320` | `front-end/src/components/DynamicIslandWidget.tsx:1465` and `front-end/src/components/DynamicIslandWidget.tsx:1754-1756` | Render the `expandedApp` preview shell at height `320`. | This height is preview-ready in Phase 3; review and todo content composition remain deferred to later migration phases. |
+| `expanded radius = 48` | `front-end/src/components/DynamicIslandWidget.tsx:1783`, `front-end/src/components/DynamicIslandWidget.tsx:1811`, and `front-end/src/components/DynamicIslandWidget.tsx:1941-1943` | Use radius `48` for expanded body and cap geometry. | This is a direct geometry token for the preview shells, while any later content-driven layout inside the shell is outside Phase 3 scope. |
 
 ## Hover and Shadow Rules
 
 | Rule | Windows source | Expected Phase 3 preview usage | Notes |
 | --- | --- | --- | --- |
+| `collapsed hover scale = 1.06` | `front-end/src/components/DynamicIslandWidget.tsx:1740-1742` | Render the `hoverCollapsed` preview shell with the same compact geometry multiplied by `1.06`. | This is a direct Phase 3 preview behavior and should not depend on business content. |
+| `shadow visibility gate = isExpanded || isHovered` | `front-end/src/components/DynamicIslandWidget.tsx:1504` and `front-end/src/components/DynamicIslandWidget.tsx:1730-1732` | Show the shell shadow only for hover-collapsed and expanded preview states. | Compact collapsed and activity collapsed previews should remain shadowless unless the hover gate is active. |
+| `shadow fade = 260ms ease-out` | `front-end/src/components/DynamicIslandWidget.tsx:1730-1734` | Use a `260ms` `ease-out` shadow transition when hover or expanded state toggles shell shadow visibility. | This timing is preview-direct for the outer shell. Any later content-specific shadows inside expanded cards are deferred until the business-state migration reconnects real content. |
 
 ## Path Sources
 

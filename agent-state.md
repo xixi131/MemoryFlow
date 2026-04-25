@@ -6,7 +6,7 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 Dynamic Island migration is now in the Phase 3 native visual-geometry queue for token mapping, path parity, preview shells, and top-band-aware scaling in `mac-island/MemoryFlowIsland/UI/`.
 
 ## First pending task
-* Record the Windows expanded, hover, and shadow token values in `docs/mac-island-visual-token-map.md`.
+* Record the Windows path-function sources and seam constraints in `docs/mac-island-visual-token-map.md`.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

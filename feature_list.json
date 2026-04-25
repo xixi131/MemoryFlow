@@ -30,7 +30,7 @@
       "Check that the document clearly marks which tokens are preview-only in Phase 3 and which ones are deferred to later business-state work."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
