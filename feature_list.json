@@ -107,7 +107,7 @@
       "Check that the file has no API, auth, reminder scheduler, or music provider dependency."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
