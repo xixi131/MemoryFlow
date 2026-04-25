@@ -1,6 +1,7 @@
 import CoreGraphics
 
 enum IslandPathFactory {
+    private static let capWidth: CGFloat = 60
     private static let squircleSteps = 30
 
     static func squircleBodyPath(width: CGFloat, height: CGFloat, radius: CGFloat, smoothness: CGFloat) -> CGPath {
@@ -97,6 +98,41 @@ enum IslandPathFactory {
 
         return openSquircleStrokePath(
             width: metrics.width,
+            height: metrics.height,
+            radius: metrics.radius,
+            smoothness: metrics.smoothness
+        )
+    }
+
+    static func leftCapPath(height: CGFloat, radius: CGFloat, smoothness: CGFloat) -> CGPath {
+        let resolvedHeight = max(height, 0)
+        let resolvedRadius = max(radius, 0)
+        let resolvedSmoothness = max(smoothness, 0.01)
+
+        let path = CGMutablePath()
+        path.move(to: .zero)
+        path.addLine(to: CGPoint(x: capWidth, y: 0))
+        path.addLine(to: CGPoint(x: capWidth, y: resolvedHeight))
+        path.addLine(to: CGPoint(x: resolvedRadius, y: resolvedHeight))
+
+        let bottomLeftCenter = CGPoint(x: resolvedRadius, y: resolvedHeight - resolvedRadius)
+        for index in 1...squircleSteps {
+            let angle = (.pi / 2) + (.pi / 2) * (CGFloat(index) / CGFloat(squircleSteps))
+            path.addLine(
+                to: CGPoint(
+                    x: bottomLeftCenter.x + signedSuperellipseComponent(for: cos(angle), smoothness: resolvedSmoothness) * resolvedRadius,
+                    y: bottomLeftCenter.y + superellipseComponent(for: sin(angle), smoothness: resolvedSmoothness) * resolvedRadius
+                )
+            )
+        }
+
+        path.addLine(to: .zero)
+        path.closeSubpath()
+        return path
+    }
+
+    static func leftCapPath(metrics: IslandShapeMetrics) -> CGPath {
+        leftCapPath(
             height: metrics.height,
             radius: metrics.radius,
             smoothness: metrics.smoothness
