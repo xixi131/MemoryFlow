@@ -2,6 +2,9 @@ import CoreGraphics
 
 enum IslandPathFactory {
     private static let capWidth: CGFloat = 60
+    private static let earWidth: CGFloat = 40
+    private static let earTipExtension: CGFloat = 4
+    private static let earBodyOverlap: CGFloat = 1
     private static let squircleSteps = 30
 
     static func squircleBodyPath(width: CGFloat, height: CGFloat, radius: CGFloat, smoothness: CGFloat) -> CGPath {
@@ -170,6 +173,55 @@ enum IslandPathFactory {
             height: metrics.height,
             radius: metrics.radius,
             smoothness: metrics.smoothness
+        )
+    }
+
+    static func earPath(isLeft: Bool, tension: CGFloat, blendHeight: CGFloat) -> CGPath {
+        let resolvedTension = max(tension, 0)
+        let resolvedBlendHeight = max(blendHeight, 0)
+        let curveWidth = resolvedBlendHeight * resolvedTension
+
+        let startX = isLeft
+            ? earWidth + earBodyOverlap
+            : -earBodyOverlap
+        let controlX = isLeft
+            ? startX - curveWidth
+            : startX + curveWidth
+        let endX = isLeft
+            ? controlX - earTipExtension
+            : controlX + earTipExtension
+
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: startX, y: resolvedBlendHeight))
+        path.addCurve(
+            to: CGPoint(x: endX, y: 0),
+            control1: CGPoint(x: startX, y: 0),
+            control2: CGPoint(x: controlX, y: 0)
+        )
+        path.addLine(to: CGPoint(x: startX, y: 0))
+        path.closeSubpath()
+        return path
+    }
+
+    static func leftEarPath(tension: CGFloat, blendHeight: CGFloat) -> CGPath {
+        earPath(isLeft: true, tension: tension, blendHeight: blendHeight)
+    }
+
+    static func leftEarPath(metrics: IslandShapeMetrics) -> CGPath {
+        leftEarPath(
+            tension: metrics.earTension,
+            blendHeight: metrics.earBlendHeight
+        )
+    }
+
+    static func rightEarPath(tension: CGFloat, blendHeight: CGFloat) -> CGPath {
+        earPath(isLeft: false, tension: tension, blendHeight: blendHeight)
+    }
+
+    static func rightEarPath(metrics: IslandShapeMetrics) -> CGPath {
+        rightEarPath(
+            tension: metrics.earTension,
+            blendHeight: metrics.earBlendHeight
         )
     }
 
