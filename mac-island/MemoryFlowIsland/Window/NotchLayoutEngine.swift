@@ -1,12 +1,35 @@
 import AppKit
 
+enum TopAttachmentKind: Equatable {
+    case notch
+    case menuBar
+    case flatTopFallback
+}
+
+struct TopAttachmentMetrics: Equatable {
+    let kind: TopAttachmentKind
+    let topBandFrame: CGRect
+    let notchFrame: CGRect?
+    let menuBarHeight: CGFloat
+    let safeTopInset: CGFloat
+    let pixelScale: CGFloat
+    let availableTopWidth: CGFloat
+    let centerX: CGFloat
+
+    var visualScale: CGFloat {
+        let rawScale = topBandFrame.height / IslandVisualTokens.compact.height
+        return min(max(rawScale, 0.78), 1.18)
+    }
+}
+
 struct IslandPlacementResult {
     let frame: CGRect
+    let attachmentMetrics: TopAttachmentMetrics
 }
 
 struct NotchLayoutEngine {
-    let phase2NotchTopMargin: CGFloat = 10
-    let phase2FlatTopMargin: CGFloat = 10
+    private let designCollapsedSize = IslandShellSizePreset.compactPlaceholder.visibleShellSize
+    private let minimumFlatTopScale: CGFloat = 0.68
     var displayTopEdgeClassifier: DisplayTopEdgeClassifier = DisplayTopEdgeClassifier()
 
     func displayTopEdge(for screenMetrics: ScreenMetrics) -> DisplayTopEdge {
@@ -14,57 +37,24 @@ struct NotchLayoutEngine {
     }
 
     func placementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
-        switch displayTopEdge(for: screenMetrics) {
-        case .notchBearing:
-            return notchPlacementResult(screenMetrics: screenMetrics, islandSize: islandSize)
-        case .flatTop:
-            return flatTopPlacementResult(screenMetrics: screenMetrics, islandSize: islandSize)
-        }
-    }
+        let attachmentMetrics = topAttachmentMetrics(for: screenMetrics)
+        let resolvedSize = resolvedIslandSize(
+            requestedSize: islandSize,
+            attachmentMetrics: attachmentMetrics
+        )
+        let origin = islandOrigin(
+            screenMetrics: screenMetrics,
+            islandSize: resolvedSize,
+            attachmentMetrics: attachmentMetrics
+        )
+        let frame = pixelAligned(
+            CGRect(origin: origin, size: resolvedSize),
+            scale: attachmentMetrics.pixelScale
+        )
 
-    func islandOrigin(screenMetrics: ScreenMetrics, islandSize: CGSize) -> CGPoint {
-        placementResult(screenMetrics: screenMetrics, islandSize: islandSize).frame.origin
-    }
-
-    func islandOrigin(screenFrame: CGRect, islandSize: CGSize) -> CGPoint {
-        islandOrigin(screenFrame: screenFrame, islandSize: islandSize, topMargin: phase2FlatTopMargin)
-    }
-
-    func islandOrigin(screenFrame: CGRect, islandSize: CGSize, topMargin: CGFloat) -> CGPoint {
-        let x = screenFrame.midX - (islandSize.width / 2)
-        let y = screenFrame.maxY - islandSize.height - topMargin
-        return CGPoint(x: x, y: y)
-    }
-
-    func islandOrigin(topSafeRegion: CGRect, islandSize: CGSize, topMargin: CGFloat) -> CGPoint {
-        let x = topSafeRegion.midX - (islandSize.width / 2)
-        let y = topSafeRegion.minY - islandSize.height - topMargin
-        return CGPoint(x: x, y: y)
-    }
-
-    func flatTopFallbackOrigin(visibleFrame: CGRect, islandSize: CGSize, topMargin: CGFloat) -> CGPoint {
-        let proposedX = visibleFrame.midX - (islandSize.width / 2)
-        let maxOriginX = max(visibleFrame.maxX - islandSize.width, visibleFrame.minX)
-        let x = min(max(proposedX, visibleFrame.minX), maxOriginX)
-
-        let proposedY = visibleFrame.maxY - islandSize.height - topMargin
-        let maxOriginY = max(visibleFrame.maxY - islandSize.height, visibleFrame.minY)
-        let y = min(max(proposedY, visibleFrame.minY), maxOriginY)
-
-        return CGPoint(x: x, y: y)
-    }
-
-    func topSafeRegion(for screenMetrics: ScreenMetrics) -> CGRect {
-        let insetLeft = max(screenMetrics.safeAreaInsets.left, 0)
-        let insetRight = max(screenMetrics.safeAreaInsets.right, 0)
-        let safeWidth = max(screenMetrics.frame.width - insetLeft - insetRight, 0)
-        let safeHeight = max(screenMetrics.safeAreaInsets.top, 0)
-
-        return CGRect(
-            x: screenMetrics.frame.minX + insetLeft,
-            y: screenMetrics.frame.maxY - safeHeight,
-            width: safeWidth,
-            height: safeHeight
+        return IslandPlacementResult(
+            frame: frame,
+            attachmentMetrics: attachmentMetrics
         )
     }
 
@@ -73,30 +63,121 @@ struct NotchLayoutEngine {
     }
 
     func islandFrame(screenFrame: CGRect, islandSize: CGSize) -> CGRect {
-        CGRect(origin: islandOrigin(screenFrame: screenFrame, islandSize: islandSize), size: islandSize)
+        let x = screenFrame.midX - (islandSize.width / 2)
+        let y = screenFrame.maxY - islandSize.height
+        return CGRect(origin: CGPoint(x: x, y: y), size: islandSize)
     }
 
-    private func notchPlacementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
-        let frame = CGRect(
-            origin: islandOrigin(
-                topSafeRegion: topSafeRegion(for: screenMetrics),
-                islandSize: islandSize,
-                topMargin: phase2NotchTopMargin
+    func topAttachmentMetrics(for screenMetrics: ScreenMetrics) -> TopAttachmentMetrics {
+        if let notchFrame = screenMetrics.notchFrame {
+            let topBandFrame = pixelAligned(
+                notchFrame,
+                scale: screenMetrics.backingScaleFactor
+            )
+            return TopAttachmentMetrics(
+                kind: .notch,
+                topBandFrame: topBandFrame,
+                notchFrame: topBandFrame,
+                menuBarHeight: menuBarHeight(for: screenMetrics),
+                safeTopInset: max(screenMetrics.safeAreaInsets.top, 0),
+                pixelScale: max(screenMetrics.backingScaleFactor, 1),
+                availableTopWidth: topBandFrame.width,
+                centerX: topBandFrame.midX
+            )
+        }
+
+        let menuBarHeight = menuBarHeight(for: screenMetrics)
+        let topBandHeight = menuBarHeight > 0
+            ? menuBarHeight
+            : min(designCollapsedSize.height, max(screenMetrics.safeAreaInsets.top, 0))
+        let resolvedTopBandHeight = topBandHeight > 0 ? topBandHeight : designCollapsedSize.height
+        let topBandFrame = pixelAligned(
+            CGRect(
+                x: screenMetrics.frame.minX,
+                y: screenMetrics.frame.maxY - resolvedTopBandHeight,
+                width: screenMetrics.frame.width,
+                height: resolvedTopBandHeight
             ),
-            size: islandSize
+            scale: screenMetrics.backingScaleFactor
         )
-        return IslandPlacementResult(frame: frame)
+
+        return TopAttachmentMetrics(
+            kind: menuBarHeight > 0 ? .menuBar : .flatTopFallback,
+            topBandFrame: topBandFrame,
+            notchFrame: nil,
+            menuBarHeight: menuBarHeight,
+            safeTopInset: max(screenMetrics.safeAreaInsets.top, 0),
+            pixelScale: max(screenMetrics.backingScaleFactor, 1),
+            availableTopWidth: topBandFrame.width,
+            centerX: topBandFrame.midX
+        )
     }
 
-    private func flatTopPlacementResult(screenMetrics: ScreenMetrics, islandSize: CGSize) -> IslandPlacementResult {
-        let frame = CGRect(
-            origin: flatTopFallbackOrigin(
-                visibleFrame: screenMetrics.visibleFrame,
-                islandSize: islandSize,
-                topMargin: phase2FlatTopMargin
-            ),
-            size: islandSize
+    private func resolvedIslandSize(
+        requestedSize: CGSize,
+        attachmentMetrics: TopAttachmentMetrics
+    ) -> CGSize {
+        switch attachmentMetrics.kind {
+        case .notch:
+            if isCompactPlaceholderRequest(requestedSize),
+               let notchFrame = attachmentMetrics.notchFrame {
+                return notchFrame.size
+            }
+
+            return CGSize(
+                width: min(max(requestedSize.width, attachmentMetrics.topBandFrame.width), attachmentMetrics.availableTopWidth),
+                height: max(requestedSize.height, attachmentMetrics.topBandFrame.height)
+            )
+
+        case .menuBar, .flatTopFallback:
+            if isCompactPlaceholderRequest(requestedSize) {
+                let topBandHeight = max(attachmentMetrics.topBandFrame.height, 1)
+                let scale = max(topBandHeight / designCollapsedSize.height, minimumFlatTopScale)
+                let height = topBandHeight
+                let width = min(designCollapsedSize.width * scale, attachmentMetrics.availableTopWidth)
+                return CGSize(width: width, height: height)
+            }
+
+            return CGSize(
+                width: min(requestedSize.width, attachmentMetrics.availableTopWidth),
+                height: requestedSize.height
+            )
+        }
+    }
+
+    private func islandOrigin(
+        screenMetrics: ScreenMetrics,
+        islandSize: CGSize,
+        attachmentMetrics: TopAttachmentMetrics
+    ) -> CGPoint {
+        let proposedX = attachmentMetrics.centerX - (islandSize.width / 2)
+        let minX = screenMetrics.frame.minX
+        let maxX = max(screenMetrics.frame.maxX - islandSize.width, minX)
+        let x = min(max(proposedX, minX), maxX)
+        let y = screenMetrics.frame.maxY - islandSize.height
+        return CGPoint(x: x, y: y)
+    }
+
+    private func menuBarHeight(for screenMetrics: ScreenMetrics) -> CGFloat {
+        max(screenMetrics.frame.maxY - screenMetrics.visibleFrame.maxY, 0)
+    }
+
+    private func isCompactPlaceholderRequest(_ requestedSize: CGSize) -> Bool {
+        abs(requestedSize.width - designCollapsedSize.width) < 0.5 &&
+            abs(requestedSize.height - designCollapsedSize.height) < 0.5
+    }
+
+    private func pixelAligned(_ rect: CGRect, scale: CGFloat) -> CGRect {
+        let safeScale = max(scale, 1)
+        return CGRect(
+            x: pixelAligned(rect.origin.x, scale: safeScale),
+            y: pixelAligned(rect.origin.y, scale: safeScale),
+            width: pixelAligned(rect.size.width, scale: safeScale),
+            height: pixelAligned(rect.size.height, scale: safeScale)
         )
-        return IslandPlacementResult(frame: frame)
+    }
+
+    private func pixelAligned(_ value: CGFloat, scale: CGFloat) -> CGFloat {
+        (value * scale).rounded() / scale
     }
 }

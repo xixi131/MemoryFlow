@@ -118,7 +118,7 @@
       "Check that the resolved metrics for the five preview states match the values recorded in docs/mac-island-visual-token-map.md."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -129,7 +129,7 @@
       "Check the generated body path with at least one compact and one expanded preview input and confirm the top edge stays flat while the lower corners remain continuous."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -140,7 +140,7 @@
       "Check that the open-stroke path does not introduce a top-edge line and can be disabled entirely for compact states that must remain fully black."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -151,7 +151,7 @@
       "Check that the rendered left cap touches the body path without clipping or leaving a transparent seam in both compact and expanded preview shells."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -162,7 +162,7 @@
       "Check that the rendered right cap stays seam-free against the body path in both compact and expanded preview shells."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -173,7 +173,7 @@
       "Check that both mirrored ears can render from idle, activity, and expanded metrics without exposing a transparent gap at the join."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -184,7 +184,7 @@
       "Check that `IslandVisualStatePreview.swift` and `IslandRootView.swift` can consume the engine without duplicating any path math."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -195,7 +195,7 @@
       "Check the native preview window and confirm the compact collapsed shell is visible and uses the documented compact metrics."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -206,7 +206,7 @@
       "Check the native preview window and confirm hover mode differs only by allowed hover geometry effects rather than by business content."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -217,7 +217,7 @@
       "Check the native preview window and confirm the activity compact shell is visually distinct from the normal compact shell by geometry alone."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -228,7 +228,7 @@
       "Check the native preview window and confirm the expanded music shell can render without any music provider dependency."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -239,7 +239,7 @@
       "Check the native preview window and confirm the expanded app shell can render independently from the expanded music shell."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -250,7 +250,7 @@
       "Check the native app window and confirm each preview state can be selected repeatedly without breaking the Phase 2 top attachment."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -261,7 +261,7 @@
       "Check that the preview shell still attaches to the active top band and that external-display scaling does not exceed the available top width."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -272,7 +272,7 @@
       "Check that switching between the five preview shells updates panel size without pushing the window away from the top anchor."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -283,7 +283,7 @@
       "Check the native preview window and confirm compact shells remain fully black and expanded or hover shells are the only ones that show the allowed effects."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "e2e",
@@ -294,7 +294,7 @@
       "Record the parity result and any intentional deltas in docs/mac-island-phase3-geometry-acceptance.md with evidence links."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "e2e",
@@ -305,7 +305,7 @@
       "Attach the screenshot evidence to docs/mac-island-phase3-geometry-acceptance.md and update the linked Phase 3 checklist rows."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "e2e",
@@ -316,7 +316,7 @@
       "Update docs/mac-island-phase3-geometry-acceptance.md and docs/mac-island-migration-checklist.md with the observed screen-matrix evidence."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
@@ -327,6 +327,6 @@
       "Check that the handoff note explicitly says business data, auth, and state-machine migration remain out of scope for this completed slice."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]

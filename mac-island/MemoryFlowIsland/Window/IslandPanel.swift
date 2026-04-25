@@ -7,38 +7,45 @@ enum IslandShellSizePreset {
     var visibleShellSize: NSSize {
         switch self {
         case .compactPlaceholder:
-            return NSSize(width: 360, height: 96)
+            return NSSize(width: 180, height: 36)
         case .expandedPlaceholder:
             return NSSize(width: 460, height: 320)
         }
     }
 
     var panelFrameSize: NSSize {
-        let inset = IslandPanel.shellShadowMargin * 2
         return NSSize(
-            width: visibleShellSize.width + inset,
-            height: visibleShellSize.height + inset
+            width: visibleShellSize.width + (IslandPanel.shellHorizontalShadowMargin * 2),
+            height: visibleShellSize.height + IslandPanel.shellBottomShadowMargin
         )
     }
 }
 
 final class IslandPanel: NSPanel {
-    static let shellShadowMargin: CGFloat = 12
+    static let shellHorizontalShadowMargin: CGFloat = 0
+    static let shellBottomShadowMargin: CGFloat = 0
 
     private(set) var shellSizePreset: IslandShellSizePreset
+    private var requestedVisibleShellSizeOverride: NSSize?
+    private var currentShadowOutsets: IslandShadowOutsets = .zero
+    private var renderedVisibleShellSize: NSSize?
 
     var isClickThroughEnabled: Bool {
         ignoresMouseEvents
     }
 
     var visibleShellSize: NSSize {
-        shellSizePreset.visibleShellSize
+        renderedVisibleShellSize ?? requestedShellSize
+    }
+
+    var requestedShellSize: NSSize {
+        requestedVisibleShellSizeOverride ?? shellSizePreset.visibleShellSize
     }
 
     var hoverHotspotFrame: CGRect {
         CGRect(
-            x: frame.minX + Self.shellShadowMargin,
-            y: frame.minY + Self.shellShadowMargin,
+            x: frame.minX + currentShadowOutsets.horizontal,
+            y: frame.minY + currentShadowOutsets.bottom,
             width: visibleShellSize.width,
             height: visibleShellSize.height
         )
@@ -70,6 +77,15 @@ final class IslandPanel: NSPanel {
 
     func setShellSizePreset(_ shellSizePreset: IslandShellSizePreset) {
         self.shellSizePreset = shellSizePreset
+        requestedVisibleShellSizeOverride = nil
+        currentShadowOutsets = .zero
+        renderedVisibleShellSize = nil
+    }
+
+    func setRequestedShellLayout(visibleShellSize: NSSize, shadowOutsets: IslandShadowOutsets) {
+        requestedVisibleShellSizeOverride = visibleShellSize
+        currentShadowOutsets = shadowOutsets
+        renderedVisibleShellSize = nil
     }
 
     func setClickThroughEnabled(_ isEnabled: Bool) {
@@ -82,18 +98,20 @@ final class IslandPanel: NSPanel {
     }
 
     func panelFrame(forVisibleShellFrame visibleShellFrame: CGRect) -> CGRect {
-        CGRect(
-            x: visibleShellFrame.minX - Self.shellShadowMargin,
-            y: visibleShellFrame.minY - Self.shellShadowMargin,
-            width: visibleShellFrame.width + (Self.shellShadowMargin * 2),
-            height: visibleShellFrame.height + (Self.shellShadowMargin * 2)
+        renderedVisibleShellSize = visibleShellFrame.size
+
+        return CGRect(
+            x: visibleShellFrame.minX - currentShadowOutsets.horizontal,
+            y: visibleShellFrame.minY - currentShadowOutsets.bottom,
+            width: visibleShellFrame.width + (currentShadowOutsets.horizontal * 2),
+            height: visibleShellFrame.height + currentShadowOutsets.bottom
         )
     }
 
     private func configureAppearance() {
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         isFloatingPanel = true
         level = .statusBar
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]

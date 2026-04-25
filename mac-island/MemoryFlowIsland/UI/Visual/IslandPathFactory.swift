@@ -7,6 +7,11 @@ enum IslandPathFactory {
     private static let earBodyOverlap: CGFloat = 1
     private static let squircleSteps = 30
 
+    static var shellCapWidth: CGFloat { capWidth }
+    static var shellEarWidth: CGFloat { earWidth }
+    static var shellEarBodyOverlap: CGFloat { earBodyOverlap }
+    static var shellEarTipExtension: CGFloat { earTipExtension }
+
     static func squircleBodyPath(width: CGFloat, height: CGFloat, radius: CGFloat, smoothness: CGFloat) -> CGPath {
         let resolvedWidth = max(width, 0)
         let resolvedHeight = max(height, 0)

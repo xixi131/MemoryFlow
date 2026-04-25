@@ -58,4 +58,16 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Expanded App"
         }
     }
+
+    var nextPreviewState: IslandVisualState {
+        let orderedStates = Self.allCases
+        guard let currentIndex = orderedStates.firstIndex(of: self) else {
+            return .compactCollapsed
+        }
+
+        let nextIndex = orderedStates.index(after: currentIndex)
+        return nextIndex == orderedStates.endIndex
+            ? orderedStates[orderedStates.startIndex]
+            : orderedStates[nextIndex]
+    }
 }

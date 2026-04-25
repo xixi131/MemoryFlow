@@ -7,7 +7,7 @@ enum DisplayTopEdge {
 
 struct DisplayTopEdgeClassifier {
     func classify(_ screenMetrics: ScreenMetrics) -> DisplayTopEdge {
-        if screenMetrics.safeAreaInsets.top > 0 {
+        if screenMetrics.notchFrame != nil {
             return .notchBearing
         }
 

@@ -4,6 +4,138 @@
 - As of 2026-04-23, the intended startup order is `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 - Read this archive only when you need deeper implementation audit detail than the compressed recent log provides.
 
+## 2026-04-26 - Main-log rollover for the Phase 3 path-factory slice
+
+- Reason for rollover:
+  - `codex-progress.md` exceeded the default startup threshold again during the Phase 3 native geometry path-factory slice.
+  - The default startup path only needs the current queue summary plus the newest path-factory records that feed `IslandShapeEngine.swift` and `IslandVisualStatePreview.swift`.
+- Detailed records moved out of the default startup path:
+  - 2026-04-26 - Native path factory now mirrors the Windows open stroke for stroke-allowed shells.
+  - 2026-04-26 - Native path factory now mirrors the Windows squircle body path for compact and expanded shells.
+  - 2026-04-25 - Shared shape metrics now resolve preview states into concrete geometry inputs.
+  - 2026-04-25 - Preview-only native visual states were added for the five Phase 3 shells.
+  - 2026-04-25 - Phase 3 geometry values now have one shared Swift token source.
+  - 2026-04-25 - Phase 3 visual-geometry scaffolding landed under UI/Visual.
+  - 2026-04-25 - Phase 3 checklist gates were added to the migration checklist.
+  - 2026-04-25 - Phase 3 acceptance matrix now names the five preview shells and explicit non-goals.
+  - 2026-04-25 - Phase 3 geometry acceptance document shell created.
+  - 2026-04-25 - Path-function sources and seam constraints were mapped for the native path factory.
+  - 2026-04-25 - Expanded, hover, and shadow geometry tokens were mapped for the Phase 3 native engine.
+  - 2026-04-25 - Compact and activity shell token values were mapped for Phase 3 native previews.
+  - 2026-04-25 - Phase 3 visual token map shell created for the native geometry migration.
+  - 2026-04-25 - Hover exit now restores click-through without leaving the shell stuck interactive.
+  - 2026-04-25 - Hover entry now transitions the shell into interactive mode.
+  - 2026-04-25 - Hover hotspot monitoring now works while the shell stays click-through.
+  - 2026-04-25 - Phase 2 window-system handoff note added for the next native shell slice.
+  - 2026-04-25 - Phase 2 acceptance checklist now covers shell recovery and hover behaviors.
+- Full detailed entries preserved below:
+
+## 2026-04-26 - Native path factory now mirrors the Windows open stroke for stroke-allowed shells
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` with a CGPath-based `openSquircleStrokePath(width:height:radius:smoothness:)` port plus a metrics overload that returns `nil` when `IslandShapeMetrics.showsStroke` is false, keeping compact and activity shells fully black.
+- Reused the same width, height, radius, and smoothness inputs as the filled body path so the open stroke follows the shared shell perimeter while staying unclosed across the top edge.
+- Validation: `./init.sh`, `MEMORYFLOW_BACKEND_PORT=18080 ./init.sh`, and `MEMORYFLOW_BACKEND_PORT=48080 ./init.sh` were attempted to satisfy the full execution-path contract but hit sandbox port-binding failures (`SocketException: Operation not permitted` and `listen EPERM`); `swiftc -module-cache-path /tmp/mf-swift-module-cache -typecheck mac-island/MemoryFlowIsland/UI/Visual/IslandVisualTokens.swift mac-island/MemoryFlowIsland/UI/Visual/IslandVisualState.swift mac-island/MemoryFlowIsland/UI/Visual/IslandShapeMetrics.swift mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` passed; and `/tmp/island_path_validation` printed `expandedStroke.start=460.0,0.0`, `expandedStroke.end=0.0,0.0`, `expandedStroke.bounds=460.0x210.0`, and `compactStroke=nil` after checking the path stays open at the top and disabled for compact state.
+
+## 2026-04-26 - Native path factory now mirrors the Windows squircle body path for compact and expanded shells
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` with a CGPath-based `squircleBodyPath(width:height:radius:smoothness:)` port plus a shared-metrics overload, preserving the Windows `generateSquirclePath` input contract for compact and expanded shells.
+- Kept the top edge as explicit straight-line segments and sampled both lower corners with the same superellipse math used in `DynamicIslandWidget.tsx`, so the native body path stays aligned with the documented Phase 3 geometry tokens instead of falling back to a generic capsule.
+- Validation: `MEMORYFLOW_BACKEND_PORT=38081 ./init.sh` succeeded outside the sandbox and brought up the backend plus Vite on `http://localhost:3003/`; `swiftc -module-cache-path /tmp/memoryflow-swift-cache -typecheck mac-island/MemoryFlowIsland/UI/Visual/IslandVisualTokens.swift mac-island/MemoryFlowIsland/UI/Visual/IslandVisualState.swift mac-island/MemoryFlowIsland/UI/Visual/IslandShapeMetrics.swift mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` passed; and `/tmp/island_path_validation` printed `compactCollapsed: ok width=160.0 height=36.0 radius=22.0 smoothness=3.5` plus `expandedMusic: ok width=460.0 height=210.0 radius=48.0 smoothness=3.5` after checking a flat top edge and continuous lower-corner samples.
+
+## 2026-04-25 - Shared shape metrics now resolve preview states into concrete geometry inputs
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandShapeMetrics.swift` so preview states now resolve width, height, radius, smoothness, ear tension, ear blend height, render scale, stroke visibility, and shadow visibility from `IslandVisualState` plus an external scalar input.
+- Kept the metrics API isolated from business-state enums by resolving everything through `IslandVisualState.tokenSet`, hover tokens, and shadow tokens instead of auth, reminder, todo, or music-provider logic.
+- Validation: `swiftc -module-cache-path /tmp/mf-task11-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` passed, and a dedicated Swift harness printed `phase3-shape-metrics-ok` after checking all five preview states against the documented Phase 3 values.
+
+## 2026-04-25 - Preview-only native visual states were added for the five Phase 3 shells
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualState.swift` with preview-only cases for compact collapsed, hover compact, activity compact, expanded music, and expanded app.
+- Added small geometry helpers for `isExpanded`, `allowsShadow`, and `tokenSet`, so later preview and metrics work can stay detached from auth, reminder, todo, or music-provider state.
+- Validation: `swiftc -module-cache-path /tmp/mf-task10-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` passed, and direct file checks confirmed the state file contains all five cases and no business-data dependency hooks.
+
+## 2026-04-25 - Phase 3 geometry values now have one shared Swift token source
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualTokens.swift` with grouped shell tokens for compact, activity, expanded music, expanded app, hover, and shadow behavior, plus a stable `IslandVisualTokenSet` lookup.
+- Refreshed `docs/mac-island-visual-token-map.md` so the Swift token source can map back to documented compact preview width selection, idle or activity or expanded ear metrics, and the Phase 3 stroke-visibility boundary.
+- Validation: `swiftc -module-cache-path /tmp/mf-task9-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` passed, and the token-map document now contains the added source-backed rows for every new Swift token family.
+
+## 2026-04-25 - Phase 3 visual-geometry scaffolding landed under UI/Visual
+
+- Added `mac-island/MemoryFlowIsland/UI/Visual/` with placeholder files for `IslandVisualTokens.swift`, `IslandVisualState.swift`, `IslandShapeMetrics.swift`, `IslandPathFactory.swift`, `IslandShapeEngine.swift`, and `IslandVisualStatePreview.swift`.
+- Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` so the new Visual files are present in the `UI` group and the native app target sources without disturbing the existing Phase 2 window-layer files.
+- Validation: `plutil -lint mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` passed and `swiftc -module-cache-path /tmp/mf-task8-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` completed successfully.
+
+## 2026-04-25 - Phase 3 checklist gates were added to the migration checklist
+
+- Updated `docs/mac-island-migration-checklist.md` with a new `Phase 3 Visual Geometry` section covering path parity, preview shell coverage, compact-state black-edge checks, ear seam checks, and external-display scaling.
+- Linked each Phase 3 checklist row to `docs/mac-island-phase3-geometry-acceptance.md` and `docs/mac-island-visual-token-map.md`, while leaving every status field prepared rather than marked complete.
+- Validation: confirmed the new section exists, each checklist row has a clear pass condition, and the requested acceptance/token-map links are present.
+
+## 2026-04-25 - Phase 3 acceptance matrix now names the five preview shells and explicit non-goals
+
+- Updated `docs/mac-island-phase3-geometry-acceptance.md` so `Preview Matrix` now includes compact collapsed, hover compact, activity compact, expanded music shell, and expanded app shell as prepared acceptance rows.
+- Added `Non-Goals` rows that explicitly keep auth sync, review data, todo data, real music provider integration, and Phase 5 state-machine work outside the Phase 3 geometry gate.
+- Validation: confirmed the document contains five preview rows, five non-goal rows, and link-backed evidence references to `docs/mac-island-visual-token-map.md` or `灵动岛迁移方案.md` in each acceptance row.
+
+## 2026-04-25 - Phase 3 geometry acceptance document shell created
+
+- Added `docs/mac-island-phase3-geometry-acceptance.md` with the required shell sections: `Preview Matrix`, `Path Parity`, `Pixel Edge Checks`, `External Display Scaling`, `Non-Goals`, and `Evidence`.
+- Added an empty checklist table under each heading with the columns `Condition`, `Expected Result`, `Evidence`, and `Status`.
+- Validation: confirmed the file exists, the heading order matches the requested shell, and each section contains the expected empty checklist table only.
+
+## 2026-04-25 - Path-function sources and seam constraints were mapped for the native path factory
+
+- Updated `docs/mac-island-visual-token-map.md` so `Path Sources` now maps `generateSquirclePath`, `generateOpenSquirclePath`, `generateLeftCapPath`, `generateRightCapPath`, and `generateEarPath` to their Windows inputs and native roles.
+- Added `Seam Rules` rows for the `1px` ear overlap behavior, the explicit ban on replacing the shell with a `Capsule`, and the rule that stroke can appear only where the Windows source already draws it.
+- Validation: confirmed all five path rows and all requested seam-sensitive constraints now have concrete source references in the token-map document.
+
+## 2026-04-25 - Expanded, hover, and shadow geometry tokens were mapped for the Phase 3 native engine
+
+- Updated `docs/mac-island-visual-token-map.md` so the `Expanded Shell Tokens` section now records width `460`, music height `210`, app height `320`, and expanded radius `48` from the Windows widget path.
+- Added `Hover and Shadow Rules` rows for collapsed hover scale `1.06`, the `isExpanded || isHovered` shadow visibility gate, and the `260ms ease-out` shadow transition timing.
+- Validation: confirmed both sections contain direct code references and explicitly mark which rules are preview-direct in Phase 3 versus deferred until later business-state migration.
+
+## 2026-04-25 - Compact and activity shell token values were mapped for Phase 3 native previews
+
+- Updated `docs/mac-island-visual-token-map.md` so the `Compact Shell Tokens` and `Activity Shell Tokens` sections now capture the Windows collapsed-width branches, shared `36`-point collapsed height, and the activity-vs-default radius and smoothness values.
+- Each new row now links back to direct `DynamicIslandWidget.tsx` code references and names the expected preview-shell usage instead of leaving shell placeholders behind.
+- Validation: confirmed both sections contain concrete data rows with direct code references and no placeholder-only content remains in those sections.
+
+## 2026-04-25 - Phase 3 visual token map shell created for the native geometry migration
+
+- Added `docs/mac-island-visual-token-map.md` with the required shell headings: `Compact Shell Tokens`, `Activity Shell Tokens`, `Expanded Shell Tokens`, `Hover and Shadow Rules`, `Path Sources`, `Seam Rules`, and `Evidence`.
+- Added a scope note that keeps the document limited to Phase 3 visual geometry and explicitly excludes auth, todo data, review data, and music provider integration.
+- Validation: confirmed the file opens from repository root, verified heading uniqueness, and checked that all required headings are present.
+
+## 2026-04-25 - Hover exit now restores click-through without leaving the shell stuck interactive
+
+- Updated `mac-island/MemoryFlowIsland/Window/IslandHoverMonitor.swift` so the monitor reports both hover-entry and hover-exit edge transitions instead of only start events.
+- Updated `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` so hover-exit restores click-through only after the pointer actually leaves the island hotspot.
+- Validation: `swiftc -module-cache-path /tmp/mf-task44-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` plus the worker-reported hover-monitor harness result `hover-monitor-cycles-ok`.
+
+## 2026-04-25 - Hover entry now transitions the shell into interactive mode
+
+- Updated `IslandWindowController.swift` so hover-start routes through a dedicated `activateInteractiveHoverMode()` path.
+- Updated `IslandPanel.swift` with an in-place helper that disables click-through without recreating the panel.
+- Validation: full native source set typechecked through `swiftc -module-cache-path /tmp/mf-task43-module-cache -typecheck`.
+
+## 2026-04-25 - Hover hotspot monitoring now works while the shell stays click-through
+
+- Added `mac-island/MemoryFlowIsland/Window/IslandHoverMonitor.swift` as the Window-layer hotspot monitor.
+- Wired monitor lifecycle into `IslandWindowController.show()`, `hide()`, and teardown.
+- Validation: full native source set typechecked through `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck`.
+
+## 2026-04-25 - Phase 2 window-system handoff note added for the next native shell slice
+
+- Added `docs/mac-island-phase2-window-handoff.md` with the active Window-layer files, acceptance path, and explicit non-goals.
+- Validation: lightweight doc checks confirmed Phase 2 scope and references remain correct.
+
+## 2026-04-25 - Phase 2 acceptance checklist now covers shell recovery and hover behaviors
+
+- Updated `docs/mac-island-migration-checklist.md` with the `Phase 2 Window Positioning and Recovery` section.
+- Validation: lightweight checklist review confirmed the requested window-shell behaviors are present and scoped to Phase 2 only.
+
 ## Bootstrap
 
 ### What this file is for:
