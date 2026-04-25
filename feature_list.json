@@ -52,7 +52,7 @@
       "Check that the document contains only shell content and no unverified implementation claims."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

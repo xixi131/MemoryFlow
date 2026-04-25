@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Create the Phase 3 geometry acceptance document shell for preview, path, and pixel verification.`
+- First pending task: `Fill the Phase 3 acceptance document with the five preview shells and explicit non-goal boundaries.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after the acceptance shell: fill the preview matrix and non-goal boundaries, then append Phase 3 checklist gates.
+- Immediate follow-up tasks after the preview matrix fill-in: append Phase 3 checklist gates, then move into the first frontend geometry scaffolding task.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 3 geometry acceptance document shell created
+
+- Added `docs/mac-island-phase3-geometry-acceptance.md` with the required shell sections: `Preview Matrix`, `Path Parity`, `Pixel Edge Checks`, `External Display Scaling`, `Non-Goals`, and `Evidence`.
+- Added an empty checklist table under each heading with the columns `Condition`, `Expected Result`, `Evidence`, and `Status`.
+- Validation: confirmed the file exists, the heading order matches the requested shell, and each section contains the expected empty checklist table only.
 
 ## 2026-04-25 - Path-function sources and seam constraints were mapped for the native path factory
 
