@@ -63,7 +63,7 @@
       "Check that each acceptance row names an observable preview result and links back to docs/mac-island-visual-token-map.md or 灵动岛迁移方案.md."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

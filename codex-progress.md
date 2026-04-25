@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Fill the Phase 3 acceptance document with the five preview shells and explicit non-goal boundaries.`
+- First pending task: `Add Phase 3 geometry checklist rows to the migration checklist so later phases can gate on visual evidence.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after the preview matrix fill-in: append Phase 3 checklist gates, then move into the first frontend geometry scaffolding task.
+- Immediate follow-up tasks after the Phase 3 checklist rows: move into the first frontend geometry scaffolding task, then add the shared Swift visual token source.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 3 acceptance matrix now names the five preview shells and explicit non-goals
+
+- Updated `docs/mac-island-phase3-geometry-acceptance.md` so `Preview Matrix` now includes compact collapsed, hover compact, activity compact, expanded music shell, and expanded app shell as prepared acceptance rows.
+- Added `Non-Goals` rows that explicitly keep auth sync, review data, todo data, real music provider integration, and Phase 5 state-machine work outside the Phase 3 geometry gate.
+- Validation: confirmed the document contains five preview rows, five non-goal rows, and link-backed evidence references to `docs/mac-island-visual-token-map.md` or `灵动岛迁移方案.md` in each acceptance row.
 
 ## 2026-04-25 - Phase 3 geometry acceptance document shell created
 
