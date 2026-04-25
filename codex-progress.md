@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Record the Windows path-function sources and seam constraints that the native path factory must preserve.`
+- First pending task: `Create the Phase 3 geometry acceptance document shell for preview, path, and pixel verification.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after path-function and seam documentation: Phase 3 geometry acceptance shell work, then Phase 3 acceptance matrix fill-in.
+- Immediate follow-up tasks after the acceptance shell: fill the preview matrix and non-goal boundaries, then append Phase 3 checklist gates.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Path-function sources and seam constraints were mapped for the native path factory
+
+- Updated `docs/mac-island-visual-token-map.md` so `Path Sources` now maps `generateSquirclePath`, `generateOpenSquirclePath`, `generateLeftCapPath`, `generateRightCapPath`, and `generateEarPath` to their Windows inputs and native roles.
+- Added `Seam Rules` rows for the `1px` ear overlap behavior, the explicit ban on replacing the shell with a `Capsule`, and the rule that stroke can appear only where the Windows source already draws it.
+- Validation: confirmed all five path rows and all requested seam-sensitive constraints now have concrete source references in the token-map document.
 
 ## 2026-04-25 - Expanded, hover, and shadow geometry tokens were mapped for the Phase 3 native engine
 

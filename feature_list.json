@@ -41,7 +41,7 @@
       "Check that the document explicitly states Capsule replacement is not acceptable for these shapes and that each row links to a concrete source location."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
