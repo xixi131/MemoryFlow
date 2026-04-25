@@ -96,7 +96,7 @@
       "Check that token names are stable, compile cleanly, and do not depend on auth, reminder, todo, or music-provider state."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

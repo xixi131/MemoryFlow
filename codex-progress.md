@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Add a single Swift token source for compact, activity, expanded, hover, and shadow geometry values.`
+- First pending task: `Add preview-only visual state cases so Phase 3 can render shell variants without business data.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after the shared token source: preview-only visual state cases, shared shape metrics, and then the first path-factory port.
+- Immediate follow-up tasks after the preview-only visual states: shared shape metrics, then the first path-factory port for the body path.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 3 geometry values now have one shared Swift token source
+
+- Implemented `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualTokens.swift` with grouped shell tokens for compact, activity, expanded music, expanded app, hover, and shadow behavior, plus a stable `IslandVisualTokenSet` lookup.
+- Refreshed `docs/mac-island-visual-token-map.md` so the Swift token source can map back to documented compact preview width selection, idle or activity or expanded ear metrics, and the Phase 3 stroke-visibility boundary.
+- Validation: `swiftc -module-cache-path /tmp/mf-task9-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland -g '*.swift')` passed, and the token-map document now contains the added source-backed rows for every new Swift token family.
 
 ## 2026-04-25 - Phase 3 visual-geometry scaffolding landed under UI/Visual
 
