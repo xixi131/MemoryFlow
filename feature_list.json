@@ -19,7 +19,7 @@
       "Check that every new row includes a direct code reference and no placeholder text remains in those two sections."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

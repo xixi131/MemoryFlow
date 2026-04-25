@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Record the Windows compact and activity shell token values needed for the native preview shells.`
+- First pending task: `Record the Windows expanded, hover, and shadow token values needed for the native geometry engine.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after compact/activity token capture: expanded/hover/shadow token capture, then path-function and seam documentation.
+- Immediate follow-up tasks after expanded/hover/shadow token capture: path-function and seam documentation, then Phase 3 geometry acceptance shell work.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Compact and activity shell token values were mapped for Phase 3 native previews
+
+- Updated `docs/mac-island-visual-token-map.md` so the `Compact Shell Tokens` and `Activity Shell Tokens` sections now capture the Windows collapsed-width branches, shared `36`-point collapsed height, and the activity-vs-default radius and smoothness values.
+- Each new row now links back to direct `DynamicIslandWidget.tsx` code references and names the expected preview-shell usage instead of leaving shell placeholders behind.
+- Validation: confirmed both sections contain concrete data rows with direct code references and no placeholder-only content remains in those sections.
 
 ## 2026-04-25 - Phase 3 visual token map shell created for the native geometry migration
 
