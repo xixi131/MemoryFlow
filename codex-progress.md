@@ -6,9 +6,9 @@
 - The next execution slice starts with visual-token documentation before Swift geometry implementation.
 
 ### Queue snapshot
-- First pending task: `Add Phase 3 geometry checklist rows to the migration checklist so later phases can gate on visual evidence.`
+- First pending task: `Create the native visual-geometry module scaffolding under mac-island for Phase 3 work.`
 - Requested execution mode: degraded single-agent `$Auto_dev` loop with no sub-agents.
-- Immediate follow-up tasks after the Phase 3 checklist rows: move into the first frontend geometry scaffolding task, then add the shared Swift visual token source.
+- Immediate follow-up tasks after the scaffolding task: add the shared Swift visual token source, then preview-only visual state cases and shared shape metrics.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-25 - Phase 3 checklist gates were added to the migration checklist
+
+- Updated `docs/mac-island-migration-checklist.md` with a new `Phase 3 Visual Geometry` section covering path parity, preview shell coverage, compact-state black-edge checks, ear seam checks, and external-display scaling.
+- Linked each Phase 3 checklist row to `docs/mac-island-phase3-geometry-acceptance.md` and `docs/mac-island-visual-token-map.md`, while leaving every status field prepared rather than marked complete.
+- Validation: confirmed the new section exists, each checklist row has a clear pass condition, and the requested acceptance/token-map links are present.
 
 ## 2026-04-25 - Phase 3 acceptance matrix now names the five preview shells and explicit non-goals
 

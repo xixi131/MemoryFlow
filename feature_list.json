@@ -74,7 +74,7 @@
       "Check that each checklist row has a clear pass condition and that status fields are prepared but not marked complete."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
