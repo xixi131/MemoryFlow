@@ -8,7 +8,7 @@
       "Check that every heading is unique and the document opens correctly from repository root."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

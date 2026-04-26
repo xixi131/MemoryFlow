@@ -9,10 +9,12 @@ Post-Phase 3 connector polish updated `IslandPathFactory.earPath(...)`: the Mac 
 
 Post-Phase 3 sizing polish added content-driven activity width inputs: `IslandContentWidthRequirement` and `IslandWidthConstraints` live in `IslandShapeMetrics.swift`; `IslandVisualState.previewContentWidthRequirement` currently provides a preview-only activity stand-in; `IslandWindowController` only passes screen/notch constraints into the shape engine.
 
+Phase 4 acceptance scaffolding is now in place at `docs/mac-island-phase4-sizing-motion-acceptance.md`, and the native window layer now has a dedicated `IslandWindowSizingResult.swift` model for sizing outputs plus diagnostics.
+
 Migration plan update on 2026-04-27: Phase 4+ is now oriented toward Alcove/iPhone-like native feel, not just Windows parity. Phase 4 should build sizing plus motion infrastructure; Phase 5 should model mock state plus interaction intents and interruptible animation paths; Phase 6 content must declare width requirements; Phase 8 music activity width is content-driven; Phase 9 becomes real-input calibration and animation/performance QA.
 
 ## First pending task
-* Add native sizing result types for Phase 4 window layout.
+* Create the native IslandWindowSizingEngine shell.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -20,7 +22,7 @@ Migration plan update on 2026-04-27: Phase 4+ is now oriented toward Alcove/iPho
 3. Read `feature_list.json`.
 4. Read the Phase 4 section in `灵动岛迁移方案.md`.
 5. Read `docs/mac-island-phase3-geometry-handoff.md` for Phase 3 inputs.
-6. Read `mac-island/MemoryFlowIsland/UI/Visual/` and `mac-island/MemoryFlowIsland/Window/` for sizing and motion implementation tasks.
+6. Read `docs/mac-island-phase4-sizing-motion-acceptance.md`, then `mac-island/MemoryFlowIsland/Window/IslandWindowSizingResult.swift`, `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, and `mac-island/MemoryFlowIsland/UI/Visual/`.
 7. Read `feature_list_summary.json` only if you need completed Phase 0 to Phase 3 history.
 
 ## Runtime notes

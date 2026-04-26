@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The next execution slice should start from the Phase 4 window-sizing work, using the new Phase 3 geometry outputs as inputs instead of placeholder shell presets.
+- The Phase 4 acceptance scaffold is now complete, and the next execution slice should move from the new window sizing result model into `IslandWindowSizingEngine`.
 
 ### Queue snapshot
-- First pending task: `Add native sizing result types for Phase 4 window layout.`
+- First pending task: `Create the native IslandWindowSizingEngine shell.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: land the native sizing result model, then move window-frame assembly into the Phase 4 sizing engine.
+- Recommended next queue theme: create the sizing engine shell, then move snapshot-based frame assembly behind it.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 window sizing result model landed
+
+- Added `mac-island/MemoryFlowIsland/Window/IslandWindowSizingResult.swift` with `IslandWindowSizingResult` and `IslandWindowSizingDiagnostics` to hold `visibleFrame`, `shadowFrame`, `contentFrame`, `hitTestFrame`, and sizing-input diagnostics in the native window layer.
+- Kept the new model independent from SwiftUI view code and business-data providers by limiting it to CoreGraphics plus existing Phase 4 sizing inputs (`IslandVisualState`, `IslandContentWidthRequirement`).
+- Attempted the required full-path runtime startup with `./init.sh`, which stopped immediately because backend port `8080` was already occupied by PID `59013`, matching the known environment caveat for this repository.
+- Validation: full native Swift source-set typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$')`.
 
 ## 2026-04-27 - Phase 4 acceptance rows now define motion quality and interruptibility
 
