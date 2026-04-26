@@ -12,7 +12,7 @@ Post-Phase 3 sizing polish added content-driven activity width inputs: `IslandCo
 Migration plan update on 2026-04-27: Phase 4+ is now oriented toward Alcove/iPhone-like native feel, not just Windows parity. Phase 4 should build sizing plus motion infrastructure; Phase 5 should model mock state plus interaction intents and interruptible animation paths; Phase 6 content must declare width requirements; Phase 8 music activity width is content-driven; Phase 9 becomes real-input calibration and animation/performance QA.
 
 ## First pending task
-* Add Phase 4 acceptance rows for content-driven width and shadow buffering.
+* Add Phase 4 acceptance rows for Alcove-like motion quality.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

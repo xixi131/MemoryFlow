@@ -6,9 +6,9 @@
 - The next execution slice should start from the Phase 4 window-sizing work, using the new Phase 3 geometry outputs as inputs instead of placeholder shell presets.
 
 ### Queue snapshot
-- First pending task: `Add Phase 4 acceptance rows for content-driven width and shadow buffering.`
+- First pending task: `Add Phase 4 acceptance rows for Alcove-like motion quality.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: finish the Phase 4 acceptance matrix, then start the native sizing result model and sizing engine work.
+- Recommended next queue theme: complete the motion rows in the Phase 4 acceptance matrix, then start the native sizing result model and sizing engine work.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 acceptance rows now define content-driven width and shadow buffering
+
+- Filled the `Content-Driven Width` section in `docs/mac-island-phase4-sizing-motion-acceptance.md` with prepared rows for content-demand sizing, padding-aware resolution, notch/base-width floor behavior, display-maximum clamping, and fixed-width fallback rules.
+- Filled the `Shadow Buffering` section with prepared rows for expanded bottom buffering, expanded side buffering, and state-specific shadow-buffer isolation.
+- Linked the new rows back to the Phase 4 plan and mapped them to the current or planned native sizing modules, including `IslandContentWidthRequirement`, `IslandWidthConstraints`, `IslandShapeMetrics`, `IslandShapeEngine`, `IslandWindowSizingEngine`, and `IslandPanel`.
+- Validation: confirmed the new width rows include an explicit rejection of fixed activity width as the primary Phase 4 strategy and that all requested shadow-buffer scenarios are present.
 
 ## 2026-04-27 - Phase 4 sizing acceptance rows now define outputs and top attachment behavior
 

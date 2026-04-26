@@ -41,7 +41,7 @@
       "Check that the rows require preview evidence instead of only code inspection."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
