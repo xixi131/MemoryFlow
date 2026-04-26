@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The Phase 4 acceptance scaffold is now complete, and the next execution slice should move from the new window sizing result model into `IslandWindowSizingEngine`.
+- The first Phase 4 sizing slice is now in place: `IslandWindowSizingEngine` owns snapshot resolution, content-aware width constraints, shadow-aware display clamping, and controller-facing sizing results.
 
 ### Queue snapshot
-- First pending task: `Create the native IslandWindowSizingEngine shell.`
+- First pending task: `Add sizing diagnostics for Phase 4 preview states.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: create the sizing engine shell, then move snapshot-based frame assembly behind it.
+- Recommended next queue theme: expose preview-safe sizing diagnostics, then extend the synthetic harness into a Phase 4 sizing matrix.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 sizing engine, clamping path, and controller wiring landed
+
+- Added `mac-island/MemoryFlowIsland/Window/IslandWindowSizingEngine.swift` as the Phase 4 sizing boundary that accepts `IslandVisualState`, `TopAttachmentMetrics`, and `IslandWidthConstraints`, resolves `IslandShapeEngine.snapshot(...)`, and returns screen-space `visibleFrame`, `shadowFrame`, `contentFrame`, and `hitTestFrame` results without mutating window state.
+- Extended `IslandWindowSizingResult.swift` with a derived `shadowOutsets` helper so `IslandPanel` can consume Phase 4 sizing output directly, and added both sizing files into `mac-island/MemoryFlowIsland.xcodeproj` so Xcode builds do not silently miss the new window-layer source set.
+- Reworked `IslandWindowController.swift` so preview sizing now flows through `IslandWindowSizingEngine`, root-view width constraints mirror the resolved sizing inputs, and panel placement comes from the sizing result instead of the old inline snapshot-plus-placement assembly.
+- Validation: `./init.sh` was attempted for the full execution path and stopped immediately because backend port `8080` was already occupied by PID `59013`; `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$')` passed; and a focused native harness compiled plus ran successfully, printing non-empty compact/activity/expanded sizing and confirming a synthetic `320`-point display keeps the expanded shadow frame within bounds while preserving center anchoring.
 
 ## 2026-04-27 - Phase 4 window sizing result model landed
 

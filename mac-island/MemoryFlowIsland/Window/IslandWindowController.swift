@@ -11,6 +11,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var previewState: IslandVisualState = .compactCollapsed
     private var previewVisualScale: CGFloat = 1
     private var previewHorizontalScale: CGFloat = 1
+    private var previewWidthConstraints: IslandWidthConstraints = .none
     private var applicationTerminationObserver: NSObjectProtocol?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
@@ -33,6 +34,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 previewState: previewState,
                 visualScale: previewVisualScale,
                 horizontalScale: previewHorizontalScale,
+                widthConstraints: previewWidthConstraints,
                 onAdvancePreviewState: nil
             )
         )
@@ -149,30 +151,36 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func repositionToTopCenter(animated: Bool = false) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
         let attachmentMetrics = notchLayoutEngine.topAttachmentMetrics(for: screenMetrics)
-        previewVisualScale = attachmentMetrics.visualScale
-        previewHorizontalScale = attachmentMetrics.horizontalVisualScale
-        let previewSnapshot = IslandShapeEngine.snapshot(
+        let requestedWidthConstraints = widthConstraints(
             for: previewState,
-            visualScale: previewVisualScale,
-            horizontalScale: previewHorizontalScale
+            attachmentMetrics: attachmentMetrics
+        )
+        let sizingResult = IslandWindowSizingEngine.resolve(
+            state: previewState,
+            attachmentMetrics: attachmentMetrics,
+            widthConstraints: requestedWidthConstraints
+        )
+        previewVisualScale = sizingResult.diagnostics.visualScale
+        previewHorizontalScale = sizingResult.diagnostics.horizontalScale
+        previewWidthConstraints = IslandWidthConstraints(
+            baseBodyWidth: sizingResult.diagnostics.requestedBaseBodyWidth,
+            maximumVisibleWidth: sizingResult.diagnostics.requestedMaximumVisibleWidth,
+            contentWidthRequirement: sizingResult.diagnostics.contentWidthRequirement
         )
         islandPanel.setRequestedShellLayout(
-            visibleShellSize: NSSize(
-                width: previewSnapshot.visibleFrame.width,
-                height: previewSnapshot.visibleFrame.height
-            ),
-            shadowOutsets: previewSnapshot.shadowOutsets
+            visibleShellSize: NSSize(width: sizingResult.visibleSize.width, height: sizingResult.visibleSize.height),
+            shadowOutsets: sizingResult.shadowOutsets
         )
         updateRootView()
-        let placementResult = notchLayoutEngine.placementResult(
-            screenMetrics: screenMetrics,
-            islandSize: islandPanel.requestedShellSize
-        )
-        applyPlacement(placementResult, on: screenMetrics, animated: animated)
+        applySizingResult(sizingResult, on: screenMetrics, animated: animated)
     }
 
-    private func applyPlacement(_ placementResult: IslandPlacementResult, on screenMetrics: ScreenMetrics, animated: Bool = false) {
-        let panelFrame = islandPanel.panelFrame(forVisibleShellFrame: placementResult.frame)
+    private func applySizingResult(
+        _ sizingResult: IslandWindowSizingResult,
+        on screenMetrics: ScreenMetrics,
+        animated: Bool = false
+    ) {
+        let panelFrame = islandPanel.panelFrame(forVisibleShellFrame: sizingResult.visibleFrame)
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.18
@@ -183,7 +191,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             islandPanel.setFrame(panelFrame, display: true)
         }
         lastAppliedDisplayIdentity = screenMetrics.displayIdentity
-        lastAppliedFrame = placementResult.frame
+        lastAppliedFrame = sizingResult.visibleFrame
         lastAppliedScreenMetrics = screenMetrics
     }
 
@@ -219,9 +227,24 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             previewState: previewState,
             visualScale: previewVisualScale,
             horizontalScale: previewHorizontalScale,
+            widthConstraints: previewWidthConstraints,
             onAdvancePreviewState: { [weak self] in
                 self?.advancePreviewState()
             }
+        )
+    }
+
+    private func widthConstraints(
+        for state: IslandVisualState,
+        attachmentMetrics: TopAttachmentMetrics
+    ) -> IslandWidthConstraints {
+        let baseBodyWidth = IslandVisualTokens.compact.previewWidth *
+            attachmentMetrics.horizontalVisualScale
+
+        return IslandWidthConstraints(
+            baseBodyWidth: baseBodyWidth,
+            maximumVisibleWidth: attachmentMetrics.availableTopWidth,
+            contentWidthRequirement: state.previewContentWidthRequirement
         )
     }
 

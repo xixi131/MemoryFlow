@@ -63,7 +63,7 @@
       "Check that the new engine compiles with the existing native source set."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -74,7 +74,7 @@
       "Check that compact, activity, and expanded preview states still produce non-empty visible sizes in a lightweight Swift harness or typecheck-safe probe."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -85,7 +85,7 @@
       "Check that compact states with no content requirement preserve the existing compact width behavior."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -96,7 +96,7 @@
       "Check a synthetic narrow-screen input to confirm the island does not extend past the display frame."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -107,7 +107,7 @@
       "Check that preview state cycling still repositions the panel from the sizing result."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

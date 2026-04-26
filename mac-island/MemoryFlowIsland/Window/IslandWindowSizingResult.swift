@@ -27,4 +27,11 @@ struct IslandWindowSizingResult: Equatable {
     var contentSize: CGSize {
         contentFrame.size
     }
+
+    var shadowOutsets: IslandShadowOutsets {
+        IslandShadowOutsets(
+            horizontal: max(visibleFrame.minX - shadowFrame.minX, 0),
+            bottom: max(visibleFrame.minY - shadowFrame.minY, 0)
+        )
+    }
 }
