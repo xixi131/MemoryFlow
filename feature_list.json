@@ -1,332 +1,299 @@
 [
   {
     "task_type": "docs",
-    "description": "Create the Phase 3 visual token map shell for the native geometry migration.",
+    "description": "Create the Phase 4 sizing and motion acceptance document shell.",
     "steps": [
-      "Create docs/mac-island-visual-token-map.md with headings for Compact Shell Tokens, Activity Shell Tokens, Expanded Shell Tokens, Hover and Shadow Rules, Path Sources, Seam Rules, and Evidence.",
-      "Add a one-sentence scope note that this document only covers visual geometry migration and excludes auth, todo data, review data, and music provider integration.",
-      "Check that the markdown headings are unique and the file opens correctly from repository root."
+      "Create docs/mac-island-phase4-sizing-motion-acceptance.md with headings for Sizing Outputs, Content-Driven Width, Shadow Buffering, Motion Profiles, Interruptible Transitions, Preview Evidence, and Non-Goals.",
+      "Add a one-sentence scope note that Phase 4 covers native sizing and motion infrastructure only, excluding real data providers and production music integration.",
+      "Check that every heading is unique and the document opens correctly from repository root."
     ],
     "budget_minutes": 5,
     "passes": true
   },
   {
     "task_type": "docs",
-    "description": "Record the Windows compact and activity shell token values needed for the native preview shells.",
+    "description": "Add Phase 4 acceptance rows for sizing outputs and top attachment behavior.",
     "steps": [
-      "Trace the compact width branches, `height = 36`, `ACTIVITY_COLLAPSED_WIDTH = 240`, `COLLAPSED_RADIUS_DEFAULT = 22`, `COLLAPSED_RADIUS_ACTIVITY = 50`, `SQUIRCLE_SMOOTHNESS = 3.5`, and `SQUIRCLE_SMOOTHNESS_ACTIVITY = 2.3` in front-end/src/components/DynamicIslandWidget.tsx.",
-      "Add rows in docs/mac-island-visual-token-map.md that map each compact or activity token to its source constant or branch and expected Phase 3 preview usage.",
-      "Check that every new row includes a direct code reference and no placeholder text remains in those two sections."
+      "Add acceptance rows for visibleFrame, shadowFrame, contentFrame, and hitTestFrame outputs in docs/mac-island-phase4-sizing-motion-acceptance.md.",
+      "Add acceptance rows for notch display, flat-top display, external display, and resolution-change sizing behavior.",
+      "Link each row to the Phase 4 section in 灵动岛迁移方案.md and to the expected native modules."
     ],
     "budget_minutes": 5,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "docs",
-    "description": "Record the Windows expanded, hover, and shadow token values needed for the native geometry engine.",
+    "description": "Add Phase 4 acceptance rows for content-driven width and shadow buffering.",
     "steps": [
-      "Trace `expandedWidth = 460`, `expandedMusicHeight = 210`, `expandedAppHeight = 320`, expanded radius `48`, hover scale `1.06`, and the hover or expanded shadow rule in front-end/src/components/DynamicIslandWidget.tsx.",
-      "Add rows in docs/mac-island-visual-token-map.md for expanded shells, hover behavior, shadow timing, and shadow visibility gates.",
-      "Check that the document clearly marks which tokens are preview-only in Phase 3 and which ones are deferred to later business-state work."
+      "Add acceptance rows for activity width derived from content demand, padding, notch/base width, token fallback, and display maximums.",
+      "Add acceptance rows for expanded shadow buffering that prevents bottom or side shadow clipping.",
+      "Check that the rows explicitly reject fixed activity width as the primary sizing strategy."
     ],
     "budget_minutes": 5,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "docs",
-    "description": "Record the Windows path-function sources and seam constraints that the native path factory must preserve.",
+    "description": "Add Phase 4 acceptance rows for Alcove-like motion quality.",
     "steps": [
-      "Trace `generateSquirclePath`, `generateOpenSquirclePath`, `generateLeftCapPath`, `generateRightCapPath`, and `generateEarPath` in front-end/src/components/DynamicIslandWidget.tsx.",
-      "Add rows in docs/mac-island-visual-token-map.md that map each path function to its inputs, output role, and seam-sensitive notes such as the 1px ear overlap behavior.",
-      "Check that the document explicitly states Capsule replacement is not acceptable for these shapes and that each row links to a concrete source location."
+      "Add acceptance rows for compact-to-activity, activity-to-expanded, expanded-to-collapsed, hover enter, and hover leave motion paths.",
+      "Add acceptance rows for spring-like elasticity, content fade or blur timing, and interruptible transition behavior.",
+      "Check that the rows require preview evidence instead of only code inspection."
     ],
     "budget_minutes": 5,
-    "passes": true
-  },
-  {
-    "task_type": "docs",
-    "description": "Create the Phase 3 geometry acceptance document shell for preview, path, and pixel verification.",
-    "steps": [
-      "Create docs/mac-island-phase3-geometry-acceptance.md with headings for Preview Matrix, Path Parity, Pixel Edge Checks, External Display Scaling, Non-Goals, and Evidence.",
-      "Add an empty checklist table under each heading with columns for Condition, Expected Result, Evidence, and Status.",
-      "Check that the document contains only shell content and no unverified implementation claims."
-    ],
-    "budget_minutes": 5,
-    "passes": true
-  },
-  {
-    "task_type": "docs",
-    "description": "Fill the Phase 3 acceptance document with the five preview shells and explicit non-goal boundaries.",
-    "steps": [
-      "Add Preview Matrix rows in docs/mac-island-phase3-geometry-acceptance.md for compact collapsed, hover compact, activity compact, expanded music shell, and expanded app shell.",
-      "Add Non-Goals rows that explicitly exclude auth sync, review data, todo data, real music provider integration, and Phase 5 state-machine work from this phase.",
-      "Check that each acceptance row names an observable preview result and links back to docs/mac-island-visual-token-map.md or 灵动岛迁移方案.md."
-    ],
-    "budget_minutes": 5,
-    "passes": true
-  },
-  {
-    "task_type": "docs",
-    "description": "Add Phase 3 geometry checklist rows to the migration checklist so later phases can gate on visual evidence.",
-    "steps": [
-      "Append a Phase 3 section to docs/mac-island-migration-checklist.md for path parity, preview shell coverage, compact-state black-edge checks, ear seam checks, and external-display scaling.",
-      "Link each new checklist row to docs/mac-island-phase3-geometry-acceptance.md and docs/mac-island-visual-token-map.md.",
-      "Check that each checklist row has a clear pass condition and that status fields are prepared but not marked complete."
-    ],
-    "budget_minutes": 5,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Create the native visual-geometry module scaffolding under mac-island for Phase 3 work.",
+    "description": "Add native sizing result types for Phase 4 window layout.",
     "steps": [
-      "Create a `mac-island/MemoryFlowIsland/UI/Visual/` folder with placeholder files for `IslandVisualTokens.swift`, `IslandVisualState.swift`, `IslandShapeMetrics.swift`, `IslandPathFactory.swift`, `IslandShapeEngine.swift`, and `IslandVisualStatePreview.swift`.",
-      "Add the new files to the Xcode project structure without deleting or rewriting any existing Phase 2 window-layer files.",
-      "Check that the project references compile with empty type shells and no unresolved file-path references."
+      "Create a small sizing model file under mac-island/MemoryFlowIsland/Window/ for visibleFrame, shadowFrame, contentFrame, hitTestFrame, and diagnostics fields.",
+      "Keep the model independent from SwiftUI view code and business data providers.",
+      "Check the full native Swift source set with swiftc typecheck."
     ],
     "budget_minutes": 8,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Add a single Swift token source for compact, activity, expanded, hover, and shadow geometry values.",
+    "description": "Create the native IslandWindowSizingEngine shell.",
     "steps": [
-      "Implement `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualTokens.swift` with grouped token definitions for compact, activity, expanded music, expanded app, hover, and shadow behaviors.",
-      "Map each Swift token to the corresponding Windows source constant or documented branch from docs/mac-island-visual-token-map.md.",
-      "Check that token names are stable, compile cleanly, and do not depend on auth, reminder, todo, or music-provider state."
+      "Create IslandWindowSizingEngine under mac-island/MemoryFlowIsland/Window/ with an API that accepts visual state, top attachment metrics, and width constraints.",
+      "Return a sizing result object without moving any window or mutating controller state.",
+      "Check that the new engine compiles with the existing native source set."
     ],
     "budget_minutes": 8,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Add preview-only visual state cases so Phase 3 can render shell variants without business data.",
+    "description": "Move snapshot-based visible size resolution into IslandWindowSizingEngine.",
     "steps": [
-      "Implement `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualState.swift` with preview-only cases for compactCollapsed, hoverCollapsed, activityCollapsed, expandedMusic, and expandedApp.",
-      "Expose small computed helpers that answer whether a state is expanded, whether shadow is allowed, and which token set should drive the geometry.",
-      "Check that the file has no API, auth, reminder scheduler, or music provider dependency."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Add shape metrics that turn a preview state plus scale into concrete geometry inputs.",
-    "steps": [
-      "Implement `mac-island/MemoryFlowIsland/UI/Visual/IslandShapeMetrics.swift` so it resolves width, height, radius, smoothness, ear tension, ear blend height, scale, stroke visibility, and shadow visibility from `IslandVisualState` and a scalar input.",
-      "Keep the metrics API independent from business-state enums by accepting only preview-state and scale inputs.",
-      "Check that the resolved metrics for the five preview states match the values recorded in docs/mac-island-visual-token-map.md."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Port the Windows squircle body path into the native path factory for compact and expanded shells.",
-    "steps": [
-      "Implement the Swift equivalent of `generateSquirclePath` inside `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` using `Path` or `CGPath` output.",
-      "Keep the same width, height, radius, and smoothness inputs used by the Windows baseline so compact and expanded body paths can be generated from shared metrics.",
-      "Check the generated body path with at least one compact and one expanded preview input and confirm the top edge stays flat while the lower corners remain continuous."
+      "Make IslandWindowSizingEngine call IslandShapeEngine.snapshot for the requested visual state and scale inputs.",
+      "Map the snapshot visibleFrame and contentFrame into the Phase 4 sizing result model.",
+      "Check that compact, activity, and expanded preview states still produce non-empty visible sizes in a lightweight Swift harness or typecheck-safe probe."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Port the Windows open-stroke path into the native path factory for the states that allow an inner stroke.",
+    "description": "Add content-driven width constraints to the sizing engine path.",
     "steps": [
-      "Implement the Swift equivalent of `generateOpenSquirclePath` inside `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift`.",
-      "Keep the path inputs aligned with `IslandShapeMetrics` so the stroke path follows the same shell geometry as the filled body path.",
-      "Check that the open-stroke path does not introduce a top-edge line and can be disabled entirely for compact states that must remain fully black."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Port the Windows left-cap path so the native shell can keep the compact and expanded left edge profile.",
-    "steps": [
-      "Implement the Swift equivalent of `generateLeftCapPath` inside `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift`.",
-      "Drive the left-cap path from `IslandShapeMetrics` height, radius, and smoothness values instead of hard-coded preview-specific numbers.",
-      "Check that the rendered left cap touches the body path without clipping or leaving a transparent seam in both compact and expanded preview shells."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Port the Windows right-cap path so the native shell can keep the compact and expanded right edge profile.",
-    "steps": [
-      "Implement the Swift equivalent of `generateRightCapPath` inside `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift`.",
-      "Drive the right-cap path from the same metrics model used by the left cap so both sides stay symmetric unless the source path says otherwise.",
-      "Check that the rendered right cap stays seam-free against the body path in both compact and expanded preview shells."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Port the Windows ear path so the native shell keeps the liquid connection and overlap behavior.",
-    "steps": [
-      "Implement the Swift equivalent of `generateEarPath` inside `mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift` for left and right ear generation.",
-      "Preserve the 1px overlap semantics documented in the Windows source so the ears do not visually detach from the body.",
-      "Check that both mirrored ears can render from idle, activity, and expanded metrics without exposing a transparent gap at the join."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Compose a single shape engine that returns every Phase 3 shell path from shared metrics.",
-    "steps": [
-      "Implement `mac-island/MemoryFlowIsland/UI/Visual/IslandShapeEngine.swift` so one call can resolve body, optional stroke, left cap, right cap, and ear paths for a given `IslandShapeMetrics` input.",
-      "Keep the engine isolated from window placement and business-state logic by accepting only geometry inputs and returning path outputs.",
-      "Check that `IslandVisualStatePreview.swift` and `IslandRootView.swift` can consume the engine without duplicating any path math."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Render the compact collapsed preview shell with native body, cap, and ear geometry.",
-    "steps": [
-      "Implement the compact-collapsed branch in `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift` using `IslandShapeEngine` output.",
-      "Render the shell as pure black geometry with no debug text, no placeholder text, and no unsupported stroke.",
-      "Check the native preview window and confirm the compact collapsed shell is visible and uses the documented compact metrics."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Render the hover compact preview shell with the Windows hover scale and shadow behavior.",
-    "steps": [
-      "Extend `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift` so the hover-collapsed branch uses the same compact geometry plus the `1.06` hover scale.",
-      "Apply the Windows hover shadow rule and keep the body fill black while the hover shell is active.",
-      "Check the native preview window and confirm hover mode differs only by allowed hover geometry effects rather than by business content."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Render the activity compact preview shell with the Windows activity width, radius, and ear profile.",
-    "steps": [
-      "Extend `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift` so the activity-collapsed branch uses `ACTIVITY_COLLAPSED_WIDTH`, activity smoothness, activity radius, and activity ear metrics.",
-      "Keep the preview shell geometry-only with no review cards, todo rows, reminder content, or real activity data.",
-      "Check the native preview window and confirm the activity compact shell is visually distinct from the normal compact shell by geometry alone."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Render the expanded music preview shell with the Windows expanded music geometry.",
-    "steps": [
-      "Extend `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift` so the expanded-music branch uses width `460`, height `210`, expanded radius, and expanded ear metrics.",
-      "Allow only the stroke and shadow behaviors that are documented for expanded shells in the Windows baseline.",
-      "Check the native preview window and confirm the expanded music shell can render without any music provider dependency."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Render the expanded app preview shell with the Windows expanded app geometry.",
-    "steps": [
-      "Extend `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift` so the expanded-app branch uses width `460`, height `320`, expanded radius, and expanded ear metrics.",
-      "Keep the expanded app preview geometry-only and avoid pulling in review or todo content components during Phase 3.",
-      "Check the native preview window and confirm the expanded app shell can render independently from the expanded music shell."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Replace the black probe root view with a preview host that can switch between all five Phase 3 shell variants.",
-    "steps": [
-      "Update `mac-island/MemoryFlowIsland/UI/IslandRootView.swift` so it hosts `IslandVisualStatePreview` instead of a static black rectangle.",
-      "Add a local preview-state switch mechanism that can move between compact collapsed, hover compact, activity compact, expanded music, and expanded app without touching business data layers.",
-      "Check the native app window and confirm each preview state can be selected repeatedly without breaking the Phase 2 top attachment."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_type": "frontend",
-    "description": "Apply Phase 2 top-band scaling so the visual geometry engine sizes shells correctly on notch and external displays.",
-    "steps": [
-      "Add a Phase 3 scale input based on the Phase 2 top-band metrics, using the migration-plan guidance for `visualScale` rather than hard-coding a single desktop size.",
-      "Feed that scale into `IslandShapeMetrics` so compact, activity, and expanded preview shells scale from one geometry pipeline.",
-      "Check that the preview shell still attaches to the active top band and that external-display scaling does not exceed the available top width."
+      "Pass IslandWidthConstraints through IslandWindowSizingEngine instead of computing width only in IslandWindowController.",
+      "Keep activity width derived from content demand plus padding while retaining token fallback width.",
+      "Check that compact states with no content requirement preserve the existing compact width behavior."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Update the native panel sizing path so preview shells request their visible size from geometry metrics instead of placeholder presets.",
+    "description": "Add display maximum clamping to Phase 4 sizing outputs.",
     "steps": [
-      "Extend `IslandPanel.swift` and `IslandWindowController.swift` so the visible shell size can come from resolved Phase 3 geometry metrics rather than only from the old placeholder presets.",
-      "Keep the top attachment, display recovery, and click-through logic inside the existing Phase 2 window layer while the size source changes.",
-      "Check that switching between the five preview shells updates panel size without pushing the window away from the top anchor."
+      "Clamp the sizing result so visible and shadow frames remain within the current display horizontal bounds where possible.",
+      "Keep the top attachment center anchored when clamping happens near screen edges.",
+      "Check a synthetic narrow-screen input to confirm the island does not extend past the display frame."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "frontend",
-    "description": "Restrict stroke and shadow rendering to the Windows-defined states so compact shells remain fully black.",
+    "description": "Wire IslandWindowController to consume IslandWindowSizingEngine results.",
     "steps": [
-      "Centralize the stroke-visibility and shadow-visibility gates in the Phase 3 visual layer instead of scattering them across multiple preview branches.",
-      "Ensure compact collapsed and activity compact states render with no unsupported border, no white edge, and no debug decoration, while hover and expanded states follow the documented shadow rules.",
-      "Check the native preview window and confirm compact shells remain fully black and expanded or hover shells are the only ones that show the allowed effects."
+      "Replace inline sizing assembly in IslandWindowController with a call to IslandWindowSizingEngine.",
+      "Keep IslandWindowController responsible only for applying panel layout, root view inputs, and placement.",
+      "Check that preview state cycling still repositions the panel from the sizing result."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add sizing diagnostics for Phase 4 preview states.",
+    "steps": [
+      "Add concise debug descriptions or log values for state, visual scale, horizontal scale, visible size, shadow size, content size, and hit frame.",
+      "Gate diagnostics so they can be used during preview validation without spamming production paths.",
+      "Check one compact, one activity, and one expanded sizing result includes all diagnostic fields."
     ],
     "budget_minutes": 8,
-    "passes": true
+    "passes": false
   },
   {
-    "task_type": "e2e",
-    "description": "Compare sampled native geometry output against the Windows path baseline and record any intentional differences.",
+    "task_type": "frontend",
+    "description": "Create synthetic sizing matrix coverage for Phase 4 displays.",
     "steps": [
-      "Generate sampled path output for the native body, open-stroke, left-cap, right-cap, and ear paths using the same width, height, radius, smoothness, tension, and blend-height inputs as the Windows functions.",
-      "Compare the native samples against a JS baseline generated from front-end/src/components/DynamicIslandWidget.tsx for compact, activity, and expanded inputs.",
-      "Record the parity result and any intentional deltas in docs/mac-island-phase3-geometry-acceptance.md with evidence links."
+      "Add or extend a lightweight Swift harness that evaluates compact, activity, expanded music, and expanded app states on notch and flat-top screen metrics.",
+      "Write the matrix output under docs/evidence/mac-island-phase4/ as JSON.",
+      "Check that every matrix row includes visible, shadow, content, and hit frame values."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
-    "task_type": "e2e",
-    "description": "Capture the five Phase 3 preview shells and verify the edge-pixel requirements from the migration plan.",
+    "task_type": "frontend",
+    "description": "Tune expanded shadow buffer sizing to avoid clipped shadow edges.",
     "steps": [
-      "Capture PNG screenshots for compact collapsed, hover compact, activity compact, expanded music, and expanded app from the native preview host.",
-      "Check each screenshot for a continuous black top edge, no non-black border in compact states, and no transparent seam where the ears meet the body.",
-      "Attach the screenshot evidence to docs/mac-island-phase3-geometry-acceptance.md and update the linked Phase 3 checklist rows."
+      "Move expanded shadow buffer values into a clear Phase 4 sizing or visual token path if they are still hard-coded in shape composition.",
+      "Ensure expanded bottom shadow has enough transparent buffer to fade naturally without a visible cutoff.",
+      "Check hover and compact states do not inherit expanded shadow buffer values."
     ],
-    "budget_minutes": 10,
-    "passes": true
+    "budget_minutes": 8,
+    "passes": false
   },
   {
-    "task_type": "e2e",
-    "description": "Verify external-display scaling and preview-state switching after Phase 3 geometry is attached to the Phase 2 window shell.",
+    "task_type": "frontend",
+    "description": "Add motion token types for Phase 4 shell transitions.",
     "steps": [
-      "Run the native preview host on an internal notch display and an external non-notch display and switch through all five preview shells on each screen.",
-      "Confirm the preview shell stays attached to the active top band, scales from the Phase 2 metrics, and keeps shadow visibility limited to the documented hover and expanded states.",
-      "Update docs/mac-island-phase3-geometry-acceptance.md and docs/mac-island-migration-checklist.md with the observed screen-matrix evidence."
+      "Create a motion token model under mac-island/MemoryFlowIsland/UI/Visual/ or a nearby Motion module for spring, duration, keyframe, and fade settings.",
+      "Include the Windows baseline spring values, activity open duration, activity collapse duration, segmented times, and shadow fade duration.",
+      "Check that the model has no dependency on business data or AppKit window classes."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create a transition kind model for shell motion paths.",
+    "steps": [
+      "Add transition kind cases for compactToActivity, activityToCompact, activityToExpanded, expandedToActivity, expandedToCompact, hoverEnter, and hoverLeave.",
+      "Expose helpers that select the correct motion tokens for each transition kind.",
+      "Check that unknown or same-state transitions fall back to a stable no-op or default profile."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the native IslandMotionEngine shell.",
+    "steps": [
+      "Create IslandMotionEngine with an API that accepts previous visual state, next visual state, and transition context.",
+      "Return a motion plan for shell frame, shape path morph, shadow, and content visibility without mutating UI state.",
+      "Check that the new engine compiles and can produce plans for compact-to-activity and activity-to-expanded transitions."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Wire preview state changes through IslandMotionEngine.",
+    "steps": [
+      "Update preview state cycling so it derives a transition kind and motion plan before updating the root view inputs.",
+      "Remove fixed ad-hoc animation durations from IslandWindowController where the motion plan should decide timing.",
+      "Check that tapping through preview states still advances compact, hover, activity, expanded music, and expanded app in order."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Apply motion profiles to SwiftUI shell shadow transitions.",
+    "steps": [
+      "Route shadow opacity, radius, and offset animation settings through the motion token or motion plan path.",
+      "Keep hover and expanded shadow behaviors distinct and avoid expanded shadow clipping.",
+      "Check that shadow changes still compile and no compact or activity state shows unsupported shadow."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add preview content visibility timing hooks.",
+    "steps": [
+      "Add a small content visibility input model for opacity, blur, and delay values used by preview content layers.",
+      "Connect the model to motion profiles without adding real business content.",
+      "Check that content visibility defaults do not change pure shell rendering when no content is present."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add interruptible transition state storage for preview shell motion.",
+    "steps": [
+      "Add minimal state needed to remember current and target preview visual states during an animation.",
+      "Ensure a new tap or hover event can replace the target state without leaving stale lock flags.",
+      "Check rapid preview cycling does not skip root view updates or leave the panel at an old size."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add Phase 4 preview controls for core motion paths.",
+    "steps": [
+      "Expose a local preview-only way to trigger compact-to-activity, activity-to-expanded, expanded-to-compact, hover enter, and hover leave transitions.",
+      "Keep the controls out of business data and provider code paths.",
+      "Check each trigger updates the visual state and requests sizing from the Phase 4 sizing engine."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 4 sizing evidence for preview states.",
+    "steps": [
+      "Generate docs/evidence/mac-island-phase4/sizing-matrix.json from the synthetic sizing harness.",
+      "Confirm the matrix includes notch, flat-top, compact, activity, expanded music, and expanded app cases.",
+      "Check that no row reports a clipped or negative frame."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 4 shadow evidence for expanded states.",
+    "steps": [
+      "Generate or update preview captures for expanded music and expanded app shadow behavior under docs/evidence/mac-island-phase4/.",
+      "Check that bottom and side shadows fade without visible hard clipping in the captured evidence.",
+      "Record any environment limitation if capture is synthetic rather than physical-device evidence."
+    ],
+    "budget_minutes": 10,
+    "passes": false
   },
   {
     "task_type": "docs",
-    "description": "Add a short Phase 3 geometry handoff note so the next queue slice can start Phase 4 window sizing cleanly.",
+    "description": "Fill the Phase 4 acceptance document with sizing evidence links.",
     "steps": [
-      "Create docs/mac-island-phase3-geometry-handoff.md with sections for Implemented Modules, Accepted Preview States, Open Risks, and Explicit Phase 4 Inputs.",
-      "Summarize which Visual files became the source of truth for tokens, metrics, and paths, and link the summary back to docs/mac-island-phase3-geometry-acceptance.md.",
-      "Check that the handoff note explicitly says business data, auth, and state-machine migration remain out of scope for this completed slice."
+      "Add links to sizing-matrix.json and any preview captures in docs/mac-island-phase4-sizing-motion-acceptance.md.",
+      "Mark sizing rows as Passed only when the corresponding evidence exists.",
+      "Leave motion rows Prepared if visual motion evidence is not yet captured."
     ],
     "budget_minutes": 5,
-    "passes": true
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Fill the Phase 4 acceptance document with motion evidence links.",
+    "steps": [
+      "Add links to motion preview captures, videos, GIFs, or frame-sequence evidence in docs/mac-island-phase4-sizing-motion-acceptance.md.",
+      "Mark motion rows as Passed only when compact, activity, expanded, hover, and interrupt paths have evidence.",
+      "Check that the document clearly notes any remaining real-device calibration gaps."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Update the migration checklist with Phase 4 sizing and motion gates.",
+    "steps": [
+      "Add Phase 4 checklist rows for sizing engine outputs, content-driven activity width, shadow buffering, motion profiles, and interruptible transitions.",
+      "Link each row to docs/mac-island-phase4-sizing-motion-acceptance.md.",
+      "Check that the checklist distinguishes Prepared, Passed, and real-device-pending statuses."
+    ],
+    "budget_minutes": 5,
+    "passes": false
+  },
+  {
+    "task_type": "docs",
+    "description": "Refresh the Phase 4 handoff notes after sizing and motion infrastructure lands.",
+    "steps": [
+      "Update agent-state.md with the implemented Phase 4 modules, first remaining pending task, and recommended startup files.",
+      "Add a concise codex-progress.md record for the Phase 4 sizing and motion infrastructure outcome.",
+      "Check that the handoff does not require reading codex-progress-archive.md for normal startup."
+    ],
+    "budget_minutes": 5,
+    "passes": false
   }
 ]

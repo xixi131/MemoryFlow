@@ -6,9 +6,9 @@
 - The next execution slice should start from the Phase 4 window-sizing work, using the new Phase 3 geometry outputs as inputs instead of placeholder shell presets.
 
 ### Queue snapshot
-- First pending task: `None. The current queue is fully passed.`
-- Requested execution mode for this slice: single-agent `$Auto_dev` execution with one final task-scoped commit.
-- Recommended next queue theme: Phase 4 window sizing, content frame, hit frame, and animation container work.
+- First pending task: `Add Phase 4 acceptance rows for sizing outputs and top attachment behavior.`
+- Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
+- Recommended next queue theme: fill the Phase 4 acceptance matrix, then start the native sizing engine implementation.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,29 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 sizing and motion acceptance shell created
+
+- Created `docs/mac-island-phase4-sizing-motion-acceptance.md` with the required Phase 4 sections: Sizing Outputs, Content-Driven Width, Shadow Buffering, Motion Profiles, Interruptible Transitions, Preview Evidence, and Non-Goals.
+- Added an explicit scope note that Phase 4 is limited to native sizing and motion infrastructure and excludes real data providers plus production music integration.
+- Seeded the acceptance doc with section-local placeholder tables so the next Phase 4 doc tasks can add sizing, width, shadow, and motion rows without restructuring the document.
+- Validation: confirmed the document exists at the repository path, all level-2 headings are unique, and the file opens cleanly from the repository root.
+
+## 2026-04-27 - Phase 4+ plan retargeted toward Alcove/iPhone-like motion quality
+
+- Updated `灵动岛迁移方案.md` so Phase 4 is no longer only window sizing; it now covers sizing, content-driven width, shadow buffering, and a dedicated motion infrastructure for shell frame/path/shadow/content choreography.
+- Moved interaction-intent and mock animation concerns forward into Phase 5 so hover, tap, swipe, long-press, gesture locks, and interruptible transitions are validated before real content and provider work.
+- Phase 6 now requires content modules to declare width requirements and animation entry/exit behavior instead of directly changing shell size.
+- Phase 8 now treats `ACTIVITY_COLLAPSED_WIDTH` as a fallback token only; music activity width must derive from symmetric content demand, padding, notch/base width, and display maximums.
+- Phase 9 is now a real-device calibration and performance QA phase, with acceptance tied to native-looking, Alcove-like, iPhone Dynamic Island style elastic motion rather than basic click/swipe functionality.
+
+## 2026-04-26 - Activity shell width now has a content-driven sizing input
+
+- Added `IslandContentWidthRequirement` and `IslandWidthConstraints` in `mac-island/MemoryFlowIsland/UI/Visual/IslandShapeMetrics.swift` so activity shell width can grow from content demand plus horizontal padding instead of relying only on fixed preview token width.
+- `IslandShapeMetrics` now resolves body width from the maximum of token fallback width and `baseBodyWidth + leadingContentWidth + trailingContentWidth + horizontalPadding * 2`, while still clamping against the visible display width after liquid ear reach is considered.
+- `IslandVisualState.previewContentWidthRequirement` currently supplies a preview-only symmetric activity stand-in (`leadingContentWidth: 36`, `trailingContentWidth: 36`, `horizontalPadding: 18`), matching the current music-style assumption that left cover and right waveform/action affordance have the same visual size; future music, reminder, and todo migration should replace this with measured or declared real content requirements.
+- `IslandWindowController` remains window-focused: it derives screen/notch width constraints and passes them into `IslandShapeEngine.snapshot(...)`, without knowing activity content internals.
+- Validation: full native Swift source-set typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$')`.
 
 ## 2026-04-26 - Phase 3 native geometry preview host, sizing path, and evidence set were completed
 
