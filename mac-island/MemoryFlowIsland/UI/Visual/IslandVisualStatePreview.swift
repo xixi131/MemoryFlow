@@ -3,10 +3,15 @@ import SwiftUI
 struct IslandVisualStatePreview: View {
     let state: IslandVisualState
     let visualScale: CGFloat
+    let horizontalScale: CGFloat
     var onAdvanceState: (() -> Void)?
 
     private var snapshot: IslandShapeLayoutSnapshot {
-        IslandShapeEngine.snapshot(for: state, visualScale: visualScale)
+        IslandShapeEngine.snapshot(
+            for: state,
+            visualScale: visualScale,
+            horizontalScale: horizontalScale
+        )
     }
 
     var body: some View {

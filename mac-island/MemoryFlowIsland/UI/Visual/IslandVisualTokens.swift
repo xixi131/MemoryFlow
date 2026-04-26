@@ -11,9 +11,13 @@ enum IslandVisualTokenSet: String, CaseIterable {
 struct IslandShellGeometryTokens: Equatable {
     let previewWidth: CGFloat
     let height: CGFloat
+    // 左下/右下角的圆角半径。数值越大，底部两角越“鼓”、越接近大圆弧；数值越小，底部转角越收。
     let radius: CGFloat
+    // 左下/右下角和液态连接共用的连续曲率指数。数值越大越接近 Apple 风格的超椭圆顺滑过渡；数值越小越接近普通圆角。
     let smoothness: CGFloat
+    // 液态连接横向外扩强度。数值越大，左右连接角向外延伸越宽；数值越小，连接更贴近岛体侧边。
     let earTension: CGFloat
+    // 液态连接向下融合高度。数值越大，连接角向下吃进岛体越深、更像展开态的大融合；数值越小，更接近普通 Mac 刘海。
     let earBlendHeight: CGFloat
     let showsStroke: Bool
 }
@@ -30,50 +34,65 @@ struct IslandShadowBehaviorTokens: Equatable {
 
 enum IslandVisualTokens {
     // Compact width branches documented in docs/mac-island-visual-token-map.md.
-    static let compactPreviewWidth: CGFloat = 160
+    static let compactPreviewWidth: CGFloat = 200
     static let compactSignedOutWidth: CGFloat = 180
     static let compactGreetingMinWidth: CGFloat = 220
     static let compactGreetingMaxWidth: CGFloat = 300
     static let compactTodoNoActivityWidth: CGFloat = 230
 
+    // 普通收起态：对应最接近 Mac 刘海的状态。
+    // 如果觉得液态连接太小，优先把 earBlendHeight 从 11 往 13-16 调；
+    // 如果觉得连接不够向外“融”，再把 earTension 从 0.4 往 0.45-0.55 调。
+    // 如果觉得左下/右下角太小，把 radius 从 22 往 24-28 调；想更丝滑，把 smoothness 从 3.5 往 3.8-4.4 调。
     static let compact = IslandShellGeometryTokens(
         previewWidth: compactPreviewWidth,
         height: 36,
-        radius: 22,
-        smoothness: 3.5,
+        radius: 50,
+        smoothness: 3.3,
         earTension: 0.4,
         earBlendHeight: 11,
         showsStroke: false
     )
 
+    // 活动态：例如播放音乐、复习、待办提醒等收起但有内容的状态。
+    // 这里通常要比普通态连接更大：earBlendHeight 控制下探深度，earTension 控制横向外扩。
+    // 如果活动态还是显小，可先把 earBlendHeight 从 22 往 24-28 调，再把 earTension 从 0.3 往 0.35-0.45 调。
+    // 底部角如果不够圆润，把 radius 从 50 往 54-60 调；如果转角曲率不够顺，把 smoothness 从 2.3 往 2.6-3.2 调。
     static let activity = IslandShellGeometryTokens(
         previewWidth: 240,
         height: 36,
-        radius: 50,
-        smoothness: 2.3,
-        earTension: 0.3,
-        earBlendHeight: 22,
+        radius: 40,
+        smoothness: 2.8,
+        earTension: 0.55,
+        earBlendHeight: 14,
         showsStroke: false
     )
 
+    // 音乐展开态：大面板状态，液态连接应明显大于收起态。
+    // 如果展开后顶部连接还像“折过去”，优先把 earBlendHeight 从 32 往 36-44 调；
+    // 如果两侧外扩不够，再把 earTension 从 0.7 往 0.75-0.9 调。
+    // 左下/右下角太小就把 radius 从 48 往 54-64 调；想让大角更像超椭圆，把 smoothness 从 3.5 往 3.8-4.5 调。
     static let expandedMusic = IslandShellGeometryTokens(
         previewWidth: 460,
         height: 210,
-        radius: 48,
+        radius: 80,
         smoothness: 3.5,
         earTension: 0.7,
-        earBlendHeight: 32,
-        showsStroke: true
+        earBlendHeight: 50,
+        showsStroke: false
     )
 
+    // 应用展开态：高度更大的完整面板，通常与音乐展开态保持同一组角度和连接手感。
+    // 如果只想让大应用面板更柔，可以单独调这里的 radius/smoothness；
+    // 如果要保持音乐展开和应用展开一致，就同步修改 expandedMusic 与 expandedApp。
     static let expandedApp = IslandShellGeometryTokens(
         previewWidth: 460,
         height: 320,
-        radius: 48,
+        radius: 80,
         smoothness: 3.5,
         earTension: 0.7,
-        earBlendHeight: 32,
-        showsStroke: true
+        earBlendHeight: 60,
+        showsStroke: false
     )
 
     static let hover = IslandHoverBehaviorTokens(

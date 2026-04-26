@@ -10,6 +10,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let hostingView: NSHostingView<IslandRootView>
     private var previewState: IslandVisualState = .compactCollapsed
     private var previewVisualScale: CGFloat = 1
+    private var previewHorizontalScale: CGFloat = 1
     private var applicationTerminationObserver: NSObjectProtocol?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
@@ -31,15 +32,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             rootView: IslandRootView(
                 previewState: previewState,
                 visualScale: previewVisualScale,
+                horizontalScale: previewHorizontalScale,
                 onAdvancePreviewState: nil
             )
-        )
-        self.hostingView.rootView = IslandRootView(
-            previewState: previewState,
-            visualScale: previewVisualScale,
-            onAdvancePreviewState: { [weak self] in
-                self?.advancePreviewState()
-            }
         )
         self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
             displayObserver.preferredScreenMetrics(
@@ -48,6 +43,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             )
         }
         super.init(window: panel)
+        updateRootView()
         configureContentView()
         applyInitialWindowState()
         beginDisplayObservation()
@@ -154,9 +150,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else { return }
         let attachmentMetrics = notchLayoutEngine.topAttachmentMetrics(for: screenMetrics)
         previewVisualScale = attachmentMetrics.visualScale
+        previewHorizontalScale = attachmentMetrics.horizontalVisualScale
         let previewSnapshot = IslandShapeEngine.snapshot(
             for: previewState,
-            visualScale: previewVisualScale
+            visualScale: previewVisualScale,
+            horizontalScale: previewHorizontalScale
         )
         islandPanel.setRequestedShellLayout(
             visibleShellSize: NSSize(
@@ -220,6 +218,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         hostingView.rootView = IslandRootView(
             previewState: previewState,
             visualScale: previewVisualScale,
+            horizontalScale: previewHorizontalScale,
             onAdvancePreviewState: { [weak self] in
                 self?.advancePreviewState()
             }

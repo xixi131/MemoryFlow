@@ -25,8 +25,20 @@ struct IslandShapeLayoutSnapshot {
 
 enum IslandShapeEngine {
     static func snapshot(for state: IslandVisualState, visualScale: CGFloat) -> IslandShapeLayoutSnapshot {
+        snapshot(for: state, visualScale: visualScale, horizontalScale: nil)
+    }
+
+    static func snapshot(
+        for state: IslandVisualState,
+        visualScale: CGFloat,
+        horizontalScale: CGFloat?
+    ) -> IslandShapeLayoutSnapshot {
         snapshot(
-            for: IslandShapeMetrics.resolve(for: state, visualScale: visualScale),
+            for: IslandShapeMetrics.resolve(
+                for: state,
+                visualScale: visualScale,
+                horizontalScale: horizontalScale
+            ),
             state: state
         )
     }

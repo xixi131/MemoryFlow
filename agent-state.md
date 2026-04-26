@@ -5,6 +5,8 @@ This file is the short handoff for the next agent. Keep it brief, current, and h
 ## Current phase
 Dynamic Island migration has completed the current Phase 3 native visual-geometry queue in `mac-island/MemoryFlowIsland/UI/` and the handoff is now ready for the Phase 4 window-sizing slice.
 
+Post-Phase 3 connector polish updated `IslandPathFactory.earPath(...)`: the Mac liquid connector still uses the migrated idle/activity/expanded tension and blend-height tokens, but its visible edge is now a smooth sampled continuous-corner curve instead of the original cubic patch.
+
 ## First pending task
 * No pending task remains in the current `feature_list.json` queue.
 

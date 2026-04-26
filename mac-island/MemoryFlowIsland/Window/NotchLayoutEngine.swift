@@ -20,6 +20,19 @@ struct TopAttachmentMetrics: Equatable {
         let rawScale = topBandFrame.height / IslandVisualTokens.compact.height
         return min(max(rawScale, 0.78), 1.18)
     }
+
+    var horizontalVisualScale: CGFloat {
+        guard let notchFrame else {
+            return visualScale
+        }
+
+        let compactTokens = IslandVisualTokens.compact
+        let compactEarReach = (compactTokens.earBlendHeight * visualScale * compactTokens.earTension) +
+            IslandPathFactory.shellEarTipExtension
+        let targetBodyWidth = max(notchFrame.width - (compactEarReach * 2), 1)
+        let rawScale = targetBodyWidth / max(compactTokens.previewWidth, 1)
+        return min(max(rawScale, 0.68), 1.4)
+    }
 }
 
 struct IslandPlacementResult {
@@ -81,7 +94,7 @@ struct NotchLayoutEngine {
                 menuBarHeight: menuBarHeight(for: screenMetrics),
                 safeTopInset: max(screenMetrics.safeAreaInsets.top, 0),
                 pixelScale: max(screenMetrics.backingScaleFactor, 1),
-                availableTopWidth: topBandFrame.width,
+                availableTopWidth: screenMetrics.frame.width,
                 centerX: topBandFrame.midX
             )
         }

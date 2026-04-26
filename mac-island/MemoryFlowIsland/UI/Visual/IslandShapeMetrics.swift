@@ -11,11 +11,12 @@ struct IslandShapeMetrics: Equatable {
     let showsStroke: Bool
     let showsShadow: Bool
 
-    init(state: IslandVisualState, visualScale: CGFloat) {
+    init(state: IslandVisualState, visualScale: CGFloat, horizontalScale: CGFloat? = nil) {
         let resolvedVisualScale = max(visualScale, 0.01)
+        let resolvedHorizontalScale = max(horizontalScale ?? resolvedVisualScale, 0.01)
         let shellTokens = IslandVisualTokens.shell(for: state.tokenSet)
 
-        width = shellTokens.previewWidth * resolvedVisualScale
+        width = shellTokens.previewWidth * resolvedHorizontalScale
         height = shellTokens.height * resolvedVisualScale
         radius = shellTokens.radius * resolvedVisualScale
         smoothness = shellTokens.smoothness
@@ -26,7 +27,15 @@ struct IslandShapeMetrics: Equatable {
         showsShadow = state.allowsShadow
     }
 
-    static func resolve(for state: IslandVisualState, visualScale: CGFloat) -> IslandShapeMetrics {
-        IslandShapeMetrics(state: state, visualScale: visualScale)
+    static func resolve(
+        for state: IslandVisualState,
+        visualScale: CGFloat,
+        horizontalScale: CGFloat? = nil
+    ) -> IslandShapeMetrics {
+        IslandShapeMetrics(
+            state: state,
+            visualScale: visualScale,
+            horizontalScale: horizontalScale
+        )
     }
 }

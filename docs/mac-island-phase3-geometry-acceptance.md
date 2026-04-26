@@ -15,7 +15,7 @@
 | Condition | Expected Result | Evidence | Status |
 | --- | --- | --- | --- |
 | Native body, open-stroke, and cap paths are sampled for compact, activity, and expanded inputs | The sampled native `CGPath` output matches the JS baseline generated from the Windows formulas for body, open-stroke, left-cap, and right-cap paths. | [path-parity-report.json](./evidence/mac-island-phase3/path-parity-report.json), [native-path-samples.json](./evidence/mac-island-phase3/native-path-samples.json), [js-path-samples.json](./evidence/mac-island-phase3/js-path-samples.json) | Passed |
-| Native left and right ear connector paths are sampled for compact, activity, and expanded inputs | The native ear connector paths match the JS baseline exactly after the same `1px` overlap and `4px` tip extension rules are applied on both sides. | [path-parity-report.json](./evidence/mac-island-phase3/path-parity-report.json), [native-path-samples.json](./evidence/mac-island-phase3/native-path-samples.json), [js-path-samples.json](./evidence/mac-island-phase3/js-path-samples.json) | Passed |
+| Native left and right ear connector paths are sampled for compact, activity, and expanded inputs | Phase 3 originally matched the JS baseline exactly; the Mac connector is now intentionally superseded by a continuous-corner variant that keeps the same state-driven reach/depth tokens but improves the visible body join. | [Phase 3 token map](./mac-island-visual-token-map.md#path-sources), [IslandPathFactory.swift](../mac-island/MemoryFlowIsland/UI/Visual/IslandPathFactory.swift) | Superseded by Mac connector polish |
 
 ## Pixel Edge Checks
 
