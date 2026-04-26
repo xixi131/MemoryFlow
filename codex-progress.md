@@ -6,9 +6,9 @@
 - The next execution slice should start from the Phase 4 window-sizing work, using the new Phase 3 geometry outputs as inputs instead of placeholder shell presets.
 
 ### Queue snapshot
-- First pending task: `Add Phase 4 acceptance rows for sizing outputs and top attachment behavior.`
+- First pending task: `Add Phase 4 acceptance rows for content-driven width and shadow buffering.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: fill the Phase 4 acceptance matrix, then start the native sizing engine implementation.
+- Recommended next queue theme: finish the Phase 4 acceptance matrix, then start the native sizing result model and sizing engine work.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 sizing acceptance rows now define outputs and top attachment behavior
+
+- Filled the `Sizing Outputs` section in `docs/mac-island-phase4-sizing-motion-acceptance.md` with explicit prepared rows for `visibleFrame`, `shadowFrame`, `contentFrame`, and `hitTestFrame`.
+- Added a `Top Attachment And Display Behavior` subsection with prepared acceptance rows for notch displays, flat-top displays, external displays, and resolution-change recovery.
+- Linked every new sizing row back to the Phase 4 section of `灵动岛迁移方案.md` and mapped each row to the expected native modules such as `IslandWindowSizingEngine`, `NotchLayoutEngine`, `ScreenMetrics`, `IslandWindowController`, and related shell helpers.
+- Validation: confirmed all eight new scenarios are present in the acceptance doc and that each one carries a Phase 4 plan link.
 
 ## 2026-04-27 - Phase 4 sizing and motion acceptance shell created
 

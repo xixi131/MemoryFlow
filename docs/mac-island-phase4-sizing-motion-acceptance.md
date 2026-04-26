@@ -8,33 +8,45 @@ Phase 4 follows the sizing and motion acceptance targets in the [Phase 4 section
 
 ## Sizing Outputs
 
-| Status | Scenario | Acceptance target | Evidence | Expected native modules |
-| --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define visible, shadow, content, and hit-test sizing outputs. | Pending | `mac-island/MemoryFlowIsland/Window/` |
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Prepared | `visibleFrame` output | `IslandWindowSizingEngine` returns a visible shell frame that stays attached to the current top band or notch anchor instead of falling back to a fixed desktop preset. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending Phase 4 sizing evidence | `IslandWindowSizingEngine`, `IslandShapeEngine`, `IslandWindowController` |
+| Prepared | `shadowFrame` output | Expanded and hover-capable layouts return a shadow frame that can extend laterally and downward without adding a transparent gap above the shell. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending Phase 4 shadow evidence | `IslandWindowSizingEngine`, `IslandPanel`, `IslandWindowController` |
+| Prepared | `contentFrame` output | The sizing path returns a content frame aligned to the visible shell so preview or future real content can lay out without re-deriving shell geometry in view code. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending Phase 4 sizing evidence | `IslandWindowSizingEngine`, `IslandShapeEngine`, `IslandRootView` |
+| Prepared | `hitTestFrame` output | The sizing path returns a hit-test frame that matches the intended interactive area for hover or tap work without drifting away from the top attachment. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending Phase 4 interaction evidence | `IslandWindowSizingEngine`, `IslandHoverMonitor`, `IslandWindowController` |
+
+### Top Attachment And Display Behavior
+
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Prepared | Notch display sizing | Phase 4 sizing keeps the shell centered on the notch-derived top attachment while resolving visible, shadow, content, and hit-test frames from the same sizing result. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending notch-display sizing matrix | `IslandWindowSizingEngine`, `NotchLayoutEngine`, `ScreenMetrics`, `IslandWindowController` |
+| Prepared | Flat-top display sizing | Phase 4 sizing respects menu-bar or flat-top attachment metrics and does not assume notch-only geometry when returning window frames. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending flat-top sizing matrix | `IslandWindowSizingEngine`, `NotchLayoutEngine`, `DisplayTopEdgeClassifier`, `ScreenMetrics` |
+| Prepared | External display sizing | Phase 4 sizing keeps the shell inside the available top band on external displays and avoids the old fixed-height behavior that could push the window past the menu bar. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending external-display sizing matrix | `IslandWindowSizingEngine`, `NotchLayoutEngine`, `ScreenMetrics`, `IslandWindowController` |
+| Prepared | Resolution-change recovery | After display scale or resolution changes, the next sizing result reuses fresh top attachment metrics instead of stale window dimensions so the shell remains anchored correctly. | [Phase 4 sizing output contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Pending resolution-change sizing evidence | `IslandWindowSizingEngine`, `DisplayObserver`, `ScreenMetrics`, `IslandWindowController` |
 
 ## Content-Driven Width
 
-| Status | Scenario | Acceptance target | Evidence | Expected native modules |
-| --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define content-demand width behavior and fallback rules. | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Pending | To be filled in Phase 4 tasks | Define content-demand width behavior and fallback rules. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
 
 ## Shadow Buffering
 
-| Status | Scenario | Acceptance target | Evidence | Expected native modules |
-| --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define expanded shadow buffering and clipping expectations. | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Pending | To be filled in Phase 4 tasks | Define expanded shadow buffering and clipping expectations. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
 
 ## Motion Profiles
 
-| Status | Scenario | Acceptance target | Evidence | Expected native modules |
-| --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define motion quality targets and transition profiles. | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Pending | To be filled in Phase 4 tasks | Define motion quality targets and transition profiles. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
 
 ## Interruptible Transitions
 
-| Status | Scenario | Acceptance target | Evidence | Expected native modules |
-| --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define interruption-safe transition behavior. | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
+| --- | --- | --- | --- | --- | --- |
+| Pending | To be filled in Phase 4 tasks | Define interruption-safe transition behavior. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
 
 ## Preview Evidence
 

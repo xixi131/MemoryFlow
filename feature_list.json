@@ -8,7 +8,7 @@
       "Check that every heading is unique and the document opens correctly from repository root."
     ],
     "budget_minutes": 5,
-    "passes": true
+    "passes": false
   },
   {
     "task_type": "docs",
@@ -19,7 +19,7 @@
       "Link each row to the Phase 4 section in 灵动岛迁移方案.md and to the expected native modules."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
@@ -30,7 +30,7 @@
       "Check that the rows explicitly reject fixed activity width as the primary sizing strategy."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
