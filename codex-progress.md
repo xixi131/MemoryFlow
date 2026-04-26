@@ -6,9 +6,9 @@
 - The next execution slice should start from the Phase 4 window-sizing work, using the new Phase 3 geometry outputs as inputs instead of placeholder shell presets.
 
 ### Queue snapshot
-- First pending task: `Add Phase 4 acceptance rows for Alcove-like motion quality.`
+- First pending task: `Add native sizing result types for Phase 4 window layout.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: complete the motion rows in the Phase 4 acceptance matrix, then start the native sizing result model and sizing engine work.
+- Recommended next queue theme: land the native sizing result model, then move window-frame assembly into the Phase 4 sizing engine.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 acceptance rows now define motion quality and interruptibility
+
+- Filled the `Motion Profiles` section in `docs/mac-island-phase4-sizing-motion-acceptance.md` with prepared rows for compact-to-activity, activity-to-expanded, expanded-to-collapsed, hover enter, hover leave, spring-like elasticity, and content fade or blur timing.
+- Filled the `Interruptible Transitions` section with a prepared row that requires retargeting from the live presentation state rather than restarting from stale values.
+- Mapped the motion rows to the planned native modules such as `IslandMotionEngine`, `IslandWindowSizingEngine`, `IslandWindowController`, `IslandHoverMonitor`, and content-visibility hooks.
+- Validation: confirmed every requested motion scenario is present and that the new motion plus interruptibility rows require preview evidence instead of code inspection alone.
 
 ## 2026-04-27 - Phase 4 acceptance rows now define content-driven width and shadow buffering
 

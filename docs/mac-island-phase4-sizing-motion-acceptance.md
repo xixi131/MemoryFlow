@@ -46,13 +46,19 @@ Phase 4 follows the sizing and motion acceptance targets in the [Phase 4 section
 
 | Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
 | --- | --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define motion quality targets and transition profiles. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Prepared | Compact to activity path | The shell follows a preview-validated compact-to-activity motion path that expands with segmented timing rather than a single abrupt frame jump. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview motion capture, GIF, video, or frame sequence | `IslandMotionEngine`, `IslandWindowSizingEngine`, `IslandWindowController` |
+| Prepared | Activity to expanded path | The shell follows a preview-validated activity-to-expanded motion path that coordinates shell frame growth, path morph, and shadow evolution on one timeline. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview motion capture, GIF, video, or frame sequence | `IslandMotionEngine`, `IslandShapeEngine`, `IslandWindowController` |
+| Prepared | Expanded to collapsed path | Expanded shells collapse through a preview-validated expanded-to-collapsed path that preserves the top attachment and avoids a hard visual cut. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview motion capture, GIF, video, or frame sequence | `IslandMotionEngine`, `IslandWindowSizingEngine`, `IslandWindowController` |
+| Prepared | Hover enter path | Hover entry uses a preview-validated motion path with the allowed hover emphasis while keeping the shell anchored to the same top attachment. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview hover-motion evidence | `IslandMotionEngine`, `IslandHoverMonitor`, `IslandWindowController` |
+| Prepared | Hover leave path | Hover exit uses a preview-validated motion path that restores the non-hover shell cleanly without a size or shadow snap-back. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview hover-motion evidence | `IslandMotionEngine`, `IslandHoverMonitor`, `IslandWindowController` |
+| Prepared | Spring-like elasticity | Motion profiles use spring-like elasticity with slight overshoot on expansion and magnetic-feeling settle on collapse, and acceptance requires preview evidence rather than code inspection alone. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview motion evidence with visible timing review | `IslandMotionEngine`, `IslandMotionTokens`, `IslandWindowController` |
+| Prepared | Content fade or blur timing | Content opacity or blur transitions stay on the same preview-validated timeline as shell and shadow motion so content does not pop in early or linger after collapse. | [Phase 4 motion contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required preview motion evidence with frame review | `IslandMotionEngine`, `IslandRootView`, `IslandWindowController` |
 
 ## Interruptible Transitions
 
 | Status | Scenario | Acceptance target | Plan reference | Evidence | Expected native modules |
 | --- | --- | --- | --- | --- | --- |
-| Pending | To be filled in Phase 4 tasks | Define interruption-safe transition behavior. | Pending | Pending | `mac-island/MemoryFlowIsland/UI/Visual/`, `mac-island/MemoryFlowIsland/Window/` |
+| Prepared | Interruptible transition behavior | A new tap, hover, or state-change request can retarget the current animation from its live presentation state, and acceptance requires preview evidence instead of code inspection alone. | [Phase 4 interruptibility contract](../灵动岛迁移方案.md#phase-4窗口尺寸编排内容驱动宽度和动画基础设施) | Required rapid-transition preview capture or frame sequence | `IslandMotionEngine`, `IslandWindowController`, `IslandRootView` |
 
 ## Preview Evidence
 
