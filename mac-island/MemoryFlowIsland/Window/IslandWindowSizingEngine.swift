@@ -114,7 +114,11 @@ enum IslandWindowSizingEngine {
                 horizontalScale: attachmentMetrics.horizontalVisualScale,
                 requestedBaseBodyWidth: resolvedWidthConstraints.baseBodyWidth,
                 requestedMaximumVisibleWidth: resolvedWidthConstraints.maximumVisibleWidth,
-                contentWidthRequirement: resolvedWidthConstraints.contentWidthRequirement
+                contentWidthRequirement: resolvedWidthConstraints.contentWidthRequirement,
+                visibleSize: visibleFrame.size,
+                shadowSize: shadowFrame.size,
+                contentSize: contentFrame.size,
+                hitTestFrame: hitTestFrame
             )
         )
     }

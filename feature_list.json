@@ -118,7 +118,7 @@
       "Check one compact, one activity, and one expanded sizing result includes all diagnostic fields."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -129,7 +129,7 @@
       "Check that every matrix row includes visible, shadow, content, and hit frame values."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -140,7 +140,7 @@
       "Check hover and compact states do not inherit expanded shadow buffer values."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -151,7 +151,7 @@
       "Check that the model has no dependency on business data or AppKit window classes."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -162,7 +162,7 @@
       "Check that unknown or same-state transitions fall back to a stable no-op or default profile."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -173,7 +173,7 @@
       "Check that the new engine compiles and can produce plans for compact-to-activity and activity-to-expanded transitions."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -184,7 +184,7 @@
       "Check that tapping through preview states still advances compact, hover, activity, expanded music, and expanded app in order."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

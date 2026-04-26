@@ -26,10 +26,62 @@ struct IslandHoverBehaviorTokens: Equatable {
     let collapsedScale: CGFloat
 }
 
+struct IslandShadowBufferTokens: Equatable {
+    let horizontal: CGFloat
+    let bottom: CGFloat
+
+    func scaled(by visualScale: CGFloat) -> IslandShadowOutsets {
+        IslandShadowOutsets(
+            horizontal: horizontal * visualScale,
+            bottom: bottom * visualScale
+        )
+    }
+}
+
+struct IslandShadowAppearanceTokens: Equatable {
+    let opacity: Double
+    let radius: CGFloat
+    let offsetY: CGFloat
+
+    func scaled(by visualScale: CGFloat) -> IslandShadowAppearanceTokens {
+        IslandShadowAppearanceTokens(
+            opacity: opacity,
+            radius: radius * visualScale,
+            offsetY: offsetY * visualScale
+        )
+    }
+}
+
 struct IslandShadowBehaviorTokens: Equatable {
     let fadeDuration: TimeInterval
     let visibleInHoverCollapsed: Bool
     let visibleInExpanded: Bool
+    let hoverBuffer: IslandShadowBufferTokens
+    let expandedBuffer: IslandShadowBufferTokens
+    let hoverAppearance: IslandShadowAppearanceTokens
+    let expandedAppearance: IslandShadowAppearanceTokens
+
+    func outsets(for state: IslandVisualState, visualScale: CGFloat) -> IslandShadowOutsets {
+        switch state {
+        case .hoverCollapsed:
+            return hoverBuffer.scaled(by: visualScale)
+        case .expandedMusic, .expandedApp:
+            return expandedBuffer.scaled(by: visualScale)
+        case .compactCollapsed, .activityCollapsed:
+            return .zero
+        }
+    }
+
+    func appearance(for state: IslandVisualState, visualScale: CGFloat) -> IslandShadowAppearanceTokens {
+        switch state {
+        case .hoverCollapsed:
+            return hoverAppearance.scaled(by: visualScale)
+        case .expandedMusic, .expandedApp:
+            return expandedAppearance.scaled(by: visualScale)
+        case .compactCollapsed, .activityCollapsed:
+            return IslandShadowAppearanceTokens(opacity: 0, radius: 0, offsetY: 0)
+        }
+    }
 }
 
 enum IslandVisualTokens {
@@ -63,7 +115,7 @@ enum IslandVisualTokens {
         height: 36,
         radius: 40,
         smoothness: 2.8,
-        earTension: 0.55,
+        earTension: 0.4,
         earBlendHeight: 14,
         showsStroke: false
     )
@@ -90,7 +142,7 @@ enum IslandVisualTokens {
         height: 320,
         radius: 80,
         smoothness: 3.5,
-        earTension: 0.7,
+        earTension: 0.6,
         earBlendHeight: 60,
         showsStroke: false
     )
@@ -102,7 +154,25 @@ enum IslandVisualTokens {
     static let shadow = IslandShadowBehaviorTokens(
         fadeDuration: 0.26,
         visibleInHoverCollapsed: true,
-        visibleInExpanded: true
+        visibleInExpanded: true,
+        hoverBuffer: IslandShadowBufferTokens(
+            horizontal: 18,
+            bottom: 24
+        ),
+        expandedBuffer: IslandShadowBufferTokens(
+            horizontal: 64,
+            bottom: 136
+        ),
+        hoverAppearance: IslandShadowAppearanceTokens(
+            opacity: 0.28,
+            radius: 12,
+            offsetY: 10
+        ),
+        expandedAppearance: IslandShadowAppearanceTokens(
+            opacity: 0.22,
+            radius: 34,
+            offsetY: 10
+        )
     )
 
     static func shell(for tokenSet: IslandVisualTokenSet) -> IslandShellGeometryTokens {

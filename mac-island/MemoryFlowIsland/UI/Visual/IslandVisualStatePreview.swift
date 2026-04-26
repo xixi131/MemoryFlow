@@ -4,13 +4,16 @@ struct IslandVisualStatePreview: View {
     let state: IslandVisualState
     let visualScale: CGFloat
     let horizontalScale: CGFloat
+    let widthConstraints: IslandWidthConstraints
+    let motionPlan: IslandMotionPlan?
     var onAdvanceState: (() -> Void)?
 
     private var snapshot: IslandShapeLayoutSnapshot {
         IslandShapeEngine.snapshot(
             for: state,
             visualScale: visualScale,
-            horizontalScale: horizontalScale
+            horizontalScale: horizontalScale,
+            widthConstraints: widthConstraints
         )
     }
 
@@ -25,10 +28,7 @@ struct IslandVisualStatePreview: View {
                     x: 0,
                     y: shadowOffsetY(for: snapshot)
                 )
-                .animation(
-                    .easeOut(duration: IslandVisualTokens.shadow.fadeDuration),
-                    value: state
-                )
+                .animation(shellAnimation, value: state)
         }
         .frame(
             width: snapshot.contentFrame.width,
@@ -66,6 +66,7 @@ struct IslandVisualStatePreview: View {
             height: snapshot.contentFrame.height,
             alignment: .topLeading
         )
+        .animation(shellAnimation, value: state)
     }
 
     private func shadowColor(for snapshot: IslandShapeLayoutSnapshot) -> Color {
@@ -73,7 +74,7 @@ struct IslandVisualStatePreview: View {
             return .clear
         }
 
-        return Color.black.opacity(snapshot.state.isExpanded ? 0.34 : 0.28)
+        return Color.black.opacity(shadowAppearance(for: snapshot).opacity)
     }
 
     private func shadowRadius(for snapshot: IslandShapeLayoutSnapshot) -> CGFloat {
@@ -81,9 +82,7 @@ struct IslandVisualStatePreview: View {
             return 0
         }
 
-        return snapshot.state.isExpanded
-            ? 18 * visualScale
-            : 12 * visualScale
+        return shadowAppearance(for: snapshot).radius
     }
 
     private func shadowOffsetY(for snapshot: IslandShapeLayoutSnapshot) -> CGFloat {
@@ -91,8 +90,35 @@ struct IslandVisualStatePreview: View {
             return 0
         }
 
-        return snapshot.state.isExpanded
-            ? 18 * visualScale
-            : 10 * visualScale
+        return shadowAppearance(for: snapshot).offsetY
+    }
+
+    private var shellAnimation: Animation {
+        guard let motionPlan else {
+            return .easeOut(duration: IslandVisualTokens.shadow.fadeDuration)
+        }
+
+        let spring = motionPlan.shellFrame.spring
+        return .interpolatingSpring(
+            mass: Double(spring.mass),
+            stiffness: Double(spring.stiffness),
+            damping: Double(spring.damping),
+            initialVelocity: 0
+        )
+    }
+
+    private func shadowAppearance(for snapshot: IslandShapeLayoutSnapshot) -> IslandShadowAppearanceTokens {
+        if let shadowMotion = motionPlan?.shadow {
+            return IslandShadowAppearanceTokens(
+                opacity: shadowMotion.targetOpacity,
+                radius: shadowMotion.targetRadius,
+                offsetY: shadowMotion.targetOffsetY
+            )
+        }
+
+        return IslandVisualTokens.shadow.appearance(
+            for: snapshot.state,
+            visualScale: visualScale
+        )
     }
 }

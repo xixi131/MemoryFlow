@@ -25,12 +25,16 @@
 		B001020F0000000000000001 /* IslandHoverMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101100000000000000001 /* IslandHoverMonitor.swift */; };
 		B00102100000000000000001 /* IslandWindowSizingResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101110000000000000001 /* IslandWindowSizingResult.swift */; };
 		B00102110000000000000001 /* IslandWindowSizingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101120000000000000001 /* IslandWindowSizingEngine.swift */; };
+		B00102120000000000000001 /* IslandSizingMatrixProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101130000000000000001 /* IslandSizingMatrixProbe.swift */; };
 		C00102010000000000000001 /* IslandVisualTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101010000000000000001 /* IslandVisualTokens.swift */; };
 		C00102020000000000000001 /* IslandVisualState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101020000000000000001 /* IslandVisualState.swift */; };
 		C00102030000000000000001 /* IslandShapeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101030000000000000001 /* IslandShapeMetrics.swift */; };
 		C00102040000000000000001 /* IslandPathFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101040000000000000001 /* IslandPathFactory.swift */; };
 		C00102050000000000000001 /* IslandShapeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101050000000000000001 /* IslandShapeEngine.swift */; };
 		C00102060000000000000001 /* IslandVisualStatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101060000000000000001 /* IslandVisualStatePreview.swift */; };
+		C00202010000000000000001 /* IslandMotionTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201010000000000000001 /* IslandMotionTokens.swift */; };
+		C00202020000000000000001 /* IslandTransitionKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201020000000000000001 /* IslandTransitionKind.swift */; };
+		C00202030000000000000001 /* IslandMotionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201030000000000000001 /* IslandMotionEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,12 +58,16 @@
 		B00101100000000000000001 /* IslandHoverMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandHoverMonitor.swift; sourceTree = "<group>"; };
 		B00101110000000000000001 /* IslandWindowSizingResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowSizingResult.swift; sourceTree = "<group>"; };
 		B00101120000000000000001 /* IslandWindowSizingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowSizingEngine.swift; sourceTree = "<group>"; };
+		B00101130000000000000001 /* IslandSizingMatrixProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandSizingMatrixProbe.swift; sourceTree = "<group>"; };
 		C00101010000000000000001 /* IslandVisualTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandVisualTokens.swift; sourceTree = "<group>"; };
 		C00101020000000000000001 /* IslandVisualState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandVisualState.swift; sourceTree = "<group>"; };
 		C00101030000000000000001 /* IslandShapeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandShapeMetrics.swift; sourceTree = "<group>"; };
 		C00101040000000000000001 /* IslandPathFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPathFactory.swift; sourceTree = "<group>"; };
 		C00101050000000000000001 /* IslandShapeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandShapeEngine.swift; sourceTree = "<group>"; };
 		C00101060000000000000001 /* IslandVisualStatePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandVisualStatePreview.swift; sourceTree = "<group>"; };
+		C00201010000000000000001 /* IslandMotionTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionTokens.swift; sourceTree = "<group>"; };
+		C00201020000000000000001 /* IslandTransitionKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTransitionKind.swift; sourceTree = "<group>"; };
+		C00201030000000000000001 /* IslandMotionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +132,7 @@
 				B00101100000000000000001 /* IslandHoverMonitor.swift */,
 				B00101110000000000000001 /* IslandWindowSizingResult.swift */,
 				B00101120000000000000001 /* IslandWindowSizingEngine.swift */,
+				B00101130000000000000001 /* IslandSizingMatrixProbe.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -150,6 +159,7 @@
 			isa = PBXGroup;
 			children = (
 				B00101080000000000000001 /* IslandRootView.swift */,
+				C00200010000000000000001 /* Motion */,
 				C00100010000000000000001 /* Visual */,
 			);
 			path = UI;
@@ -166,6 +176,16 @@
 				C00101060000000000000001 /* IslandVisualStatePreview.swift */,
 			);
 			path = Visual;
+			sourceTree = "<group>";
+		};
+		C00200010000000000000001 /* Motion */ = {
+			isa = PBXGroup;
+			children = (
+				C00201010000000000000001 /* IslandMotionTokens.swift */,
+				C00201020000000000000001 /* IslandTransitionKind.swift */,
+				C00201030000000000000001 /* IslandMotionEngine.swift */,
+			);
+			path = Motion;
 			sourceTree = "<group>";
 		};
 		B001000B0000000000000001 /* Resources */ = {
@@ -263,12 +283,16 @@
 				B001020F0000000000000001 /* IslandHoverMonitor.swift in Sources */,
 				B00102100000000000000001 /* IslandWindowSizingResult.swift in Sources */,
 				B00102110000000000000001 /* IslandWindowSizingEngine.swift in Sources */,
+				B00102120000000000000001 /* IslandSizingMatrixProbe.swift in Sources */,
 				C00102010000000000000001 /* IslandVisualTokens.swift in Sources */,
 				C00102020000000000000001 /* IslandVisualState.swift in Sources */,
 				C00102030000000000000001 /* IslandShapeMetrics.swift in Sources */,
 				C00102040000000000000001 /* IslandPathFactory.swift in Sources */,
 				C00102050000000000000001 /* IslandShapeEngine.swift in Sources */,
 				C00102060000000000000001 /* IslandVisualStatePreview.swift in Sources */,
+				C00202010000000000000001 /* IslandMotionTokens.swift in Sources */,
+				C00202020000000000000001 /* IslandTransitionKind.swift in Sources */,
+				C00202030000000000000001 /* IslandMotionEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

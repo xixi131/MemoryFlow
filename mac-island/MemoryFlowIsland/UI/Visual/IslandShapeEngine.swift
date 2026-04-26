@@ -34,10 +34,25 @@ enum IslandShapeEngine {
         horizontalScale: CGFloat?
     ) -> IslandShapeLayoutSnapshot {
         snapshot(
+            for: state,
+            visualScale: visualScale,
+            horizontalScale: horizontalScale,
+            widthConstraints: .none
+        )
+    }
+
+    static func snapshot(
+        for state: IslandVisualState,
+        visualScale: CGFloat,
+        horizontalScale: CGFloat?,
+        widthConstraints: IslandWidthConstraints
+    ) -> IslandShapeLayoutSnapshot {
+        snapshot(
             for: IslandShapeMetrics.resolve(
                 for: state,
                 visualScale: visualScale,
-                horizontalScale: horizontalScale
+                horizontalScale: horizontalScale,
+                widthConstraints: widthConstraints
             ),
             state: state
         )
@@ -55,7 +70,7 @@ enum IslandShapeEngine {
         )
         let visibleFrame = CGRect(
             x: shadowOutsets.horizontal,
-            y: 0,
+            y: shadowOutsets.bottom,
             width: composedPaths.visibleBounds.width,
             height: composedPaths.visibleBounds.height
         )
@@ -146,21 +161,7 @@ enum IslandShapeEngine {
 
         let tokenHeight = IslandVisualTokens.shell(for: state.tokenSet).height
         let visualScale = max(metrics.height / max(tokenHeight, 1), 0.78)
-
-        switch state {
-        case .hoverCollapsed:
-            return IslandShadowOutsets(
-                horizontal: 18 * visualScale,
-                bottom: 24 * visualScale
-            )
-        case .expandedMusic, .expandedApp:
-            return IslandShadowOutsets(
-                horizontal: 26 * visualScale,
-                bottom: 34 * visualScale
-            )
-        case .compactCollapsed, .activityCollapsed:
-            return .zero
-        }
+        return IslandVisualTokens.shadow.outsets(for: state, visualScale: visualScale)
     }
 
     private static func translated(_ path: CGPath, by offset: CGPoint) -> CGPath {
