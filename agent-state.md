@@ -3,16 +3,16 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration has completed the current Phase 3 native visual-geometry queue and now has a broader Phase 4 shell foundation in place across sizing, diagnostics, shadow buffering, and first-pass motion planning.
+Dynamic Island migration has completed the current Phase 3 native visual-geometry queue and now has a broader Phase 4 shell foundation in place across sizing, diagnostics, shadow buffering, motion planning, preview content timing hooks, and interruptible preview-transition storage.
 
-`IslandWindowSizingResult.swift` now carries preview-safe diagnostics for state, scales, visible size, shadow size, content size, and hit frame. `IslandWindowController.swift` can gate those logs behind `MEMORYFLOW_ISLAND_SIZING_DIAGNOSTICS=1`, while preview state changes now derive an `IslandMotionPlan` before updating root-view inputs or animation timing.
+`IslandVisualStatePreview.swift` now routes shell-shadow animation through motion-plan timing instead of a generic shell spring, and the preview layer also accepts motion-driven content-visibility inputs via a transparent placeholder channel that keeps shell-only rendering unchanged while giving Phase 4 a content-timing seam.
 
-`IslandSizingMatrixProbe.swift` now generates synthetic Phase 4 display coverage, and `docs/evidence/mac-island-phase4/sizing-matrix.json` currently records compact, activity, expanded music, and expanded app sizing on notch and flat-top displays.
+`IslandWindowController.swift` now stores `IslandPreviewTransitionState`, cancels stale completion work items, and can retarget an in-flight preview transition to a newer tap or hover target without keeping stale lock state around. Hover entry and exit now reuse the same preview transition request path when the shell is cycling between compact and hover preview states.
 
-Expanded shadow buffer values now live in `IslandVisualTokens.shadow`, and `IslandShapeEngine.snapshot(...)` correctly offsets `visibleFrame` above the bottom shadow buffer so `IslandPanel` receives real downward shadow space instead of a collapsed zero-bottom inset.
+`IslandPreviewContentVisibility.swift` and `IslandPreviewTransitionState.swift` now hold the two new Phase 4-only seams: one for opacity/blur timing inputs, and one for interruptible preview transition bookkeeping that can be validated without real business content or AppKit window mutation.
 
 ## First pending task
-* Apply motion profiles to SwiftUI shell shadow transitions.
+* Add Phase 4 preview controls for core motion paths.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -20,9 +20,9 @@ Expanded shadow buffer values now live in `IslandVisualTokens.shadow`, and `Isla
 3. Read `feature_list.json`.
 4. Read the Phase 4 section in `灵动岛迁移方案.md`.
 5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md` and `docs/evidence/mac-island-phase4/sizing-matrix.json`.
-6. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift`.
-7. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `IslandWindowSizingResult.swift`, and `IslandSizingMatrixProbe.swift`.
-8. Read `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`, `IslandVisualTokens.swift`, and `IslandShapeEngine.swift` if the next task needs shell-shadow or frame-offset details.
+6. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift`.
+7. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` and `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`.
+8. Read `mac-island/MemoryFlowIsland/Window/IslandSizingMatrixProbe.swift` and `IslandWindowSizingResult.swift` if the next task needs synthetic validation or sizing/motion coupling details.
 9. Read `feature_list_summary.json` only if you need completed Phase 0 to Phase 3 history.
 
 ## Runtime notes
@@ -30,11 +30,11 @@ Expanded shadow buffer values now live in `IslandVisualTokens.shadow`, and `Isla
 * `xcodebuild` is still unavailable in the current environment because the active developer directory is CommandLineTools only.
 * Native-shell compile checks can still use `swiftc -module-cache-path /tmp/... -typecheck` when a task needs a lightweight verification path.
 * In the current sandbox, `init.sh` can fail with occupied-port or bind-permission errors (`SocketException: Operation not permitted`, `listen EPERM`), so native-shell validation still relies on the Swift render/typecheck path unless unrestricted runtime startup is available.
-* The current Phase 4 validation path is: repository-wide Swift typecheck plus the focused harness that regenerates `docs/evidence/mac-island-phase4/sizing-matrix.json` and checks diagnostics fields, shadow buffer separation, motion-plan coverage, and preview-state ordering.
-* The preview-state ordering check is synthetic (`compact -> hover -> activity -> expandedMusic -> expandedApp`), not a real GUI tap capture.
+* The current Phase 4 validation path is: repository-wide Swift typecheck plus focused harnesses that check diagnostics fields, shadow buffer separation, motion-plan coverage, preview-state ordering, motion-driven content-visibility inputs, and interruptible preview-transition retargeting.
+* The preview-state ordering and retargeting checks are synthetic model/harness results, not real GUI tap or hover capture.
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
 * `feature_list_summary.json` now stores the completed historical queue that was previously in `feature_list.json`.
 * The external-display evidence for Phase 3 is a truthful synthetic `ScreenMetrics` harness result, not a physical second-display run.
-* Business data, auth, preview content timing hooks, and interruptible Phase 5 state storage remain out of scope for the completed Phase 4 slice so far.
+* Business data, auth, preview control surfaces, and Phase 5 interaction/state-machine migration remain out of scope for the completed Phase 4 slice so far.

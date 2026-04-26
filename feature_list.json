@@ -195,7 +195,7 @@
       "Check that shadow changes still compile and no compact or activity state shows unsupported shadow."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -206,7 +206,7 @@
       "Check that content visibility defaults do not change pure shell rendering when no content is present."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -217,7 +217,7 @@
       "Check rapid preview cycling does not skip root view updates or leave the panel at an old size."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

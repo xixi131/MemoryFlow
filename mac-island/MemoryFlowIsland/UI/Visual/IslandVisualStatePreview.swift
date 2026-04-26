@@ -28,7 +28,9 @@ struct IslandVisualStatePreview: View {
                     x: 0,
                     y: shadowOffsetY(for: snapshot)
                 )
-                .animation(shellAnimation, value: state)
+                .animation(shadowAnimation, value: state)
+
+            previewContentVisibilityLayer(snapshot: snapshot)
         }
         .frame(
             width: snapshot.contentFrame.width,
@@ -69,6 +71,23 @@ struct IslandVisualStatePreview: View {
         .animation(shellAnimation, value: state)
     }
 
+    @ViewBuilder
+    private func previewContentVisibilityLayer(snapshot: IslandShapeLayoutSnapshot) -> some View {
+        let visibility = contentVisibilityInput(for: snapshot)
+
+        Color.clear
+            .frame(
+                width: snapshot.contentFrame.width,
+                height: snapshot.contentFrame.height,
+                alignment: .topLeading
+            )
+            .opacity(visibility.opacity)
+            .blur(radius: visibility.blurRadius)
+            .animation(contentAnimation(for: visibility), value: state)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
     private func shadowColor(for snapshot: IslandShapeLayoutSnapshot) -> Color {
         guard snapshot.metrics.showsShadow else {
             return .clear
@@ -107,6 +126,17 @@ struct IslandVisualStatePreview: View {
         )
     }
 
+    private var shadowAnimation: Animation {
+        guard let shadowMotion = motionPlan?.shadow else {
+            return .easeOut(duration: IslandVisualTokens.shadow.fadeDuration)
+        }
+
+        return animation(
+            curve: shadowMotion.animation.curve,
+            duration: shadowMotion.animation.duration
+        )
+    }
+
     private func shadowAppearance(for snapshot: IslandShapeLayoutSnapshot) -> IslandShadowAppearanceTokens {
         if let shadowMotion = motionPlan?.shadow {
             return IslandShadowAppearanceTokens(
@@ -120,5 +150,38 @@ struct IslandVisualStatePreview: View {
             for: snapshot.state,
             visualScale: visualScale
         )
+    }
+
+    private func contentVisibilityInput(for snapshot: IslandShapeLayoutSnapshot) -> IslandPreviewContentVisibilityInput {
+        guard let motionPlan else {
+            return snapshot.state == .compactCollapsed
+                ? .hidden
+                : IslandPreviewContentVisibilityInput(
+                    opacity: 1,
+                    blurRadius: 0,
+                    delay: 0,
+                    duration: 0.12,
+                    curve: .easeOut
+                )
+        }
+
+        return snapshot.state == .compactCollapsed
+            ? motionPlan.contentVisibility.hidden
+            : motionPlan.contentVisibility.visible
+    }
+
+    private func contentAnimation(for visibility: IslandPreviewContentVisibilityInput) -> Animation {
+        animation(curve: visibility.curve, duration: visibility.duration).delay(visibility.delay)
+    }
+
+    private func animation(curve: IslandMotionTimingCurve, duration: TimeInterval) -> Animation {
+        switch curve {
+        case .easeInOut:
+            return .easeInOut(duration: duration)
+        case .easeOut:
+            return .easeOut(duration: duration)
+        case .linear:
+            return .linear(duration: duration)
+        }
     }
 }

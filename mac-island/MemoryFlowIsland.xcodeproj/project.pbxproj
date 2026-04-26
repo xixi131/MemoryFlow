@@ -35,6 +35,8 @@
 		C00202010000000000000001 /* IslandMotionTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201010000000000000001 /* IslandMotionTokens.swift */; };
 		C00202020000000000000001 /* IslandTransitionKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201020000000000000001 /* IslandTransitionKind.swift */; };
 		C00202030000000000000001 /* IslandMotionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201030000000000000001 /* IslandMotionEngine.swift */; };
+		C00202040000000000000001 /* IslandPreviewContentVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201040000000000000001 /* IslandPreviewContentVisibility.swift */; };
+		C00202050000000000000001 /* IslandPreviewTransitionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201050000000000000001 /* IslandPreviewTransitionState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +70,8 @@
 		C00201010000000000000001 /* IslandMotionTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionTokens.swift; sourceTree = "<group>"; };
 		C00201020000000000000001 /* IslandTransitionKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTransitionKind.swift; sourceTree = "<group>"; };
 		C00201030000000000000001 /* IslandMotionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionEngine.swift; sourceTree = "<group>"; };
+		C00201040000000000000001 /* IslandPreviewContentVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPreviewContentVisibility.swift; sourceTree = "<group>"; };
+		C00201050000000000000001 /* IslandPreviewTransitionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPreviewTransitionState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -184,6 +188,8 @@
 				C00201010000000000000001 /* IslandMotionTokens.swift */,
 				C00201020000000000000001 /* IslandTransitionKind.swift */,
 				C00201030000000000000001 /* IslandMotionEngine.swift */,
+				C00201040000000000000001 /* IslandPreviewContentVisibility.swift */,
+				C00201050000000000000001 /* IslandPreviewTransitionState.swift */,
 			);
 			path = Motion;
 			sourceTree = "<group>";
@@ -293,6 +299,8 @@
 				C00202010000000000000001 /* IslandMotionTokens.swift in Sources */,
 				C00202020000000000000001 /* IslandTransitionKind.swift in Sources */,
 				C00202030000000000000001 /* IslandMotionEngine.swift in Sources */,
+				C00202040000000000000001 /* IslandPreviewContentVisibility.swift in Sources */,
+				C00202050000000000000001 /* IslandPreviewTransitionState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

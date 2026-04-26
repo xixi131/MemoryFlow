@@ -26,13 +26,18 @@ struct IslandFadeMotionToken: Equatable {
     let curve: IslandMotionTimingCurve
 }
 
+struct IslandShadowFadeMotionToken: Equatable {
+    let duration: TimeInterval
+    let curve: IslandMotionTimingCurve
+}
+
 struct IslandMotionTokenSet: Equatable {
     let shellSpring: IslandSpringMotionToken
     let shellKeyframes: IslandKeyframeMotionToken
     let pathMorphDuration: TimeInterval
     let contentEnter: IslandFadeMotionToken
     let contentExit: IslandFadeMotionToken
-    let shadowFadeDuration: TimeInterval
+    let shadowFade: IslandShadowFadeMotionToken
 }
 
 enum IslandMotionTokens {
@@ -76,7 +81,10 @@ enum IslandMotionTokens {
                     blurRadius: 5,
                     curve: .easeOut
                 ),
-                shadowFadeDuration: shadowFadeDuration
+                shadowFade: IslandShadowFadeMotionToken(
+                    duration: shadowFadeDuration,
+                    curve: .easeOut
+                )
             )
         case .activityToCompact, .expandedToActivity, .expandedToCompact:
             return IslandMotionTokenSet(
@@ -99,7 +107,10 @@ enum IslandMotionTokens {
                     blurRadius: 5,
                     curve: .easeOut
                 ),
-                shadowFadeDuration: shadowFadeDuration
+                shadowFade: IslandShadowFadeMotionToken(
+                    duration: shadowFadeDuration,
+                    curve: .easeOut
+                )
             )
         case .hoverEnter, .hoverLeave:
             return IslandMotionTokenSet(
@@ -122,7 +133,10 @@ enum IslandMotionTokens {
                     blurRadius: 0,
                     curve: .easeOut
                 ),
-                shadowFadeDuration: shadowFadeDuration
+                shadowFade: IslandShadowFadeMotionToken(
+                    duration: shadowFadeDuration,
+                    curve: .easeOut
+                )
             )
         case .defaultProfile:
             return IslandMotionTokenSet(
@@ -145,7 +159,10 @@ enum IslandMotionTokens {
                     blurRadius: 0,
                     curve: .easeOut
                 ),
-                shadowFadeDuration: shadowFadeDuration
+                shadowFade: IslandShadowFadeMotionToken(
+                    duration: shadowFadeDuration,
+                    curve: .easeOut
+                )
             )
         }
     }

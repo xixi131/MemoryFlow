@@ -14,6 +14,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var previewHorizontalScale: CGFloat = 1
     private var previewWidthConstraints: IslandWidthConstraints = .none
     private var previewMotionPlan: IslandMotionPlan?
+    private var previewTransitionState: IslandPreviewTransitionState = .idle(at: .compactCollapsed)
+    private var previewTransitionResetWorkItem: DispatchWorkItem?
     private var applicationTerminationObserver: NSObjectProtocol?
     private var lastSizingResult: IslandWindowSizingResult?
 
@@ -143,6 +145,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func stopObservation() {
         displayObserver.stopObserving()
         hoverMonitor.stopMonitoring()
+        previewTransitionResetWorkItem?.cancel()
+        previewTransitionResetWorkItem = nil
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
         applicationTerminationObserver = nil
     }
@@ -161,6 +165,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             on: screenMetrics
         )
         previewMotionPlan = nil
+        previewTransitionState = .idle(at: previewState)
         applyResolvedPreviewLayout(
             resolvedLayout,
             on: screenMetrics,
@@ -248,10 +253,16 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handleHoverStart() {
         activateInteractiveHoverMode()
+        if previewTransitionState.targetState == .compactCollapsed {
+            requestPreviewStateChange(to: .hoverCollapsed)
+        }
         NSCursor.arrow.set()
     }
 
     private func handleHoverEnd() {
+        if previewTransitionState.targetState == .hoverCollapsed {
+            requestPreviewStateChange(to: .compactCollapsed)
+        }
         recoverClickThroughAfterHoverExit()
     }
 
@@ -296,28 +307,42 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func advancePreviewState() {
+        requestPreviewStateChange(to: previewTransitionState.targetState.nextPreviewState)
+    }
+
+    private func requestPreviewStateChange(to nextState: IslandVisualState) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else {
-            previewState = previewState.nextPreviewState
+            previewState = nextState
+            previewTransitionState = .idle(at: nextState)
             repositionToTopCenter(animated: true)
             return
         }
 
-        let nextState = previewState.nextPreviewState
+        guard previewTransitionState.targetState != nextState || previewTransitionState.isAnimating == false else {
+            return
+        }
+
+        let isRetargeting = previewTransitionState.isAnimating
+        let previousState = isRetargeting ? previewTransitionState.targetState : previewState
         let resolvedLayout = resolvePreviewLayout(
             for: nextState,
             on: screenMetrics
         )
         let motionPlan = IslandMotionEngine.plan(
-            previous: previewState,
+            previous: previousState,
             next: nextState,
             context: IslandMotionContext(
                 currentSizingResult: lastSizingResult,
                 nextSizingResult: resolvedLayout.sizingResult,
                 isPreviewInteraction: true,
-                isRetargeting: false
+                isRetargeting: isRetargeting
             )
         )
 
+        previewTransitionResetWorkItem?.cancel()
+        previewTransitionState = isRetargeting
+            ? previewTransitionState.retargeting(to: nextState)
+            : .animating(from: previewState, to: nextState)
         previewState = nextState
         previewMotionPlan = motionPlan
         applyResolvedPreviewLayout(
@@ -325,6 +350,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             on: screenMetrics,
             animated: true,
             motionPlan: motionPlan
+        )
+        schedulePreviewTransitionCompletion(
+            targetState: nextState,
+            duration: motionPlan.duration
         )
     }
 
@@ -346,6 +375,23 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func logSizingDiagnosticsIfNeeded(_ sizingResult: IslandWindowSizingResult) {
         guard previewSizingDiagnosticsEnabled else { return }
         print("[IslandSizing] \(sizingResult.debugSummary)")
+    }
+
+    private func schedulePreviewTransitionCompletion(
+        targetState: IslandVisualState,
+        duration: TimeInterval
+    ) {
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.previewTransitionState = self.previewTransitionState.completed()
+            self.previewMotionPlan = nil
+            self.updateRootView()
+        }
+        previewTransitionResetWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + max(duration, 0.01),
+            execute: workItem
+        )
     }
 }
 

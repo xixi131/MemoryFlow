@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The current Phase 4 shell slice now includes preview-safe sizing diagnostics, synthetic sizing-matrix evidence, tokenized expanded shadow buffers, and the first native motion-planning module wired into preview state changes.
+- The current Phase 4 shell slice now includes motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
 
 ### Queue snapshot
-- First pending task: `Apply motion profiles to SwiftUI shell shadow transitions.`
+- First pending task: `Add Phase 4 preview controls for core motion paths.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: route shadow animation settings through the new motion plan, then add preview content visibility timing and interruptible transition state.
+- Recommended next queue theme: expose local preview controls for the core motion paths, then capture shadow-specific evidence for expanded states.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,14 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 shadow motion, preview content timing, and interruptible preview-state storage landed
+
+- Routed SwiftUI shell-shadow transitions through the Phase 4 motion path by extending `IslandMotionTokens.swift` and `IslandMotionEngine.swift` with shadow fade tokens plus structured preview content-visibility inputs, then updated `IslandVisualStatePreview.swift` so shadow opacity/radius/offset animate from motion-plan timing rather than the generic shell spring.
+- Added `mac-island/MemoryFlowIsland/UI/Motion/IslandPreviewContentVisibility.swift` as the small timing-input model for preview content opacity/blur/delay, and connected it to a transparent placeholder layer in `IslandVisualStatePreview.swift` so Phase 4 can validate content timing without introducing real business content or changing shell-only rendering.
+- Added `mac-island/MemoryFlowIsland/UI/Motion/IslandPreviewTransitionState.swift` and wired `IslandWindowController.swift` to store current/target preview states, cancel stale completion work items, clear motion plans after settle, and retarget in-flight preview transitions when a new tap or hover request arrives before the prior animation finishes.
+- Hover entry and exit now use the same preview-state request path for compact/hover preview states, which gives Phase 4 one shared interruptible seam instead of separate ad-hoc hover-only state changes.
+- Validation: `./init.sh` was attempted for the required full execution path and again stopped immediately because backend port `8080` was already occupied by PID `59013`; repository-wide Swift typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$')`; and a focused harness compiled plus ran successfully, confirming shadow-motion tokens drive hover and expanded shadow values, content-visibility hidden defaults remain transparent with zero shell blur, retargeted `activityToExpanded` motion plans keep `isRetargeting == true`, and `IslandPreviewTransitionState` can retarget `compact -> hover -> activity -> expandedMusic` before settling cleanly on the latest target.
 
 ## 2026-04-27 - Phase 4 diagnostics, sizing matrix evidence, shadow tokenization, and motion foundation landed
 

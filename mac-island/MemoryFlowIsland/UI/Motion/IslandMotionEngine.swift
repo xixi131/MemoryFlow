@@ -22,15 +22,15 @@ struct IslandShapeMorphMotionPlan: Equatable {
 }
 
 struct IslandShadowMotionPlan: Equatable {
-    let fadeDuration: TimeInterval
+    let animation: IslandShadowFadeMotionToken
     let targetOpacity: Double
     let targetRadius: CGFloat
     let targetOffsetY: CGFloat
 }
 
 struct IslandContentVisibilityMotionPlan: Equatable {
-    let enter: IslandFadeMotionToken
-    let exit: IslandFadeMotionToken
+    let visible: IslandPreviewContentVisibilityInput
+    let hidden: IslandPreviewContentVisibilityInput
 }
 
 struct IslandMotionPlan: Equatable {
@@ -46,9 +46,9 @@ struct IslandMotionPlan: Equatable {
         max(
             shellFrame.keyframes.duration,
             shapeMorph.duration,
-            shadow.fadeDuration,
-            contentVisibility.enter.duration + contentVisibility.enter.delay,
-            contentVisibility.exit.duration + contentVisibility.exit.delay
+            shadow.animation.duration,
+            contentVisibility.visible.duration + contentVisibility.visible.delay,
+            contentVisibility.hidden.duration + contentVisibility.hidden.delay
         )
     }
 }
@@ -83,14 +83,26 @@ enum IslandMotionEngine {
                 duration: tokens.pathMorphDuration
             ),
             shadow: IslandShadowMotionPlan(
-                fadeDuration: tokens.shadowFadeDuration,
+                animation: tokens.shadowFade,
                 targetOpacity: targetShadow.opacity,
                 targetRadius: targetShadow.radius,
                 targetOffsetY: targetShadow.offsetY
             ),
             contentVisibility: IslandContentVisibilityMotionPlan(
-                enter: tokens.contentEnter,
-                exit: tokens.contentExit
+                visible: IslandPreviewContentVisibilityInput(
+                    opacity: next == .compactCollapsed ? 0 : 1,
+                    blurRadius: tokens.contentEnter.blurRadius,
+                    delay: tokens.contentEnter.delay,
+                    duration: tokens.contentEnter.duration,
+                    curve: tokens.contentEnter.curve
+                ),
+                hidden: IslandPreviewContentVisibilityInput(
+                    opacity: 0,
+                    blurRadius: tokens.contentExit.blurRadius,
+                    delay: tokens.contentExit.delay,
+                    duration: tokens.contentExit.duration,
+                    curve: tokens.contentExit.curve
+                )
             ),
             isPreviewInteraction: context.isPreviewInteraction,
             isRetargeting: context.isRetargeting
