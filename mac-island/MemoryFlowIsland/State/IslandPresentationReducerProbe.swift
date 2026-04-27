@@ -77,6 +77,27 @@ enum IslandPresentationReducerProbe {
         }
     }
 
+    static func musicDerivationRows() -> [IslandPresentationReducerProbeRow] {
+        musicRepresentativeCases.map { entry in
+            let result = IslandPresentationReducer.reduce(
+                current: entry.state,
+                intent: entry.intent
+            )
+            let derivedState = result.derivedState
+
+            return IslandPresentationReducerProbeRow(
+                scenarioID: entry.id,
+                intent: entry.intentDescription,
+                reason: result.reason.rawValue,
+                stateChanged: result.state != entry.state,
+                visualStateBefore: derivedState.visualState.rawValue,
+                visualStateAfter: derivedState.visualState.rawValue,
+                collapsedWidthBefore: scalar(derivedState.collapsedWidth),
+                collapsedWidthAfter: scalar(derivedState.collapsedWidth)
+            )
+        }
+    }
+
     @discardableResult
     static func validateNoOpRows() throws -> [IslandPresentationReducerProbeRow] {
         let rows = noOpRows()
@@ -215,6 +236,42 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateMusicDerivationRows() throws -> [IslandPresentationReducerProbeRow] {
+        let rows = musicDerivationRows()
+        let expectedRows = [
+            IslandPresentationReducerProbeRow(
+                scenarioID: "music-activity-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "activityCollapsed",
+                visualStateAfter: "activityCollapsed",
+                collapsedWidthBefore: 240,
+                collapsedWidthAfter: 240
+            ),
+            IslandPresentationReducerProbeRow(
+                scenarioID: "music-compact-fallback-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "compactCollapsed",
+                visualStateAfter: "compactCollapsed",
+                collapsedWidthBefore: 160,
+                collapsedWidthAfter: 160
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -273,6 +330,21 @@ enum IslandPresentationReducerProbe {
         (
             id: "logged-in-todo-activity-derivation",
             state: .loggedInTodoActivity,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        )
+    ]
+
+    private static let musicRepresentativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
+        (
+            id: "music-activity-derivation",
+            state: .musicActivity,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        ),
+        (
+            id: "music-compact-fallback-derivation",
+            state: .musicCompactFallback,
             intent: .transitionComplete(nil),
             intentDescription: "transitionComplete(nil)"
         )

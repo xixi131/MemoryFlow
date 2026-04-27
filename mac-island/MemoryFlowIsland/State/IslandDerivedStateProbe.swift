@@ -126,6 +126,20 @@ enum IslandDerivedStateProbe {
                 showsAppActivity: false,
                 showsAnyActivity: true,
                 contentExtensionWidth: 108
+            ),
+            IslandDerivedStateProbeRow(
+                scenarioID: "music-compact-fallback",
+                visualState: "compactCollapsed",
+                collapsedWidth: 160,
+                collapsedCornerRadius: 50,
+                collapsedCornerSmoothness: 3.3,
+                showsMusicActivity: false,
+                showsReviewActivity: false,
+                showsTodoActivity: false,
+                showsReminder: false,
+                showsAppActivity: false,
+                showsAnyActivity: false,
+                contentExtensionWidth: 0
             )
         ]
 
@@ -145,7 +159,8 @@ enum IslandDerivedStateProbe {
         ("logged-in-review-activity", .loggedInReviewActivity),
         ("logged-in-todo-activity", .loggedInTodoActivity),
         ("logged-in-todo-compact", .loggedInTodoCompact),
-        ("music-activity", .musicActivity)
+        ("music-activity", .musicActivity),
+        ("music-compact-fallback", .musicCompactFallback)
     ]
 
     private static func scalar(_ value: CGFloat) -> Double {

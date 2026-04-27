@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-9 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, and app review/todo activity derivation.
+- Phase 5 tasks 1-10 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, and music takeover derivation.
 
 ### Queue snapshot
-- First pending task: `Implement music activity derivation for mock takeover scenarios.`
-- Remaining queue size: `32` tasks.
+- First pending task: `Implement tap-driven expand and collapse transitions in the reducer.`
+- Remaining queue size: `31` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 music takeover derivation now covers activity and compact fallback
+
+- Extended `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` with a reusable `musicCompactFallback` mock state so forced-compact music takeover behavior can be exercised without wiring any MediaRemote, Apple Music, Spotify, or IPC provider code into the native reducer/state slice.
+- Extended `mac-island/MemoryFlowIsland/State/IslandDerivedStateProbe.swift` with an explicit `music-compact-fallback` row while keeping the existing `music-activity` row, confirming mock music plus `primaryMode == .music` resolves to `activityCollapsed` at width `240` when `forceCompactMode` is `false`, and falls back to compact width `160` when forced compact.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with reducer-backed `music-activity-derivation` and `music-compact-fallback-derivation` checks so the same mock takeover states are visible through the reducer result path.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, `rg` found no `MediaRemote`, `Apple Music`, `Spotify`, or IPC provider references in the touched `State/` files, and `/tmp/memoryflow-phase5-music-probe` executed `IslandDerivedStateProbe.validateRepresentativeStates()`, `IslandPresentationReducerProbe.validateMusicDerivationRows()`, and `IslandPresentationReducerProbe.validateActivityDerivationRows()` and emitted the expected JSON rows for music activity and compact fallback scenarios.
 
 ## 2026-04-27 - Phase 5 review and todo activity derivation now has explicit mock coverage
 

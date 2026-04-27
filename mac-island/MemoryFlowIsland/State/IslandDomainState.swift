@@ -240,6 +240,26 @@ struct IslandDomainState: Codable, Equatable {
         )
     )
 
+    static let musicCompactFallback = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .music,
+        appDisplayMode: .review,
+        presentationState: .activity,
+        forceCompactMode: true,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: nil,
+            todo: nil,
+            music: .sample
+        )
+    )
+
     static let musicActivity = IslandDomainState(
         authState: .loggedIn,
         primaryMode: .music,

@@ -107,7 +107,7 @@
       "Check derived-state probe rows for music activity and music compact fallback scenarios."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
