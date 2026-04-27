@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 14 Phase 5 tasks are now complete and `feature_list.json` has 27 pending Phase 5 tasks.
+Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 15 Phase 5 tasks are now complete and `feature_list.json` has 26 pending Phase 5 tasks.
 
 The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
 
@@ -29,8 +29,10 @@ Recent Phase 5 pointer reducer handoff: `IslandPresentationReducer.swift` now ma
 
 Recent Phase 5 trackpad vertical reducer handoff: `IslandPresentationReducer.swift` now maps trackpad swipe up to close expanded presentation or collapse visible activity into compact, and maps trackpad swipe down to reopen activity from compact or expand a visible activity card; `IslandPresentationReducerProbe.swift` now validates expanded close, activity close, activity reopen, and activity expand sequences.
 
+Recent Phase 5 horizontal music reducer handoff: `IslandPresentationReducer.swift` now maps `horizontalMusicCommand` to mock previous/next music-command metadata only when `primaryMode == .music`, while `IslandPresentationReducerProbe.swift` validates both music command rows and the existing app-mode ignored swipe row without sending any real media keys.
+
 ## First pending task
-* `Implement mock music horizontal trackpad command intents.`
+* `Add reducer guards for gesture locks and animation locks.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -51,6 +53,6 @@ Recent Phase 5 trackpad vertical reducer handoff: `IslandPresentationReducer.swi
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
-* The first 14 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
+* The first 15 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
 * Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
 * The current queue is designed so the user can see state-switching effects before real content and real provider integration land.

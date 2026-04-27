@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-14 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, hover transitions, pointer swipe compact/activity transitions, and trackpad vertical transitions.
+- Phase 5 tasks 1-15 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, hover transitions, pointer swipe compact/activity transitions, trackpad vertical transitions, and mock horizontal music command intents.
 
 ### Queue snapshot
-- First pending task: `Implement mock music horizontal trackpad command intents.`
-- Remaining queue size: `27` tasks.
+- First pending task: `Add reducer guards for gesture locks and animation locks.`
+- Remaining queue size: `26` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,12 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer now emits mock horizontal music commands
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so `horizontalMusicCommand` emits mock previous/next command metadata and matching transition reasons only when `primaryMode == .music`, while leaving app-mode horizontal swipes ignored and side-effect free.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` so reducer probe rows now capture optional mock music command metadata, validate both music horizontal command rows, and preserve the existing app-mode ignored swipe coverage.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; `rg` found no `MediaRemote`, `Apple Music`, `Spotify`, `IPC`, or provider references in `mac-island/MemoryFlowIsland/State`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the State + Motion + Visual + `IslandWindowSizingResult` dependency slice, then `/tmp/memoryflow-phase5-horizontal-music-probe` executed `IslandPresentationReducerProbe.validateMusicCommandRows()` and `IslandPresentationReducerProbe.validateNoOpRows()` and emitted the expected JSON rows for music previous/next commands and the app-mode ignored horizontal swipe.
 
 ## 2026-04-27 - Phase 5 reducer now drives trackpad vertical open and close
 

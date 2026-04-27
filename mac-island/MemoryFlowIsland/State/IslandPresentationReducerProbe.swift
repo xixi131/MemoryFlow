@@ -5,6 +5,7 @@ struct IslandPresentationReducerProbeRow: Codable, Equatable {
     let scenarioID: String
     let intent: String
     let reason: String
+    let mockMusicCommand: String?
     let stateChanged: Bool
     let visualStateBefore: String
     let visualStateAfter: String
@@ -40,6 +41,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: beforeDerivedState.visualState.rawValue,
                 visualStateAfter: afterDerivedState.visualState.rawValue,
@@ -61,6 +63,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
@@ -82,6 +85,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
@@ -103,11 +107,35 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
                 collapsedWidthBefore: scalar(derivedState.collapsedWidth),
                 collapsedWidthAfter: scalar(derivedState.collapsedWidth)
+            )
+        }
+    }
+
+    static func musicCommandRows() -> [IslandPresentationReducerProbeRow] {
+        musicCommandRepresentativeCases.map { entry in
+            let beforeDerivedState = IslandDerivedState.derive(from: entry.state)
+            let result = IslandPresentationReducer.reduce(
+                current: entry.state,
+                intent: entry.intent
+            )
+            let afterDerivedState = result.derivedState
+
+            return IslandPresentationReducerProbeRow(
+                scenarioID: entry.id,
+                intent: entry.intentDescription,
+                reason: result.reason.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                stateChanged: result.state != entry.state,
+                visualStateBefore: beforeDerivedState.visualState.rawValue,
+                visualStateAfter: afterDerivedState.visualState.rawValue,
+                collapsedWidthBefore: scalar(beforeDerivedState.collapsedWidth),
+                collapsedWidthAfter: scalar(afterDerivedState.collapsedWidth)
             )
         }
     }
@@ -236,6 +264,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-out-outside-collapse",
                 intent: "outsideCollapse",
                 reason: "intentIgnored",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -246,6 +275,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-out-pointer-restore",
                 intent: "pointerSwipe(left)",
                 reason: "intentIgnored",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -256,6 +286,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "app-mode-horizontal-music-command",
                 intent: "horizontalMusicCommand(nextTrack)",
                 reason: "intentIgnored",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -266,6 +297,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "unknown-mock-scenario",
                 intent: "mockScenarioSelect(missing-scenario)",
                 reason: "intentIgnored",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -276,6 +308,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "idle-transition-complete",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "activityCollapsed",
                 visualStateAfter: "activityCollapsed",
@@ -302,6 +335,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-out-compact-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -312,6 +346,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-in-review-compact-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -338,6 +373,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-in-review-activity-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "activityCollapsed",
                 visualStateAfter: "activityCollapsed",
@@ -348,6 +384,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "logged-in-todo-activity-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "activityCollapsed",
                 visualStateAfter: "activityCollapsed",
@@ -374,6 +411,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "music-activity-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
                 stateChanged: false,
                 visualStateBefore: "activityCollapsed",
                 visualStateAfter: "activityCollapsed",
@@ -384,6 +422,45 @@ enum IslandPresentationReducerProbe {
                 scenarioID: "music-compact-fallback-derivation",
                 intent: "transitionComplete(nil)",
                 reason: "noChange",
+                mockMusicCommand: nil,
+                stateChanged: false,
+                visualStateBefore: "compactCollapsed",
+                visualStateAfter: "compactCollapsed",
+                collapsedWidthBefore: 160,
+                collapsedWidthAfter: 160
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
+    @discardableResult
+    static func validateMusicCommandRows() throws -> [IslandPresentationReducerProbeRow] {
+        let rows = musicCommandRows()
+        let expectedRows = [
+            IslandPresentationReducerProbeRow(
+                scenarioID: "music-horizontal-previous-track",
+                intent: "horizontalMusicCommand(previousTrack)",
+                reason: "mockPreviousTrackCommanded",
+                mockMusicCommand: "previousTrack",
+                stateChanged: false,
+                visualStateBefore: "activityCollapsed",
+                visualStateAfter: "activityCollapsed",
+                collapsedWidthBefore: 240,
+                collapsedWidthAfter: 240
+            ),
+            IslandPresentationReducerProbeRow(
+                scenarioID: "music-horizontal-next-track",
+                intent: "horizontalMusicCommand(nextTrack)",
+                reason: "mockNextTrackCommanded",
+                mockMusicCommand: "nextTrack",
                 stateChanged: false,
                 visualStateBefore: "compactCollapsed",
                 visualStateAfter: "compactCollapsed",
@@ -760,6 +837,21 @@ enum IslandPresentationReducerProbe {
             state: .musicCompactFallback,
             intent: .transitionComplete(nil),
             intentDescription: "transitionComplete(nil)"
+        )
+    ]
+
+    private static let musicCommandRepresentativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
+        (
+            id: "music-horizontal-previous-track",
+            state: .musicActivity,
+            intent: .horizontalMusicCommand(.previousTrack),
+            intentDescription: "horizontalMusicCommand(previousTrack)"
+        ),
+        (
+            id: "music-horizontal-next-track",
+            state: .musicCompactFallback,
+            intent: .horizontalMusicCommand(.nextTrack),
+            intentDescription: "horizontalMusicCommand(nextTrack)"
         )
     ]
 

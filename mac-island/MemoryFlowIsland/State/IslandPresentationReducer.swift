@@ -3,6 +3,8 @@ import Foundation
 enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case noChange
     case intentIgnored
+    case mockPreviousTrackCommanded
+    case mockNextTrackCommanded
     case hoverEntered
     case hoverLeft
     case pointerSwipedToCompact
@@ -20,9 +22,18 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case outsideCollapsedToActivity
 }
 
+struct IslandPresentationReducerMetadata: Codable, Equatable {
+    let mockMusicCommand: IslandHorizontalMusicCommand?
+
+    static let none = IslandPresentationReducerMetadata(
+        mockMusicCommand: nil
+    )
+}
+
 struct IslandPresentationReducerResult: Codable, Equatable {
     let state: IslandDomainState
     let reason: IslandPresentationTransitionReason
+    let metadata: IslandPresentationReducerMetadata
 
     var derivedState: IslandDerivedState {
         IslandDerivedState.derive(from: state)
@@ -156,8 +167,20 @@ enum IslandPresentationReducer {
                     $0.isHovered = false
                 }
             }
-        case .horizontalMusicCommand:
-            return unchanged(state, reason: .intentIgnored)
+        case let .horizontalMusicCommand(command):
+            guard state.primaryMode == .music else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(
+                state,
+                reason: command == .previousTrack
+                    ? .mockPreviousTrackCommanded
+                    : .mockNextTrackCommanded,
+                metadata: IslandPresentationReducerMetadata(
+                    mockMusicCommand: command
+                )
+            ) { _ in }
         }
     }
 
@@ -192,6 +215,7 @@ enum IslandPresentationReducer {
     private static func transition(
         _ state: IslandDomainState,
         reason: IslandPresentationTransitionReason,
+        metadata: IslandPresentationReducerMetadata = .none,
         mutate: (inout IslandDomainState) -> Void
     ) -> IslandPresentationReducerResult {
         var nextState = state
@@ -199,7 +223,8 @@ enum IslandPresentationReducer {
 
         return IslandPresentationReducerResult(
             state: nextState,
-            reason: reason
+            reason: reason,
+            metadata: metadata
         )
     }
 }
