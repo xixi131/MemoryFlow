@@ -16,14 +16,14 @@ Dynamic Island migration has completed the current Phase 3 native visual-geometr
 `IslandSizingMatrixProbe.swift` now also owns the synthetic Phase 4 shadow-evidence path. It can render expanded music and expanded app shell captures with padded CoreGraphics output, write `expanded-music-shadow.png`, `expanded-app-shadow.png`, and `shadow-capture-checks.json`, and truthfully record that the evidence is synthetic rather than physical-device AppKit capture.
 
 ## First pending task
-* Fill the Phase 4 acceptance document with motion evidence links.
+* Update the migration checklist with Phase 4 sizing and motion gates.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json`.
 4. Read the Phase 4 section in `灵动岛迁移方案.md`.
-5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md`, `docs/evidence/mac-island-phase4/sizing-matrix.json`, and `docs/evidence/mac-island-phase4/shadow-capture-checks.json`.
+5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md`, `docs/evidence/mac-island-phase4/sizing-matrix.json`, `docs/evidence/mac-island-phase4/shadow-capture-checks.json`, and `docs/evidence/mac-island-phase4/motion-frame-sequences.md`.
 6. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift`.
 7. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` and `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`.
 8. Read `mac-island/MemoryFlowIsland/Window/IslandSizingMatrixProbe.swift` and `IslandWindowSizingResult.swift` if the next task needs synthetic validation or sizing/motion coupling details.
@@ -39,6 +39,7 @@ Dynamic Island migration has completed the current Phase 3 native visual-geometr
 * The preview-state ordering, motion-control coverage, and retargeting checks are synthetic model/harness results, not real GUI tap, menu-click, or hover capture.
 * The refreshed `docs/evidence/mac-island-phase4/sizing-matrix.json` evidence is synthetic harness output, not a physical-device AppKit capture.
 * The refreshed expanded shadow captures and `shadow-capture-checks.json` are padded synthetic CoreGraphics renders; they confirm the exported evidence no longer hard-clips side or bottom shadow fade, but they are still not physical-device AppKit captures.
+* The new motion frame-sequence evidence is synthetic motion-plan output (`motion-frame-sequences.md` / `.json`), not a physical-device AppKit capture, GIF, or video.
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.

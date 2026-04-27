@@ -272,7 +272,7 @@
       "Check that the document clearly notes any remaining real-device calibration gaps."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",

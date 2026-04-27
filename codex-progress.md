@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The current Phase 4 shell slice now includes refreshed synthetic sizing and expanded-shadow evidence, and the acceptance document now links those artifacts while motion evidence remains the next documentation gap.
+- The current Phase 4 shell slice now includes refreshed synthetic sizing, expanded-shadow, and motion frame-sequence evidence, and the acceptance document now links all of those artifacts with an explicit real-device calibration note.
 
 ### Queue snapshot
-- First pending task: `Fill the Phase 4 acceptance document with motion evidence links.`
+- First pending task: `Update the migration checklist with Phase 4 sizing and motion gates.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution for the remaining Phase 4 evidence/doc tasks.
-- Recommended next queue theme: finish wiring motion evidence into the Phase 4 acceptance doc, then refresh the broader checklist and handoff files.
+- Recommended next queue theme: refresh the broader checklist with the new Phase 4 evidence gates, then tighten the handoff notes.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 acceptance doc now links synthetic motion frame-sequence evidence
+
+- Generated `docs/evidence/mac-island-phase4/motion-frame-sequences.md` and `motion-frame-sequences.json` as synthetic motion-plan evidence for `compactToActivity`, `activityToExpanded`, `expandedToCompact`, `hoverEnter`, `hoverLeave`, and the interruptible retarget chain `hoverEnter -> compactToActivity -> activityToExpanded`.
+- Updated `docs/mac-island-phase4-sizing-motion-acceptance.md` so all motion and interruptibility rows now link to those frame-sequence artifacts and are marked `Passed`, while the document also calls out that real-device AppKit capture, GIF, or video calibration is still pending.
+- Validation: confirmed both motion evidence files exist in `docs/evidence/mac-island-phase4/`, the acceptance doc links resolve to those files, and the motion section now covers compact, activity, expanded, hover, spring, content-timing, and interruptible-transition scenarios with explicit synthetic-evidence wording.
 
 ## 2026-04-27 - Phase 4 acceptance doc now links sizing and shadow evidence
 
