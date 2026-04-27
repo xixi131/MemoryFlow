@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The current Phase 4 shell slice now includes refreshed synthetic sizing and expanded-shadow evidence alongside motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
+- The current Phase 4 shell slice now includes refreshed synthetic sizing and expanded-shadow evidence, and the acceptance document now links those artifacts while motion evidence remains the next documentation gap.
 
 ### Queue snapshot
-- First pending task: `Fill the Phase 4 acceptance document with sizing evidence links.`
+- First pending task: `Fill the Phase 4 acceptance document with motion evidence links.`
 - Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution for the remaining Phase 4 evidence/doc tasks.
-- Recommended next queue theme: wire the sizing and shadow evidence links into the Phase 4 acceptance doc, then do the same for motion evidence.
+- Recommended next queue theme: finish wiring motion evidence into the Phase 4 acceptance doc, then refresh the broader checklist and handoff files.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 acceptance doc now links sizing and shadow evidence
+
+- Updated `docs/mac-island-phase4-sizing-motion-acceptance.md` so the sizing-output, notch-display, flat-top-display, activity-width, and shadow-buffer rows now link directly to `docs/evidence/mac-island-phase4/sizing-matrix.json`, `shadow-capture-checks.json`, `expanded-music-shadow.png`, and `expanded-app-shadow.png`.
+- Marked only the rows with current linked evidence as `Passed`, while leaving unresolved items such as external-display sizing, resolution-change recovery, display-maximum clamping, fixed-width fallback-only validation, and all motion or interruptibility rows in `Prepared`.
+- Validation: confirmed the acceptance document still opens cleanly, the new evidence links point at existing repository files, and the motion rows remain `Prepared` because no preview motion capture, GIF, video, or frame-sequence artifact is linked yet.
 
 ## 2026-04-27 - Phase 4 expanded shadow evidence regenerated without hard-clipped export edges
 

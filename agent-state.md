@@ -16,7 +16,7 @@ Dynamic Island migration has completed the current Phase 3 native visual-geometr
 `IslandSizingMatrixProbe.swift` now also owns the synthetic Phase 4 shadow-evidence path. It can render expanded music and expanded app shell captures with padded CoreGraphics output, write `expanded-music-shadow.png`, `expanded-app-shadow.png`, and `shadow-capture-checks.json`, and truthfully record that the evidence is synthetic rather than physical-device AppKit capture.
 
 ## First pending task
-* Fill the Phase 4 acceptance document with sizing evidence links.
+* Fill the Phase 4 acceptance document with motion evidence links.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

@@ -261,7 +261,7 @@
       "Leave motion rows Prepared if visual motion evidence is not yet captured."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
