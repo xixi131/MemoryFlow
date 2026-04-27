@@ -3,30 +3,24 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration has completed the current Phase 3 native visual-geometry queue and now has a broader Phase 4 shell foundation in place across sizing, diagnostics, shadow buffering, motion planning, preview content timing hooks, and interruptible preview-transition storage.
+Dynamic Island migration has completed the current Phase 4 sizing-and-motion queue. The native shell now has sizing outputs, content-driven width constraints, expanded shadow buffering, motion profiles, preview content-visibility timing hooks, interruptible preview-transition storage, preview-motion controls, and linked synthetic evidence captured in the Phase 4 acceptance and checklist docs.
 
-`IslandVisualStatePreview.swift` now routes shell-shadow animation through motion-plan timing instead of a generic shell spring, and the preview layer also accepts motion-driven content-visibility inputs via a transparent placeholder channel that keeps shell-only rendering unchanged while giving Phase 4 a content-timing seam.
+`docs/mac-island-phase4-sizing-motion-acceptance.md` is now the canonical Phase 4 evidence gate for sizing outputs, content-driven width, shadow buffering, motion profiles, and interruptible transitions. `docs/mac-island-migration-checklist.md` now mirrors those gates at the broader migration-checklist layer, with sizing and shadow items marked `Passed` and motion or interruptibility items left `Real-device pending` until physical-device calibration exists.
 
-`IslandWindowController.swift` now stores `IslandPreviewTransitionState`, cancels stale completion work items, and can retarget an in-flight preview transition to a newer tap or hover target without keeping stale lock state around. Hover entry and exit now reuse the same preview transition request path when the shell is cycling between compact and hover preview states.
-
-`IslandPreviewContentVisibility.swift` and `IslandPreviewTransitionState.swift` now hold the two new Phase 4-only seams: one for opacity/blur timing inputs, and one for interruptible preview transition bookkeeping that can be validated without real business content or AppKit window mutation.
-
-`IslandWindowController.swift` and the native status-menu path now expose a local preview-only motion submenu behind `MEMORYFLOW_ISLAND_PREVIEW_CONTROLS=1`, with named triggers for compact-to-activity, activity-to-expanded, expanded-to-compact, hover enter, and hover leave. Each control stages the correct preview source state before reusing the existing Phase 4 sizing plus motion request path, keeping the feature out of business-data and provider code.
-
-`IslandSizingMatrixProbe.swift` now also owns the synthetic Phase 4 shadow-evidence path. It can render expanded music and expanded app shell captures with padded CoreGraphics output, write `expanded-music-shadow.png`, `expanded-app-shadow.png`, and `shadow-capture-checks.json`, and truthfully record that the evidence is synthetic rather than physical-device AppKit capture.
+`IslandWindowController.swift`, `IslandMotionEngine.swift`, `IslandVisualStatePreview.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, and `IslandSizingMatrixProbe.swift` are the main Phase 4 native seams to revisit if the next queue expands into Phase 5 interaction/state-machine migration or real-device motion calibration.
 
 ## First pending task
-* Update the migration checklist with Phase 4 sizing and motion gates.
+* None. `feature_list.json` is fully passed at the moment.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json`.
-4. Read the Phase 4 section in `灵动岛迁移方案.md`.
-5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md`, `docs/evidence/mac-island-phase4/sizing-matrix.json`, `docs/evidence/mac-island-phase4/shadow-capture-checks.json`, and `docs/evidence/mac-island-phase4/motion-frame-sequences.md`.
-6. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift`.
-7. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift` and `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`.
-8. Read `mac-island/MemoryFlowIsland/Window/IslandSizingMatrixProbe.swift` and `IslandWindowSizingResult.swift` if the next task needs synthetic validation or sizing/motion coupling details.
+4. If the next work continues this slice, read the Phase 4 section in `灵动岛迁移方案.md`.
+5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md` and `docs/mac-island-migration-checklist.md`.
+6. Read `docs/evidence/mac-island-phase4/sizing-matrix.json`, `shadow-capture-checks.json`, and `motion-frame-sequences.md` only when evidence details are needed.
+7. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift` only if the next task changes motion behavior.
+8. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `IslandSizingMatrixProbe.swift`, and `IslandWindowSizingResult.swift` only if the next task changes sizing, preview routing, or synthetic validation.
 9. Read `feature_list_summary.json` only if you need completed Phase 0 to Phase 3 history.
 
 ## Runtime notes
@@ -43,6 +37,8 @@ Dynamic Island migration has completed the current Phase 3 native visual-geometr
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
+* The queue is currently empty; if the product scope changed or a new slice should begin, regenerate tasks before resuming `$Auto_dev`.
 * `feature_list_summary.json` now stores the completed historical queue that was previously in `feature_list.json`.
 * The external-display evidence for Phase 3 is a truthful synthetic `ScreenMetrics` harness result, not a physical second-display run.
-* Business data, auth, preview control surfaces, and Phase 5 interaction/state-machine migration remain out of scope for the completed Phase 4 slice so far.
+* Business data, auth, and Phase 5 interaction/state-machine migration remain out of scope for the completed Phase 4 slice so far.
+* Motion and interruptibility checklist gates still require physical-device calibration even though the current synthetic evidence path is complete.

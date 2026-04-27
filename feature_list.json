@@ -283,7 +283,7 @@
       "Check that the checklist distinguishes Prepared, Passed, and real-device-pending statuses."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
@@ -294,6 +294,6 @@
       "Check that the handoff does not require reading codex-progress-archive.md for normal startup."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]

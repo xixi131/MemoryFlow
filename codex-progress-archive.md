@@ -4,6 +4,25 @@
 - As of 2026-04-23, the intended startup order is `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 - Read this archive only when you need deeper implementation audit detail than the compressed recent log provides.
 
+## 2026-04-27 - Main-log rollover for the late Phase 4 evidence and handoff slice
+
+- Reason for rollover:
+  - `codex-progress.md` grew past the default startup threshold again during the late Phase 4 evidence and acceptance-document work.
+  - The active queue only needs a short summary plus the newest evidence-link records to finish the remaining checklist and handoff tasks.
+- Detailed records moved out of the default startup path:
+  - 2026-04-27 - Phase 4 preview sizing evidence refreshed for notch and flat-top states.
+  - 2026-04-27 - Phase 4 shadow motion, preview content timing, and interruptible preview-state storage landed.
+  - 2026-04-27 - Phase 4 diagnostics, sizing matrix evidence, shadow tokenization, and motion foundation landed.
+  - 2026-04-27 - Phase 4 sizing engine, clamping path, and controller wiring landed.
+  - 2026-04-27 - Phase 4 window sizing result model landed.
+  - 2026-04-27 - Phase 4 acceptance rows now define motion quality and interruptibility.
+  - 2026-04-27 - Phase 4 acceptance rows now define content-driven width and shadow buffering.
+  - 2026-04-27 - Phase 4 sizing acceptance rows now define outputs and top attachment behavior.
+  - 2026-04-27 - Phase 4 sizing and motion acceptance shell created.
+  - 2026-04-27 - Phase 4+ plan retargeted toward Alcove/iPhone-like motion quality.
+- Audit note:
+  - These moved records remain available in Git history and can be reconstructed from the linked evidence files plus the touched Swift and doc paths if a future agent needs the full wording again.
+
 ## 2026-04-26 - Main-log rollover for the Phase 3 path-factory slice
 
 - Reason for rollover:
