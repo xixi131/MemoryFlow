@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The current Phase 4 shell slice now includes refreshed synthetic sizing evidence alongside motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
+- The current Phase 4 shell slice now includes refreshed synthetic sizing and expanded-shadow evidence alongside motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
 
 ### Queue snapshot
-- First pending task: `Capture Phase 4 shadow evidence for expanded states.`
-- Requested execution mode for this slice: parent-worker `$Auto_dev` execution with task-scoped sub-agents.
-- Recommended next queue theme: capture shadow-specific evidence for expanded states, then wire the evidence links into the Phase 4 acceptance doc.
+- First pending task: `Fill the Phase 4 acceptance document with sizing evidence links.`
+- Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution for the remaining Phase 4 evidence/doc tasks.
+- Recommended next queue theme: wire the sizing and shadow evidence links into the Phase 4 acceptance doc, then do the same for motion evidence.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 expanded shadow evidence regenerated without hard-clipped export edges
+
+- Extended `IslandSizingMatrixProbe.swift` with `IslandShadowEvidenceProbe`, which renders synthetic CoreGraphics captures for `expandedMusic` and `expandedApp`, writes `docs/evidence/mac-island-phase4/expanded-music-shadow.png` plus `expanded-app-shadow.png`, and records capture metadata in `docs/evidence/mac-island-phase4/shadow-capture-checks.json`.
+- Added padded export margins around the synthetic captures so the evidence images can truthfully show the expanded side and bottom shadow fade instead of appearing clipped by the PNG boundary, while still preserving the real Phase 4 shadow outsets, radius, opacity, and offset values in the JSON.
+- Validation: `./init.sh` was attempted for the required full execution path and stopped immediately because backend port `8080` was already occupied by PID `59013`; repository-wide Swift typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-phase4-parent-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$' | rg -v 'App/MemoryFlowIslandApp\.swift$')`; the focused harness compiled with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -o /tmp/memoryflow_phase4_shadow_validation /tmp/memoryflow_phase4_shadow_validation.swift $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$' | rg -v 'App/MemoryFlowIslandApp\.swift$')` and ran successfully; direct JSON review confirmed `leftShadowClearsBeforeBoundary == true`, `rightShadowClearsBeforeBoundary == true`, `bottomShadowClearsBeforeBoundary == true`, and `fadeClearsBeforeBoundary == true` for both expanded states; and the exported PNGs show the shadow fade clearing before the image boundary, with the limitation recorded as synthetic CoreGraphics evidence rather than physical-device AppKit capture.
 
 ## 2026-04-27 - Phase 4 preview sizing evidence refreshed for notch and flat-top states
 

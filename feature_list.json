@@ -250,7 +250,7 @@
       "Record any environment limitation if capture is synthetic rather than physical-device evidence."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "docs",
