@@ -7,6 +7,11 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case hoverLeft
     case pointerSwipedToCompact
     case pointerSwipedToActivity
+    case trackpadSwipedUpToCompact
+    case trackpadSwipedUpToActivity
+    case trackpadSwipedDownToActivity
+    case trackpadSwipedDownToExpandedApp
+    case trackpadSwipedDownToExpandedMusic
     case tapExpandedToApp
     case tapExpandedToMusic
     case tapCollapsedToCompact
@@ -103,8 +108,55 @@ enum IslandPresentationReducer {
                     $0.isHovered = false
                 }
             }
-        case .trackpadSwipe,
-             .horizontalMusicCommand:
+        case let .trackpadSwipe(direction):
+            let derivedState = IslandDerivedState.derive(from: state)
+
+            switch direction {
+            case .up:
+                if state.presentationState == .expanded {
+                    return collapseExpanded(
+                        state,
+                        compactReason: .trackpadSwipedUpToCompact,
+                        activityReason: .trackpadSwipedUpToActivity
+                    )
+                }
+
+                guard derivedState.showAnyActivity else {
+                    return unchanged(state, reason: .intentIgnored)
+                }
+
+                return transition(state, reason: .trackpadSwipedUpToCompact) {
+                    $0.forceCompactMode = true
+                    $0.presentationState = .activity
+                    $0.isHovered = false
+                }
+            case .down:
+                if state.presentationState != .expanded,
+                   derivedState.showAnyActivity {
+                    return transition(
+                        state,
+                        reason: state.primaryMode == .music
+                            ? .trackpadSwipedDownToExpandedMusic
+                            : .trackpadSwipedDownToExpandedApp
+                    ) {
+                        $0.presentationState = .expanded
+                        $0.isHovered = false
+                    }
+                }
+
+                guard state.presentationState != .expanded,
+                      derivedState.hasAnyActivitySource,
+                      state.forceCompactMode else {
+                    return unchanged(state, reason: .intentIgnored)
+                }
+
+                return transition(state, reason: .trackpadSwipedDownToActivity) {
+                    $0.forceCompactMode = false
+                    $0.presentationState = .activity
+                    $0.isHovered = false
+                }
+            }
+        case .horizontalMusicCommand:
             return unchanged(state, reason: .intentIgnored)
         }
     }

@@ -151,7 +151,7 @@
       "Check reducer probe sequences for expanded close, activity close, activity reopen, and activity expand."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

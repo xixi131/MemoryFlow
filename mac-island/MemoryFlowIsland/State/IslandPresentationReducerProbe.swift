@@ -199,6 +199,35 @@ enum IslandPresentationReducerProbe {
         }
     }
 
+    static func trackpadTransitionSequences() -> [IslandPresentationReducerSequenceProbeRow] {
+        trackpadSequenceCases.map { entry in
+            let initialDerivedState = IslandDerivedState.derive(from: entry.initialState)
+            var currentState = entry.initialState
+            let steps = entry.intents.map { intent, intentDescription in
+                let result = IslandPresentationReducer.reduce(
+                    current: currentState,
+                    intent: intent
+                )
+                currentState = result.state
+                let derivedState = result.derivedState
+
+                return IslandPresentationReducerSequenceProbeStep(
+                    intent: intentDescription,
+                    reason: result.reason.rawValue,
+                    presentationState: result.state.presentationState.rawValue,
+                    visualState: derivedState.visualState.rawValue,
+                    collapsedWidth: scalar(derivedState.collapsedWidth)
+                )
+            }
+
+            return IslandPresentationReducerSequenceProbeRow(
+                scenarioID: entry.id,
+                initialVisualState: initialDerivedState.visualState.rawValue,
+                steps: steps
+            )
+        }
+    }
+
     @discardableResult
     static func validateNoOpRows() throws -> [IslandPresentationReducerProbeRow] {
         let rows = noOpRows()
@@ -581,6 +610,81 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateTrackpadTransitionSequences() throws -> [IslandPresentationReducerSequenceProbeRow] {
+        let rows = trackpadTransitionSequences()
+        let expectedRows = [
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-expanded-trackpad-close",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "trackpadSwipe(up)",
+                        reason: "trackpadSwipedUpToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-activity-trackpad-close",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "trackpadSwipe(up)",
+                        reason: "trackpadSwipedUpToCompact",
+                        presentationState: "activity",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-compact-trackpad-reopen",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "trackpadSwipe(down)",
+                        reason: "trackpadSwipedDownToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-activity-trackpad-expand",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "trackpadSwipe(down)",
+                        reason: "trackpadSwipedDownToExpandedApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    )
+                ]
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedSequenceRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -708,6 +812,29 @@ enum IslandPresentationReducerProbe {
                 (.pointerSwipe(.right), "pointerSwipe(right)"),
                 (.pointerSwipe(.left), "pointerSwipe(left)")
             ]
+        )
+    ]
+
+    private static let trackpadSequenceCases: [(id: String, initialState: IslandDomainState, intents: [(IslandInteractionIntent, String)])] = [
+        (
+            id: "review-expanded-trackpad-close",
+            initialState: .loggedInReviewActivity,
+            intents: [(.tap, "tap"), (.trackpadSwipe(.up), "trackpadSwipe(up)")]
+        ),
+        (
+            id: "review-activity-trackpad-close",
+            initialState: .loggedInReviewActivity,
+            intents: [(.trackpadSwipe(.up), "trackpadSwipe(up)")]
+        ),
+        (
+            id: "review-compact-trackpad-reopen",
+            initialState: .loggedInReviewCompact,
+            intents: [(.trackpadSwipe(.down), "trackpadSwipe(down)")]
+        ),
+        (
+            id: "review-activity-trackpad-expand",
+            initialState: .loggedInReviewActivity,
+            intents: [(.trackpadSwipe(.down), "trackpadSwipe(down)")]
         )
     ]
 

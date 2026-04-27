@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-13 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, hover transitions, and pointer swipe compact/activity transitions.
+- Phase 5 tasks 1-14 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, hover transitions, pointer swipe compact/activity transitions, and trackpad vertical transitions.
 
 ### Queue snapshot
-- First pending task: `Implement trackpad vertical open and close transitions in the reducer.`
-- Remaining queue size: `28` tasks.
+- First pending task: `Implement mock music horizontal trackpad command intents.`
+- Remaining queue size: `27` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer now drives trackpad vertical open and close
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so trackpad swipe up closes expanded presentation back to activity or compact as appropriate, and collapses visible activity into compact; trackpad swipe down reopens activity from compact or expands a visible activity card.
+- Added explicit vertical-trackpad transition reasons while preserving the reducer's existing tap, hover, and pointer behavior.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with reducer-backed sequences for expanded close, activity close, compact reopen, and activity expand using review activity mock states.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-trackpad-probe` executed `IslandPresentationReducerProbe.validateTrackpadTransitionSequences()` and `IslandPresentationReducerProbe.validatePointerTransitionSequences()` and emitted the expected JSON rows for expanded close, activity close, activity reopen, and activity expand.
 
 ## 2026-04-27 - Phase 5 reducer now drives pointer swipe compact/activity recovery
 
