@@ -140,7 +140,7 @@
       "Check reducer probe sequences for review activity collapse and compact activity restore."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

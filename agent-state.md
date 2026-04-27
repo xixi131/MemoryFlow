@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 12 Phase 5 tasks are now complete and `feature_list.json` has 29 pending Phase 5 tasks.
+Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 13 Phase 5 tasks are now complete and `feature_list.json` has 28 pending Phase 5 tasks.
 
 The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
 
@@ -25,8 +25,10 @@ Recent Phase 5 tap reducer handoff: `IslandPresentationReducer.swift` now expand
 
 Recent Phase 5 hover reducer handoff: `IslandPresentationReducer.swift` now toggles `isHovered` on `hoverEnter`/`hoverLeave`, resolves hover-collapsed output for compact states, and preserves expanded presentation when hover leaves an expanded island; `IslandPresentationReducerProbe.swift` now validates compact hover enter/leave and expanded hover-leave sequences.
 
+Recent Phase 5 pointer reducer handoff: `IslandPresentationReducer.swift` now maps pointer swipe right to force compact when app activity is visible and pointer swipe left to reopen activity from compact when an activity source exists, while `IslandPresentationReducerProbe.swift` validates review activity collapse and compact activity restore in one reducer-backed sequence.
+
 ## First pending task
-* `Implement pointer swipe compact and activity transitions in the reducer.`
+* `Implement trackpad vertical open and close transitions in the reducer.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -47,6 +49,6 @@ Recent Phase 5 hover reducer handoff: `IslandPresentationReducer.swift` now togg
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
-* The first 12 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
+* The first 13 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
 * Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
 * The current queue is designed so the user can see state-switching effects before real content and real provider integration land.

@@ -5,6 +5,8 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case intentIgnored
     case hoverEntered
     case hoverLeft
+    case pointerSwipedToCompact
+    case pointerSwipedToActivity
     case tapExpandedToApp
     case tapExpandedToMusic
     case tapCollapsedToCompact
@@ -74,8 +76,34 @@ enum IslandPresentationReducer {
                     $0.isHovered = false
                 }
             }
-        case .pointerSwipe,
-             .trackpadSwipe,
+        case let .pointerSwipe(direction):
+            let derivedState = IslandDerivedState.derive(from: state)
+
+            switch direction {
+            case .right:
+                guard derivedState.showAnyActivity else {
+                    return unchanged(state, reason: .intentIgnored)
+                }
+
+                return transition(state, reason: .pointerSwipedToCompact) {
+                    $0.forceCompactMode = true
+                    $0.presentationState = .activity
+                    $0.isHovered = false
+                }
+            case .left:
+                guard state.presentationState != .expanded,
+                      derivedState.hasAnyActivitySource,
+                      state.forceCompactMode else {
+                    return unchanged(state, reason: .intentIgnored)
+                }
+
+                return transition(state, reason: .pointerSwipedToActivity) {
+                    $0.forceCompactMode = false
+                    $0.presentationState = .activity
+                    $0.isHovered = false
+                }
+            }
+        case .trackpadSwipe,
              .horizontalMusicCommand:
             return unchanged(state, reason: .intentIgnored)
         }

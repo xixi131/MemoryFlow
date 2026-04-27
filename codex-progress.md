@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-12 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, and hover transitions.
+- Phase 5 tasks 1-13 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, hover transitions, and pointer swipe compact/activity transitions.
 
 ### Queue snapshot
-- First pending task: `Implement pointer swipe compact and activity transitions in the reducer.`
-- Remaining queue size: `29` tasks.
+- First pending task: `Implement trackpad vertical open and close transitions in the reducer.`
+- Remaining queue size: `28` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer now drives pointer swipe compact/activity recovery
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so pointer swipe right forces compact when activity content is currently visible, and pointer swipe left reopens activity when an activity source exists and the island is compact.
+- Added explicit pointer transition reasons while preserving the reducer's no-op behavior for unrelated swipe cases.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with a reducer-backed review activity sequence that swipes right into compact and swipes left back into activity, verifying both directions in one focused path.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-pointer-probe` executed `IslandPresentationReducerProbe.validatePointerTransitionSequences()` and `IslandPresentationReducerProbe.validateHoverTransitionSequences()` and emitted the expected JSON rows for review activity collapse and compact activity restore.
 
 ## 2026-04-27 - Phase 5 reducer now drives hover enter and leave state
 

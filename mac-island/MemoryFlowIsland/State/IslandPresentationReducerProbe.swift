@@ -170,6 +170,35 @@ enum IslandPresentationReducerProbe {
         }
     }
 
+    static func pointerTransitionSequences() -> [IslandPresentationReducerSequenceProbeRow] {
+        pointerSequenceCases.map { entry in
+            let initialDerivedState = IslandDerivedState.derive(from: entry.initialState)
+            var currentState = entry.initialState
+            let steps = entry.intents.map { intent, intentDescription in
+                let result = IslandPresentationReducer.reduce(
+                    current: currentState,
+                    intent: intent
+                )
+                currentState = result.state
+                let derivedState = result.derivedState
+
+                return IslandPresentationReducerSequenceProbeStep(
+                    intent: intentDescription,
+                    reason: result.reason.rawValue,
+                    presentationState: result.state.presentationState.rawValue,
+                    visualState: derivedState.visualState.rawValue,
+                    collapsedWidth: scalar(derivedState.collapsedWidth)
+                )
+            }
+
+            return IslandPresentationReducerSequenceProbeRow(
+                scenarioID: entry.id,
+                initialVisualState: initialDerivedState.visualState.rawValue,
+                steps: steps
+            )
+        }
+    }
+
     @discardableResult
     static func validateNoOpRows() throws -> [IslandPresentationReducerProbeRow] {
         let rows = noOpRows()
@@ -516,6 +545,42 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validatePointerTransitionSequences() throws -> [IslandPresentationReducerSequenceProbeRow] {
+        let rows = pointerTransitionSequences()
+        let expectedRows = [
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-activity-pointer-collapse-restore",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "pointerSwipe(right)",
+                        reason: "pointerSwipedToCompact",
+                        presentationState: "activity",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "pointerSwipe(left)",
+                        reason: "pointerSwipedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedSequenceRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -632,6 +697,17 @@ enum IslandPresentationReducerProbe {
             id: "music-expanded-hover-leave",
             initialState: .musicCompactFallback,
             intents: [(.tap, "tap"), (.hoverLeave, "hoverLeave")]
+        )
+    ]
+
+    private static let pointerSequenceCases: [(id: String, initialState: IslandDomainState, intents: [(IslandInteractionIntent, String)])] = [
+        (
+            id: "review-activity-pointer-collapse-restore",
+            initialState: .loggedInReviewActivity,
+            intents: [
+                (.pointerSwipe(.right), "pointerSwipe(right)"),
+                (.pointerSwipe(.left), "pointerSwipe(left)")
+            ]
         )
     ]
 
