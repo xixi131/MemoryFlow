@@ -228,7 +228,7 @@
       "Check each trigger updates the visual state and requests sizing from the Phase 4 sizing engine."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

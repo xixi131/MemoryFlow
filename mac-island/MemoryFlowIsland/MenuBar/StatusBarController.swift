@@ -3,6 +3,7 @@ import AppKit
 final class StatusBarController: NSObject, MenuBarControlling {
     private var statusItem: NSStatusItem?
     private let windowController: IslandWindowControlling
+    private let previewMotionController: IslandPreviewMotionControlling?
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
@@ -16,6 +17,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
         quitHandler: @escaping () -> Void = { NSApp.terminate(nil) }
     ) {
         self.windowController = windowController
+        self.previewMotionController = windowController as? IslandPreviewMotionControlling
         self.preferencesWindowController = preferencesWindowController
         self.menuBuilder = menuBuilder
         self.isIslandVisible = isIslandVisible
@@ -53,6 +55,24 @@ final class StatusBarController: NSObject, MenuBarControlling {
         preferencesWindowController.show()
     }
 
+    @objc func previewMotionMenuItemClicked(_ sender: Any?) {
+        guard
+            let menuItem = sender as? NSMenuItem,
+            let rawValue = menuItem.representedObject as? String,
+            let control = IslandPreviewMotionControl(rawValue: rawValue)
+        else {
+            return
+        }
+
+        if isIslandVisible == false {
+            windowController.show()
+            isIslandVisible = true
+        }
+
+        previewMotionController?.triggerPreviewMotionControl(control)
+        refreshMenu()
+    }
+
     @objc func quitMenuItemClicked(_ sender: Any?) {
         quitHandler()
     }
@@ -66,10 +86,13 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private func refreshMenu() {
         guard let statusItem else { return }
 
+        let previewMotionControls = previewMotionController?.availablePreviewMotionControls ?? []
         statusItem.menu = menuBuilder.buildMenu(
             target: self,
             isIslandVisible: isIslandVisible,
+            previewMotionControls: previewMotionControls,
             showHideAction: #selector(toggleIslandMenuItemClicked(_:)),
+            previewMotionAction: #selector(previewMotionMenuItemClicked(_:)),
             preferencesAction: #selector(preferencesMenuItemClicked(_:)),
             quitAction: #selector(quitMenuItemClicked(_:))
         )

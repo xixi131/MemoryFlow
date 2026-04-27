@@ -6,9 +6,9 @@
 - The current Phase 4 shell slice now includes motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
 
 ### Queue snapshot
-- First pending task: `Add Phase 4 preview controls for core motion paths.`
-- Requested execution mode for this slice: degraded single-agent `$Auto_dev` execution without sub-agents.
-- Recommended next queue theme: expose local preview controls for the core motion paths, then capture shadow-specific evidence for expanded states.
+- First pending task: `Capture Phase 4 sizing evidence for preview states.`
+- Requested execution mode for this slice: parent-worker `$Auto_dev` execution with task-scoped sub-agents.
+- Recommended next queue theme: capture refreshed sizing evidence for preview states, then capture shadow-specific evidence for expanded states.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,13 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 preview motion controls landed for the core shell paths
+
+- Added a preview-only motion-control route model to `IslandWindowController.swift` and exposed five named controls for `compactToActivity`, `activityToExpanded`, `expandedToCompact`, `hoverEnter`, and `hoverLeave`; each control stages the right preview source state and then reuses the existing `requestPreviewStateChange(...)` flow so sizing and motion still pass through the Phase 4 controller path instead of ad-hoc view mutations.
+- Gated the feature behind `MEMORYFLOW_ISLAND_PREVIEW_CONTROLS=1` and surfaced it as a `Preview Motion` submenu in the native status menu via `StatusBarController.swift` and `StatusMenuBuilder.swift`, keeping the controls local-only and out of business data or provider code paths.
+- Extended `IslandSizingMatrixProbe.swift` with a focused `IslandPreviewMotionControlProbe` so the same control-routing logic can be exercised against synthetic notch-display attachment metrics and Phase 4 sizing results for every new trigger.
+- Validation: `init.sh` was not run because this task only touches the native preview shell and the current environment still cannot provide a truthful AppKit/browser runtime path; repository-wide Swift typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$')`; an initial `swift -e` probe attempt failed because the interpreter did not compile the multi-file native source set as one module; a temporary `swiftc` harness then compiled plus ran successfully and confirmed all five controls resolve to the intended transition kinds and produce fresh Phase 4 sizing-engine diagnostics for both source and target states, including hover sizing changes and expanded-to-compact collapse sizing.
 
 ## 2026-04-27 - Phase 4 shadow motion, preview content timing, and interruptible preview-state storage landed
 

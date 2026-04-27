@@ -1,6 +1,95 @@
 import AppKit
 import SwiftUI
 
+struct IslandPreviewMotionControlRoute: Equatable {
+    let sourceState: IslandVisualState
+    let targetState: IslandVisualState
+}
+
+enum IslandPreviewMotionControl: String, CaseIterable, Identifiable {
+    case compactToActivity
+    case activityToExpanded
+    case expandedToCompact
+    case hoverEnter
+    case hoverLeave
+
+    var id: String {
+        rawValue
+    }
+
+    var menuTitle: String {
+        switch self {
+        case .compactToActivity:
+            return "Compact to Activity"
+        case .activityToExpanded:
+            return "Activity to Expanded"
+        case .expandedToCompact:
+            return "Expanded to Compact"
+        case .hoverEnter:
+            return "Hover Enter"
+        case .hoverLeave:
+            return "Hover Leave"
+        }
+    }
+
+    func resolveRoute(
+        currentPreviewState: IslandVisualState,
+        currentTargetState: IslandVisualState
+    ) -> IslandPreviewMotionControlRoute {
+        switch self {
+        case .compactToActivity:
+            return IslandPreviewMotionControlRoute(
+                sourceState: .compactCollapsed,
+                targetState: .activityCollapsed
+            )
+        case .activityToExpanded:
+            return IslandPreviewMotionControlRoute(
+                sourceState: .activityCollapsed,
+                targetState: preferredExpandedState(
+                    currentPreviewState: currentPreviewState,
+                    currentTargetState: currentTargetState
+                )
+            )
+        case .expandedToCompact:
+            return IslandPreviewMotionControlRoute(
+                sourceState: preferredExpandedState(
+                    currentPreviewState: currentPreviewState,
+                    currentTargetState: currentTargetState
+                ),
+                targetState: .compactCollapsed
+            )
+        case .hoverEnter:
+            return IslandPreviewMotionControlRoute(
+                sourceState: .compactCollapsed,
+                targetState: .hoverCollapsed
+            )
+        case .hoverLeave:
+            return IslandPreviewMotionControlRoute(
+                sourceState: .hoverCollapsed,
+                targetState: .compactCollapsed
+            )
+        }
+    }
+
+    private func preferredExpandedState(
+        currentPreviewState: IslandVisualState,
+        currentTargetState: IslandVisualState
+    ) -> IslandVisualState {
+        if currentTargetState.isExpanded {
+            return currentTargetState
+        }
+        if currentPreviewState.isExpanded {
+            return currentPreviewState
+        }
+        return .expandedMusic
+    }
+}
+
+protocol IslandPreviewMotionControlling: AnyObject {
+    var availablePreviewMotionControls: [IslandPreviewMotionControl] { get }
+    func triggerPreviewMotionControl(_ control: IslandPreviewMotionControl)
+}
+
 final class IslandWindowController: NSWindowController, IslandWindowControlling {
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
@@ -8,6 +97,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private let hoverMonitor: IslandHoverMonitor
     private let screenMetricsResolver: (NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?
     private let previewSizingDiagnosticsEnabled: Bool
+    private let previewMotionControlsEnabled: Bool
     private let hostingView: NSHostingView<IslandRootView>
     private var previewState: IslandVisualState = .compactCollapsed
     private var previewVisualScale: CGFloat = 1
@@ -29,6 +119,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         displayObserver: DisplayObserver = DisplayObserver(),
         hoverMonitor: IslandHoverMonitor = IslandHoverMonitor(),
         previewSizingDiagnosticsEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_SIZING_DIAGNOSTICS"] == "1",
+        previewMotionControlsEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_PREVIEW_CONTROLS"] == "1",
         screenMetricsResolver: ((NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?)? = nil
     ) {
         self.islandPanel = panel
@@ -36,6 +127,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         self.displayObserver = displayObserver
         self.hoverMonitor = hoverMonitor
         self.previewSizingDiagnosticsEnabled = previewSizingDiagnosticsEnabled
+        self.previewMotionControlsEnabled = previewMotionControlsEnabled
         self.hostingView = NSHostingView(
             rootView: IslandRootView(
                 previewState: previewState,
@@ -310,8 +402,52 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         requestPreviewStateChange(to: previewTransitionState.targetState.nextPreviewState)
     }
 
-    private func requestPreviewStateChange(to nextState: IslandVisualState) {
+    private func triggerPreviewMotionRoute(_ route: IslandPreviewMotionControlRoute) {
         guard let screenMetrics = screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else {
+            previewState = route.targetState
+            previewTransitionState = .idle(at: route.targetState)
+            repositionToTopCenter(animated: true)
+            return
+        }
+
+        if previewState != route.sourceState ||
+            previewTransitionState.targetState != route.sourceState ||
+            previewTransitionState.isAnimating {
+            stagePreviewControlSourceState(route.sourceState, on: screenMetrics)
+        }
+
+        requestPreviewStateChange(
+            to: route.targetState,
+            using: screenMetrics
+        )
+    }
+
+    private func stagePreviewControlSourceState(
+        _ sourceState: IslandVisualState,
+        on screenMetrics: ScreenMetrics
+    ) {
+        previewTransitionResetWorkItem?.cancel()
+        previewTransitionResetWorkItem = nil
+        previewState = sourceState
+        previewTransitionState = .idle(at: sourceState)
+        previewMotionPlan = nil
+        let resolvedLayout = resolvePreviewLayout(
+            for: sourceState,
+            on: screenMetrics
+        )
+        applyResolvedPreviewLayout(
+            resolvedLayout,
+            on: screenMetrics,
+            animated: false,
+            motionPlan: nil
+        )
+    }
+
+    private func requestPreviewStateChange(
+        to nextState: IslandVisualState,
+        using providedScreenMetrics: ScreenMetrics? = nil
+    ) {
+        guard let screenMetrics = providedScreenMetrics ?? screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else {
             previewState = nextState
             previewTransitionState = .idle(at: nextState)
             repositionToTopCenter(animated: true)
@@ -392,6 +528,21 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             deadline: .now() + max(duration, 0.01),
             execute: workItem
         )
+    }
+}
+
+extension IslandWindowController: IslandPreviewMotionControlling {
+    var availablePreviewMotionControls: [IslandPreviewMotionControl] {
+        guard previewMotionControlsEnabled else { return [] }
+        return IslandPreviewMotionControl.allCases
+    }
+
+    func triggerPreviewMotionControl(_ control: IslandPreviewMotionControl) {
+        let route = control.resolveRoute(
+            currentPreviewState: previewState,
+            currentTargetState: previewTransitionState.targetState
+        )
+        triggerPreviewMotionRoute(route)
     }
 }
 
