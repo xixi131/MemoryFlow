@@ -56,6 +56,27 @@ enum IslandPresentationReducerProbe {
         }
     }
 
+    static func activityDerivationRows() -> [IslandPresentationReducerProbeRow] {
+        activityRepresentativeCases.map { entry in
+            let result = IslandPresentationReducer.reduce(
+                current: entry.state,
+                intent: entry.intent
+            )
+            let derivedState = result.derivedState
+
+            return IslandPresentationReducerProbeRow(
+                scenarioID: entry.id,
+                intent: entry.intentDescription,
+                reason: result.reason.rawValue,
+                stateChanged: result.state != entry.state,
+                visualStateBefore: derivedState.visualState.rawValue,
+                visualStateAfter: derivedState.visualState.rawValue,
+                collapsedWidthBefore: scalar(derivedState.collapsedWidth),
+                collapsedWidthAfter: scalar(derivedState.collapsedWidth)
+            )
+        }
+    }
+
     @discardableResult
     static func validateNoOpRows() throws -> [IslandPresentationReducerProbeRow] {
         let rows = noOpRows()
@@ -158,6 +179,42 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateActivityDerivationRows() throws -> [IslandPresentationReducerProbeRow] {
+        let rows = activityDerivationRows()
+        let expectedRows = [
+            IslandPresentationReducerProbeRow(
+                scenarioID: "logged-in-review-activity-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "activityCollapsed",
+                visualStateAfter: "activityCollapsed",
+                collapsedWidthBefore: 240,
+                collapsedWidthAfter: 240
+            ),
+            IslandPresentationReducerProbeRow(
+                scenarioID: "logged-in-todo-activity-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "activityCollapsed",
+                visualStateAfter: "activityCollapsed",
+                collapsedWidthBefore: 240,
+                collapsedWidthAfter: 240
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -201,6 +258,21 @@ enum IslandPresentationReducerProbe {
         (
             id: "logged-in-review-compact-derivation",
             state: .loggedInReviewCompact,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        )
+    ]
+
+    private static let activityRepresentativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
+        (
+            id: "logged-in-review-activity-derivation",
+            state: .loggedInReviewActivity,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        ),
+        (
+            id: "logged-in-todo-activity-derivation",
+            state: .loggedInTodoActivity,
             intent: .transitionComplete(nil),
             intentDescription: "transitionComplete(nil)"
         )

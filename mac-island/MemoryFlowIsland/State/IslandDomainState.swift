@@ -191,6 +191,55 @@ struct IslandDomainState: Codable, Equatable {
         )
     )
 
+    static let loggedInReviewActivity = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .review,
+        presentationState: .activity,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: true,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: "Review"
+            ),
+            todo: nil,
+            music: nil
+        )
+    )
+
+    static let loggedInTodoActivity = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .todo,
+        presentationState: .activity,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: nil,
+            todo: IslandMockTodoActivity(
+                pendingCount: 4,
+                dueTodayCount: 1,
+                overdueCount: 0,
+                nextTaskTitle: "Todo"
+            ),
+            music: nil
+        )
+    )
+
     static let musicActivity = IslandDomainState(
         authState: .loggedIn,
         primaryMode: .music,

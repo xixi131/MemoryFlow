@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-8 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, and compact derivation through the reducer path.
+- Phase 5 tasks 1-9 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, and app review/todo activity derivation.
 
 ### Queue snapshot
-- First pending task: `Implement app review and todo activity derivation for mock scenarios.`
-- Remaining queue size: `33` tasks.
+- First pending task: `Implement music activity derivation for mock takeover scenarios.`
+- Remaining queue size: `32` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 review and todo activity derivation now has explicit mock coverage
+
+- Extended `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` with reusable `loggedInReviewActivity` and `loggedInTodoActivity` mock states so app activity scenarios no longer depend on inline probe-only state construction.
+- Extended `mac-island/MemoryFlowIsland/State/IslandDerivedStateProbe.swift` with an explicit `logged-in-todo-activity` row while reusing the review activity and todo compact rows, confirming review activity, todo activity, and todo compact width branches all resolve to the documented outputs.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with reducer-backed review/todo activity derivation checks, confirming both scenarios resolve to `activityCollapsed` with width `240` when `forceCompactMode` is `false`.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-app-activity-probe` executed `IslandDerivedStateProbe.validateRepresentativeStates()`, `IslandPresentationReducerProbe.validateActivityDerivationRows()`, and `IslandPresentationReducerProbe.validateCompactDerivationRows()` and emitted the expected JSON rows for review activity, todo activity, and todo compact scenarios.
 
 ## 2026-04-27 - Phase 5 reducer path now resolves compact visual output
 

@@ -86,6 +86,20 @@ enum IslandDerivedStateProbe {
                 contentExtensionWidth: 108
             ),
             IslandDerivedStateProbeRow(
+                scenarioID: "logged-in-todo-activity",
+                visualState: "activityCollapsed",
+                collapsedWidth: 240,
+                collapsedCornerRadius: 40,
+                collapsedCornerSmoothness: 2.8,
+                showsMusicActivity: false,
+                showsReviewActivity: false,
+                showsTodoActivity: true,
+                showsReminder: false,
+                showsAppActivity: true,
+                showsAnyActivity: true,
+                contentExtensionWidth: 108
+            ),
+            IslandDerivedStateProbeRow(
                 scenarioID: "logged-in-todo-compact",
                 visualState: "compactCollapsed",
                 collapsedWidth: 230,
@@ -128,32 +142,8 @@ enum IslandDerivedStateProbe {
     private static let representativeStates: [(String, IslandDomainState)] = [
         ("logged-out-compact", .loggedOutCompact),
         ("logged-in-review-compact", .loggedInReviewCompact),
-        (
-            "logged-in-review-activity",
-            IslandDomainState(
-                authState: .loggedIn,
-                primaryMode: .app,
-                appDisplayMode: .review,
-                presentationState: .activity,
-                forceCompactMode: false,
-                isHovered: false,
-                gestureState: .idle,
-                animationState: .idle,
-                isReminderActive: true,
-                isReminderCollapsing: false,
-                isGreetingActive: false,
-                greetingText: nil,
-                mockSources: IslandMockActivitySources(
-                    review: IslandMockReviewActivity(
-                        pendingCount: 3,
-                        completedTodayCount: 2,
-                        nextSubjectTitle: "Review"
-                    ),
-                    todo: nil,
-                    music: nil
-                )
-            )
-        ),
+        ("logged-in-review-activity", .loggedInReviewActivity),
+        ("logged-in-todo-activity", .loggedInTodoActivity),
         ("logged-in-todo-compact", .loggedInTodoCompact),
         ("music-activity", .musicActivity)
     ]

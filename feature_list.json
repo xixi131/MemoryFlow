@@ -96,7 +96,7 @@
       "Check derived-state probe rows for review activity, todo activity, and todo compact special-width scenarios."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
