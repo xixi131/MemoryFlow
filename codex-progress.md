@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-11 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, and tap-driven expand/collapse transitions.
+- Phase 5 tasks 1-12 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, tap-driven expand/collapse transitions, and hover transitions.
 
 ### Queue snapshot
-- First pending task: `Implement hover enter and hover leave transitions in the reducer.`
-- Remaining queue size: `30` tasks.
+- First pending task: `Implement pointer swipe compact and activity transitions in the reducer.`
+- Remaining queue size: `29` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer now drives hover enter and leave state
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so `hoverEnter` sets `isHovered` for non-expanded states, `hoverLeave` clears `isHovered`, compact hover derives to `hoverCollapsed`, and expanded presentation stays expanded when hover leaves.
+- Added explicit hover transition reasons while leaving unrelated intents unchanged and preserving the existing tap/expand/collapse behavior.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with reducer-backed hover sequences for compact hover enter/leave plus expanded app/music hover leave recovery.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-hover-probe` executed `IslandPresentationReducerProbe.validateHoverTransitionSequences()` and `IslandPresentationReducerProbe.validateTapTransitionSequences()` and emitted the expected JSON rows for compact hover enter/leave and expanded hover leave scenarios.
 
 ## 2026-04-27 - Phase 5 reducer now drives tap expand and collapse recovery
 

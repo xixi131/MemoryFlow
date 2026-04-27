@@ -129,7 +129,7 @@
       "Check reducer probe sequences for compact hover enter/leave and expanded hover leave."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

@@ -141,6 +141,35 @@ enum IslandPresentationReducerProbe {
         }
     }
 
+    static func hoverTransitionSequences() -> [IslandPresentationReducerSequenceProbeRow] {
+        hoverSequenceCases.map { entry in
+            let initialDerivedState = IslandDerivedState.derive(from: entry.initialState)
+            var currentState = entry.initialState
+            let steps = entry.intents.map { intent, intentDescription in
+                let result = IslandPresentationReducer.reduce(
+                    current: currentState,
+                    intent: intent
+                )
+                currentState = result.state
+                let derivedState = result.derivedState
+
+                return IslandPresentationReducerSequenceProbeStep(
+                    intent: intentDescription,
+                    reason: result.reason.rawValue,
+                    presentationState: result.state.presentationState.rawValue,
+                    visualState: derivedState.visualState.rawValue,
+                    collapsedWidth: scalar(derivedState.collapsedWidth)
+                )
+            }
+
+            return IslandPresentationReducerSequenceProbeRow(
+                scenarioID: entry.id,
+                initialVisualState: initialDerivedState.visualState.rawValue,
+                steps: steps
+            )
+        }
+    }
+
     @discardableResult
     static func validateNoOpRows() throws -> [IslandPresentationReducerProbeRow] {
         let rows = noOpRows()
@@ -411,6 +440,82 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateHoverTransitionSequences() throws -> [IslandPresentationReducerSequenceProbeRow] {
+        let rows = hoverTransitionSequences()
+        let expectedRows = [
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-compact-hover-enter-leave",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "hoverEnter",
+                        reason: "hoverEntered",
+                        presentationState: "collapsed",
+                        visualState: "hoverCollapsed",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "hoverLeave",
+                        reason: "hoverLeft",
+                        presentationState: "collapsed",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-expanded-hover-leave",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "hoverLeave",
+                        reason: "noChange",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "music-expanded-hover-leave",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToMusic",
+                        presentationState: "expanded",
+                        visualState: "expandedMusic",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "hoverLeave",
+                        reason: "noChange",
+                        presentationState: "expanded",
+                        visualState: "expandedMusic",
+                        collapsedWidth: 160
+                    )
+                ]
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedSequenceRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -509,6 +614,24 @@ enum IslandPresentationReducerProbe {
             id: "music-activity-tap-recovery",
             initialState: .musicActivity,
             intents: [(.tap, "tap"), (.outsideCollapse, "outsideCollapse")]
+        )
+    ]
+
+    private static let hoverSequenceCases: [(id: String, initialState: IslandDomainState, intents: [(IslandInteractionIntent, String)])] = [
+        (
+            id: "review-compact-hover-enter-leave",
+            initialState: .loggedInReviewCompact,
+            intents: [(.hoverEnter, "hoverEnter"), (.hoverLeave, "hoverLeave")]
+        ),
+        (
+            id: "review-expanded-hover-leave",
+            initialState: .loggedInReviewCompact,
+            intents: [(.tap, "tap"), (.hoverLeave, "hoverLeave")]
+        ),
+        (
+            id: "music-expanded-hover-leave",
+            initialState: .musicCompactFallback,
+            intents: [(.tap, "tap"), (.hoverLeave, "hoverLeave")]
         )
     ]
 

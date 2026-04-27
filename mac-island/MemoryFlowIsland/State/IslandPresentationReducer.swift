@@ -3,6 +3,8 @@ import Foundation
 enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case noChange
     case intentIgnored
+    case hoverEntered
+    case hoverLeft
     case tapExpandedToApp
     case tapExpandedToMusic
     case tapCollapsedToCompact
@@ -39,6 +41,18 @@ enum IslandPresentationReducer {
                 compactReason: .outsideCollapsedToCompact,
                 activityReason: .outsideCollapsedToActivity
             )
+        case .hoverEnter:
+            if state.presentationState == .expanded {
+                return unchanged(state, reason: .noChange)
+            }
+
+            return transition(state, reason: state.isHovered ? .noChange : .hoverEntered) {
+                $0.isHovered = true
+            }
+        case .hoverLeave:
+            return transition(state, reason: state.isHovered ? .hoverLeft : .noChange) {
+                $0.isHovered = false
+            }
         case .tap:
             switch state.presentationState {
             case .expanded:
@@ -60,9 +74,7 @@ enum IslandPresentationReducer {
                     $0.isHovered = false
                 }
             }
-        case .hoverEnter,
-             .hoverLeave,
-             .pointerSwipe,
+        case .pointerSwipe,
              .trackpadSwipe,
              .horizontalMusicCommand:
             return unchanged(state, reason: .intentIgnored)
