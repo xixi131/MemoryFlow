@@ -58,6 +58,20 @@ enum IslandDerivedStateProbe {
                 contentExtensionWidth: 0
             ),
             IslandDerivedStateProbeRow(
+                scenarioID: "logged-in-review-compact",
+                visualState: "compactCollapsed",
+                collapsedWidth: 160,
+                collapsedCornerRadius: 50,
+                collapsedCornerSmoothness: 3.3,
+                showsMusicActivity: false,
+                showsReviewActivity: false,
+                showsTodoActivity: false,
+                showsReminder: false,
+                showsAppActivity: false,
+                showsAnyActivity: false,
+                contentExtensionWidth: 0
+            ),
+            IslandDerivedStateProbeRow(
                 scenarioID: "logged-in-review-activity",
                 visualState: "activityCollapsed",
                 collapsedWidth: 240,
@@ -113,6 +127,7 @@ enum IslandDerivedStateProbe {
 
     private static let representativeStates: [(String, IslandDomainState)] = [
         ("logged-out-compact", .loggedOutCompact),
+        ("logged-in-review-compact", .loggedInReviewCompact),
         (
             "logged-in-review-activity",
             IslandDomainState(

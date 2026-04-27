@@ -8,6 +8,10 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
 struct IslandPresentationReducerResult: Codable, Equatable {
     let state: IslandDomainState
     let reason: IslandPresentationTransitionReason
+
+    var derivedState: IslandDerivedState {
+        IslandDerivedState.derive(from: state)
+    }
 }
 
 enum IslandPresentationReducer {

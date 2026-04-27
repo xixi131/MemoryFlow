@@ -20,7 +20,7 @@ enum IslandPresentationReducerProbe {
                 current: entry.state,
                 intent: entry.intent
             )
-            let afterDerivedState = IslandDerivedState.derive(from: result.state)
+            let afterDerivedState = result.derivedState
 
             return IslandPresentationReducerProbeRow(
                 scenarioID: entry.id,
@@ -31,6 +31,27 @@ enum IslandPresentationReducerProbe {
                 visualStateAfter: afterDerivedState.visualState.rawValue,
                 collapsedWidthBefore: scalar(beforeDerivedState.collapsedWidth),
                 collapsedWidthAfter: scalar(afterDerivedState.collapsedWidth)
+            )
+        }
+    }
+
+    static func compactDerivationRows() -> [IslandPresentationReducerProbeRow] {
+        compactRepresentativeCases.map { entry in
+            let result = IslandPresentationReducer.reduce(
+                current: entry.state,
+                intent: entry.intent
+            )
+            let derivedState = result.derivedState
+
+            return IslandPresentationReducerProbeRow(
+                scenarioID: entry.id,
+                intent: entry.intentDescription,
+                reason: result.reason.rawValue,
+                stateChanged: result.state != entry.state,
+                visualStateBefore: derivedState.visualState.rawValue,
+                visualStateAfter: derivedState.visualState.rawValue,
+                collapsedWidthBefore: scalar(derivedState.collapsedWidth),
+                collapsedWidthAfter: scalar(derivedState.collapsedWidth)
             )
         }
     }
@@ -101,6 +122,42 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateCompactDerivationRows() throws -> [IslandPresentationReducerProbeRow] {
+        let rows = compactDerivationRows()
+        let expectedRows = [
+            IslandPresentationReducerProbeRow(
+                scenarioID: "logged-out-compact-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "compactCollapsed",
+                visualStateAfter: "compactCollapsed",
+                collapsedWidthBefore: 180,
+                collapsedWidthAfter: 180
+            ),
+            IslandPresentationReducerProbeRow(
+                scenarioID: "logged-in-review-compact-derivation",
+                intent: "transitionComplete(nil)",
+                reason: "noChange",
+                stateChanged: false,
+                visualStateBefore: "compactCollapsed",
+                visualStateAfter: "compactCollapsed",
+                collapsedWidthBefore: 160,
+                collapsedWidthAfter: 160
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -129,6 +186,21 @@ enum IslandPresentationReducerProbe {
         (
             id: "idle-transition-complete",
             state: .musicActivity,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        )
+    ]
+
+    private static let compactRepresentativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
+        (
+            id: "logged-out-compact-derivation",
+            state: .loggedOutCompact,
+            intent: .transitionComplete(nil),
+            intentDescription: "transitionComplete(nil)"
+        ),
+        (
+            id: "logged-in-review-compact-derivation",
+            state: .loggedInReviewCompact,
             intent: .transitionComplete(nil),
             intentDescription: "transitionComplete(nil)"
         )

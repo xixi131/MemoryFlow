@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-7 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, and the pure presentation reducer shell.
+- Phase 5 tasks 1-8 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, and compact derivation through the reducer path.
 
 ### Queue snapshot
-- First pending task: `Implement logged-out and logged-in compact derivation in the Phase 5 reducer path.`
-- Remaining queue size: `34` tasks.
+- First pending task: `Implement app review and todo activity derivation for mock scenarios.`
+- Remaining queue size: `33` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer path now resolves compact visual output
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so every reducer result exposes `derivedState`, letting Phase 5 compact visual output be observed directly through the pure reducer path without adding window mutation, timers, menu objects, or provider calls.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with compact derivation checks for logged-out compact (`180`) and logged-in review compact (`160`) reducer outputs, while keeping the existing no-op coverage intact.
+- Extended `mac-island/MemoryFlowIsland/State/IslandDerivedStateProbe.swift` with a logged-in review compact scenario so the representative derived-state evidence now explicitly covers both compact branches requested by the queue item.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-compact-probe` executed `IslandDerivedStateProbe.validateRepresentativeStates()`, `IslandPresentationReducerProbe.validateCompactDerivationRows()`, and `IslandPresentationReducerProbe.validateNoOpRows()` and emitted the expected JSON rows for compact and no-op scenarios.
 
 ## 2026-04-27 - Phase 5 presentation reducer shell added
 

@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 7 Phase 5 tasks are now complete and `feature_list.json` has 34 pending Phase 5 tasks.
+Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 8 Phase 5 tasks are now complete and `feature_list.json` has 33 pending Phase 5 tasks.
 
 The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
 
@@ -15,8 +15,10 @@ Recent Phase 5 native model handoff: `mac-island/MemoryFlowIsland/State/IslandDo
 
 Recent Phase 5 reducer handoff: `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` now provides a pure reducer shell that returns next state plus transition reason, and `IslandPresentationReducerProbe.swift` validates unknown/no-op intents preserve state and derived visual output.
 
+Recent Phase 5 compact derivation handoff: reducer results now expose `derivedState` directly so compact visual output can be checked through the reducer path, and `IslandDerivedStateProbe.swift` now covers both logged-out compact and logged-in review compact rows.
+
 ## First pending task
-* `Implement logged-out and logged-in compact derivation in the Phase 5 reducer path.`
+* `Implement app review and todo activity derivation for mock scenarios.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -37,6 +39,6 @@ Recent Phase 5 reducer handoff: `mac-island/MemoryFlowIsland/State/IslandPresent
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
-* The first 7 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
+* The first 8 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
 * Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
 * The current queue is designed so the user can see state-switching effects before real content and real provider integration land.

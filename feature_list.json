@@ -85,7 +85,7 @@
       "Check derived-state probe rows for logged-out and logged-in review compact scenarios."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
