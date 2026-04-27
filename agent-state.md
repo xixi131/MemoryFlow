@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 10 Phase 5 tasks are now complete and `feature_list.json` has 31 pending Phase 5 tasks.
+Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 11 Phase 5 tasks are now complete and `feature_list.json` has 30 pending Phase 5 tasks.
 
 The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
 
@@ -21,8 +21,10 @@ Recent Phase 5 app-activity derivation handoff: `IslandDomainState.swift` now ex
 
 Recent Phase 5 music derivation handoff: `IslandDomainState.swift` now exposes a reusable `musicCompactFallback` mock state, `IslandDerivedStateProbe.swift` covers both music activity and music compact fallback rows, and `IslandPresentationReducerProbe.swift` validates the same music takeover states through the reducer result path without any real provider integration.
 
+Recent Phase 5 tap reducer handoff: `IslandPresentationReducer.swift` now expands compact/activity states into app or music expanded presentation on tap, collapses expanded states back to activity or compact on tap or outside-collapse based on activity-source availability, and `IslandPresentationReducerProbe.swift` now validates reducer-backed tap sequences for app/music compact and activity recovery.
+
 ## First pending task
-* `Implement tap-driven expand and collapse transitions in the reducer.`
+* `Implement hover enter and hover leave transitions in the reducer.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
@@ -43,6 +45,6 @@ Recent Phase 5 music derivation handoff: `IslandDomainState.swift` now exposes a
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
-* The first 10 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
+* The first 11 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
 * Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
 * The current queue is designed so the user can see state-switching effects before real content and real provider integration land.

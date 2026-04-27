@@ -12,6 +12,20 @@ struct IslandPresentationReducerProbeRow: Codable, Equatable {
     let collapsedWidthAfter: Double
 }
 
+struct IslandPresentationReducerSequenceProbeStep: Codable, Equatable {
+    let intent: String
+    let reason: String
+    let presentationState: String
+    let visualState: String
+    let collapsedWidth: Double
+}
+
+struct IslandPresentationReducerSequenceProbeRow: Codable, Equatable {
+    let scenarioID: String
+    let initialVisualState: String
+    let steps: [IslandPresentationReducerSequenceProbeStep]
+}
+
 enum IslandPresentationReducerProbe {
     static func noOpRows() -> [IslandPresentationReducerProbeRow] {
         representativeCases.map { entry in
@@ -94,6 +108,35 @@ enum IslandPresentationReducerProbe {
                 visualStateAfter: derivedState.visualState.rawValue,
                 collapsedWidthBefore: scalar(derivedState.collapsedWidth),
                 collapsedWidthAfter: scalar(derivedState.collapsedWidth)
+            )
+        }
+    }
+
+    static func tapTransitionSequences() -> [IslandPresentationReducerSequenceProbeRow] {
+        tapSequenceCases.map { entry in
+            let initialDerivedState = IslandDerivedState.derive(from: entry.initialState)
+            var currentState = entry.initialState
+            let steps = entry.intents.map { intent, intentDescription in
+                let result = IslandPresentationReducer.reduce(
+                    current: currentState,
+                    intent: intent
+                )
+                currentState = result.state
+                let derivedState = result.derivedState
+
+                return IslandPresentationReducerSequenceProbeStep(
+                    intent: intentDescription,
+                    reason: result.reason.rawValue,
+                    presentationState: result.state.presentationState.rawValue,
+                    visualState: derivedState.visualState.rawValue,
+                    collapsedWidth: scalar(derivedState.collapsedWidth)
+                )
+            }
+
+            return IslandPresentationReducerSequenceProbeRow(
+                scenarioID: entry.id,
+                initialVisualState: initialDerivedState.visualState.rawValue,
+                steps: steps
             )
         }
     }
@@ -272,6 +315,102 @@ enum IslandPresentationReducerProbe {
         return rows
     }
 
+    @discardableResult
+    static func validateTapTransitionSequences() throws -> [IslandPresentationReducerSequenceProbeRow] {
+        let rows = tapTransitionSequences()
+        let expectedRows = [
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-compact-tap-recovery",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapCollapsedToCompact",
+                        presentationState: "collapsed",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-activity-tap-recovery",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "music-compact-tap-recovery",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToMusic",
+                        presentationState: "expanded",
+                        visualState: "expandedMusic",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapCollapsedToCompact",
+                        presentationState: "collapsed",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "music-activity-tap-recovery",
+                initialVisualState: "activityCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToMusic",
+                        presentationState: "expanded",
+                        visualState: "expandedMusic",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            )
+        ]
+
+        guard rows == expectedRows else {
+            throw IslandPresentationReducerProbeValidationError.unexpectedSequenceRows(
+                expected: expectedRows,
+                actual: rows
+            )
+        }
+
+        return rows
+    }
+
     private static let representativeCases: [(id: String, state: IslandDomainState, intent: IslandInteractionIntent, intentDescription: String)] = [
         (
             id: "logged-out-outside-collapse",
@@ -350,6 +489,29 @@ enum IslandPresentationReducerProbe {
         )
     ]
 
+    private static let tapSequenceCases: [(id: String, initialState: IslandDomainState, intents: [(IslandInteractionIntent, String)])] = [
+        (
+            id: "review-compact-tap-recovery",
+            initialState: .loggedInReviewCompact,
+            intents: [(.tap, "tap"), (.tap, "tap")]
+        ),
+        (
+            id: "review-activity-tap-recovery",
+            initialState: .loggedInReviewActivity,
+            intents: [(.tap, "tap"), (.outsideCollapse, "outsideCollapse")]
+        ),
+        (
+            id: "music-compact-tap-recovery",
+            initialState: .musicCompactFallback,
+            intents: [(.tap, "tap"), (.tap, "tap")]
+        ),
+        (
+            id: "music-activity-tap-recovery",
+            initialState: .musicActivity,
+            intents: [(.tap, "tap"), (.outsideCollapse, "outsideCollapse")]
+        )
+    ]
+
     private static func scalar(_ value: CGFloat) -> Double {
         (Double(value) * 100).rounded() / 100
     }
@@ -360,12 +522,22 @@ enum IslandPresentationReducerProbeValidationError: Error, CustomStringConvertib
         expected: [IslandPresentationReducerProbeRow],
         actual: [IslandPresentationReducerProbeRow]
     )
+    case unexpectedSequenceRows(
+        expected: [IslandPresentationReducerSequenceProbeRow],
+        actual: [IslandPresentationReducerSequenceProbeRow]
+    )
 
     var description: String {
         switch self {
         case let .unexpectedRows(expected, actual):
             return """
             Unexpected presentation-reducer probe rows.
+            Expected: \(expected)
+            Actual: \(actual)
+            """
+        case let .unexpectedSequenceRows(expected, actual):
+            return """
+            Unexpected presentation-reducer probe sequence rows.
             Expected: \(expected)
             Actual: \(actual)
             """

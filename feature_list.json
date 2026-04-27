@@ -118,7 +118,7 @@
       "Check a reducer probe sequence for compact to expanded to activity or compact recovery."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

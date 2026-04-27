@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-10 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, and music takeover derivation.
+- Phase 5 tasks 1-11 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, the pure presentation reducer shell, compact derivation through the reducer path, app review/todo activity derivation, music takeover derivation, and tap-driven expand/collapse transitions.
 
 ### Queue snapshot
-- First pending task: `Implement tap-driven expand and collapse transitions in the reducer.`
-- Remaining queue size: `31` tasks.
+- First pending task: `Implement hover enter and hover leave transitions in the reducer.`
+- Remaining queue size: `30` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 reducer now drives tap expand and collapse recovery
+
+- Updated `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` so `.tap` expands collapsed/activity states into app or music expanded presentation for logged-in mock states, and `.tap` or `.outsideCollapse` collapses expanded states back to `activity` or `collapsed` depending on activity-source availability and `forceCompactMode`.
+- Added explicit transition reasons for tap-driven app/music expansion and compact/activity collapse recovery, while preserving no-op behavior for unrelated intents and the logged-out login gate.
+- Extended `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` with reducer sequence coverage for review compact/activity and music compact/activity flows, proving compact -> expanded -> compact recovery and activity -> expanded -> activity recovery through the pure reducer path.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-tap-probe` executed `IslandPresentationReducerProbe.validateTapTransitionSequences()`, `IslandPresentationReducerProbe.validateCompactDerivationRows()`, `IslandPresentationReducerProbe.validateActivityDerivationRows()`, and `IslandPresentationReducerProbe.validateMusicDerivationRows()` and emitted the expected JSON rows for app/music expansion plus activity/compact recovery.
 
 ## 2026-04-27 - Phase 5 music takeover derivation now covers activity and compact fallback
 

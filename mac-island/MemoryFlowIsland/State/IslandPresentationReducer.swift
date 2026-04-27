@@ -3,6 +3,12 @@ import Foundation
 enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case noChange
     case intentIgnored
+    case tapExpandedToApp
+    case tapExpandedToMusic
+    case tapCollapsedToCompact
+    case tapCollapsedToActivity
+    case outsideCollapsedToCompact
+    case outsideCollapsedToActivity
 }
 
 struct IslandPresentationReducerResult: Codable, Equatable {
@@ -28,13 +34,34 @@ enum IslandPresentationReducer {
                 reason: scenarioID.isEmpty ? .noChange : .intentIgnored
             )
         case .outsideCollapse:
-            return unchanged(
+            return collapseExpanded(
                 state,
-                reason: state.presentationState == .expanded ? .noChange : .intentIgnored
+                compactReason: .outsideCollapsedToCompact,
+                activityReason: .outsideCollapsedToActivity
             )
+        case .tap:
+            switch state.presentationState {
+            case .expanded:
+                return collapseExpanded(
+                    state,
+                    compactReason: .tapCollapsedToCompact,
+                    activityReason: .tapCollapsedToActivity
+                )
+            case .collapsed, .activity:
+                guard state.authState == .loggedIn else {
+                    return unchanged(state, reason: .intentIgnored)
+                }
+
+                return transition(
+                    state,
+                    reason: state.primaryMode == .music ? .tapExpandedToMusic : .tapExpandedToApp
+                ) {
+                    $0.presentationState = .expanded
+                    $0.isHovered = false
+                }
+            }
         case .hoverEnter,
              .hoverLeave,
-             .tap,
              .pointerSwipe,
              .trackpadSwipe,
              .horizontalMusicCommand:
@@ -46,8 +73,40 @@ enum IslandPresentationReducer {
         _ state: IslandDomainState,
         reason: IslandPresentationTransitionReason
     ) -> IslandPresentationReducerResult {
-        IslandPresentationReducerResult(
-            state: state,
+        transition(state, reason: reason) { _ in }
+    }
+
+    private static func collapseExpanded(
+        _ state: IslandDomainState,
+        compactReason: IslandPresentationTransitionReason,
+        activityReason: IslandPresentationTransitionReason
+    ) -> IslandPresentationReducerResult {
+        guard state.presentationState == .expanded else {
+            return unchanged(state, reason: .intentIgnored)
+        }
+
+        let hasActivitySource = IslandDerivedState.derive(from: state).hasAnyActivitySource
+        let shouldRecoverActivity = hasActivitySource && state.forceCompactMode == false
+
+        return transition(
+            state,
+            reason: shouldRecoverActivity ? activityReason : compactReason
+        ) {
+            $0.presentationState = shouldRecoverActivity ? .activity : .collapsed
+            $0.isHovered = false
+        }
+    }
+
+    private static func transition(
+        _ state: IslandDomainState,
+        reason: IslandPresentationTransitionReason,
+        mutate: (inout IslandDomainState) -> Void
+    ) -> IslandPresentationReducerResult {
+        var nextState = state
+        mutate(&nextState)
+
+        return IslandPresentationReducerResult(
+            state: nextState,
             reason: reason
         )
     }
