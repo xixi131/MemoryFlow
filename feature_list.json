@@ -74,7 +74,7 @@
       "Check that unknown or no-op intents preserve state without changing visual output."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

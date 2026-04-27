@@ -4,11 +4,11 @@
 - Phase 0 to Phase 3 are complete enough for handoff.
 - Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
 - The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
-- Phase 5 tasks 1-6 are complete: acceptance docs, native domain state, native interaction intent thresholds, and derived visual-state output.
+- Phase 5 tasks 1-7 are complete: acceptance docs, native domain state, native interaction intent thresholds, derived visual-state output, and the pure presentation reducer shell.
 
 ### Queue snapshot
-- First pending task: `Create the Phase 5 presentation reducer shell.`
-- Remaining queue size: `35` tasks.
+- First pending task: `Implement logged-out and logged-in compact derivation in the Phase 5 reducer path.`
+- Remaining queue size: `34` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -22,6 +22,13 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 presentation reducer shell added
+
+- Added `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` with a pure `reduce(current:intent:)` API that returns the next `IslandDomainState` plus an `IslandPresentationTransitionReason`, with no window mutation, timers, menu objects, or provider calls.
+- Added `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift` to validate durable no-op cases: collapsed outside-collapse, compact restore without activity, app-mode horizontal music command, unknown mock scenario selection, and idle transition completion all preserve both domain state and derived visual output.
+- Updated `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj` so the reducer and probe are wired into the native target, and marked the Phase 5 reducer-shell task as passed in `feature_list.json` while advancing `agent-state.md` to the next reducer task.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the Visual + State dependency slice, then `/tmp/memoryflow-phase5-reducer-probe` executed `IslandPresentationReducerProbe.validateNoOpRows()` and emitted the expected five JSON rows with unchanged visual states and widths.
 
 ## 2026-04-27 - Phase 5 derived visual-state output added
 
