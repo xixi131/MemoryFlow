@@ -28,6 +28,8 @@ struct IslandVisualStatePreview: View {
                     x: 0,
                     y: shadowOffsetY(for: snapshot)
                 )
+                // Window sizing is y-up; SwiftUI renders top-leading, so keep shell attached and leave shadow buffer below.
+                .offset(y: -snapshot.shadowOutsets.bottom)
                 .animation(shadowAnimation, value: state)
 
             previewContentVisibilityLayer(snapshot: snapshot)

@@ -2,12 +2,13 @@
 
 ### Current phase
 - Phase 0 to Phase 3 are complete enough for handoff.
-- The active Phase 4 slice now has native sizing, shadow, motion, preview-control, and synthetic evidence coverage in place.
-- The current queue is fully complete; the remaining follow-up is outside this queue and should start with task regeneration or a new explicitly-scoped slice.
+- Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
+- The active queue is now Phase 5: native state machine, interaction intents, mock scenarios, and visible mouse/trackpad preview behavior.
+- Phase 5 tasks 1-6 are complete: acceptance docs, native domain state, native interaction intent thresholds, and derived visual-state output.
 
 ### Queue snapshot
-- First pending task: `None`.
-- Remaining queue size: `0` tasks.
+- First pending task: `Create the Phase 5 presentation reducer shell.`
+- Remaining queue size: `35` tasks.
 - Execution mode: degraded single-agent `$Auto_dev`.
 
 ### Runtime / environment notes
@@ -21,6 +22,34 @@
 - Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 5 derived visual-state output added
+
+- Added `mac-island/MemoryFlowIsland/State/IslandDerivedState.swift` to derive Phase 5 activity-source flags, visible review/todo/reminder/music branches, resolved visual state, collapsed width, resolved radius/smoothness, and content-width requirements from the mock domain state.
+- Extended `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` with optional `greetingText` support for the documented `220...300` greeting-width branch and added a focused `musicActivity` sample state for probe coverage.
+- Added `mac-island/MemoryFlowIsland/State/IslandDerivedStateProbe.swift` so representative logged-out, logged-in review activity, logged-in todo compact, and music activity cases can be validated without AppKit window startup.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; lightweight native validation passed with `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the state/visual dependency slice and a temporary `/tmp` Swift harness that executed `IslandDerivedStateProbe.validateRepresentativeStates()` and emitted the expected four JSON rows.
+
+## 2026-04-27 - Phase 5 native state and interaction intent models added
+
+- Added `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` with Phase 5 `authState`, `primaryMode`, `appDisplayMode`, `presentationState`, `forceCompactMode`, hover, gesture, animation, reminder, and greeting fields plus lightweight mock review, todo, and music payload sources.
+- Added `mac-island/MemoryFlowIsland/State/IslandInteractionIntent.swift` with `hoverEnter`, `hoverLeave`, `tap`, `outsideCollapse`, `pointerSwipe`, `trackpadSwipe`, `horizontalMusicCommand`, `mockScenarioSelect`, and `transitionComplete` intents.
+- Mirrored Windows baseline thresholds in pure Swift constants: tap movement `10`, pointer swipe `26`, trackpad horizontal/vertical `70`, reset `0.160s`, cooldown `0.320s`, long press `0.420s`, compact phase `0.320s`, and reopen delay `0.070s`.
+- Added the new `State` group and source files to `mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj`; marked Phase 5 tasks 4 and 5 as passed and refreshed `agent-state.md`.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; native validation used `swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` over the full Swift source set, and focused `rg` checks confirmed the intent cases, thresholds, state fields, mock payload types, Xcode source references, and absence of AppKit/SwiftUI imports in `State/`.
+
+## 2026-04-27 - Phase 5 interaction and mock-state acceptance doc created
+
+- Added `docs/mac-island-phase5-interaction-state-acceptance.md` with unique sections for State Model, Derived State, Interaction Intents, Mock Scenarios, Window Wiring, Gesture Guards, Preview Evidence, and Non-Goals.
+- Filled acceptance rows for required Phase 5 state fields, derived-state outputs, hover/tap/pointer/trackpad intents, and Windows baseline thresholds (`tap < 10`, pointer swipe `26`, trackpad threshold `70`, reset `160ms`, cooldown `320ms`).
+- Linked rows to the Phase 5 migration plan plus `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, and `docs/mac-island-animation-spec.md`; marked the first 3 Phase 5 docs tasks as passed and refreshed `agent-state.md`.
+- Validation: confirmed the acceptance document exists from the repository root, all required headings are unique, required state/derived/intent terms are present, and the queue now points to the first frontend Phase 5 state-model task.
+
+## 2026-04-27 - Phase 5 task queue initialized for interaction and mock-state work
+
+- Archived the completed 27-task Phase 4 queue from `feature_list.json` into `feature_list_summary.json`, increasing the historical summary from 76 to 103 completed tasks.
+- Replaced `feature_list.json` with 41 pending Phase 5 tasks covering acceptance docs, native state model, derived state, reducer intents, hover/tap/pointer/trackpad handling, mock scenario menus, visible preview checks, and evidence updates.
+- Refreshed `agent-state.md` so the next `$Auto_dev` startup path begins from Phase 5 and keeps Phase 6 content, Phase 7 app data, and Phase 8 real music providers out of scope.
 
 ## 2026-04-27 - Phase 4 checklist and handoff were closed out
 

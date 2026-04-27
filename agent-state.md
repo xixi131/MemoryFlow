@@ -3,42 +3,38 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration has completed the current Phase 4 sizing-and-motion queue. The native shell now has sizing outputs, content-driven width constraints, expanded shadow buffering, motion profiles, preview content-visibility timing hooks, interruptible preview-transition storage, preview-motion controls, and linked synthetic evidence captured in the Phase 4 acceptance and checklist docs.
+Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 6 Phase 5 tasks are now complete and `feature_list.json` has 35 pending Phase 5 tasks.
 
-`docs/mac-island-phase4-sizing-motion-acceptance.md` is now the canonical Phase 4 evidence gate for sizing outputs, content-driven width, shadow buffering, motion profiles, and interruptible transitions. `docs/mac-island-migration-checklist.md` now mirrors those gates at the broader migration-checklist layer, with sizing and shadow items marked `Passed` and motion or interruptibility items left `Real-device pending` until physical-device calibration exists.
+The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
 
-`IslandWindowController.swift`, `IslandMotionEngine.swift`, `IslandVisualStatePreview.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, and `IslandSizingMatrixProbe.swift` are the main Phase 4 native seams to revisit if the next queue expands into Phase 5 interaction/state-machine migration or real-device motion calibration.
+Recent local fix to keep in mind: `IslandVisualStatePreview.swift` offsets the SwiftUI shell by the bottom shadow outset so expanded and hover states stay visually attached to the notch while preserving bottom shadow buffer space.
+
+Recent Phase 5 docs handoff: `docs/mac-island-phase5-interaction-state-acceptance.md` now contains the acceptance shell plus state, derived-state, mouse, pointer, and trackpad rows with links to the migration plan and baseline specs.
+
+Recent Phase 5 native model handoff: `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` defines mock-driven domain state and payload sources, `mac-island/MemoryFlowIsland/State/IslandInteractionIntent.swift` defines pure interaction intents plus Windows baseline thresholds, and `mac-island/MemoryFlowIsland/State/IslandDerivedState.swift` now resolves Phase 5 visual-state decisions with a matching probe in `IslandDerivedStateProbe.swift`.
 
 ## First pending task
-* None. `feature_list.json` is fully passed at the moment.
+* `Create the Phase 5 presentation reducer shell.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
-3. Read `feature_list.json`.
-4. If the next work continues this slice, read the Phase 4 section in `灵动岛迁移方案.md`.
-5. Read `docs/mac-island-phase4-sizing-motion-acceptance.md` and `docs/mac-island-migration-checklist.md`.
-6. Read `docs/evidence/mac-island-phase4/sizing-matrix.json`, `shadow-capture-checks.json`, and `motion-frame-sequences.md` only when evidence details are needed.
-7. Read `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionTokens.swift`, `IslandPreviewContentVisibility.swift`, `IslandPreviewTransitionState.swift`, `IslandTransitionKind.swift`, and `IslandMotionEngine.swift` only if the next task changes motion behavior.
-8. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `IslandSizingMatrixProbe.swift`, and `IslandWindowSizingResult.swift` only if the next task changes sizing, preview routing, or synthetic validation.
-9. Read `feature_list_summary.json` only if you need completed Phase 0 to Phase 3 history.
+3. Read `feature_list.json` and select the first pending task.
+4. Read the Phase 5 section in `灵动岛迁移方案.md`.
+5. Read `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, and `docs/mac-island-animation-spec.md` only for the task-specific rows being implemented.
+6. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `mac-island/MemoryFlowIsland/UI/IslandRootView.swift`, `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`, `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionEngine.swift`, and the menu files when wiring visible preview interactions.
+7. Read `feature_list_summary.json` only if completed Phase 0 to Phase 4 history is needed.
 
 ## Runtime notes
 * `init.sh` exists and remains the runtime entry point when full startup is required.
 * `xcodebuild` is still unavailable in the current environment because the active developer directory is CommandLineTools only.
 * Native-shell compile checks can still use `swiftc -module-cache-path /tmp/... -typecheck` when a task needs a lightweight verification path.
-* In the current sandbox, `init.sh` can fail with occupied-port or bind-permission errors (`SocketException: Operation not permitted`, `listen EPERM`), so native-shell validation still relies on the Swift render/typecheck path unless unrestricted runtime startup is available.
-* The current Phase 4 validation path is: repository-wide Swift typecheck plus focused harnesses that check diagnostics fields, sizing-matrix coverage, shadow-capture boundary clearance, motion-plan coverage, preview-state ordering, motion-driven content-visibility inputs, and interruptible preview-transition retargeting.
-* `MEMORYFLOW_ISLAND_PREVIEW_CONTROLS=1` enables the new local preview-motion submenu in the native status menu for manual motion-path checks without touching business data.
-* The preview-state ordering, motion-control coverage, and retargeting checks are synthetic model/harness results, not real GUI tap, menu-click, or hover capture.
-* The refreshed `docs/evidence/mac-island-phase4/sizing-matrix.json` evidence is synthetic harness output, not a physical-device AppKit capture.
-* The refreshed expanded shadow captures and `shadow-capture-checks.json` are padded synthetic CoreGraphics renders; they confirm the exported evidence no longer hard-clips side or bottom shadow fade, but they are still not physical-device AppKit captures.
-* The new motion frame-sequence evidence is synthetic motion-plan output (`motion-frame-sequences.md` / `.json`), not a physical-device AppKit capture, GIF, or video.
+* In the current sandbox, `init.sh` can fail with occupied-port or bind-permission errors (`SocketException: Operation not permitted`, `listen EPERM`), so native-shell validation may rely on Swift typecheck plus focused synthetic probes unless unrestricted runtime startup is available.
+* Phase 5 visible-effect tasks should prefer a native preview/menu path gated by environment flags and should truthfully record when physical-device hover, pointer, or trackpad evidence is unavailable.
+* Phase 5 should not add real backend calls, real music provider integration, or full Phase 6 content layouts. Use mock state, mock scenario rows, and minimal preview markers only.
 
 ## Active blockers / caveats
 * No feature blocker is recorded at startup.
-* The queue is currently empty; if the product scope changed or a new slice should begin, regenerate tasks before resuming `$Auto_dev`.
-* `feature_list_summary.json` now stores the completed historical queue that was previously in `feature_list.json`.
-* The external-display evidence for Phase 3 is a truthful synthetic `ScreenMetrics` harness result, not a physical second-display run.
-* Business data, auth, and Phase 5 interaction/state-machine migration remain out of scope for the completed Phase 4 slice so far.
-* Motion and interruptibility checklist gates still require physical-device calibration even though the current synthetic evidence path is complete.
+* The first 6 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
+* Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
+* The current queue is designed so the user can see state-switching effects before real content and real provider integration land.

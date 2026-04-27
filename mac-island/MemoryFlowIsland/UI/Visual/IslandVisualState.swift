@@ -70,4 +70,19 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             ? orderedStates[orderedStates.startIndex]
             : orderedStates[nextIndex]
     }
+
+    var previewContentWidthRequirement: IslandContentWidthRequirement {
+        switch self {
+        case .activityCollapsed:
+            // Preview-only stand-in for later measured activity content:
+            // symmetric left cover + right waveform/action area + shell padding.
+            return IslandContentWidthRequirement(
+                leadingContentWidth: 36,
+                trailingContentWidth: 36,
+                horizontalPadding: 18
+            )
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp:
+            return .none
+        }
+    }
 }

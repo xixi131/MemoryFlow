@@ -37,6 +37,10 @@
 		C00202030000000000000001 /* IslandMotionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201030000000000000001 /* IslandMotionEngine.swift */; };
 		C00202040000000000000001 /* IslandPreviewContentVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201040000000000000001 /* IslandPreviewContentVisibility.swift */; };
 		C00202050000000000000001 /* IslandPreviewTransitionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00201050000000000000001 /* IslandPreviewTransitionState.swift */; };
+		C00302010000000000000001 /* IslandDomainState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301010000000000000001 /* IslandDomainState.swift */; };
+		C00302020000000000000001 /* IslandInteractionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301020000000000000001 /* IslandInteractionIntent.swift */; };
+		C00302030000000000000001 /* IslandDerivedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301030000000000000001 /* IslandDerivedState.swift */; };
+		C00302040000000000000001 /* IslandDerivedStateProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301040000000000000001 /* IslandDerivedStateProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +76,10 @@
 		C00201030000000000000001 /* IslandMotionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionEngine.swift; sourceTree = "<group>"; };
 		C00201040000000000000001 /* IslandPreviewContentVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPreviewContentVisibility.swift; sourceTree = "<group>"; };
 		C00201050000000000000001 /* IslandPreviewTransitionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPreviewTransitionState.swift; sourceTree = "<group>"; };
+		C00301010000000000000001 /* IslandDomainState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandDomainState.swift; sourceTree = "<group>"; };
+		C00301020000000000000001 /* IslandInteractionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandInteractionIntent.swift; sourceTree = "<group>"; };
+		C00301030000000000000001 /* IslandDerivedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandDerivedState.swift; sourceTree = "<group>"; };
+		C00301040000000000000001 /* IslandDerivedStateProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandDerivedStateProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +108,7 @@
 				B00100070000000000000001 /* Window */,
 				B00100080000000000000001 /* MenuBar */,
 				B00100090000000000000001 /* Preferences */,
+				C00300010000000000000001 /* State */,
 				B001000A0000000000000001 /* UI */,
 				B001000B0000000000000001 /* Resources */,
 			);
@@ -192,6 +201,17 @@
 				C00201050000000000000001 /* IslandPreviewTransitionState.swift */,
 			);
 			path = Motion;
+			sourceTree = "<group>";
+		};
+		C00300010000000000000001 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				C00301010000000000000001 /* IslandDomainState.swift */,
+				C00301020000000000000001 /* IslandInteractionIntent.swift */,
+				C00301030000000000000001 /* IslandDerivedState.swift */,
+				C00301040000000000000001 /* IslandDerivedStateProbe.swift */,
+			);
+			path = State;
 			sourceTree = "<group>";
 		};
 		B001000B0000000000000001 /* Resources */ = {
@@ -301,6 +321,10 @@
 				C00202030000000000000001 /* IslandMotionEngine.swift in Sources */,
 				C00202040000000000000001 /* IslandPreviewContentVisibility.swift in Sources */,
 				C00202050000000000000001 /* IslandPreviewTransitionState.swift in Sources */,
+				C00302010000000000000001 /* IslandDomainState.swift in Sources */,
+				C00302020000000000000001 /* IslandInteractionIntent.swift in Sources */,
+				C00302030000000000000001 /* IslandDerivedState.swift in Sources */,
+				C00302040000000000000001 /* IslandDerivedStateProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
