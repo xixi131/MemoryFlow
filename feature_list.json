@@ -239,7 +239,7 @@
       "Check that no row reports a clipped or negative frame."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

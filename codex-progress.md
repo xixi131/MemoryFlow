@@ -3,12 +3,12 @@
 ### Current phase
 - Phase 0 baseline capture, Phase 1 shell scaffolding, and Phase 2 native window-system work are complete enough for handoff.
 - The current Phase 3 native visual geometry queue is complete under `mac-island/MemoryFlowIsland/UI/`.
-- The current Phase 4 shell slice now includes motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
+- The current Phase 4 shell slice now includes refreshed synthetic sizing evidence alongside motion-driven shadow transitions, preview content-visibility timing inputs, and interruptible preview-transition bookkeeping on top of the earlier sizing and motion foundation.
 
 ### Queue snapshot
-- First pending task: `Capture Phase 4 sizing evidence for preview states.`
+- First pending task: `Capture Phase 4 shadow evidence for expanded states.`
 - Requested execution mode for this slice: parent-worker `$Auto_dev` execution with task-scoped sub-agents.
-- Recommended next queue theme: capture refreshed sizing evidence for preview states, then capture shadow-specific evidence for expanded states.
+- Recommended next queue theme: capture shadow-specific evidence for expanded states, then wire the evidence links into the Phase 4 acceptance doc.
 
 ### Runtime / environment notes
 - [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point when full execution-path tasks require startup.
@@ -21,6 +21,12 @@
 - Keep this file small enough for the default startup path: `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
 
 ## Recent Key Records
+
+## 2026-04-27 - Phase 4 preview sizing evidence refreshed for notch and flat-top states
+
+- Re-ran the focused native Phase 4 sizing harness and rewrote `docs/evidence/mac-island-phase4/sizing-matrix.json` from `IslandSizingMatrixProbe`, preserving the synthetic evidence path for preview-only sizing validation.
+- Confirmed the matrix still covers both synthetic display scenarios (`notch-display`, `flat-top-display`) and all required preview sizing states (`compactCollapsed`, `activityCollapsed`, `expandedMusic`, `expandedApp`) with explicit `visibleFrame`, `shadowFrame`, `contentFrame`, and `hitTestFrame` values per row.
+- Validation: `./init.sh` was attempted for the required full execution path and stopped immediately because backend port `8080` was already occupied by PID `59013`; repository-wide Swift typecheck passed with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -typecheck $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$' | rg -v 'App/MemoryFlowIslandApp\.swift$')`; the focused harness compiled with `swiftc -module-cache-path /tmp/memoryflow-phase4-cache -o /tmp/memoryflow_phase4_validation /tmp/memoryflow_phase4_validation.swift $(rg --files mac-island/MemoryFlowIsland | rg '\.swift$' | rg -v 'App/MemoryFlowIslandApp\.swift$')` and ran successfully; and a direct JSON audit confirmed `bad_rows=0`, meaning no `visibleFrame`, `shadowFrame`, `contentFrame`, or `hitTestFrame` row had negative coordinates or dimensions or extended past its synthetic display bounds.
 
 ## 2026-04-27 - Phase 4 preview motion controls landed for the core shell paths
 
