@@ -1,0 +1,221 @@
+[
+  {
+    "initialVisualState" : "compactCollapsed",
+    "sequenceID" : "hover-enter-leave",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "hoverEntered",
+        "intent" : "hoverEnter",
+        "presentationState" : "collapsed",
+        "primaryMode" : "app",
+        "visualState" : "hoverCollapsed"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "hoverLeft",
+        "intent" : "hoverLeave",
+        "presentationState" : "collapsed",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "compactCollapsed",
+    "sequenceID" : "tap-expand-collapse",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "tapExpandedToApp",
+        "intent" : "tap",
+        "presentationState" : "expanded",
+        "primaryMode" : "app",
+        "visualState" : "expandedApp"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "outsideCollapsedToCompact",
+        "intent" : "outsideCollapse",
+        "presentationState" : "collapsed",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "activityCollapsed",
+    "sequenceID" : "pointer-compact-restore",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "pointerSwipedToCompact",
+        "intent" : "pointerSwipe(right)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "noChange",
+        "intent" : "transitionComplete(forceCompactTransition)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "guardOutcome" : "pointerSwipedToActivity",
+        "intent" : "pointerSwipe(left)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "activityCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "activityCollapsed",
+    "sequenceID" : "trackpad-vertical-cycle",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "cooldown",
+        "guardOutcome" : "trackpadSwipedUpToCompact",
+        "intent" : "trackpadSwipe(up)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "noChange",
+        "intent" : "transitionComplete(trackpadGestureCooldown)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "noChange",
+        "intent" : "transitionComplete(forceCompactTransition)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "cooldown",
+        "guardOutcome" : "trackpadSwipedDownToActivity",
+        "intent" : "trackpadSwipe(down)",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "activityCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "activityCollapsed",
+    "sequenceID" : "horizontal-music-command",
+    "steps" : [
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "cooldown",
+        "guardOutcome" : "mockPreviousTrackCommanded",
+        "intent" : "horizontalMusicCommand(previousTrack)",
+        "presentationState" : "activity",
+        "primaryMode" : "music",
+        "visualState" : "activityCollapsed"
+      },
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "guardOutcome" : "noChange",
+        "intent" : "transitionComplete(trackpadGestureCooldown)",
+        "presentationState" : "activity",
+        "primaryMode" : "music",
+        "visualState" : "activityCollapsed"
+      },
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "cooldown",
+        "guardOutcome" : "mockNextTrackCommanded",
+        "intent" : "horizontalMusicCommand(nextTrack)",
+        "presentationState" : "activity",
+        "primaryMode" : "music",
+        "visualState" : "activityCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "compactCollapsed",
+    "sequenceID" : "reminder-due-open",
+    "steps" : [
+      {
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "guardOutcome" : "reminderDueOpenedReviewActivity",
+        "intent" : "reminderDue",
+        "presentationState" : "activity",
+        "primaryMode" : "app",
+        "visualState" : "activityCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "activityCollapsed",
+    "sequenceID" : "paused-music-timeout",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "pausedMusicTimedOutToApp",
+        "intent" : "pausedMusicTimeout",
+        "presentationState" : "collapsed",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      }
+    ]
+  },
+  {
+    "initialVisualState" : "compactCollapsed",
+    "sequenceID" : "rapid-retargeting",
+    "steps" : [
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "tapExpandedToApp",
+        "intent" : "tap",
+        "presentationState" : "expanded",
+        "primaryMode" : "app",
+        "visualState" : "expandedApp"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "outsideCollapsedToCompact",
+        "intent" : "outsideCollapse",
+        "presentationState" : "collapsed",
+        "primaryMode" : "app",
+        "visualState" : "compactCollapsed"
+      },
+      {
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "guardOutcome" : "tapExpandedToApp",
+        "intent" : "tap",
+        "presentationState" : "expanded",
+        "primaryMode" : "app",
+        "visualState" : "expandedApp"
+      }
+    ]
+  }
+]

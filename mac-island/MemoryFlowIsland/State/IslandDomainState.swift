@@ -40,6 +40,12 @@ struct IslandAnimationState: Codable, Equatable {
     )
 }
 
+enum IslandTransitionLockIdentifier {
+    static let trackpadGestureCooldown = "trackpadGestureCooldown"
+    static let forceCompactTransition = "forceCompactTransition"
+    static let modeSwitchAnimation = "modeSwitchAnimation"
+}
+
 struct IslandMockReviewActivity: Codable, Equatable {
     var pendingCount: Int
     var completedTodayCount: Int
@@ -116,6 +122,10 @@ struct IslandDomainState: Codable, Equatable {
         case .idle, .cooldown:
             return false
         }
+    }
+
+    var isTrackpadGestureLocked: Bool {
+        gestureState == .cooldown
     }
 
     var isModeSwitchAnimating: Bool {
@@ -215,6 +225,30 @@ struct IslandDomainState: Codable, Equatable {
         )
     )
 
+    static let loggedInReviewActivityPlain = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .review,
+        presentationState: .activity,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: "Review"
+            ),
+            todo: nil,
+            music: nil
+        )
+    )
+
     static let loggedInTodoActivity = IslandDomainState(
         authState: .loggedIn,
         primaryMode: .app,
@@ -277,6 +311,98 @@ struct IslandDomainState: Codable, Equatable {
             review: nil,
             todo: nil,
             music: .sample
+        )
+    )
+
+    static let musicActivityWithAppFallback = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .music,
+        appDisplayMode: .review,
+        presentationState: .activity,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: "Review"
+            ),
+            todo: nil,
+            music: .sample
+        )
+    )
+
+    static let expandedAppReview = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .review,
+        presentationState: .expanded,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: "Review"
+            ),
+            todo: nil,
+            music: nil
+        )
+    )
+
+    static let expandedMusic = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .music,
+        appDisplayMode: .review,
+        presentationState: .expanded,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: nil,
+            todo: nil,
+            music: .sample
+        )
+    )
+
+    static let pausedMusicTimeoutCompact = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .review,
+        presentationState: .collapsed,
+        forceCompactMode: true,
+        isHovered: false,
+        gestureState: .idle,
+        animationState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: "Review"
+            ),
+            todo: nil,
+            music: nil
         )
     )
 }

@@ -3,56 +3,31 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Dynamic Island migration is now queued for Phase 5: native state machine, interaction intents, and mock animation scenarios. The completed Phase 4 sizing-and-motion queue has been archived into `feature_list_summary.json`; the first 15 Phase 5 tasks are now complete and `feature_list.json` has 26 pending Phase 5 tasks.
+Phase 5 is active: native state machine, mock scenarios, and preview-visible gesture behavior for the macOS island shell.
 
-The Phase 5 queue is intentionally mock-driven. It should make state changes, hover, tap, pointer swipe, trackpad gestures, and scenario switching visibly testable in the native island shell before Phase 6 content migration, Phase 7 app data, or Phase 8 real music provider work begins.
+The first 27 Phase 5 tasks are complete. The reducer now covers reminder due and paused-music timeout intents, `IslandMockScenario.phase5Catalog` defines the required 10 mock scenarios, `docs/evidence/mac-island-phase5/` contains scenario-matrix, interaction-sequence, preview-interaction, scenario-selection, and interaction-demo menu probe JSON, and `IslandWindowController` now owns Phase 5 preview state plus reducer-backed tap, hover, pointer, trackpad, status-menu scenario routing, and status-menu interaction demo routing.
 
-Recent local fix to keep in mind: `IslandVisualStatePreview.swift` offsets the SwiftUI shell by the bottom shadow outset so expanded and hover states stay visually attached to the notch while preserving bottom shadow buffer space.
-
-Recent Phase 5 docs handoff: `docs/mac-island-phase5-interaction-state-acceptance.md` now contains the acceptance shell plus state, derived-state, mouse, pointer, and trackpad rows with links to the migration plan and baseline specs.
-
-Recent Phase 5 native model handoff: `mac-island/MemoryFlowIsland/State/IslandDomainState.swift` defines mock-driven domain state and payload sources, `mac-island/MemoryFlowIsland/State/IslandInteractionIntent.swift` defines pure interaction intents plus Windows baseline thresholds, and `mac-island/MemoryFlowIsland/State/IslandDerivedState.swift` now resolves Phase 5 visual-state decisions with a matching probe in `IslandDerivedStateProbe.swift`.
-
-Recent Phase 5 reducer handoff: `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift` now provides a pure reducer shell that returns next state plus transition reason, and `IslandPresentationReducerProbe.swift` validates unknown/no-op intents preserve state and derived visual output.
-
-Recent Phase 5 compact derivation handoff: reducer results now expose `derivedState` directly so compact visual output can be checked through the reducer path, and `IslandDerivedStateProbe.swift` now covers both logged-out compact and logged-in review compact rows.
-
-Recent Phase 5 app-activity derivation handoff: `IslandDomainState.swift` now exposes reusable logged-in review and todo activity mock states, `IslandDerivedStateProbe.swift` covers both app activity rows plus todo compact width, and `IslandPresentationReducerProbe.swift` validates review/todo activity visual output through the reducer result path.
-
-Recent Phase 5 music derivation handoff: `IslandDomainState.swift` now exposes a reusable `musicCompactFallback` mock state, `IslandDerivedStateProbe.swift` covers both music activity and music compact fallback rows, and `IslandPresentationReducerProbe.swift` validates the same music takeover states through the reducer result path without any real provider integration.
-
-Recent Phase 5 tap reducer handoff: `IslandPresentationReducer.swift` now expands compact/activity states into app or music expanded presentation on tap, collapses expanded states back to activity or compact on tap or outside-collapse based on activity-source availability, and `IslandPresentationReducerProbe.swift` now validates reducer-backed tap sequences for app/music compact and activity recovery.
-
-Recent Phase 5 hover reducer handoff: `IslandPresentationReducer.swift` now toggles `isHovered` on `hoverEnter`/`hoverLeave`, resolves hover-collapsed output for compact states, and preserves expanded presentation when hover leaves an expanded island; `IslandPresentationReducerProbe.swift` now validates compact hover enter/leave and expanded hover-leave sequences.
-
-Recent Phase 5 pointer reducer handoff: `IslandPresentationReducer.swift` now maps pointer swipe right to force compact when app activity is visible and pointer swipe left to reopen activity from compact when an activity source exists, while `IslandPresentationReducerProbe.swift` validates review activity collapse and compact activity restore in one reducer-backed sequence.
-
-Recent Phase 5 trackpad vertical reducer handoff: `IslandPresentationReducer.swift` now maps trackpad swipe up to close expanded presentation or collapse visible activity into compact, and maps trackpad swipe down to reopen activity from compact or expand a visible activity card; `IslandPresentationReducerProbe.swift` now validates expanded close, activity close, activity reopen, and activity expand sequences.
-
-Recent Phase 5 horizontal music reducer handoff: `IslandPresentationReducer.swift` now maps `horizontalMusicCommand` to mock previous/next music-command metadata only when `primaryMode == .music`, while `IslandPresentationReducerProbe.swift` validates both music command rows and the existing app-mode ignored swipe row without sending any real media keys.
+Phase 5 remains intentionally mock-driven. Do not add real backend calls, real music provider integration, or Phase 6 content layouts in this slice.
 
 ## First pending task
-* `Add reducer guards for gesture locks and animation locks.`
+* `Add minimal mock content markers so Phase 5 state changes are visible.`
 
 ## Recommended startup path
 1. Read `AGENTS.md`.
 2. Read this file.
 3. Read `feature_list.json` and select the first pending task.
 4. Read the Phase 5 section in `灵动岛迁移方案.md`.
-5. Read `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, and `docs/mac-island-animation-spec.md` only for the task-specific rows being implemented.
-6. Read `mac-island/MemoryFlowIsland/State/IslandPresentationReducer.swift`, `mac-island/MemoryFlowIsland/State/IslandPresentationReducerProbe.swift`, `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `mac-island/MemoryFlowIsland/UI/IslandRootView.swift`, `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`, `mac-island/MemoryFlowIsland/UI/Motion/IslandMotionEngine.swift`, and the menu files when wiring visible preview interactions.
-7. Read `feature_list_summary.json` only if completed Phase 0 to Phase 4 history is needed.
+5. Read only the matching rows in `docs/mac-island-state-spec.md`, `docs/mac-island-interaction-spec.md`, and `docs/mac-island-animation-spec.md`.
+6. Read `mac-island/MemoryFlowIsland/Window/IslandWindowController.swift`, `mac-island/MemoryFlowIsland/MenuBar/StatusMenuBuilder.swift`, `mac-island/MemoryFlowIsland/MenuBar/StatusBarController.swift`, and `docs/evidence/mac-island-phase5/` first.
 
 ## Runtime notes
-* `init.sh` exists and remains the runtime entry point when full startup is required.
-* `xcodebuild` is still unavailable in the current environment because the active developer directory is CommandLineTools only.
-* Native-shell compile checks can still use `swiftc -module-cache-path /tmp/... -typecheck` when a task needs a lightweight verification path.
-* In the current sandbox, `init.sh` can fail with occupied-port or bind-permission errors (`SocketException: Operation not permitted`, `listen EPERM`), so native-shell validation may rely on Swift typecheck plus focused synthetic probes unless unrestricted runtime startup is available.
-* Phase 5 visible-effect tasks should prefer a native preview/menu path gated by environment flags and should truthfully record when physical-device hover, pointer, or trackpad evidence is unavailable.
-* Phase 5 should not add real backend calls, real music provider integration, or full Phase 6 content layouts. Use mock state, mock scenario rows, and minimal preview markers only.
+* `init.sh` is still the runtime entry point for full execution-path work.
+* `xcodebuild` is unavailable in the current environment because the active developer directory is CommandLineTools only.
+* Lightweight native verification can use `swiftc -module-cache-path /tmp/... -typecheck` plus focused Swift probes.
+* `init.sh` may fail in the sandbox because port `8080` is already occupied or local bind attempts hit `SocketException: Operation not permitted` / `listen EPERM`; Phase 5 native work can fall back to probe-driven verification when that happens.
 
 ## Active blockers / caveats
-* No feature blocker is recorded at startup.
-* The first 15 Phase 5 tasks are complete; remaining Phase 5 tasks still start with `passes: false`.
-* Motion and interruptibility checklist gates from Phase 4 still require physical-device calibration later.
-* The current queue is designed so the user can see state-switching effects before real content and real provider integration land.
+* No active feature blocker is recorded at startup.
+* Phase 4 motion-profile and interruptibility evidence still need physical-device calibration later.
+* Remaining Phase 5 work should stay preview-only and mock-only until later phases explicitly expand scope.
+* The Phase 5 scenarios submenu is gated by `MEMORYFLOW_ISLAND_PHASE5_SCENARIOS=1`; Phase 5 interaction demo controls are preview-only and reducer-backed when Phase 5 preview routing is enabled.

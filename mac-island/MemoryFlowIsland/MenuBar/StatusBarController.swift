@@ -4,6 +4,8 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private var statusItem: NSStatusItem?
     private let windowController: IslandWindowControlling
     private let previewMotionController: IslandPreviewMotionControlling?
+    private let phase5ScenarioController: IslandPhase5ScenarioControlling?
+    private let phase5InteractionDemoController: IslandPhase5InteractionDemoControlling?
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
@@ -18,6 +20,8 @@ final class StatusBarController: NSObject, MenuBarControlling {
     ) {
         self.windowController = windowController
         self.previewMotionController = windowController as? IslandPreviewMotionControlling
+        self.phase5ScenarioController = windowController as? IslandPhase5ScenarioControlling
+        self.phase5InteractionDemoController = windowController as? IslandPhase5InteractionDemoControlling
         self.preferencesWindowController = preferencesWindowController
         self.menuBuilder = menuBuilder
         self.isIslandVisible = isIslandVisible
@@ -73,6 +77,41 @@ final class StatusBarController: NSObject, MenuBarControlling {
         refreshMenu()
     }
 
+    @objc func phase5ScenarioMenuItemClicked(_ sender: Any?) {
+        guard
+            let menuItem = sender as? NSMenuItem,
+            let scenarioID = menuItem.representedObject as? String
+        else {
+            return
+        }
+
+        if isIslandVisible == false {
+            windowController.show()
+            isIslandVisible = true
+        }
+
+        phase5ScenarioController?.selectPhase5Scenario(id: scenarioID)
+        refreshMenu()
+    }
+
+    @objc func phase5InteractionDemoMenuItemClicked(_ sender: Any?) {
+        guard
+            let menuItem = sender as? NSMenuItem,
+            let rawValue = menuItem.representedObject as? String,
+            let control = IslandPhase5InteractionDemoControl(rawValue: rawValue)
+        else {
+            return
+        }
+
+        if isIslandVisible == false {
+            windowController.show()
+            isIslandVisible = true
+        }
+
+        phase5InteractionDemoController?.triggerPhase5InteractionDemo(control)
+        refreshMenu()
+    }
+
     @objc func quitMenuItemClicked(_ sender: Any?) {
         quitHandler()
     }
@@ -87,12 +126,18 @@ final class StatusBarController: NSObject, MenuBarControlling {
         guard let statusItem else { return }
 
         let previewMotionControls = previewMotionController?.availablePreviewMotionControls ?? []
+        let phase5Scenarios = phase5ScenarioController?.availablePhase5Scenarios ?? []
+        let phase5InteractionDemoControls = phase5InteractionDemoController?.availablePhase5InteractionDemoControls ?? []
         statusItem.menu = menuBuilder.buildMenu(
             target: self,
             isIslandVisible: isIslandVisible,
             previewMotionControls: previewMotionControls,
+            phase5Scenarios: phase5Scenarios,
+            phase5InteractionDemoControls: phase5InteractionDemoControls,
             showHideAction: #selector(toggleIslandMenuItemClicked(_:)),
             previewMotionAction: #selector(previewMotionMenuItemClicked(_:)),
+            phase5ScenarioAction: #selector(phase5ScenarioMenuItemClicked(_:)),
+            phase5InteractionDemoAction: #selector(phase5InteractionDemoMenuItemClicked(_:)),
             preferencesAction: #selector(preferencesMenuItemClicked(_:)),
             quitAction: #selector(quitMenuItemClicked(_:))
         )

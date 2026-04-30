@@ -3,8 +3,15 @@ import Foundation
 enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case noChange
     case intentIgnored
+    case mockScenarioSelected
+    case trackpadGestureLocked
+    case modeSwitchLocked
+    case forceCompactTransitionLocked
     case mockPreviousTrackCommanded
     case mockNextTrackCommanded
+    case reminderDueMarkedActive
+    case reminderDueOpenedReviewActivity
+    case pausedMusicTimedOutToApp
     case hoverEntered
     case hoverLeft
     case pointerSwipedToCompact
@@ -46,13 +53,40 @@ enum IslandPresentationReducer {
         intent: IslandInteractionIntent
     ) -> IslandPresentationReducerResult {
         switch intent {
-        case .transitionComplete:
-            return unchanged(state, reason: .noChange)
+        case let .transitionComplete(identifier):
+            return completeTransition(state, identifier: identifier)
         case let .mockScenarioSelect(scenarioID):
-            return unchanged(
-                state,
-                reason: scenarioID.isEmpty ? .noChange : .intentIgnored
-            )
+            guard scenarioID.isEmpty == false else {
+                return unchanged(state, reason: .noChange)
+            }
+
+            guard let scenario = IslandMockScenario.scenario(id: scenarioID) else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(state, reason: .mockScenarioSelected) { nextState in
+                nextState = scenario.initialState
+            }
+        default:
+            break
+        }
+
+        if state.isTrackpadGestureLocked,
+           isTrackpadIntent(intent) {
+            return unchanged(state, reason: .trackpadGestureLocked)
+        }
+
+        if state.isModeSwitchAnimating,
+           shouldRespectModeSwitchLock(intent) {
+            return unchanged(state, reason: .modeSwitchLocked)
+        }
+
+        if state.isForceCompactTransitioning,
+           shouldRespectForceCompactLock(intent) {
+            return unchanged(state, reason: .forceCompactTransitionLocked)
+        }
+
+        switch intent {
         case .outsideCollapse:
             return collapseExpanded(
                 state,
@@ -101,10 +135,11 @@ enum IslandPresentationReducer {
                     return unchanged(state, reason: .intentIgnored)
                 }
 
-                return transition(state, reason: .pointerSwipedToCompact) {
-                    $0.forceCompactMode = true
-                    $0.presentationState = .activity
-                    $0.isHovered = false
+                return transition(state, reason: .pointerSwipedToCompact) { nextState in
+                    nextState.forceCompactMode = true
+                    nextState.presentationState = .activity
+                    nextState.isHovered = false
+                    lockForceCompactTransition(&nextState)
                 }
             case .left:
                 guard state.presentationState != .expanded,
@@ -113,10 +148,11 @@ enum IslandPresentationReducer {
                     return unchanged(state, reason: .intentIgnored)
                 }
 
-                return transition(state, reason: .pointerSwipedToActivity) {
-                    $0.forceCompactMode = false
-                    $0.presentationState = .activity
-                    $0.isHovered = false
+                return transition(state, reason: .pointerSwipedToActivity) { nextState in
+                    nextState.forceCompactMode = false
+                    nextState.presentationState = .activity
+                    nextState.isHovered = false
+                    lockForceCompactTransition(&nextState)
                 }
             }
         case let .trackpadSwipe(direction):
@@ -125,21 +161,31 @@ enum IslandPresentationReducer {
             switch direction {
             case .up:
                 if state.presentationState == .expanded {
-                    return collapseExpanded(
+                    let collapseResult = collapseExpanded(
                         state,
                         compactReason: .trackpadSwipedUpToCompact,
                         activityReason: .trackpadSwipedUpToActivity
                     )
+
+                    return transition(
+                        collapseResult.state,
+                        reason: collapseResult.reason,
+                        metadata: collapseResult.metadata
+                    ) { nextState in
+                        lockTrackpadGesture(&nextState)
+                    }
                 }
 
                 guard derivedState.showAnyActivity else {
                     return unchanged(state, reason: .intentIgnored)
                 }
 
-                return transition(state, reason: .trackpadSwipedUpToCompact) {
-                    $0.forceCompactMode = true
-                    $0.presentationState = .activity
-                    $0.isHovered = false
+                return transition(state, reason: .trackpadSwipedUpToCompact) { nextState in
+                    nextState.forceCompactMode = true
+                    nextState.presentationState = .activity
+                    nextState.isHovered = false
+                    lockTrackpadGesture(&nextState)
+                    lockForceCompactTransition(&nextState)
                 }
             case .down:
                 if state.presentationState != .expanded,
@@ -149,9 +195,10 @@ enum IslandPresentationReducer {
                         reason: state.primaryMode == .music
                             ? .trackpadSwipedDownToExpandedMusic
                             : .trackpadSwipedDownToExpandedApp
-                    ) {
-                        $0.presentationState = .expanded
-                        $0.isHovered = false
+                    ) { nextState in
+                        nextState.presentationState = .expanded
+                        nextState.isHovered = false
+                        lockTrackpadGesture(&nextState)
                     }
                 }
 
@@ -161,10 +208,12 @@ enum IslandPresentationReducer {
                     return unchanged(state, reason: .intentIgnored)
                 }
 
-                return transition(state, reason: .trackpadSwipedDownToActivity) {
-                    $0.forceCompactMode = false
-                    $0.presentationState = .activity
-                    $0.isHovered = false
+                return transition(state, reason: .trackpadSwipedDownToActivity) { nextState in
+                    nextState.forceCompactMode = false
+                    nextState.presentationState = .activity
+                    nextState.isHovered = false
+                    lockTrackpadGesture(&nextState)
+                    lockForceCompactTransition(&nextState)
                 }
             }
         case let .horizontalMusicCommand(command):
@@ -180,7 +229,49 @@ enum IslandPresentationReducer {
                 metadata: IslandPresentationReducerMetadata(
                     mockMusicCommand: command
                 )
-            ) { _ in }
+            ) { nextState in
+                lockTrackpadGesture(&nextState)
+            }
+        case .reminderDue:
+            guard state.authState == .loggedIn,
+                  state.primaryMode == .app,
+                  state.appDisplayMode == .review else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            let shouldOpenActivity = state.forceCompactMode && state.presentationState != .expanded
+
+            return transition(
+                state,
+                reason: shouldOpenActivity
+                    ? .reminderDueOpenedReviewActivity
+                    : .reminderDueMarkedActive
+            ) { nextState in
+                nextState.isReminderActive = true
+
+                guard shouldOpenActivity else {
+                    return
+                }
+
+                nextState.presentationState = .activity
+                nextState.forceCompactMode = false
+                nextState.isHovered = false
+                lockForceCompactTransition(&nextState)
+            }
+        case .pausedMusicTimeout:
+            guard state.primaryMode == .music || state.mockSources.music != nil else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(state, reason: .pausedMusicTimedOutToApp) { nextState in
+                nextState.primaryMode = .app
+                nextState.presentationState = .collapsed
+                nextState.forceCompactMode = true
+                nextState.isHovered = false
+                nextState.mockSources.music = nil
+            }
+        case .transitionComplete, .mockScenarioSelect:
+            return unchanged(state, reason: .noChange)
         }
     }
 
@@ -210,6 +301,90 @@ enum IslandPresentationReducer {
             $0.presentationState = shouldRecoverActivity ? .activity : .collapsed
             $0.isHovered = false
         }
+    }
+
+    private static func completeTransition(
+        _ state: IslandDomainState,
+        identifier: String?
+    ) -> IslandPresentationReducerResult {
+        guard let identifier else {
+            return unchanged(state, reason: .noChange)
+        }
+
+        return transition(state, reason: .noChange) {
+            switch identifier {
+            case IslandTransitionLockIdentifier.trackpadGestureCooldown:
+                if $0.gestureState == .cooldown {
+                    $0.gestureState = .idle
+                }
+            case IslandTransitionLockIdentifier.forceCompactTransition:
+                $0.animationState.isForceCompactTransitioning = false
+                if $0.animationState.transitionID == identifier {
+                    $0.animationState.transitionID = nil
+                }
+            case IslandTransitionLockIdentifier.modeSwitchAnimation:
+                $0.animationState.isModeSwitchAnimating = false
+                if $0.animationState.transitionID == identifier {
+                    $0.animationState.transitionID = nil
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    private static func shouldRespectModeSwitchLock(_ intent: IslandInteractionIntent) -> Bool {
+        switch intent {
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand:
+            return true
+        case .hoverEnter,
+             .hoverLeave,
+             .reminderDue,
+             .pausedMusicTimeout,
+             .mockScenarioSelect,
+             .transitionComplete:
+            return false
+        }
+    }
+
+    private static func shouldRespectForceCompactLock(_ intent: IslandInteractionIntent) -> Bool {
+        switch intent {
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand:
+            return true
+        case .hoverEnter,
+             .hoverLeave,
+             .reminderDue,
+             .pausedMusicTimeout,
+             .mockScenarioSelect,
+             .transitionComplete:
+            return false
+        }
+    }
+
+    private static func isTrackpadIntent(_ intent: IslandInteractionIntent) -> Bool {
+        switch intent {
+        case .trackpadSwipe, .horizontalMusicCommand:
+            return true
+        case .hoverEnter,
+             .hoverLeave,
+             .tap,
+             .outsideCollapse,
+             .pointerSwipe,
+             .reminderDue,
+             .pausedMusicTimeout,
+             .mockScenarioSelect,
+             .transitionComplete:
+            return false
+        }
+    }
+
+    private static func lockTrackpadGesture(_ state: inout IslandDomainState) {
+        state.gestureState = .cooldown
+    }
+
+    private static func lockForceCompactTransition(_ state: inout IslandDomainState) {
+        state.animationState.isForceCompactTransitioning = true
+        state.animationState.transitionID = IslandTransitionLockIdentifier.forceCompactTransition
     }
 
     private static func transition(

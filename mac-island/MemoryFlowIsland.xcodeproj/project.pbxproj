@@ -26,6 +26,9 @@
 		B00102100000000000000001 /* IslandWindowSizingResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101110000000000000001 /* IslandWindowSizingResult.swift */; };
 		B00102110000000000000001 /* IslandWindowSizingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101120000000000000001 /* IslandWindowSizingEngine.swift */; };
 		B00102120000000000000001 /* IslandSizingMatrixProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101130000000000000001 /* IslandSizingMatrixProbe.swift */; };
+		B00102130000000000000001 /* IslandInteractionHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101140000000000000001 /* IslandInteractionHostingView.swift */; };
+		B00102140000000000000001 /* IslandPhase5PreviewStateContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101150000000000000001 /* IslandPhase5PreviewStateContainer.swift */; };
+		B00102150000000000000001 /* IslandPreviewInteractionAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101160000000000000001 /* IslandPreviewInteractionAdapters.swift */; };
 		C00102010000000000000001 /* IslandVisualTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101010000000000000001 /* IslandVisualTokens.swift */; };
 		C00102020000000000000001 /* IslandVisualState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101020000000000000001 /* IslandVisualState.swift */; };
 		C00102030000000000000001 /* IslandShapeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00101030000000000000001 /* IslandShapeMetrics.swift */; };
@@ -43,6 +46,8 @@
 		C00302040000000000000001 /* IslandDerivedStateProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301040000000000000001 /* IslandDerivedStateProbe.swift */; };
 		C00302050000000000000001 /* IslandPresentationReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301050000000000000001 /* IslandPresentationReducer.swift */; };
 		C00302060000000000000001 /* IslandPresentationReducerProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301060000000000000001 /* IslandPresentationReducerProbe.swift */; };
+		C00302070000000000000001 /* IslandMockScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301070000000000000001 /* IslandMockScenario.swift */; };
+		C00302080000000000000001 /* IslandPhase5Probe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00301080000000000000001 /* IslandPhase5Probe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +72,9 @@
 		B00101110000000000000001 /* IslandWindowSizingResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowSizingResult.swift; sourceTree = "<group>"; };
 		B00101120000000000000001 /* IslandWindowSizingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandWindowSizingEngine.swift; sourceTree = "<group>"; };
 		B00101130000000000000001 /* IslandSizingMatrixProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandSizingMatrixProbe.swift; sourceTree = "<group>"; };
+		B00101140000000000000001 /* IslandInteractionHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandInteractionHostingView.swift; sourceTree = "<group>"; };
+		B00101150000000000000001 /* IslandPhase5PreviewStateContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPhase5PreviewStateContainer.swift; sourceTree = "<group>"; };
+		B00101160000000000000001 /* IslandPreviewInteractionAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPreviewInteractionAdapters.swift; sourceTree = "<group>"; };
 		C00101010000000000000001 /* IslandVisualTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandVisualTokens.swift; sourceTree = "<group>"; };
 		C00101020000000000000001 /* IslandVisualState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandVisualState.swift; sourceTree = "<group>"; };
 		C00101030000000000000001 /* IslandShapeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandShapeMetrics.swift; sourceTree = "<group>"; };
@@ -84,6 +92,8 @@
 		C00301040000000000000001 /* IslandDerivedStateProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandDerivedStateProbe.swift; sourceTree = "<group>"; };
 		C00301050000000000000001 /* IslandPresentationReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPresentationReducer.swift; sourceTree = "<group>"; };
 		C00301060000000000000001 /* IslandPresentationReducerProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPresentationReducerProbe.swift; sourceTree = "<group>"; };
+		C00301070000000000000001 /* IslandMockScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMockScenario.swift; sourceTree = "<group>"; };
+		C00301080000000000000001 /* IslandPhase5Probe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPhase5Probe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,6 +160,9 @@
 				B00101110000000000000001 /* IslandWindowSizingResult.swift */,
 				B00101120000000000000001 /* IslandWindowSizingEngine.swift */,
 				B00101130000000000000001 /* IslandSizingMatrixProbe.swift */,
+				B00101140000000000000001 /* IslandInteractionHostingView.swift */,
+				B00101150000000000000001 /* IslandPhase5PreviewStateContainer.swift */,
+				B00101160000000000000001 /* IslandPreviewInteractionAdapters.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -216,6 +229,8 @@
 				C00301040000000000000001 /* IslandDerivedStateProbe.swift */,
 				C00301050000000000000001 /* IslandPresentationReducer.swift */,
 				C00301060000000000000001 /* IslandPresentationReducerProbe.swift */,
+				C00301070000000000000001 /* IslandMockScenario.swift */,
+				C00301080000000000000001 /* IslandPhase5Probe.swift */,
 			);
 			path = State;
 			sourceTree = "<group>";
@@ -316,6 +331,9 @@
 				B00102100000000000000001 /* IslandWindowSizingResult.swift in Sources */,
 				B00102110000000000000001 /* IslandWindowSizingEngine.swift in Sources */,
 				B00102120000000000000001 /* IslandSizingMatrixProbe.swift in Sources */,
+				B00102130000000000000001 /* IslandInteractionHostingView.swift in Sources */,
+				B00102140000000000000001 /* IslandPhase5PreviewStateContainer.swift in Sources */,
+				B00102150000000000000001 /* IslandPreviewInteractionAdapters.swift in Sources */,
 				C00102010000000000000001 /* IslandVisualTokens.swift in Sources */,
 				C00102020000000000000001 /* IslandVisualState.swift in Sources */,
 				C00102030000000000000001 /* IslandShapeMetrics.swift in Sources */,
@@ -333,6 +351,8 @@
 				C00302040000000000000001 /* IslandDerivedStateProbe.swift in Sources */,
 				C00302050000000000000001 /* IslandPresentationReducer.swift in Sources */,
 				C00302060000000000000001 /* IslandPresentationReducerProbe.swift in Sources */,
+				C00302070000000000000001 /* IslandMockScenario.swift in Sources */,
+				C00302080000000000000001 /* IslandPhase5Probe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

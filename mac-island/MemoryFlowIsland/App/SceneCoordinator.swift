@@ -15,9 +15,20 @@ final class SceneCoordinator {
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBarController: MenuBarControlling
 
+    init() {
+        let windowController = IslandWindowController()
+        let preferencesWindowController = PreferencesWindowController()
+        self.windowController = windowController
+        self.preferencesWindowController = preferencesWindowController
+        self.menuBarController = StatusBarController(
+            windowController: windowController,
+            preferencesWindowController: preferencesWindowController
+        )
+    }
+
     init(
-        windowController: IslandWindowControlling = IslandWindowController(),
-        preferencesWindowController: PreferencesWindowControlling = PreferencesWindowController(),
+        windowController: IslandWindowControlling,
+        preferencesWindowController: PreferencesWindowControlling,
         menuBarController: MenuBarControlling? = nil
     ) {
         self.windowController = windowController

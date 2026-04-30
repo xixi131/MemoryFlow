@@ -20,7 +20,13 @@ struct IslandVisualStatePreview: View {
     var body: some View {
         let snapshot = snapshot
 
-        ZStack(alignment: .topLeading) {
+        previewContainer(snapshot: snapshot)
+            .background(Color.clear)
+    }
+
+    @ViewBuilder
+    private func previewContainer(snapshot: IslandShapeLayoutSnapshot) -> some View {
+        let content = ZStack(alignment: .topLeading) {
             composedShapeLayer(snapshot: snapshot)
                 .shadow(
                     color: shadowColor(for: snapshot),
@@ -40,10 +46,12 @@ struct IslandVisualStatePreview: View {
             alignment: .topLeading
         )
         .contentShape(Rectangle())
-        .onTapGesture {
-            onAdvanceState?()
+
+        if let onAdvanceState {
+            content.onTapGesture(perform: onAdvanceState)
+        } else {
+            content
         }
-        .background(Color.clear)
     }
 
     @ViewBuilder

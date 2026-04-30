@@ -173,7 +173,7 @@
       "Check rapid tap, hover, and trackpad probe sequences for stable target-state output."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -184,7 +184,7 @@
       "Make paused music timeout return to app mode and clear mock music activity source in reducer output."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -195,7 +195,7 @@
       "Check that the scenario catalog compiles without referencing backend or real music provider modules."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -206,7 +206,7 @@
       "Check that no generated row reports an unsupported visual state or missing width value."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -217,7 +217,7 @@
       "Check that every sequence records initial state, intents, final state, visual state, and guard outcome."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -228,7 +228,7 @@
       "Check that the native source set typechecks and compact startup still renders when Phase 5 preview mode is enabled."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -239,7 +239,7 @@
       "Check that tapping compact opens expanded and tapping or collapse intent returns to the expected state in a reducer-backed probe."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -250,7 +250,7 @@
       "Check that hover enter grows the compact shell and hover leave returns it without moving away from the notch."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -261,7 +261,7 @@
       "Check with a focused probe or manual preview path that drag right collapses activity and drag left restores activity."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -272,7 +272,7 @@
       "Check that repeated wheel events during cooldown do not emit duplicate reducer intents."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -283,7 +283,7 @@
       "Check that selecting logged-out, review activity, todo activity, music activity, expanded music, and expanded app changes the visible shell state."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",
@@ -294,7 +294,7 @@
       "Check that menu-triggered interaction demos produce the same derived final states as reducer probe sequences."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_type": "frontend",

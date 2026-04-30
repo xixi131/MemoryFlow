@@ -29,6 +29,7 @@ Evidence for the accepted preview set lives in [Phase 3 geometry acceptance](./m
 - The source of truth for visible-shell size is now `IslandShapeEngine.snapshot(...).visibleFrame`, not the old placeholder preset dimensions.
 - The source of truth for shadow padding is now `IslandShapeEngine.snapshot(...).shadowOutsets`, which `IslandPanel` applies without adding a top shadow gap.
 - `TopAttachmentMetrics.visualScale` is now the shared scale input that Phase 4 sizing work should continue using.
+- Activity width now has a content-driven input model: content should declare `IslandContentWidthRequirement` (`leadingContentWidth`, `trailingContentWidth`, `horizontalPadding`) and let `IslandShapeMetrics` resolve shell width from content demand, notch/base width, token fallback width, and display maximums.
 - `IslandWindowController` already advances preview states and repositions the panel from geometry output, so Phase 4 should extend that sizing path rather than reintroducing fixed placeholder window sizes.
 
 Business data, auth, and Phase 5 state-machine migration remain out of scope for this completed slice.

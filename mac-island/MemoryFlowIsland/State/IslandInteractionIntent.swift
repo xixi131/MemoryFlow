@@ -23,8 +23,72 @@ enum IslandInteractionIntent: Codable, Equatable {
     case pointerSwipe(IslandPointerSwipeDirection)
     case trackpadSwipe(IslandTrackpadSwipeDirection)
     case horizontalMusicCommand(IslandHorizontalMusicCommand)
+    case reminderDue
+    case pausedMusicTimeout
     case mockScenarioSelect(String)
     case transitionComplete(String?)
+}
+
+enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
+    case hoverEnter
+    case hoverLeave
+    case tap
+    case pointerSwipeLeft
+    case pointerSwipeRight
+    case trackpadUp
+    case trackpadDown
+    case horizontalPrevious
+    case horizontalNext
+
+    var id: String {
+        rawValue
+    }
+
+    var menuTitle: String {
+        switch self {
+        case .hoverEnter:
+            return "Hover Enter"
+        case .hoverLeave:
+            return "Hover Leave"
+        case .tap:
+            return "Tap"
+        case .pointerSwipeLeft:
+            return "Pointer Swipe Left"
+        case .pointerSwipeRight:
+            return "Pointer Swipe Right"
+        case .trackpadUp:
+            return "Trackpad Up"
+        case .trackpadDown:
+            return "Trackpad Down"
+        case .horizontalPrevious:
+            return "Horizontal Previous"
+        case .horizontalNext:
+            return "Horizontal Next"
+        }
+    }
+
+    var intent: IslandInteractionIntent {
+        switch self {
+        case .hoverEnter:
+            return .hoverEnter
+        case .hoverLeave:
+            return .hoverLeave
+        case .tap:
+            return .tap
+        case .pointerSwipeLeft:
+            return .pointerSwipe(.left)
+        case .pointerSwipeRight:
+            return .pointerSwipe(.right)
+        case .trackpadUp:
+            return .trackpadSwipe(.up)
+        case .trackpadDown:
+            return .trackpadSwipe(.down)
+        case .horizontalPrevious:
+            return .horizontalMusicCommand(.previousTrack)
+        case .horizontalNext:
+            return .horizontalMusicCommand(.nextTrack)
+        }
+    }
 }
 
 enum IslandInteractionThresholds {
