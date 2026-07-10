@@ -217,7 +217,7 @@
       "Verify review-to-todo and todo-to-review sequences show no mixed labels, icons, badges, or stale content."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-reminder-auto-open",

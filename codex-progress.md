@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-greeting-sequence`.
-- Remaining queue size: `24` Phase 6 tasks.
+- First pending task: `mac-motion-reminder-auto-open`.
+- Remaining queue size: `22` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
@@ -41,3 +41,7 @@
 ### 2026-07-10 - Greeting lifecycle
 - Greeting now enters and exits over 0.35s around its deterministic 10-second lifecycle; fast-forward and music takeover cancel it and release the compact width branch.
 - `init.sh` and an unsigned Xcode Debug build passed. The timeline probe covers deterministic samples; GUI capture remains unavailable.
+
+### 2026-07-10 - Review/todo long press
+- Leading-icon holds now follow the Windows 420ms hold, 320ms compact, 70ms wait, and 0.56s activity-reopen sequence; early release, leave, cancel, scenario replacement, and duplicates are guarded.
+- The deterministic bidirectional mode-switch probe, Xcode Debug build, and helper launch smoke test passed.

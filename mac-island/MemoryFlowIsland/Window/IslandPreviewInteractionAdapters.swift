@@ -46,6 +46,52 @@ struct IslandPointerGestureAdapter: Equatable {
     }
 }
 
+/// Pure long-press classification for the activity's leading icon. Scheduling remains
+/// controller-owned so scenario replacement can cancel outstanding work items.
+struct IslandModeSwitchHoldAdapter: Equatable {
+    private(set) var beganAt: TimeInterval?
+    private(set) var isLeadingIconHold = false
+    private(set) var hasTriggered = false
+
+    var isHolding: Bool { beganAt != nil }
+
+    mutating func pointerDown(onLeadingIcon: Bool, at timestamp: TimeInterval) {
+        reset()
+        guard onLeadingIcon else { return }
+        beganAt = timestamp
+        isLeadingIconHold = true
+    }
+
+    mutating func triggerIfEligible(at timestamp: TimeInterval) -> Bool {
+        guard let beganAt,
+              isLeadingIconHold,
+              hasTriggered == false,
+              timestamp - beganAt >= IslandInteractionThresholds.modeSwitchLongPressWindow else {
+            return false
+        }
+        hasTriggered = true
+        return true
+    }
+
+    mutating func pointerLeftLeadingIcon() {
+        guard hasTriggered == false else { return }
+        reset()
+    }
+
+    mutating func pointerReleased() {
+        guard hasTriggered == false else { return }
+        reset()
+    }
+
+    mutating func cancel() { reset() }
+
+    private mutating func reset() {
+        beganAt = nil
+        isLeadingIconHold = false
+        hasTriggered = false
+    }
+}
+
 struct IslandTrackpadWheelAdapter: Equatable {
     private(set) var accumulatedDeltaX: Double = 0
     private(set) var accumulatedDeltaY: Double = 0
@@ -371,6 +417,8 @@ enum IslandPreviewInteractionProbe {
             return "musicCommandRequested(\(command.rawValue))"
         case .modeSwitchToggle:
             return "modeSwitchToggle"
+        case .modeSwitchMutate:
+            return "modeSwitchMutate"
         case .reminderDue:
             return "reminderDue"
         case .pausedMusicTimeout:
@@ -387,4 +435,107 @@ enum IslandPreviewInteractionProbe {
             return "transitionComplete(\(identifier ?? "nil"))"
         }
     }
+}
+
+enum IslandModeSwitchProbe {
+    static func validate() throws {
+        var hold = IslandModeSwitchHoldAdapter()
+        hold.pointerDown(onLeadingIcon: true, at: 0)
+        guard hold.triggerIfEligible(at: 0.419) == false else {
+            throw IslandModeSwitchProbeError.earlyHoldTriggered
+        }
+        hold.pointerReleased()
+        guard hold.triggerIfEligible(at: 1) == false else {
+            throw IslandModeSwitchProbeError.releaseDidNotCancel
+        }
+
+        hold.pointerDown(onLeadingIcon: true, at: 2)
+        hold.pointerLeftLeadingIcon()
+        guard hold.triggerIfEligible(at: 3) == false else {
+            throw IslandModeSwitchProbeError.leaveDidNotCancel
+        }
+
+        hold.pointerDown(onLeadingIcon: true, at: 4)
+        guard hold.triggerIfEligible(at: 4.421) else {
+            throw IslandModeSwitchProbeError.qualifiedHoldDidNotTrigger
+        }
+
+        let compactTarget = IslandPresentationRetargetTarget(
+            presentationState: .activity,
+            forceCompactMode: true,
+            isHovered: false
+        )
+        let activityTarget = IslandPresentationRetargetTarget(
+            presentationState: .activity,
+            forceCompactMode: false,
+            isHovered: false
+        )
+        try validateSequence(
+            initial: .loggedInReviewActivity,
+            expectedMode: .todo,
+            compactTarget: compactTarget,
+            activityTarget: activityTarget
+        )
+        try validateSequence(
+            initial: .loggedInTodoActivity,
+            expectedMode: .review,
+            compactTarget: compactTarget,
+            activityTarget: activityTarget
+        )
+    }
+
+    private static func validateSequence(
+        initial: IslandDomainState,
+        expectedMode: IslandAppDisplayMode,
+        compactTarget: IslandPresentationRetargetTarget,
+        activityTarget: IslandPresentationRetargetTarget
+    ) throws {
+        let compact = IslandPresentationReducer.reduce(
+            current: initial,
+            intent: .retargetPresentation(compactTarget)
+        )
+        guard compact.derivedState.visualState == .compactCollapsed else {
+            throw IslandModeSwitchProbeError.compactPhaseWasNotCompact
+        }
+
+        let mutated = IslandPresentationReducer.reduce(current: compact.state, intent: .modeSwitchMutate)
+        guard mutated.state.appDisplayMode == expectedMode,
+              mutated.derivedState.visualState == .compactCollapsed,
+              mutated.state.isModeSwitchLocked else {
+            throw IslandModeSwitchProbeError.mutationLeakedActivityContent
+        }
+
+        let duplicate = IslandPresentationReducer.reduce(current: mutated.state, intent: .modeSwitchToggle)
+        guard duplicate.reason == .modeSwitchLocked else {
+            throw IslandModeSwitchProbeError.duplicateWasAccepted
+        }
+
+        let reopened = IslandPresentationReducer.reduce(current: mutated.state, intent: .retargetPresentation(activityTarget))
+        guard reopened.state.appDisplayMode == expectedMode,
+              reopened.derivedState.visualState == .activityCollapsed,
+              reopened.derivedState.previewContent.kind == (expectedMode == .todo ? .todoActivity : .reviewActivity),
+              reopened.state.isModeSwitchLocked else {
+            throw IslandModeSwitchProbeError.reopenContainedStaleContent
+        }
+
+        let finished = IslandPresentationReducer.reduce(
+            current: reopened.state,
+            intent: .transitionComplete(IslandTransitionLockIdentifier.modeSwitchLock)
+        )
+        guard finished.state.isModeSwitchLocked == false else {
+            throw IslandModeSwitchProbeError.lockDidNotRelease
+        }
+    }
+}
+
+enum IslandModeSwitchProbeError: Error {
+    case earlyHoldTriggered
+    case releaseDidNotCancel
+    case leaveDidNotCancel
+    case qualifiedHoldDidNotTrigger
+    case compactPhaseWasNotCompact
+    case mutationLeakedActivityContent
+    case duplicateWasAccepted
+    case reopenContainedStaleContent
+    case lockDidNotRelease
 }

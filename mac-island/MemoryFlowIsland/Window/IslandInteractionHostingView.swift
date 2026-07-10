@@ -5,8 +5,10 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     var onPointerDown: ((CGPoint) -> Void)?
     var onPointerDragged: ((CGPoint) -> Void)?
     var onPointerUp: ((CGPoint) -> Void)?
+    var onPointerCancelled: (() -> Void)?
     var onScrollWheel: ((NSEvent) -> Void)?
     var interactiveBounds: CGRect = .zero
+    private var pointerTrackingArea: NSTrackingArea?
 
     override var isOpaque: Bool {
         false
@@ -30,6 +32,26 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     override func mouseUp(with event: NSEvent) {
         onPointerUp?(convert(event.locationInWindow, from: nil))
         super.mouseUp(with: event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onPointerCancelled?()
+        super.mouseExited(with: event)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let pointerTrackingArea {
+            removeTrackingArea(pointerTrackingArea)
+        }
+        let trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        pointerTrackingArea = trackingArea
     }
 
     override func scrollWheel(with event: NSEvent) {

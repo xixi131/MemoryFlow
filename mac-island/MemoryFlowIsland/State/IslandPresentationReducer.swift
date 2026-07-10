@@ -301,7 +301,7 @@ enum IslandPresentationReducer {
                     musicCommand: command
                 )
             ) { _ in }
-        case .modeSwitchToggle:
+        case .modeSwitchToggle, .modeSwitchMutate:
             let derivedState = IslandDerivedState.derive(from: state)
             guard state.primaryMode == .app,
                   state.authState == .loggedIn,
@@ -319,8 +319,10 @@ enum IslandPresentationReducer {
             ) { nextState in
                 nextState.appDisplayMode = nextMode
                 nextState.primaryMode = .app
-                nextState.presentationState = .activity
-                nextState.forceCompactMode = false
+                if intent == .modeSwitchToggle {
+                    nextState.presentationState = .activity
+                    nextState.forceCompactMode = false
+                }
                 nextState.isHovered = false
                 nextState.isReminderActive = false
                 ensureAppMockSource(&nextState, for: nextMode)
@@ -476,6 +478,7 @@ enum IslandPresentationReducer {
         target: IslandPresentationRetargetTarget
     ) -> IslandPresentationReducerResult {
         transition(state, reason: .presentationRetargeted) {
+            let preservesModeSwitchLock = $0.presentationLockState.isModeSwitchLocked
             $0.presentationState = target.presentationState
             $0.forceCompactMode = target.forceCompactMode
             $0.isHovered = target.isHovered
@@ -483,12 +486,16 @@ enum IslandPresentationReducer {
                 lockTrackpadGesture(&$0)
             }
             unlockPresentationLocks(&$0)
+            if preservesModeSwitchLock {
+                $0.presentationLockState.isModeSwitchLocked = true
+                $0.presentationLockState.transitionID = IslandTransitionLockIdentifier.modeSwitchLock
+            }
         }
     }
 
     private static func shouldRespectModeSwitchLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate:
             return true
         case .hoverEnter,
              .hoverLeave,
@@ -508,7 +515,7 @@ enum IslandPresentationReducer {
 
     private static func shouldRespectForceCompactLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate:
             return true
         case .hoverEnter,
              .hoverLeave,
@@ -539,6 +546,7 @@ enum IslandPresentationReducer {
              .musicStopped,
              .musicCommandRequested,
              .modeSwitchToggle,
+             .modeSwitchMutate,
              .reminderDue,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,

@@ -907,6 +907,8 @@ enum IslandPhase5Probe {
             return "musicCommandRequested(\(command.rawValue))"
         case .modeSwitchToggle:
             return "modeSwitchToggle"
+        case .modeSwitchMutate:
+            return "modeSwitchMutate"
         case .reminderDue:
             return "reminderDue"
         case .pausedMusicTimeout:

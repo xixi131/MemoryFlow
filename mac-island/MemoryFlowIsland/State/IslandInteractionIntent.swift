@@ -47,6 +47,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     case musicStopped
     case musicCommandRequested(IslandHorizontalMusicCommand)
     case modeSwitchToggle
+    /// Changes the app content source while the mode-switch shell is held compact.
+    case modeSwitchMutate
     case reminderDue
     case pausedMusicTimeout
     case greetingLifecycleCompleted

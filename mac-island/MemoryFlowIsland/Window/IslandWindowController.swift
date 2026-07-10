@@ -31,6 +31,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var previewWidthConstraints: IslandWidthConstraints = .none
     private var trackpadCooldownWorkItem: DispatchWorkItem?
     private var pointerGestureAdapter = IslandPointerGestureAdapter()
+    private var modeSwitchHoldAdapter = IslandModeSwitchHoldAdapter()
+    private var modeSwitchHoldWorkItem: DispatchWorkItem?
+    private var modeSwitchSequenceWorkItems: [DispatchWorkItem] = []
+    private var isModeSwitchSequenceActive = false
     private var trackpadWheelAdapter = IslandTrackpadWheelAdapter()
     private var shouldAnimateGreetingShellCollapse = false
     private var applicationTerminationObserver: NSObjectProtocol?
@@ -125,6 +129,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     func hide() {
         hoverMonitor.stopMonitoring()
         pointerGestureAdapter.cancel()
+        cancelModeSwitchInteraction()
         trackpadWheelAdapter.reset()
         musicTakeoverController.stop()
         window?.orderOut(nil)
@@ -160,6 +165,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
         hostingView.onPointerUp = { [weak self] point in
             self?.handlePointerUp(at: point)
+        }
+        hostingView.onPointerCancelled = { [weak self] in
+            self?.cancelPendingModeSwitchHold()
         }
         hostingView.onScrollWheel = { [weak self] event in
             self?.handleScrollWheel(event)
@@ -500,16 +508,31 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         guard usesPhase5PreviewInteractionRouting else { return }
         activateInteractiveHoverMode()
         pointerGestureAdapter.pointerDown(at: Double(point.x))
+        beginModeSwitchHoldIfNeeded(at: point)
         synchronizePanelClickThroughState()
     }
 
     private func handlePointerDragged(at point: CGPoint) {
         guard usesPhase5PreviewInteractionRouting else { return }
         pointerGestureAdapter.pointerDragged(to: Double(point.x))
+        if isModeSwitchLeadingIcon(point) == false {
+            modeSwitchHoldAdapter.pointerLeftLeadingIcon()
+            modeSwitchHoldWorkItem?.cancel()
+            modeSwitchHoldWorkItem = nil
+        }
     }
 
     private func handlePointerUp(at point: CGPoint) {
         guard usesPhase5PreviewInteractionRouting else { return }
+        let modeSwitchTriggered = modeSwitchHoldAdapter.hasTriggered
+        modeSwitchHoldAdapter.pointerReleased()
+        modeSwitchHoldWorkItem?.cancel()
+        modeSwitchHoldWorkItem = nil
+        if modeSwitchTriggered {
+            pointerGestureAdapter.cancel()
+            synchronizePanelClickThroughState()
+            return
+        }
         if let intent = pointerGestureAdapter.pointerUp(at: Double(point.x)) {
             dispatchPhase5Intent(intent)
         } else {
@@ -551,6 +574,102 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
            update.reducerResult.reason != .intentIgnored {
             musicTakeoverController.sendCommand(command.musicCommand)
         }
+    }
+
+    private func beginModeSwitchHoldIfNeeded(at point: CGPoint) {
+        guard isModeSwitchSequenceActive == false else { return }
+        modeSwitchHoldAdapter.pointerDown(
+            onLeadingIcon: isModeSwitchLeadingIcon(point),
+            at: ProcessInfo.processInfo.systemUptime
+        )
+        guard modeSwitchHoldAdapter.isHolding else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.modeSwitchHoldAdapter.triggerIfEligible(at: ProcessInfo.processInfo.systemUptime) else { return }
+            self.pointerGestureAdapter.cancel()
+            self.startModeSwitchSequence()
+        }
+        modeSwitchHoldWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + IslandInteractionThresholds.modeSwitchLongPressWindow,
+            execute: workItem
+        )
+    }
+
+    private func startModeSwitchSequence() {
+        guard isModeSwitchSequenceActive == false else { return }
+        let state = phase5PreviewStateContainer.domainState
+        guard state.primaryMode == .app,
+              state.authState == .loggedIn,
+              state.presentationState == .activity,
+              state.forceCompactMode == false else {
+            modeSwitchHoldAdapter.cancel()
+            return
+        }
+
+        isModeSwitchSequenceActive = true
+        dispatchPhase5Intent(.retargetPresentation(.init(
+            presentationState: .activity,
+            forceCompactMode: true,
+            isHovered: false
+        )))
+        scheduleModeSwitchStep(after: IslandInteractionThresholds.modeSwitchCompactPhaseWindow) { [weak self] in
+            self?.dispatchPhase5Intent(.modeSwitchMutate)
+        }
+        scheduleModeSwitchStep(
+            after: IslandInteractionThresholds.modeSwitchCompactPhaseWindow + IslandInteractionThresholds.modeSwitchReopenDelay
+        ) { [weak self] in
+            guard let self else { return }
+            self.dispatchPhase5Intent(.retargetPresentation(.init(
+                presentationState: .activity,
+                forceCompactMode: false,
+                isHovered: false
+            )))
+        }
+        scheduleModeSwitchStep(
+            after: IslandInteractionThresholds.modeSwitchCompactPhaseWindow +
+                IslandInteractionThresholds.modeSwitchReopenDelay + IslandMotionTokens.activityOpenDuration
+        ) { [weak self] in
+            guard let self else { return }
+            self.dispatchPhase5Intent(.transitionComplete(IslandTransitionLockIdentifier.modeSwitchLock))
+            self.finishModeSwitchSequence()
+        }
+    }
+
+    private func scheduleModeSwitchStep(after delay: TimeInterval, _ action: @escaping () -> Void) {
+        let workItem = DispatchWorkItem(block: action)
+        modeSwitchSequenceWorkItems.append(workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func finishModeSwitchSequence() {
+        modeSwitchSequenceWorkItems.removeAll()
+        isModeSwitchSequenceActive = false
+        modeSwitchHoldAdapter.cancel()
+        synchronizePanelClickThroughState()
+    }
+
+    private func cancelModeSwitchInteraction() {
+        modeSwitchHoldWorkItem?.cancel()
+        modeSwitchHoldWorkItem = nil
+        modeSwitchSequenceWorkItems.forEach { $0.cancel() }
+        modeSwitchSequenceWorkItems.removeAll()
+        isModeSwitchSequenceActive = false
+        modeSwitchHoldAdapter.cancel()
+    }
+
+    private func cancelPendingModeSwitchHold() {
+        guard isModeSwitchSequenceActive == false else { return }
+        modeSwitchHoldWorkItem?.cancel()
+        modeSwitchHoldWorkItem = nil
+        modeSwitchHoldAdapter.cancel()
+    }
+
+    private func isModeSwitchLeadingIcon(_ point: CGPoint) -> Bool {
+        guard phase5PreviewStateContainer.derivedState.visualState == .activityCollapsed else { return false }
+        // The 24pt activity artwork is inset 18pt from the leading shell edge.
+        return point.x >= 14 && point.x <= 58
     }
 
     private func handleMusicTakeoverUpdate(_ update: MusicTakeoverUpdate) {
@@ -647,6 +766,7 @@ extension IslandWindowController: IslandPhase5ScenarioControlling {
             return
         }
 
+        cancelModeSwitchInteraction()
         dispatchPhase5Intent(.mockScenarioSelect(id))
     }
 }
