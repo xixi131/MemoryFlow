@@ -60,6 +60,20 @@ enum IslandMotionTokens {
     static let modeSwitchCompactDuration: TimeInterval = 0.32
     static let modeSwitchReopenDelay: TimeInterval = 0.07
     static let hoverDuration: TimeInterval = 0.22
+    static let reduceMotionDuration: TimeInterval = 0.12
+
+    static let reduceMotionContent = IslandContentMotionToken(
+        duration: reduceMotionDuration,
+        delay: 0,
+        blurRadius: 0,
+        curve: .linear
+    )
+
+    static let reduceMotionShell = IslandKeyframeMotionToken(
+        duration: reduceMotionDuration,
+        times: [0, 1],
+        curve: .linear
+    )
 
     static func profile(for kind: IslandTransitionKind) -> IslandMotionTokenSet {
         switch kind {
