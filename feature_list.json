@@ -438,7 +438,7 @@
       "Store machine-readable evidence under docs/evidence/mac-island-phase6/ and link every artifact from the acceptance document."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-e2e-mouse",
@@ -451,7 +451,7 @@
       "Mark GUI-only rows honestly when physical capture is unavailable and do not label synthetic evidence as real-device observation."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-e2e-trackpad",
@@ -464,7 +464,7 @@
       "Capture real-device evidence when available and retain a clearly labeled Swift fallback probe for environments without GUI input capture."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-performance-evidence",

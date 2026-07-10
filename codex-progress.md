@@ -6,8 +6,12 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-e2e-visual-states`.
-- Remaining queue size: `6` Phase 6 tasks.
+- First pending task: `mac-motion-performance-evidence`.
+- Remaining queue size: `3` Phase 6 tasks.
+
+### 2026-07-10 - Phase 6 E2E evidence
+- Generated 55 deterministic visual-state frames across 11 mock scenarios, with shape, shadow, content-phase, and rejection metadata.
+- Mouse and trackpad fallback probes cover native routing and guard behavior; both explicitly record that physical GUI capture remains pending.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
