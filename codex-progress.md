@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-review-expanded-content`.
-- Remaining queue size: `15` Phase 6 tasks.
+- First pending task: `mac-motion-todo-expanded-content`.
+- Remaining queue size: `14` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes

@@ -321,7 +321,7 @@
       "Verify zero, partial, four-item, and more-than-four mock subject scenarios."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-todo-expanded-content",

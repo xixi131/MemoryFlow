@@ -134,6 +134,7 @@ struct IslandVisualStatePreview: View {
             isCompactContentVisible: compactContentIsVisible,
             isExpandedAppContentVisible: expandedAppContentIsVisible,
             isExpandedMusicContentVisible: expandedMusicContentIsVisible,
+            contentPhase: contentPresentation.phase,
             greetingPhase: greetingPhase,
             greetingExpired: greetingExpired,
             musicArtworkNamespace: musicArtworkNamespace,
@@ -350,6 +351,7 @@ private struct IslandPreviewContentOverlay: View {
     let isCompactContentVisible: Bool
     let isExpandedAppContentVisible: Bool
     let isExpandedMusicContentVisible: Bool
+    let contentPhase: IslandContentPhase
     let greetingPhase: IslandGreetingPhase
     let greetingExpired: Bool
     let musicArtworkNamespace: Namespace.ID
@@ -565,7 +567,20 @@ private struct IslandPreviewContentOverlay: View {
         }
     }
 
+    @ViewBuilder
     private var expandedAppContent: some View {
+        if content.kind == .expandedReview, let review = content.review {
+            IslandExpandedReviewContent(
+                review: review,
+                tint: tintColor,
+                contentPhase: contentPhase
+            )
+        } else {
+            genericExpandedAppContent
+        }
+    }
+
+    private var genericExpandedAppContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 16) {
                 artwork(size: 72)
@@ -984,6 +999,223 @@ private struct MusicTrackMetadata: View {
             update()
         }
     }
+}
+
+private struct IslandExpandedReviewContent: View {
+    let review: IslandMockReviewActivity
+    let tint: Color
+    let contentPhase: IslandContentPhase
+    @State private var cardsAreVisible = false
+
+    private var slots: [IslandExpandedReviewSubjectSlot] {
+        IslandExpandedReviewContentLayout.subjectSlots(for: review)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("REVIEW QUEUE")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(tint.opacity(0.9))
+                    Text("Today's review")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                Spacer(minLength: 8)
+                Text("\(max(review.pendingCount, 0)) pending")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
+            }
+
+            HStack(spacing: 8) {
+                reviewCounter(value: max(review.pendingCount, 0), label: "Pending")
+                reviewCounter(value: max(review.completedTodayCount, 0), label: "Completed today")
+            }
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                spacing: 8
+            ) {
+                ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                    subjectCard(slot)
+                        .opacity(cardsAreVisible ? 1 : 0)
+                        .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
+                        .animation(
+                            IslandExpandedReviewContentLayout.cardAnimation
+                                .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
+                            value: cardsAreVisible
+                        )
+                }
+            }
+
+            if review.subjectTitles.count > IslandExpandedReviewContentLayout.maximumVisibleSubjects {
+                Text("+\(review.subjectTitles.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects) more subjects")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.54))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .opacity(cardsAreVisible ? 1 : 0)
+                    .animation(
+                        .easeOut(duration: 0.16).delay(IslandExpandedReviewContentLayout.footerDelay),
+                        value: cardsAreVisible
+                    )
+            }
+        }
+        .onAppear(perform: updateCardEntrance)
+        .onChange(of: contentPhase) { _ in updateCardEntrance() }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Expanded review queue")
+    }
+
+    private func reviewCounter(value: Int, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value)")
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.56))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.10)))
+    }
+
+    private func subjectCard(_ slot: IslandExpandedReviewSubjectSlot) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: slot.isPlaceholder ? "rectangle.dashed" : "book.closed.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(slot.isPlaceholder ? .white.opacity(0.28) : tint.opacity(0.92))
+            Text(slot.title)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(slot.isPlaceholder ? .white.opacity(0.28) : .white.opacity(0.86))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 42)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(slot.isPlaceholder ? .white.opacity(0.045) : .white.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(.white.opacity(slot.isPlaceholder ? 0.10 : 0.14), style: StrokeStyle(lineWidth: 1, dash: slot.isPlaceholder ? [3, 3] : []))
+        )
+        .accessibilityIdentifier("island-review-subject-\(slot.id)")
+        .accessibilityLabel(slot.isPlaceholder ? "Empty review subject slot" : "Review subject \(slot.title)")
+    }
+
+    private func updateCardEntrance() {
+        guard IslandExpandedReviewContentLayout.shouldRevealCards(in: contentPhase) else {
+            cardsAreVisible = false
+            return
+        }
+
+        cardsAreVisible = false
+        DispatchQueue.main.async {
+            guard IslandExpandedReviewContentLayout.shouldRevealCards(in: contentPhase) else { return }
+            cardsAreVisible = true
+        }
+    }
+}
+
+struct IslandExpandedReviewSubjectSlot: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let isPlaceholder: Bool
+}
+
+enum IslandExpandedReviewContentLayout {
+    static let maximumVisibleSubjects = 4
+    static let childDelay: TimeInterval = 0.10
+    static let childStagger: TimeInterval = 0.05
+    static let initialCardScale: CGFloat = 0.9
+    static let cardAnimation = Animation.interpolatingSpring(stiffness: 300, damping: 20)
+
+    static var footerDelay: TimeInterval {
+        childDelay + Double(maximumVisibleSubjects) * childStagger
+    }
+
+    static func subjectSlots(for review: IslandMockReviewActivity) -> [IslandExpandedReviewSubjectSlot] {
+        let visibleSubjects = Array(review.subjectTitles.prefix(maximumVisibleSubjects))
+        let realSlots = visibleSubjects.enumerated().map { index, title in
+            IslandExpandedReviewSubjectSlot(id: "subject-\(index)", title: title, isPlaceholder: false)
+        }
+        let placeholders = (realSlots.count..<maximumVisibleSubjects).map { index in
+            IslandExpandedReviewSubjectSlot(id: "placeholder-\(index)", title: "Open subject slot", isPlaceholder: true)
+        }
+        return realSlots + placeholders
+    }
+
+    static func cardDelay(for index: Int) -> TimeInterval {
+        childDelay + Double(index) * childStagger
+    }
+
+    static func shouldRevealCards(in phase: IslandContentPhase) -> Bool {
+        phase == .entering || phase == .visible
+    }
+}
+
+struct IslandExpandedReviewContentProbeRow: Equatable {
+    let scenario: String
+    let realCardCount: Int
+    let placeholderCount: Int
+    let extraSubjectCount: Int
+    let firstCardDelay: TimeInterval
+    let lastCardDelay: TimeInterval
+    let startsInsideContentPhase: Bool
+}
+
+enum IslandExpandedReviewContentProbe {
+    static func rows() -> [IslandExpandedReviewContentProbeRow] {
+        [
+            ("zero", []),
+            ("partial", ["Algorithms", "English"]),
+            ("four", ["Algorithms", "English", "Cognitive Science", "History"]),
+            ("more", ["Algorithms", "English", "Cognitive Science", "History", "Physics", "Literature"])
+        ].map { scenario, subjects in
+            let review = IslandMockReviewActivity(
+                pendingCount: subjects.count,
+                completedTodayCount: 3,
+                nextSubjectTitle: subjects.first,
+                subjectTitles: subjects
+            )
+            let slots = IslandExpandedReviewContentLayout.subjectSlots(for: review)
+            return IslandExpandedReviewContentProbeRow(
+                scenario: scenario,
+                realCardCount: slots.filter { $0.isPlaceholder == false }.count,
+                placeholderCount: slots.filter(\.isPlaceholder).count,
+                extraSubjectCount: max(subjects.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects, 0),
+                firstCardDelay: IslandExpandedReviewContentLayout.cardDelay(for: 0),
+                lastCardDelay: IslandExpandedReviewContentLayout.cardDelay(for: IslandExpandedReviewContentLayout.maximumVisibleSubjects - 1),
+                startsInsideContentPhase: IslandExpandedReviewContentLayout.shouldRevealCards(in: .entering)
+                    && IslandExpandedReviewContentLayout.shouldRevealCards(in: .visible)
+                    && IslandExpandedReviewContentLayout.shouldRevealCards(in: .waitingForShell) == false
+            )
+        }
+    }
+
+    static func validate() throws {
+        let rows = rows()
+        guard rows.map(\.scenario) == ["zero", "partial", "four", "more"],
+              rows.map(\.realCardCount) == [0, 2, 4, 4],
+              rows.map(\.placeholderCount) == [4, 2, 0, 0],
+              rows.map(\.extraSubjectCount) == [0, 0, 0, 2],
+              rows.allSatisfy({ $0.firstCardDelay == 0.10 && $0.lastCardDelay == 0.25 }),
+              rows.allSatisfy(\.startsInsideContentPhase),
+              IslandExpandedReviewContentLayout.initialCardScale == 0.9 else {
+            throw IslandExpandedReviewContentProbeError.invalidLayout(rows)
+        }
+    }
+}
+
+enum IslandExpandedReviewContentProbeError: Error {
+    case invalidLayout([IslandExpandedReviewContentProbeRow])
 }
 
 private extension AnyTransition {
