@@ -11,7 +11,22 @@ struct IslandContentWidthRequirement: Equatable {
     let trailingContentWidth: CGFloat
     let horizontalPadding: CGFloat
 
+    /// The minimum body width for two content groups placed on opposite sides
+    /// of the notch.  Mirroring the wider group keeps the shell visually
+    /// centered even when a title or badge grows on just one side.
+    var requiredBodyWidth: CGFloat {
+        (max(max(leadingContentWidth, 0), max(trailingContentWidth, 0)) * 2) +
+            (max(horizontalPadding, 0) * 2)
+    }
+
+    /// Kept for the Phase 5 probes that report a non-zero content demand.
+    /// This is a complete body requirement, not an amount to add to the
+    /// fallback shell width.
     var requiredExtensionWidth: CGFloat {
+        requiredBodyWidth
+    }
+
+    var measuredContentWidth: CGFloat {
         max(leadingContentWidth, 0) +
             max(trailingContentWidth, 0) +
             (max(horizontalPadding, 0) * 2)
@@ -88,7 +103,10 @@ struct IslandShapeMetrics: Equatable {
         let resolvedEarBlendHeight = shellTokens.earBlendHeight * resolvedVisualScale
         let tokenWidth = shellTokens.previewWidth * resolvedHorizontalScale
         let baseBodyWidth = max(widthConstraints.baseBodyWidth ?? tokenWidth, 0)
-        let contentDrivenWidth = baseBodyWidth + widthConstraints.contentWidthRequirement.requiredExtensionWidth
+        let contentDrivenWidth = max(
+            baseBodyWidth,
+            widthConstraints.contentWidthRequirement.requiredBodyWidth
+        )
         let unconstrainedWidth = max(tokenWidth, contentDrivenWidth) * hoverWidthScale
         let earReach = (resolvedEarBlendHeight * shellTokens.earTension) + IslandPathFactory.shellEarTipExtension
         let maximumBodyWidth = widthConstraints.maximumVisibleWidth.map {

@@ -106,6 +106,83 @@ enum IslandSizingMatrixProbe {
         }
         return rows
     }
+
+    /// Covers internal-notch, flat external, narrow, and wide displays with
+    /// content changes that occur while an activity presentation is visible.
+    static func validateResponsiveContentProfiles() throws -> [IslandWindowSizingResult] {
+        let layoutEngine = NotchLayoutEngine()
+        let shortContent = IslandContentWidthRequirement(
+            leadingContentWidth: 38,
+            trailingContentWidth: 72,
+            horizontalPadding: 16
+        )
+        let longContent = IslandContentWidthRequirement(
+            leadingContentWidth: 38,
+            trailingContentWidth: 164,
+            horizontalPadding: 16
+        )
+        let fractions: [CGFloat] = [0, 0.25, 0.5, 0.75, 1]
+        let rows = syntheticDisplays().flatMap { scenario -> [IslandWindowSizingResult] in
+            let attachment = layoutEngine.topAttachmentMetrics(for: scenario.metrics)
+            let fallbackWidth = IslandVisualTokens.activity.previewWidth * attachment.horizontalVisualScale
+            let notchBodyWidth = attachment.notchFrame.map { max($0.width - 18, 1) }
+            let baseBodyWidth = notchBodyWidth ?? fallbackWidth
+            let maximumVisibleWidth = attachment.availableTopWidth
+            let source = IslandWindowSizingEngine.resolve(
+                state: .activityCollapsed,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandWidthConstraints(
+                    baseBodyWidth: baseBodyWidth,
+                    maximumVisibleWidth: maximumVisibleWidth,
+                    contentWidthRequirement: shortContent
+                )
+            )
+            let target = IslandWindowSizingEngine.resolve(
+                state: .activityCollapsed,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandWidthConstraints(
+                    baseBodyWidth: baseBodyWidth,
+                    maximumVisibleWidth: maximumVisibleWidth,
+                    contentWidthRequirement: longContent
+                )
+            )
+            return fractions.map {
+                IslandWindowSizingEngine.resolveAnimatedSample(
+                    from: source,
+                    to: target,
+                    progress: $0,
+                    attachmentMetrics: attachment
+                )
+            }
+        }
+
+        guard rows.count == syntheticDisplays().count * fractions.count,
+              rows.allSatisfy({ result in
+                  guard let scenario = syntheticDisplays().first(where: { scenario in
+                      let attachment = layoutEngine.topAttachmentMetrics(for: scenario.metrics)
+                      return abs(result.visibleFrame.midX - attachment.centerX) < 0.01 &&
+                          abs(result.visibleFrame.maxY - attachment.topBandFrame.maxY) < 0.01
+                  }) else {
+                      return false
+                  }
+                  let attachment = layoutEngine.topAttachmentMetrics(for: scenario.metrics)
+                  return result.visibleSize.width <= attachment.availableTopWidth + 0.01 &&
+                      result.shadowFrame.contains(result.visibleFrame) &&
+                      result.shadowFrame.contains(result.hitTestFrame)
+              }) else {
+            throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+        }
+
+        for index in stride(from: 0, to: rows.count, by: fractions.count) {
+            let samples = Array(rows[index..<(index + fractions.count)])
+            guard zip(samples, samples.dropFirst()).allSatisfy({ previous, next in
+                next.visibleSize.width + 0.01 >= previous.visibleSize.width
+            }) else {
+                throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+            }
+        }
+        return rows
+    }
     static func generateMatrix() -> [IslandSizingMatrixRow] {
         let layoutEngine = NotchLayoutEngine()
         let states: [IslandVisualState] = [
@@ -176,10 +253,28 @@ enum IslandSizingMatrixProbe {
             backingScaleFactor: 2,
             displayIdentity: ScreenMetrics.DisplayIdentity(displayID: 2)
         )
+        let narrowFlatMetrics = ScreenMetrics(
+            frame: CGRect(x: 0, y: 0, width: 320, height: 640),
+            visibleFrame: CGRect(x: 0, y: 0, width: 320, height: 616),
+            safeAreaInsets: NSEdgeInsetsZero,
+            notchFrame: nil,
+            backingScaleFactor: 2,
+            displayIdentity: ScreenMetrics.DisplayIdentity(displayID: 3)
+        )
+        let wideFlatMetrics = ScreenMetrics(
+            frame: CGRect(x: 0, y: 0, width: 3024, height: 1964),
+            visibleFrame: CGRect(x: 0, y: 0, width: 3024, height: 1940),
+            safeAreaInsets: NSEdgeInsetsZero,
+            notchFrame: nil,
+            backingScaleFactor: 2,
+            displayIdentity: ScreenMetrics.DisplayIdentity(displayID: 4)
+        )
 
         return [
             (name: "notch-display", metrics: notchMetrics),
-            (name: "flat-top-display", metrics: flatTopMetrics)
+            (name: "flat-top-display", metrics: flatTopMetrics),
+            (name: "narrow-flat-display", metrics: narrowFlatMetrics),
+            (name: "wide-flat-display", metrics: wideFlatMetrics)
         ]
     }
 

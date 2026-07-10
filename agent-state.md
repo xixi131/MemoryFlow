@@ -13,7 +13,7 @@ The current native Phase 5 reducer, derived state, mock scenario routing, pointe
 `replace-active` was used. The previous 41 completed Phase 5 tasks were preserved unchanged in `final_feature_list.json`. Phase 6 now includes deterministic scenarios, driver, shape morph, compact content, anchored sizing, duplicate-instance prevention, hover, activity open/collapse, expanded app/music opening, staged expanded collapse recovery, greeting lifecycle, long-press app-mode switching, keyed reminder auto-open, auth-gated mock music takeover, paused/stopped music release, and native waveform animation; 18 tasks remain.
 
 ## First pending task
-* `mac-motion-responsive-layout`: Keep animated content readable across notch and flat-display width constraints.
+* `mac-motion-e2e-visual-states`: Capture native visual evidence for every mock island state and transition.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

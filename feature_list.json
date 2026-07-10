@@ -425,7 +425,7 @@
       "Verify internal-notch, external-flat, narrow, and wide synthetic display profiles through the sizing matrix probe."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-e2e-visual-states",

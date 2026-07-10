@@ -552,7 +552,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     ) -> IslandWidthConstraints {
         if usesPhase5PreviewInteractionRouting {
             return IslandWidthConstraints(
-                baseBodyWidth: layoutInput.widthConstraints.baseBodyWidth,
+                baseBodyWidth: responsiveBaseBodyWidth(
+                    for: layoutInput,
+                    attachmentMetrics: attachmentMetrics
+                ),
                 maximumVisibleWidth: layoutInput.widthConstraints.maximumVisibleWidth
                     ?? attachmentMetrics.availableTopWidth,
                 contentWidthRequirement: layoutInput.widthConstraints.contentWidthRequirement
@@ -563,6 +566,28 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             for: layoutInput.visualState,
             attachmentMetrics: attachmentMetrics
         )
+    }
+
+    /// An activity shell starts from the physical notch on internal displays,
+    /// then lets its measured content requirement widen it only when needed.
+    /// Flat displays retain the scaled token as the deterministic fallback.
+    private func responsiveBaseBodyWidth(
+        for layoutInput: IslandPreviewLayoutInput,
+        attachmentMetrics: TopAttachmentMetrics
+    ) -> CGFloat? {
+        guard layoutInput.visualState == .activityCollapsed else {
+            return layoutInput.widthConstraints.baseBodyWidth
+        }
+
+        let fallback = IslandVisualTokens.activity.previewWidth * attachmentMetrics.horizontalVisualScale
+        guard let notchFrame = attachmentMetrics.notchFrame else {
+            return fallback
+        }
+
+        let shellTokens = IslandVisualTokens.shell(for: .activity)
+        let earReach = (shellTokens.earBlendHeight * attachmentMetrics.visualScale * shellTokens.earTension) +
+            IslandPathFactory.shellEarTipExtension
+        return max(notchFrame.width - (earReach * 2), 1)
     }
 
     private func advancePreviewState() {
@@ -764,11 +789,21 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         allowLockScheduling: Bool = true
     ) -> IslandPhase5PreviewReducerUpdate? {
         guard usesPhase5PreviewInteractionRouting else { return nil }
-        let update = phase5PreviewStateContainer.dispatch(intent: intent)
+        var update = phase5PreviewStateContainer.dispatch(intent: intent)
         if case let .horizontalMusicCommand(command) = intent,
            update.reducerResult.reason != .intentIgnored {
             phase5PreviewStateContainer.advanceMockMusicTrack(command)
             musicTrackSwipeDirection = IslandMusicTrackSwipeDirection(command)
+            // The reducer validates the command first. Re-derive after the
+            // mock track changes so title-width changes receive the same
+            // top-anchored sizing interpolation as every other transition.
+            update = IslandPhase5PreviewReducerUpdate(
+                previousState: update.previousState,
+                currentState: phase5PreviewStateContainer.domainState,
+                previousDerivedState: update.previousDerivedState,
+                currentDerivedState: phase5PreviewStateContainer.derivedState,
+                reducerResult: update.reducerResult
+            )
         }
         applyPhase5PreviewUpdate(
             update,
