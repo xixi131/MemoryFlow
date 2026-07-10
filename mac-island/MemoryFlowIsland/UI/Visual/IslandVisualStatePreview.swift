@@ -8,9 +8,11 @@ struct IslandVisualStatePreview: View {
     let widthConstraints: IslandWidthConstraints
     let previewContent: IslandPreviewContent
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
+    let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
+    var onTodoTaskInteraction: (() -> Void)?
     @State private var activityContentIsVisible = false
     @State private var compactContentIsVisible = true
     @State private var wasActivityCollapsed = false
@@ -139,7 +141,9 @@ struct IslandVisualStatePreview: View {
             greetingExpired: greetingExpired,
             musicArtworkNamespace: musicArtworkNamespace,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
-            onMusicControlInteraction: onMusicControlInteraction
+            onMusicControlInteraction: onMusicControlInteraction,
+            todoToggleScenarioRequest: todoToggleScenarioRequest,
+            onTodoTaskInteraction: onTodoTaskInteraction
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -357,6 +361,8 @@ private struct IslandPreviewContentOverlay: View {
     let musicArtworkNamespace: Namespace.ID
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     var onMusicControlInteraction: (() -> Void)?
+    let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
+    var onTodoTaskInteraction: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
     @State private var isFavorite = false
@@ -579,7 +585,9 @@ private struct IslandPreviewContentOverlay: View {
             IslandExpandedTodoContent(
                 todo: todo,
                 tint: tintColor,
-                contentPhase: contentPhase
+                contentPhase: contentPhase,
+                scenarioRequest: todoToggleScenarioRequest,
+                onTaskInteraction: onTodoTaskInteraction
             )
         } else {
             genericExpandedAppContent
@@ -1228,11 +1236,18 @@ private struct IslandExpandedTodoContent: View {
     let todo: IslandMockTodoActivity
     let tint: Color
     let contentPhase: IslandContentPhase
+    let scenarioRequest: IslandTodoToggleScenarioRequest?
+    var onTaskInteraction: (() -> Void)?
     @State private var summaryIsVisible = false
     @State private var rowsAreVisible = false
+    @State private var localToggleState: IslandLocalTodoToggleState?
 
     private var taskSlots: [IslandExpandedTodoTaskSlot] {
-        IslandExpandedTodoContentLayout.taskSlots(for: todo)
+        IslandExpandedTodoContentLayout.taskSlots(for: effectiveTodo)
+    }
+
+    private var effectiveTodo: IslandMockTodoActivity {
+        localToggleState?.todo ?? todo
     }
 
     var body: some View {
@@ -1247,15 +1262,15 @@ private struct IslandExpandedTodoContent: View {
                         .foregroundStyle(.white)
                 }
                 Spacer(minLength: 8)
-                Text("\(max(todo.pendingCount, 0)) pending")
+                Text("\(max(effectiveTodo.pendingCount, 0)) pending")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.62))
             }
 
             HStack(spacing: 7) {
-                todoCounter(value: max(todo.pendingCount, 0), label: "Pending")
-                todoCounter(value: max(todo.dueTodayCount, 0), label: "Due today")
-                todoCounter(value: max(todo.overdueCount, 0), label: "Overdue", isUrgent: todo.overdueCount > 0)
+                todoCounter(value: max(effectiveTodo.pendingCount, 0), label: "Pending")
+                todoCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "Due today")
+                todoCounter(value: max(effectiveTodo.overdueCount, 0), label: "Overdue", isUrgent: effectiveTodo.overdueCount > 0)
             }
             .opacity(summaryIsVisible ? 1 : 0)
             .offset(y: summaryIsVisible ? 0 : 4)
@@ -1285,7 +1300,14 @@ private struct IslandExpandedTodoContent: View {
         }
         .onAppear(perform: updateEntrance)
         .onChange(of: contentPhase) { _ in updateEntrance() }
-        .onChange(of: todo) { _ in updateEntrance() }
+        .onChange(of: todo) { nextTodo in
+            localToggleState = IslandLocalTodoToggleState(todo: nextTodo)
+            updateEntrance()
+        }
+        .onChange(of: scenarioRequest) { request in
+            guard let request else { return }
+            resolveScenarioRequest(request)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Expanded todo list")
     }
@@ -1328,9 +1350,20 @@ private struct IslandExpandedTodoContent: View {
 
     private func taskRow(_ task: IslandExpandedTodoTaskSlot) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(task.isCompleted ? tint.opacity(0.9) : .white.opacity(0.42))
+            Button {
+                onTaskInteraction?()
+                toggleTask(id: task.id)
+            } label: {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(task.isCompleted ? tint.opacity(0.9) : .white.opacity(0.42))
+                    .scaleEffect(task.isCompleted ? 1.08 : 1)
+                    .animation(IslandExpandedTodoContentLayout.toggleAnimation, value: task.isCompleted)
+            }
+            .buttonStyle(.plain)
+            .disabled(isTaskLocked(task.id))
+            .opacity(isTaskLocked(task.id) ? 0.48 : 1)
+            .accessibilityLabel(task.isCompleted ? "Mark \(task.title) incomplete" : "Mark \(task.title) complete")
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(task.title)
@@ -1362,6 +1395,8 @@ private struct IslandExpandedTodoContent: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(task.isOverdue ? Color.red.opacity(0.34) : .white.opacity(0.10), lineWidth: 1)
         )
+        .opacity(task.isCompleted ? 0.64 : 1)
+        .animation(IslandExpandedTodoContentLayout.toggleAnimation, value: task.isCompleted)
         .accessibilityIdentifier("island-todo-task-\(task.id)")
         .accessibilityLabel("\(task.title), \(task.dueText), \(task.priority.title) priority\(task.isCompleted ? ", completed" : "")")
     }
@@ -1384,6 +1419,131 @@ private struct IslandExpandedTodoContent: View {
             }
         }
     }
+
+    private func isTaskLocked(_ id: String) -> Bool {
+        localToggleState?.isLocked(taskID: id) ?? false
+    }
+
+    private func toggleTask(id: String) {
+        if localToggleState == nil {
+            localToggleState = IslandLocalTodoToggleState(todo: todo)
+        }
+        withAnimation(IslandExpandedTodoContentLayout.toggleAnimation) {
+            _ = localToggleState?.toggle(taskID: id)
+        }
+    }
+
+    private func resolveScenarioRequest(_ request: IslandTodoToggleScenarioRequest) {
+        withAnimation(IslandExpandedTodoContentLayout.toggleAnimation) {
+            // A rollback changes only the affected task, preserving the current presentation of every other row.
+            _ = localToggleState?.resolveMostRecent(outcome: request.outcome)
+        }
+    }
+}
+
+struct IslandLocalTodoToggleState: Equatable {
+    private struct PendingToggle: Equatable {
+        let originalIsCompleted: Bool
+    }
+
+    private(set) var todo: IslandMockTodoActivity
+    private var pendingToggles: [String: PendingToggle] = [:]
+    private var toggleOrder: [String] = []
+
+    init(todo: IslandMockTodoActivity) {
+        self.todo = todo
+    }
+
+    func isLocked(taskID: String) -> Bool {
+        pendingToggles[taskID] != nil
+    }
+
+    mutating func toggle(taskID: String) -> Bool {
+        guard pendingToggles[taskID] == nil,
+              let index = todo.tasks.firstIndex(where: { $0.id == taskID }) else {
+            return false
+        }
+
+        let task = todo.tasks[index]
+        pendingToggles[taskID] = PendingToggle(originalIsCompleted: task.isCompleted)
+        toggleOrder.append(taskID)
+        todo.tasks[index] = IslandMockTodoTask(
+            id: task.id,
+            title: task.title,
+            isCompleted: task.isCompleted == false,
+            isDueToday: task.isDueToday,
+            isOverdue: task.isOverdue
+        )
+        recomputeCounters()
+        return true
+    }
+
+    mutating func resolveMostRecent(outcome: IslandTodoToggleScenarioOutcome) -> Bool {
+        guard let taskID = toggleOrder.last,
+              let pending = pendingToggles[taskID],
+              let index = todo.tasks.firstIndex(where: { $0.id == taskID }) else {
+            return false
+        }
+
+        if outcome == .rollback {
+            let task = todo.tasks[index]
+            todo.tasks[index] = IslandMockTodoTask(
+                id: task.id,
+                title: task.title,
+                isCompleted: pending.originalIsCompleted,
+                isDueToday: task.isDueToday,
+                isOverdue: task.isOverdue
+            )
+            recomputeCounters()
+        }
+
+        pendingToggles[taskID] = nil
+        toggleOrder.removeAll { $0 == taskID }
+        return true
+    }
+
+    private mutating func recomputeCounters() {
+        todo.pendingCount = todo.tasks.filter { $0.isCompleted == false }.count
+        todo.dueTodayCount = todo.tasks.filter(\.isDueToday).count
+        todo.overdueCount = todo.tasks.filter(\.isOverdue).count
+        todo.nextTaskTitle = todo.tasks.first(where: { $0.isCompleted == false })?.title
+    }
+}
+
+enum IslandTodoToggleProbe {
+    static func validate() throws {
+        var state = IslandLocalTodoToggleState(todo: .scenarioSample)
+        let originalPending = state.todo.pendingCount
+
+        guard state.toggle(taskID: "todo-1"),
+              state.todo.tasks.first(where: { $0.id == "todo-1" })?.isCompleted == true,
+              state.todo.pendingCount == originalPending - 1,
+              state.isLocked(taskID: "todo-1"),
+              state.toggle(taskID: "todo-1") == false else {
+            throw IslandTodoToggleProbeError.optimisticToggleFailed
+        }
+
+        guard state.resolveMostRecent(outcome: .success),
+              state.isLocked(taskID: "todo-1") == false,
+              state.todo.tasks.first(where: { $0.id == "todo-1" })?.isCompleted == true else {
+            throw IslandTodoToggleProbeError.successResolutionFailed
+        }
+
+        guard state.toggle(taskID: "todo-2"),
+              state.resolveMostRecent(outcome: .rollback),
+              state.isLocked(taskID: "todo-2") == false,
+              state.todo.tasks.first(where: { $0.id == "todo-2" })?.isCompleted == false,
+              state.todo.tasks.first(where: { $0.id == "todo-1" })?.isCompleted == true,
+              state.todo.pendingCount == originalPending - 1 else {
+            throw IslandTodoToggleProbeError.rollbackResolutionFailed
+        }
+    }
+}
+
+enum IslandTodoToggleProbeError: Error {
+    case optimisticToggleFailed
+    case successResolutionFailed
+    case rollbackResolutionFailed
 }
 
 struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
@@ -1426,6 +1586,7 @@ enum IslandExpandedTodoContentLayout {
     static let rowStagger: TimeInterval = 0.035
     static let summaryAnimation = Animation.easeOut(duration: 0.16)
     static let rowAnimation = Animation.easeOut(duration: 0.18)
+    static let toggleAnimation = Animation.spring(response: 0.26, dampingFraction: 0.78)
 
     static func taskSlots(for todo: IslandMockTodoActivity) -> [IslandExpandedTodoTaskSlot] {
         Array(todo.tasks.prefix(maximumVisibleTasks)).map { task in

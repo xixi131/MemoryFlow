@@ -7,9 +7,11 @@ struct IslandRootView: View {
     let widthConstraints: IslandWidthConstraints
     let previewContent: IslandPreviewContent
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
+    let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onAdvancePreviewState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
+    var onTodoTaskInteraction: (() -> Void)?
 
     var body: some View {
         IslandVisualStatePreview(
@@ -19,9 +21,11 @@ struct IslandRootView: View {
             widthConstraints: widthConstraints,
             previewContent: previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
+            todoToggleScenarioRequest: todoToggleScenarioRequest,
             onAdvanceState: onAdvancePreviewState,
             onGreetingLifecycleCompleted: onGreetingLifecycleCompleted,
-            onMusicControlInteraction: onMusicControlInteraction
+            onMusicControlInteraction: onMusicControlInteraction,
+            onTodoTaskInteraction: onTodoTaskInteraction
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

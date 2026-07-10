@@ -347,7 +347,7 @@
       "Verify no network request is sent and the task row interaction never triggers island collapse."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-pointer-gesture",

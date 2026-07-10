@@ -884,6 +884,8 @@ enum IslandPhase5Probe {
             return .musicActivityWithAppFallback
         case .greetingFastForward:
             return .mockGreetingCompact
+        case .todoToggleSimulateSuccess, .todoToggleSimulateRollback:
+            return .mockExpandedTodo
         }
     }
 

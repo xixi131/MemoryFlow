@@ -16,6 +16,16 @@ enum IslandHorizontalMusicCommand: String, Codable, Equatable {
     case nextTrack
 }
 
+enum IslandTodoToggleScenarioOutcome: Equatable {
+    case success
+    case rollback
+}
+
+struct IslandTodoToggleScenarioRequest: Equatable {
+    let sequence: Int
+    let outcome: IslandTodoToggleScenarioOutcome
+}
+
 struct IslandPresentationRetargetTarget: Codable, Equatable {
     let presentationState: IslandPresentationState
     let forceCompactMode: Bool
@@ -77,6 +87,8 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
     case reminderDue
     case pausedMusicTimeout
     case greetingFastForward
+    case todoToggleSimulateSuccess
+    case todoToggleSimulateRollback
 
     var id: String {
         rawValue
@@ -114,6 +126,10 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return "Paused 30s Fast Forward"
         case .greetingFastForward:
             return "Greeting Fast Forward"
+        case .todoToggleSimulateSuccess:
+            return "Todo Toggle: Simulate Success"
+        case .todoToggleSimulateRollback:
+            return "Todo Toggle: Simulate Rollback"
         }
     }
 
@@ -149,6 +165,9 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return .pausedMusicTimeout
         case .greetingFastForward:
             return .greetingFastForward
+        case .todoToggleSimulateSuccess, .todoToggleSimulateRollback:
+            // These controls are handled by the native preview view. They are not reducer intents.
+            return .tap
         }
     }
 }

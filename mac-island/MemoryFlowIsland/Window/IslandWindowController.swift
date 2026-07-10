@@ -38,6 +38,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var trackpadWheelAdapter = IslandTrackpadWheelAdapter()
     private var shouldAnimateGreetingShellCollapse = false
     private var musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
+    private var todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
+    private var todoToggleScenarioSequence = 0
     private var applicationTerminationObserver: NSObjectProtocol?
     private var lastSizingResult: IslandWindowSizingResult?
 
@@ -91,9 +93,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 widthConstraints: initialLayoutInput.widthConstraints,
                 previewContent: initialLayoutInput.previewContent,
                 musicTrackSwipeDirection: nil,
+                todoToggleScenarioRequest: nil,
                 onAdvancePreviewState: nil,
                 onGreetingLifecycleCompleted: nil,
-                onMusicControlInteraction: nil
+                onMusicControlInteraction: nil,
+                onTodoTaskInteraction: nil
             )
         )
         self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
@@ -392,6 +396,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             widthConstraints: previewWidthConstraints,
             previewContent: activeLayoutInput.previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
+            todoToggleScenarioRequest: todoToggleScenarioRequest,
             onAdvancePreviewState: usesPhase5PreviewInteractionRouting ? nil : { [weak self] in
                 self?.advancePreviewState()
             },
@@ -400,6 +405,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 self?.dispatchPhase5Intent(.greetingLifecycleCompleted)
             } : nil,
             onMusicControlInteraction: { [weak self] in
+                self?.hostingView.consumeNextPointerTap()
+            },
+            onTodoTaskInteraction: { [weak self] in
                 self?.hostingView.consumeNextPointerTap()
             }
         )
@@ -797,11 +805,31 @@ extension IslandWindowController: IslandPhase5InteractionDemoControlling {
             return
         }
 
+        switch control {
+        case .todoToggleSimulateSuccess:
+            queueTodoToggleScenario(outcome: .success)
+            return
+        case .todoToggleSimulateRollback:
+            queueTodoToggleScenario(outcome: .rollback)
+            return
+        default:
+            break
+        }
+
         if control == .hoverEnter {
             activateInteractiveHoverMode()
         }
 
         dispatchPhase5Intent(control.intent)
+    }
+
+    private func queueTodoToggleScenario(outcome: IslandTodoToggleScenarioOutcome) {
+        todoToggleScenarioSequence += 1
+        todoToggleScenarioRequest = IslandTodoToggleScenarioRequest(
+            sequence: todoToggleScenarioSequence,
+            outcome: outcome
+        )
+        updateRootView()
     }
 }
 
