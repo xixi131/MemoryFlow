@@ -798,7 +798,7 @@ enum IslandPhase5Probe {
             id: "reminder-due-open",
             initialState: .loggedInReviewCompact,
             intents: [
-                (.reminderDue, "reminderDue")
+                (.reminderDue("phase5-reminder-due"), "reminderDue(phase5-reminder-due)")
             ]
         ),
         (
@@ -909,8 +909,8 @@ enum IslandPhase5Probe {
             return "modeSwitchToggle"
         case .modeSwitchMutate:
             return "modeSwitchMutate"
-        case .reminderDue:
-            return "reminderDue"
+        case let .reminderDue(key):
+            return "reminderDue(\(key))"
         case .pausedMusicTimeout:
             return "pausedMusicTimeout"
         case .greetingLifecycleCompleted:

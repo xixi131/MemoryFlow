@@ -328,27 +328,22 @@ enum IslandPresentationReducer {
                 ensureAppMockSource(&nextState, for: nextMode)
                 lockModeSwitch(&nextState)
             }
-        case .reminderDue:
+        case let .reminderDue(key):
             guard state.authState == .loggedIn,
                   state.primaryMode == .app,
-                  state.appDisplayMode == .review else {
+                  state.appDisplayMode == .review,
+                  state.forceCompactMode,
+                  state.presentationState != .expanded,
+                  state.lastReminderDueKey != key else {
                 return unchanged(state, reason: .intentIgnored)
             }
 
-            let shouldOpenActivity = state.forceCompactMode && state.presentationState != .expanded
-
             return transition(
                 state,
-                reason: shouldOpenActivity
-                    ? .reminderDueOpenedReviewActivity
-                    : .reminderDueMarkedActive
+                reason: .reminderDueOpenedReviewActivity
             ) { nextState in
                 nextState.isReminderActive = true
-
-                guard shouldOpenActivity else {
-                    return
-                }
-
+                nextState.lastReminderDueKey = key
                 nextState.presentationState = .activity
                 nextState.forceCompactMode = false
                 nextState.isHovered = false

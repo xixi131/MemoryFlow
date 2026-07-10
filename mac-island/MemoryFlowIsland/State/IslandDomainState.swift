@@ -193,6 +193,7 @@ struct IslandDomainState: Codable, Equatable {
     var presentationLockState: IslandPresentationLockState
     var isReminderActive: Bool
     var isReminderCollapsing: Bool
+    var lastReminderDueKey: String? = nil
     var isGreetingActive: Bool
     var greetingText: String?
     var mockSources: IslandMockActivitySources

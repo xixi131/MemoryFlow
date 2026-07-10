@@ -25,7 +25,7 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case .modeSwitchedToReview, .modeSwitchedToTodo, .activitySwitchedToReview, .activitySwitchedToTodo, .activitySwitchedToMusic:
             return .modeSwitch
         case .reminderDueOpenedReviewActivity: return .reminderOpen
-        case .reminderDueMarkedActive, .outsideCollapsedToCompact, .outsideCollapsedToActivity:
+        case .reminderDueMarkedActive, .pointerSwipedToCompact, .outsideCollapsedToCompact, .outsideCollapsedToActivity:
             return previous.showReminder ? .reminderRecover : resolveVisualStates(previous.visualState, next.visualState)
         case .musicSnapshotAccepted, .musicStoppedToApp, .pausedMusicTimedOutToApp:
             return .musicTakeover

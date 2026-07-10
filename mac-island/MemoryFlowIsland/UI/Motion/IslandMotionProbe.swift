@@ -1,6 +1,73 @@
 import Foundation
 
 enum IslandMotionProbe {
+    static func validateReminderAutoOpen() throws {
+        let key = "2026-07-10"
+        let first = IslandPresentationReducer.reduce(
+            current: .loggedInReviewCompact,
+            intent: .reminderDue(key)
+        )
+        let repeated = IslandPresentationReducer.reduce(
+            current: first.state,
+            intent: .reminderDue(key)
+        )
+        let unlocked = IslandPresentationReducer.reduce(
+            current: first.state,
+            intent: .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition)
+        )
+        let returnedCompact = IslandPresentationReducer.reduce(
+            current: unlocked.state,
+            intent: .pointerSwipe(.right)
+        )
+        let closeCompleted = IslandPresentationReducer.reduce(
+            current: returnedCompact.state,
+            intent: .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition)
+        )
+        let nextKey = IslandPresentationReducer.reduce(
+            current: closeCompleted.state,
+            intent: .reminderDue("2026-07-11")
+        )
+        let expanded = IslandPresentationReducer.reduce(
+            current: .expandedAppReview,
+            intent: .reminderDue("2026-07-12")
+        )
+        let reminderPlan = IslandMotionEngine.plan(
+            previous: IslandDerivedState.derive(from: .loggedInReviewCompact),
+            next: first.derivedState,
+            reason: first.reason,
+            presentation: .idle,
+            reduceMotion: false
+        )
+        let collapsePlan = IslandMotionEngine.plan(
+            previous: first.derivedState,
+            next: returnedCompact.derivedState,
+            reason: returnedCompact.reason,
+            presentation: .idle,
+            reduceMotion: false
+        )
+
+        guard first.reason == .reminderDueOpenedReviewActivity,
+              first.derivedState.visualState == .activityCollapsed,
+              first.state.lastReminderDueKey == key,
+              repeated.reason == .intentIgnored,
+              repeated.state == first.state,
+              unlocked.reason == .noChange,
+              returnedCompact.reason == .pointerSwipedToCompact,
+              returnedCompact.derivedState.visualState == .compactCollapsed,
+              closeCompleted.reason == .noChange,
+              nextKey.reason == .reminderDueOpenedReviewActivity,
+              nextKey.state.lastReminderDueKey == "2026-07-11",
+              expanded.reason == .intentIgnored,
+              reminderPlan.transitionKind == .reminderOpen,
+              reminderPlan.shellFrame.keyframes == IslandMotionTokens.profile(for: .compactToActivity).shellKeyframes,
+              reminderPlan.content.enter == IslandMotionTokens.profile(for: .compactToActivity).contentEnter,
+              reminderPlan.content.exit == IslandMotionTokens.profile(for: .compactToActivity).contentExit,
+              collapsePlan.transitionKind == .reminderRecover,
+              collapsePlan.shellFrame.keyframes.duration == IslandMotionTokens.activityCollapseDuration else {
+            throw IslandMotionProbeError.invalidReminderAutoOpen
+        }
+    }
+
     static func validateExpandedCollapseRecovery() throws {
         let sources: [IslandDomainState] = [.mockExpandedReview, .mockExpandedTodo, .mockExpandedMusic]
         let tapResults = sources.map { IslandPresentationReducer.reduce(current: $0, intent: .tap) }
@@ -252,6 +319,7 @@ enum IslandMotionProbeError: Error, CustomStringConvertible {
     case invalidExpandedAppOpenPlan
     case invalidExpandedMusicOpenPlan
     case invalidExpandedCollapseRecovery
+    case invalidReminderAutoOpen
     var description: String {
         switch self {
         case let .missingPlans(kinds): return "Missing motion plans: \(kinds.map(\.rawValue).sorted())"
@@ -261,6 +329,7 @@ enum IslandMotionProbeError: Error, CustomStringConvertible {
         case .invalidExpandedAppOpenPlan: return "Tap and trackpad app expansion do not share the 460 by 320 shell while keeping review and todo content distinct."
         case .invalidExpandedMusicOpenPlan: return "Tap and trackpad music expansion do not share the 460 by 210 mock music shell."
         case .invalidExpandedCollapseRecovery: return "Expanded content did not recover activity sources or respect force-compact collapse."
+        case .invalidReminderAutoOpen: return "Reminder due did not use keyed compact-to-review activity opening and segmented recovery."
         }
     }
 }

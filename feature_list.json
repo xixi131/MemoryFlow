@@ -230,7 +230,7 @@
       "Verify repeated due events with the same key do not replay while a new key can trigger the animation again."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-takeover",

@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-reminder-auto-open`.
-- Remaining queue size: `22` Phase 6 tasks.
+- First pending task: `mac-motion-music-takeover`.
+- Remaining queue size: `21` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
@@ -45,3 +45,7 @@
 ### 2026-07-10 - Review/todo long press
 - Leading-icon holds now follow the Windows 420ms hold, 320ms compact, 70ms wait, and 0.56s activity-reopen sequence; early release, leave, cancel, scenario replacement, and duplicates are guarded.
 - The deterministic bidirectional mode-switch probe, Xcode Debug build, and helper launch smoke test passed.
+
+### 2026-07-10 - Reminder auto-open
+- Reminder due is keyed and deterministic: only an app compact state can open review activity, repeated daily keys are ignored, and new keys replay the existing activity motion.
+- The focused reminder probe and Xcode Debug build passed. An unrelated legacy-wide interaction probe retains three non-reminder transition-kind expectation mismatches.

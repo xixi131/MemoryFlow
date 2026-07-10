@@ -57,6 +57,7 @@
 		E00102050000000000000001 /* IslandMotionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101050000000000000001 /* IslandMotionEngine.swift */; };
 		E00102060000000000000001 /* IslandGreetingSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101060000000000000001 /* IslandGreetingSequence.swift */; };
 		E00102070000000000000001 /* IslandGreetingSequenceProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */; };
+		E00102080000000000000001 /* IslandMotionProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101080000000000000001 /* IslandMotionProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -112,6 +113,7 @@
 		E00101050000000000000001 /* IslandMotionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionEngine.swift; sourceTree = "<group>"; };
 		E00101060000000000000001 /* IslandGreetingSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandGreetingSequence.swift; sourceTree = "<group>"; };
 		E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandGreetingSequenceProbe.swift; sourceTree = "<group>"; };
+		E00101080000000000000001 /* IslandMotionProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -225,6 +227,7 @@
 				E00101050000000000000001 /* IslandMotionEngine.swift */,
 				E00101060000000000000001 /* IslandGreetingSequence.swift */,
 				E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */,
+				E00101080000000000000001 /* IslandMotionProbe.swift */,
 			);
 			path = Motion;
 			sourceTree = "<group>";
@@ -397,6 +400,7 @@
 				E00102050000000000000001 /* IslandMotionEngine.swift in Sources */,
 				E00102060000000000000001 /* IslandGreetingSequence.swift in Sources */,
 				E00102070000000000000001 /* IslandGreetingSequenceProbe.swift in Sources */,
+				E00102080000000000000001 /* IslandMotionProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

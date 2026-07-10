@@ -1983,7 +1983,7 @@ enum IslandPresentationReducerProbe {
             id: "reminder-due",
             initialState: .loggedInReviewCompact,
             intents: [
-                (.reminderDue, "reminderDue"),
+                (.reminderDue("reducer-probe-reminder-due"), "reminderDue(reducer-probe-reminder-due)"),
                 (
                     .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition),
                     "transitionComplete(forceCompactTransition)"

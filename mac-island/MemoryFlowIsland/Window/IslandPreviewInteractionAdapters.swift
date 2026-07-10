@@ -419,8 +419,8 @@ enum IslandPreviewInteractionProbe {
             return "modeSwitchToggle"
         case .modeSwitchMutate:
             return "modeSwitchMutate"
-        case .reminderDue:
-            return "reminderDue"
+        case let .reminderDue(key):
+            return "reminderDue(\(key))"
         case .pausedMusicTimeout:
             return "pausedMusicTimeout"
         case .greetingLifecycleCompleted:

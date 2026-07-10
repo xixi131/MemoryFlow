@@ -49,7 +49,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     case modeSwitchToggle
     /// Changes the app content source while the mode-switch shell is held compact.
     case modeSwitchMutate
-    case reminderDue
+    /// A deterministic day-scoped identifier prevents the same due event from replaying.
+    case reminderDue(String)
     case pausedMusicTimeout
     case greetingLifecycleCompleted
     case greetingFastForward
@@ -131,7 +132,7 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
         case .modeSwitchToggle:
             return .modeSwitchToggle
         case .reminderDue:
-            return .reminderDue
+            return .reminderDue("preview-reminder-due")
         case .pausedMusicTimeout:
             return .pausedMusicTimeout
         case .greetingFastForward:
