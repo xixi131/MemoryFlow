@@ -43,6 +43,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     case pointerSwipe(IslandPointerSwipeDirection)
     case trackpadSwipe(IslandTrackpadSwipeDirection)
     case horizontalMusicCommand(IslandHorizontalMusicCommand)
+    /// Starts the deterministic Phase 6 mock music takeover without contacting a media provider.
+    case mockPlaybackStarted(MusicTrackSnapshot)
     case musicSnapshotUpdated(MusicTrackSnapshot)
     case musicStopped
     case musicCommandRequested(IslandHorizontalMusicCommand)
@@ -69,6 +71,7 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
     case trackpadDown
     case horizontalPrevious
     case horizontalNext
+    case musicPlaybackStart
     case modeSwitchToggle
     case reminderDue
     case pausedMusicTimeout
@@ -98,6 +101,8 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return "Horizontal Previous"
         case .horizontalNext:
             return "Horizontal Next"
+        case .musicPlaybackStart:
+            return "Music Playback Start"
         case .modeSwitchToggle:
             return "Mode Switch Toggle"
         case .reminderDue:
@@ -129,6 +134,8 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return .horizontalMusicCommand(.previousTrack)
         case .horizontalNext:
             return .horizontalMusicCommand(.nextTrack)
+        case .musicPlaybackStart:
+            return .mockPlaybackStarted(.mockPlaybackStart)
         case .modeSwitchToggle:
             return .modeSwitchToggle
         case .reminderDue:

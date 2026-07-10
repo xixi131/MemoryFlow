@@ -411,6 +411,8 @@ enum IslandPreviewInteractionProbe {
             return "horizontalMusicCommand(\(command.rawValue))"
         case let .musicSnapshotUpdated(snapshot):
             return "musicSnapshotUpdated(\(snapshot.title))"
+        case let .mockPlaybackStarted(snapshot):
+            return "mockPlaybackStarted(\(snapshot.title))"
         case .musicStopped:
             return "musicStopped"
         case let .musicCommandRequested(command):

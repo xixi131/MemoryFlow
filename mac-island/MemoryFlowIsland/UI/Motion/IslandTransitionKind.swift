@@ -12,6 +12,7 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
     case reminderOpen
     case reminderRecover
     case musicTakeover
+    case musicContentRetarget
     case defaultProfile
 
     static func resolve(
@@ -27,8 +28,10 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case .reminderDueOpenedReviewActivity: return .reminderOpen
         case .reminderDueMarkedActive, .pointerSwipedToCompact, .outsideCollapsedToCompact, .outsideCollapsedToActivity:
             return previous.showReminder ? .reminderRecover : resolveVisualStates(previous.visualState, next.visualState)
-        case .musicSnapshotAccepted, .musicStoppedToApp, .pausedMusicTimedOutToApp:
+        case .musicTakeoverStarted, .musicSnapshotAccepted, .musicStoppedToApp, .pausedMusicTimedOutToApp:
             return .musicTakeover
+        case .musicSnapshotRetargeted:
+            return .musicContentRetarget
         default:
             return resolveVisualStates(previous.visualState, next.visualState)
         }

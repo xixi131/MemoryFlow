@@ -10,7 +10,9 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case mockPreviousTrackCommanded
     case mockPlayPauseCommanded
     case mockNextTrackCommanded
+    case musicTakeoverStarted
     case musicSnapshotAccepted
+    case musicSnapshotRetargeted
     case musicSnapshotIgnoredLoggedOut
     case musicStoppedToApp
     case musicCommandRequested
@@ -39,6 +41,15 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
     case presentationRetargeted
+}
+
+private extension IslandInteractionIntent {
+    var isMockPlaybackStart: Bool {
+        if case .mockPlaybackStarted = self {
+            return true
+        }
+        return false
+    }
 }
 
 struct IslandPresentationReducerMetadata: Codable, Equatable {
@@ -256,12 +267,22 @@ enum IslandPresentationReducer {
             ) { nextState in
                 lockTrackpadGesture(&nextState)
             }
-        case let .musicSnapshotUpdated(snapshot):
+        case let .mockPlaybackStarted(snapshot), let .musicSnapshotUpdated(snapshot):
             if state.authState != .loggedIn && state.primaryMode != .music {
                 return unchanged(state, reason: .musicSnapshotIgnoredLoggedOut)
             }
 
-            return transition(state, reason: .musicSnapshotAccepted) { nextState in
+            let isAlreadyInMusic = state.primaryMode == .music
+            let reason: IslandPresentationTransitionReason
+            if isAlreadyInMusic {
+                reason = .musicSnapshotRetargeted
+            } else if intent.isMockPlaybackStart {
+                reason = .musicTakeoverStarted
+            } else {
+                reason = .musicSnapshotAccepted
+            }
+
+            return transition(state, reason: reason) { nextState in
                 nextState.primaryMode = .music
                 nextState.presentationState = nextState.presentationState == .expanded ? .expanded : .activity
                 nextState.forceCompactMode = false
@@ -494,6 +515,7 @@ enum IslandPresentationReducer {
             return true
         case .hoverEnter,
              .hoverLeave,
+             .mockPlaybackStarted,
              .musicSnapshotUpdated,
              .musicStopped,
              .musicCommandRequested,
@@ -514,6 +536,7 @@ enum IslandPresentationReducer {
             return true
         case .hoverEnter,
              .hoverLeave,
+             .mockPlaybackStarted,
              .musicSnapshotUpdated,
              .musicStopped,
              .musicCommandRequested,
@@ -537,6 +560,7 @@ enum IslandPresentationReducer {
              .tap,
              .outsideCollapse,
              .pointerSwipe,
+             .mockPlaybackStarted,
              .musicSnapshotUpdated,
              .musicStopped,
              .musicCommandRequested,

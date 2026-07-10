@@ -55,6 +55,21 @@ struct MusicTrackSnapshot: Codable, Equatable {
         updatedAt: Date(),
         capabilities: []
     )
+
+    static let mockPlaybackStart = MusicTrackSnapshot(
+        title: "Night Study",
+        artist: "MemoryFlow",
+        album: "Focus Session",
+        status: .playing,
+        isPlaying: true,
+        position: 12,
+        duration: 240,
+        artworkData: nil,
+        themeColorHex: "#22d3ee",
+        source: "Mock",
+        updatedAt: Date(timeIntervalSince1970: 0),
+        capabilities: .transport
+    )
 }
 
 protocol MusicProvider: AnyObject {

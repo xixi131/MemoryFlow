@@ -10,10 +10,10 @@ The queue was generated after tracing `front-end/src/components/DynamicIslandWid
 The current native Phase 5 reducer, derived state, mock scenario routing, pointer/trackpad adapters, sizing engine, shape engine, panel, and click-through behavior are prerequisites. The new queue adds real animated presentation values, shape-metric interpolation, top-center anchored panel animation, content choreography, mock module layouts, velocity-preserving retargeting, Reduce Motion, and evidence.
 
 ## Queue mode
-`replace-active` was used. The previous 41 completed Phase 5 tasks were preserved unchanged in `final_feature_list.json`. Phase 6 now includes deterministic scenarios, driver, shape morph, compact content, anchored sizing, duplicate-instance prevention, hover, activity open/collapse, expanded app/music opening, staged expanded collapse recovery, greeting lifecycle, long-press app-mode switching, and keyed reminder auto-open; 21 tasks remain.
+`replace-active` was used. The previous 41 completed Phase 5 tasks were preserved unchanged in `final_feature_list.json`. Phase 6 now includes deterministic scenarios, driver, shape morph, compact content, anchored sizing, duplicate-instance prevention, hover, activity open/collapse, expanded app/music opening, staged expanded collapse recovery, greeting lifecycle, long-press app-mode switching, keyed reminder auto-open, and auth-gated mock music takeover; 20 tasks remain.
 
 ## First pending task
-* `mac-motion-music-takeover`: Animate mock music takeover from app presentation into music activity presentation.
+* `mac-motion-music-release`: Animate paused-timeout and stopped-music fallback back to app presentation.
 
 ## Recommended startup path
 1. Read `AGENTS.md`.

@@ -73,6 +73,9 @@ enum IslandMotionTokens {
                 enterDelay: activityContentEnterDelay,
                 exit: 0.15
             )
+        case .musicContentRetarget:
+            // Track metadata/artwork crossfades in place; the music shell remains open.
+            return profile(duration: 0.18, times: [0, 1], enter: 0.12, exit: 0.12)
         case .activityToCompact, .expandedToCompact, .reminderRecover:
             return profile(duration: activityCollapseDuration, times: activityCollapseTimes, enter: 0.15, exit: 0.15)
         case .activityToExpanded, .expandedToActivity:

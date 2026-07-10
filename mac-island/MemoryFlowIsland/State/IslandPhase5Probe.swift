@@ -872,6 +872,8 @@ enum IslandPhase5Probe {
             return .loggedInReviewCompact
         case .horizontalPrevious, .horizontalNext:
             return .musicActivity
+        case .musicPlaybackStart:
+            return .loggedInReviewActivity
         case .modeSwitchToggle:
             return .loggedInReviewActivityPlain
         case .reminderDue:
@@ -901,6 +903,8 @@ enum IslandPhase5Probe {
             return "horizontalMusicCommand(\(command.rawValue))"
         case let .musicSnapshotUpdated(snapshot):
             return "musicSnapshotUpdated(\(snapshot.title))"
+        case let .mockPlaybackStarted(snapshot):
+            return "mockPlaybackStarted(\(snapshot.title))"
         case .musicStopped:
             return "musicStopped"
         case let .musicCommandRequested(command):

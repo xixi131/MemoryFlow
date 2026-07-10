@@ -243,7 +243,7 @@
       "Verify logged-out app state ignores initial takeover while an already-active mock music state continues accepting snapshot updates."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-release",

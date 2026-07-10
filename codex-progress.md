@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-music-takeover`.
-- Remaining queue size: `21` Phase 6 tasks.
+- First pending task: `mac-motion-music-release`.
+- Remaining queue size: `20` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
@@ -49,3 +49,7 @@
 ### 2026-07-10 - Reminder auto-open
 - Reminder due is keyed and deterministic: only an app compact state can open review activity, repeated daily keys are ignored, and new keys replay the existing activity motion.
 - The focused reminder probe and Xcode Debug build passed. An unrelated legacy-wide interaction probe retains three non-reminder transition-kind expectation mismatches.
+
+### 2026-07-10 - Music takeover
+- A mock playback-start control is auth-gated, clears force compact, and opens music activity; active-music snapshots use a 0.18s content retarget rather than replaying shell takeover.
+- `init.sh`, the focused music-takeover probe, and Xcode Debug build passed.
