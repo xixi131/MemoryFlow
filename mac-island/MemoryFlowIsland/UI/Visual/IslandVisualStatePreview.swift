@@ -575,6 +575,12 @@ private struct IslandPreviewContentOverlay: View {
                 tint: tintColor,
                 contentPhase: contentPhase
             )
+        } else if content.kind == .expandedTodo, let todo = content.todo {
+            IslandExpandedTodoContent(
+                todo: todo,
+                tint: tintColor,
+                contentPhase: contentPhase
+            )
         } else {
             genericExpandedAppContent
         }
@@ -1216,6 +1222,304 @@ enum IslandExpandedReviewContentProbe {
 
 enum IslandExpandedReviewContentProbeError: Error {
     case invalidLayout([IslandExpandedReviewContentProbeRow])
+}
+
+private struct IslandExpandedTodoContent: View {
+    let todo: IslandMockTodoActivity
+    let tint: Color
+    let contentPhase: IslandContentPhase
+    @State private var summaryIsVisible = false
+    @State private var rowsAreVisible = false
+
+    private var taskSlots: [IslandExpandedTodoTaskSlot] {
+        IslandExpandedTodoContentLayout.taskSlots(for: todo)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TODO FLOW")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(tint.opacity(0.9))
+                    Text("Today's plan")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                Spacer(minLength: 8)
+                Text("\(max(todo.pendingCount, 0)) pending")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
+            }
+
+            HStack(spacing: 7) {
+                todoCounter(value: max(todo.pendingCount, 0), label: "Pending")
+                todoCounter(value: max(todo.dueTodayCount, 0), label: "Due today")
+                todoCounter(value: max(todo.overdueCount, 0), label: "Overdue", isUrgent: todo.overdueCount > 0)
+            }
+            .opacity(summaryIsVisible ? 1 : 0)
+            .offset(y: summaryIsVisible ? 0 : 4)
+            .animation(IslandExpandedTodoContentLayout.summaryAnimation, value: summaryIsVisible)
+
+            Group {
+                if taskSlots.isEmpty {
+                    emptyState
+                } else {
+                    VStack(spacing: IslandExpandedTodoContentLayout.rowSpacing) {
+                        ForEach(Array(taskSlots.enumerated()), id: \.element.id) { index, task in
+                            taskRow(task)
+                                .opacity(rowsAreVisible ? 1 : 0)
+                                .offset(y: rowsAreVisible ? 0 : 5)
+                                .animation(
+                                    IslandExpandedTodoContentLayout.rowAnimation
+                                        .delay(IslandExpandedTodoContentLayout.rowDelay(for: index)),
+                                    value: rowsAreVisible
+                                )
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .frame(height: IslandExpandedTodoContentLayout.taskListHeight, alignment: .top)
+            .animation(.easeOut(duration: 0.18), value: taskSlots)
+        }
+        .onAppear(perform: updateEntrance)
+        .onChange(of: contentPhase) { _ in updateEntrance() }
+        .onChange(of: todo) { _ in updateEntrance() }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Expanded todo list")
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 5) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint.opacity(0.84))
+            Text("No tasks in this view")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.66))
+            Text("Your next task will appear here")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.42))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(rowsAreVisible ? 1 : 0)
+        .offset(y: rowsAreVisible ? 0 : 5)
+        .animation(IslandExpandedTodoContentLayout.rowAnimation, value: rowsAreVisible)
+        .accessibilityIdentifier("island-todo-empty-state")
+    }
+
+    private func todoCounter(value: Int, label: String, isUrgent: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("\(value)")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(isUrgent ? Color.red.opacity(0.92) : .white)
+            Text(label)
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.56))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.10)))
+    }
+
+    private func taskRow(_ task: IslandExpandedTodoTaskSlot) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(task.isCompleted ? tint.opacity(0.9) : .white.opacity(0.42))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(task.title)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(task.isCompleted ? .white.opacity(0.42) : .white.opacity(0.9))
+                    .strikethrough(task.isCompleted, color: .white.opacity(0.35))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.64)
+                Text(task.dueText)
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .foregroundStyle(task.isOverdue ? Color.red.opacity(0.92) : .white.opacity(0.48))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 4)
+
+            Text(task.priority.title)
+                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .foregroundStyle(task.priority.color)
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(task.priority.color.opacity(0.14)))
+        }
+        .padding(.horizontal, 9)
+        .frame(height: IslandExpandedTodoContentLayout.rowHeight)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(task.isCompleted ? 0.045 : 0.09)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(task.isOverdue ? Color.red.opacity(0.34) : .white.opacity(0.10), lineWidth: 1)
+        )
+        .accessibilityIdentifier("island-todo-task-\(task.id)")
+        .accessibilityLabel("\(task.title), \(task.dueText), \(task.priority.title) priority\(task.isCompleted ? ", completed" : "")")
+    }
+
+    private func updateEntrance() {
+        guard IslandExpandedTodoContentLayout.shouldRevealContent(in: contentPhase) else {
+            summaryIsVisible = false
+            rowsAreVisible = false
+            return
+        }
+
+        summaryIsVisible = false
+        rowsAreVisible = false
+        DispatchQueue.main.async {
+            guard IslandExpandedTodoContentLayout.shouldRevealContent(in: contentPhase) else { return }
+            summaryIsVisible = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + IslandExpandedTodoContentLayout.rowsDelay) {
+                guard IslandExpandedTodoContentLayout.shouldRevealContent(in: contentPhase) else { return }
+                rowsAreVisible = true
+            }
+        }
+    }
+}
+
+struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
+    enum Priority: Equatable {
+        case high
+        case medium
+        case normal
+
+        var title: String {
+            switch self {
+            case .high: return "HIGH"
+            case .medium: return "MED"
+            case .normal: return "NORMAL"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .high: return .red.opacity(0.94)
+            case .medium: return .orange.opacity(0.92)
+            case .normal: return .white.opacity(0.62)
+            }
+        }
+    }
+
+    let id: String
+    let title: String
+    let dueText: String
+    let priority: Priority
+    let isOverdue: Bool
+    let isCompleted: Bool
+}
+
+enum IslandExpandedTodoContentLayout {
+    static let maximumVisibleTasks = 6
+    static let rowHeight: CGFloat = 22
+    static let rowSpacing: CGFloat = 3
+    static let taskListHeight: CGFloat = 147
+    static let rowsDelay: TimeInterval = 0.08
+    static let rowStagger: TimeInterval = 0.035
+    static let summaryAnimation = Animation.easeOut(duration: 0.16)
+    static let rowAnimation = Animation.easeOut(duration: 0.18)
+
+    static func taskSlots(for todo: IslandMockTodoActivity) -> [IslandExpandedTodoTaskSlot] {
+        Array(todo.tasks.prefix(maximumVisibleTasks)).map { task in
+            IslandExpandedTodoTaskSlot(
+                id: task.id,
+                title: task.title,
+                dueText: task.isCompleted ? "Completed" : (task.isOverdue ? "Overdue" : (task.isDueToday ? "Due today" : "Scheduled")),
+                priority: task.isOverdue ? .high : (task.isDueToday ? .medium : .normal),
+                isOverdue: task.isOverdue,
+                isCompleted: task.isCompleted
+            )
+        }
+    }
+
+    static func rowDelay(for index: Int) -> TimeInterval {
+        rowsDelay + Double(index) * rowStagger
+    }
+
+    static func shouldRevealContent(in phase: IslandContentPhase) -> Bool {
+        phase == .entering || phase == .visible
+    }
+}
+
+struct IslandExpandedTodoContentProbeRow: Equatable {
+    let scenario: String
+    let visibleTaskCount: Int
+    let overdueTaskCount: Int
+    let completedTaskCount: Int
+    let supportsLongTitle: Bool
+    let fixedTaskListHeight: CGFloat
+    let startsInsideContentPhase: Bool
+}
+
+enum IslandExpandedTodoContentProbe {
+    static func rows() -> [IslandExpandedTodoContentProbeRow] {
+        let normal = [
+            IslandMockTodoTask(id: "normal-1", title: "Review flashcards", isCompleted: false, isDueToday: true, isOverdue: false),
+            IslandMockTodoTask(id: "normal-2", title: "Plan tomorrow", isCompleted: true, isDueToday: false, isOverdue: false)
+        ]
+        let overdue = [
+            IslandMockTodoTask(id: "overdue-1", title: "Submit study reflection", isCompleted: false, isDueToday: false, isOverdue: true)
+        ]
+        let longTitle = [
+            IslandMockTodoTask(id: "long-1", title: "Consolidate the spaced repetition notes from the cognitive science seminar", isCompleted: false, isDueToday: true, isOverdue: false)
+        ]
+        let six = (1...6).map {
+            IslandMockTodoTask(id: "six-\($0)", title: "Task \($0)", isCompleted: $0 == 6, isDueToday: $0 <= 2, isOverdue: $0 == 3)
+        }
+        return [
+            ("empty", []),
+            ("normal", normal),
+            ("overdue", overdue),
+            ("long-title", longTitle),
+            ("six", six)
+        ].map { scenario, tasks in
+            let todo = IslandMockTodoActivity(
+                pendingCount: tasks.filter { $0.isCompleted == false }.count,
+                dueTodayCount: tasks.filter(\.isDueToday).count,
+                overdueCount: tasks.filter(\.isOverdue).count,
+                nextTaskTitle: tasks.first?.title,
+                tasks: tasks
+            )
+            let slots = IslandExpandedTodoContentLayout.taskSlots(for: todo)
+            return IslandExpandedTodoContentProbeRow(
+                scenario: scenario,
+                visibleTaskCount: slots.count,
+                overdueTaskCount: slots.filter(\.isOverdue).count,
+                completedTaskCount: slots.filter(\.isCompleted).count,
+                supportsLongTitle: slots.allSatisfy { $0.title.isEmpty == false },
+                fixedTaskListHeight: IslandExpandedTodoContentLayout.taskListHeight,
+                startsInsideContentPhase: IslandExpandedTodoContentLayout.shouldRevealContent(in: .entering)
+                    && IslandExpandedTodoContentLayout.shouldRevealContent(in: .visible)
+                    && IslandExpandedTodoContentLayout.shouldRevealContent(in: .waitingForShell) == false
+            )
+        }
+    }
+
+    static func validate() throws {
+        let rows = rows()
+        guard rows.map(\.scenario) == ["empty", "normal", "overdue", "long-title", "six"],
+              rows.map(\.visibleTaskCount) == [0, 2, 1, 1, 6],
+              rows.map(\.overdueTaskCount) == [0, 0, 1, 0, 1],
+              rows.map(\.completedTaskCount) == [0, 1, 0, 0, 1],
+              rows.allSatisfy(\.supportsLongTitle),
+              rows.allSatisfy({ $0.fixedTaskListHeight == 147 }),
+              rows.allSatisfy(\.startsInsideContentPhase),
+              IslandExpandedTodoContentLayout.maximumVisibleTasks == 6 else {
+            throw IslandExpandedTodoContentProbeError.invalidLayout(rows)
+        }
+    }
+}
+
+enum IslandExpandedTodoContentProbeError: Error {
+    case invalidLayout([IslandExpandedTodoContentProbeRow])
 }
 
 private extension AnyTransition {

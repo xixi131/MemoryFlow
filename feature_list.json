@@ -334,7 +334,7 @@
       "Verify empty, normal, overdue, long-title, and six-task mock scenarios."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-todo-toggle",
