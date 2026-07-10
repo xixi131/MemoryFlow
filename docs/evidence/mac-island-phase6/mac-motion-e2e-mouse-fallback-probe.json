@@ -1,0 +1,123 @@
+{
+  "taskID": "mac-motion-e2e-mouse",
+  "verificationMode": "fallback-probe",
+  "physicalGuiCaptureAvailable": false,
+  "observationLabel": "Synthetic native Swift adapter/reducer/animation-driver execution. This is not a physical mouse capture or a real-device GUI observation.",
+  "build": {
+    "command": "xcodebuild -project mac-island/MemoryFlowIsland.xcodeproj -scheme MemoryFlowIsland -configuration Debug -derivedDataPath /tmp/memoryflow-e2e-mouse-dd build CODE_SIGNING_ALLOWED=NO",
+    "result": "BUILD SUCCEEDED"
+  },
+  "harness": {
+    "source": "IslandPreviewInteractionAdapters.swift, IslandWindowController.swift, IslandAnimationDriverProbe.swift, IslandVisualStatePreview.swift",
+    "executedChecks": [
+      "IslandPreviewInteractionProbe.generateRows",
+      "IslandModeSwitchProbe.validate",
+      "IslandTodoToggleProbe.validate",
+      "IslandAnimationDriverProbe.validateSampledFrames"
+    ]
+  },
+  "thresholds": {
+    "pointerTapAbsoluteDeltaLessThan": 10,
+    "pointerSwipeAbsoluteDeltaGreaterThan": 26,
+    "longPressSeconds": 0.42,
+    "modeSwitchCompactPhaseSeconds": 0.32,
+    "modeSwitchReopenDelaySeconds": 0.07
+  },
+  "rows": [
+    {
+      "id": "hover-enter-leave",
+      "interactionSource": "fallback-probe; IslandPreviewInteractionProbe",
+      "input": ["hoverEnter", "hoverLeave"],
+      "transitionIdentifiers": ["hoverEntered", "hoverLeft"],
+      "currentFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "targetFrame": {"x": 94, "y": 898, "width": 132, "height": 36},
+      "finalState": "compactCollapsed",
+      "guardOutcome": "hover leave clears hover and restores compact state"
+    },
+    {
+      "id": "tap-expand-collapse",
+      "interactionSource": "fallback-probe; IslandPreviewInteractionProbe",
+      "input": ["tap", "tap"],
+      "transitionIdentifiers": ["tapExpandedToApp", "tapCollapsedToCompact"],
+      "currentFrame": {"x": 70, "y": 892, "width": 180, "height": 40},
+      "targetFrame": {"x": -70, "y": 612, "width": 460, "height": 320},
+      "finalState": "compactCollapsed",
+      "guardOutcome": "second tap collapses the expanded app path"
+    },
+    {
+      "id": "pointer-tap-classification",
+      "interactionSource": "fallback-probe; 6pt horizontal delta",
+      "input": ["pointerDown(100)", "pointerDragged(106)", "pointerUp(106)"],
+      "transitionIdentifiers": ["tap", "tapExpandedToApp"],
+      "currentFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "targetFrame": {"x": -70, "y": 612, "width": 460, "height": 320},
+      "finalState": "expandedApp",
+      "guardOutcome": "6pt movement remains below the 10pt tap gate"
+    },
+    {
+      "id": "pointer-swipe-compact-activity",
+      "interactionSource": "fallback-probe; IslandPointerGestureAdapter",
+      "input": ["right swipe 40pt", "transitionComplete(forceCompactTransition)", "left swipe 40pt"],
+      "transitionIdentifiers": ["pointerSwipedToCompact", "forceCompactTransition", "pointerSwipedToActivity"],
+      "currentFrame": {"x": 70, "y": 892, "width": 180, "height": 40},
+      "targetFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "finalState": "activityCollapsed",
+      "guardOutcome": "single pointer capture resolves right then left swipe; compact lock completes before restore"
+    },
+    {
+      "id": "long-press-review-todo-switch",
+      "interactionSource": "fallback-probe; IslandModeSwitchProbe",
+      "input": ["leading-icon hold at 0.419s", "leading-icon hold at 0.421s"],
+      "transitionIdentifiers": ["retargetPresentation(compact)", "modeSwitchMutate", "retargetPresentation(activity)", "modeSwitchLock"],
+      "currentFrame": {"x": 70, "y": 892, "width": 180, "height": 40},
+      "targetFrame": {"x": 70, "y": 892, "width": 180, "height": 40},
+      "finalState": "activityCollapsed with switched review/todo content",
+      "guardOutcome": "early hold, release, and pointer leave do not trigger; duplicate switch stays locked until modeSwitchLock completion"
+    },
+    {
+      "id": "control-presses-and-todo-toggle",
+      "interactionSource": "fallback-probe; interaction demo control mapping and IslandTodoToggleProbe",
+      "input": ["demo control action", "todo-1 toggle then success", "todo-2 toggle then rollback"],
+      "transitionIdentifiers": ["todoToggleSimulateSuccess", "todoToggleSimulateRollback"],
+      "currentFrame": {"x": -70, "y": 612, "width": 460, "height": 320},
+      "targetFrame": {"x": -70, "y": 612, "width": 460, "height": 320},
+      "finalState": "todo-1 complete; todo-2 restored incomplete",
+      "guardOutcome": "a pending task toggle is locked against duplicate input; success commits and rollback restores counters/task state"
+    },
+    {
+      "id": "outside-collapse-and-click-through-recovery",
+      "interactionSource": "fallback-probe; IslandPreviewInteractionProbe plus controller click-through synchronization path",
+      "input": ["outsideCollapse from expanded app", "outsideCollapse from expanded music", "outsideCollapse from logged-out/compact-only"],
+      "transitionIdentifiers": ["outsideCollapsedToCompact", "expandedCollapseRecovery"],
+      "currentFrame": {"x": -70, "y": 612, "width": 460, "height": 320},
+      "targetFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "finalState": "compactCollapsed",
+      "guardOutcome": "all four source variants compact; controller invokes synchronizePanelClickThroughState after collapse recovery"
+    },
+    {
+      "id": "rapid-enter-leave-enter",
+      "interactionSource": "fallback-probe; IslandAnimationDriverProbe.validateSampledFrames",
+      "input": ["hover target at 0", "activity retarget at 0.06s", "expanded retarget at 0.12s", "compact retarget at 0.18s"],
+      "transitionIdentifiers": ["hover", "activity", "expanded", "compact"],
+      "currentFrame": {"x": 94, "y": 898, "width": 132, "height": 36},
+      "targetFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "finalState": "compact presentation metrics",
+      "guardOutcome": "retarget starts from live metrics, stale expanded completion is rejected, and every sampled width delta is at most 32pt"
+    },
+    {
+      "id": "rapid-expand-collapse-expand",
+      "interactionSource": "fallback-probe; IslandAnimationDriverProbe.validateSampledFrames",
+      "input": ["activity to expanded", "expanded reverse", "reverse to compact"],
+      "transitionIdentifiers": ["activity-expanded", "expanded-reverse", "reverse-compact"],
+      "currentFrame": {"x": 70, "y": 892, "width": 180, "height": 40},
+      "targetFrame": {"x": 100, "y": 900, "width": 120, "height": 32},
+      "finalState": "compact presentation metrics",
+      "guardOutcome": "reverse retains negative width velocity and only the final completion callback is accepted"
+    }
+  ],
+  "limitations": [
+    "No physical mouse event stream or screen recording was available in this environment.",
+    "Frame values are deterministic animation-driver metrics, not screen-captured window coordinates.",
+    "GUI-only observations remain unverified and are intentionally not represented as real-device evidence."
+  ]
+}
