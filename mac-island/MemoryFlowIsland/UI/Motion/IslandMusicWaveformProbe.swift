@@ -3,6 +3,7 @@ import Foundation
 
 enum IslandMusicWaveformProbe {
     static func validate() throws {
+        try validateMockMusicControls()
         guard IslandMusicWaveform.pattern == [4, 16, 8, 20, 6, 12, 4],
               IslandMusicWaveform.cycleDuration == 2.2,
               IslandMusicWaveform.phaseOffset == 0.2,
@@ -37,6 +38,29 @@ enum IslandMusicWaveformProbe {
               approximatelyEqual(phaseShiftedStart, 4 * scale),
               approximatelyEqual(paused, 4 * scale) else {
             throw IslandMusicWaveformProbeError.invalidSamples
+        }
+    }
+
+    static func validateMockMusicControls() throws {
+        let music = IslandMockMusicActivity.scenarioPlaying
+        let anchor = Date(timeIntervalSinceReferenceDate: 100)
+        var clock = IslandMockMusicProgressClock()
+        clock.reset(for: music, isPlaying: true, at: anchor)
+        guard clock.elapsed(at: anchor.addingTimeInterval(2.5)) == music.elapsedSeconds + 2.5 else {
+            throw IslandMusicWaveformProbeError.invalidMockProgressClock
+        }
+
+        clock.reset(for: music, isPlaying: false, at: anchor)
+        guard clock.elapsed(at: anchor.addingTimeInterval(8)) == music.elapsedSeconds else {
+            throw IslandMusicWaveformProbeError.pausedClockAdvanced
+        }
+
+        var seeked = music
+        seeked.elapsedSeconds = seeked.durationSeconds! - 1
+        clock.reset(for: seeked, isPlaying: true, at: anchor)
+        guard clock.elapsed(at: anchor.addingTimeInterval(4)) == seeked.durationSeconds,
+              seeked.remainingSeconds == 1 else {
+            throw IslandMusicWaveformProbeError.invalidSeekClamp
         }
     }
 
@@ -106,4 +130,7 @@ enum IslandMusicWaveformProbeError: Error {
     case invalidTokens
     case invalidPhaseOffsets
     case invalidSamples
+    case invalidMockProgressClock
+    case pausedClockAdvanced
+    case invalidSeekClamp
 }

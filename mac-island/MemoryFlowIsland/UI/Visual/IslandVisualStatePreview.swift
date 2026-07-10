@@ -9,6 +9,7 @@ struct IslandVisualStatePreview: View {
     let previewContent: IslandPreviewContent
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
+    var onMusicControlInteraction: (() -> Void)?
     @State private var activityContentIsVisible = false
     @State private var compactContentIsVisible = true
     @State private var wasActivityCollapsed = false
@@ -134,7 +135,8 @@ struct IslandVisualStatePreview: View {
             isExpandedMusicContentVisible: expandedMusicContentIsVisible,
             greetingPhase: greetingPhase,
             greetingExpired: greetingExpired,
-            musicArtworkNamespace: musicArtworkNamespace
+            musicArtworkNamespace: musicArtworkNamespace,
+            onMusicControlInteraction: onMusicControlInteraction
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -349,6 +351,10 @@ private struct IslandPreviewContentOverlay: View {
     let greetingPhase: IslandGreetingPhase
     let greetingExpired: Bool
     let musicArtworkNamespace: Namespace.ID
+    var onMusicControlInteraction: (() -> Void)?
+    @State private var musicClock = IslandMockMusicProgressClock()
+    @State private var playbackOverride: Bool?
+    @State private var isFavorite = false
 
     private var expandedSafePadding: CGFloat {
         IslandVisualTokens.compact.height
@@ -407,6 +413,8 @@ private struct IslandPreviewContentOverlay: View {
             alignment: .topLeading
         )
         .clipped()
+        .onAppear { resetMusicPresentation(for: content.music, clearsPlaybackOverride: true) }
+        .onChange(of: content.music) { resetMusicPresentation(for: $0, clearsPlaybackOverride: true) }
     }
 
     @ViewBuilder
@@ -551,7 +559,7 @@ private struct IslandPreviewContentOverlay: View {
 
                 MusicWaveformMark(
                     tint: tintColor,
-                    isPlaying: content.music?.isPlaying ?? true,
+                    isPlaying: effectiveMusicIsPlaying,
                     count: 5,
                     displayScale: snapshot.metrics.scale
                 )
@@ -596,61 +604,89 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private var progressRow: some View {
-        HStack(spacing: 10) {
-            Text(timeText(content.music?.elapsedSeconds))
-                .frame(width: 34, alignment: .leading)
+        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
+            let elapsed = musicClock.elapsed(at: timeline.date)
+            let progress = musicProgress(for: elapsed)
+            let remaining = remainingSeconds(for: elapsed)
+            HStack(spacing: 10) {
+                Text(timeText(elapsed))
+                    .frame(width: 34, alignment: .leading)
 
-            GeometryReader { geometry in
-                let progress = musicProgress
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(memoryFlowHex: "#222222"))
-                    Capsule()
-                        .fill(Color(memoryFlowHex: "#747376"))
-                        .frame(width: geometry.size.width * progress)
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color(memoryFlowHex: "#222222"))
+                        Capsule()
+                            .fill(Color(memoryFlowHex: "#747376"))
+                            .frame(width: geometry.size.width * progress)
+                    }
+                    .animation(.easeInOut(duration: 0.22), value: progress)
                 }
-            }
-            .frame(height: 6)
+                .frame(height: 6)
 
-            Text("-\(timeText(remainingSeconds))")
-                .frame(width: 38, alignment: .trailing)
+                Text("-\(timeText(remaining))")
+                    .frame(width: 38, alignment: .trailing)
+            }
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.42))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
         }
-        .font(.system(size: 12, weight: .semibold, design: .rounded))
-        .foregroundStyle(.white.opacity(0.42))
-        .lineLimit(1)
-        .minimumScaleFactor(0.72)
     }
 
     private var musicTransportControls: some View {
         HStack(alignment: .center) {
-            Image(systemName: "star")
-                .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(.white.opacity(0.46))
+            MusicTransportButton(
+                symbol: isFavorite ? "star.fill" : "star",
+                size: 20,
+                tint: .white.opacity(0.46),
+                label: "Favorite mock track"
+            ) {
+                isFavorite.toggle()
+                registerMusicControlInteraction()
+            }
 
             Spacer(minLength: 0)
 
-            Image(systemName: "backward.fill")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
+            MusicTransportButton(
+                symbol: "backward.fill",
+                size: 24,
+                tint: .white,
+                label: "Previous mock track",
+                action: registerMusicControlInteraction
+            )
 
             Spacer(minLength: 0)
 
-            Image(systemName: content.music?.isPlaying == false ? "play.fill" : "pause.fill")
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(.white)
+            MusicTransportButton(
+                symbol: effectiveMusicIsPlaying ? "pause.fill" : "play.fill",
+                size: 34,
+                tint: .white,
+                label: effectiveMusicIsPlaying ? "Pause mock track" : "Play mock track"
+            ) {
+                playbackOverride = !effectiveMusicIsPlaying
+                resetMusicPresentation(for: content.music, clearsPlaybackOverride: false)
+                registerMusicControlInteraction()
+            }
 
             Spacer(minLength: 0)
 
-            Image(systemName: "forward.fill")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
+            MusicTransportButton(
+                symbol: "forward.fill",
+                size: 24,
+                tint: .white,
+                label: "Next mock track",
+                action: registerMusicControlInteraction
+            )
 
             Spacer(minLength: 0)
 
-            Image(systemName: "laptopcomputer")
-                .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(.white.opacity(0.42))
+            MusicTransportButton(
+                symbol: "laptopcomputer",
+                size: 20,
+                tint: .white.opacity(0.42),
+                label: "Mock playback device",
+                action: registerMusicControlInteraction
+            )
         }
         .padding(.horizontal, 6)
         .frame(height: 34)
@@ -755,29 +791,75 @@ private struct IslandPreviewContentOverlay: View {
         }
     }
 
-    private var musicProgress: CGFloat {
+    private var effectiveMusicIsPlaying: Bool {
+        playbackOverride ?? content.music?.isPlaying ?? true
+    }
+
+    private func resetMusicPresentation(
+        for music: IslandMockMusicActivity?,
+        clearsPlaybackOverride: Bool
+    ) {
+        if clearsPlaybackOverride {
+            playbackOverride = nil
+        }
+        musicClock.reset(for: music, isPlaying: effectiveMusicIsPlaying, at: .now)
+    }
+
+    private func registerMusicControlInteraction() {
+        // Preview-only controls never dispatch a real media command.
+        onMusicControlInteraction?()
+    }
+
+    private func musicProgress(for elapsed: TimeInterval?) -> CGFloat {
         guard let music = content.music,
               let duration = music.durationSeconds,
               duration > 0 else {
             return 0
         }
-
-        return CGFloat(min(max(music.elapsedSeconds / duration, 0), 1))
+        return CGFloat(min(max((elapsed ?? music.elapsedSeconds) / duration, 0), 1))
     }
 
-    private var remainingSeconds: TimeInterval? {
+    private func remainingSeconds(for elapsed: TimeInterval?) -> TimeInterval? {
         guard let music = content.music,
               let duration = music.durationSeconds else {
             return nil
         }
-
-        return max(0, duration - music.elapsedSeconds)
+        return max(0, duration - (elapsed ?? music.elapsedSeconds))
     }
 
     private func timeText(_ seconds: TimeInterval?) -> String {
         guard let seconds else { return "--:--" }
         let totalSeconds = max(0, Int(seconds.rounded()))
         return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+}
+
+private struct MusicTransportButton: View {
+    let symbol: String
+    let size: CGFloat
+    let tint: Color
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 38, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(MusicTransportButtonStyle())
+        .accessibilityLabel(label)
+    }
+}
+
+private struct MusicTransportButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .opacity(configuration.isPressed ? 0.56 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

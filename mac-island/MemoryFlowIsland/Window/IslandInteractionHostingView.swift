@@ -9,6 +9,11 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     var onScrollWheel: ((NSEvent) -> Void)?
     var interactiveBounds: CGRect = .zero
     private var pointerTrackingArea: NSTrackingArea?
+    private var consumesNextPointerTap = false
+
+    func consumeNextPointerTap() {
+        consumesNextPointerTap = true
+    }
 
     override var isOpaque: Bool {
         false
@@ -30,8 +35,12 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     }
 
     override func mouseUp(with event: NSEvent) {
-        onPointerUp?(convert(event.locationInWindow, from: nil))
         super.mouseUp(with: event)
+        if consumesNextPointerTap {
+            consumesNextPointerTap = false
+            return
+        }
+        onPointerUp?(convert(event.locationInWindow, from: nil))
     }
 
     override func mouseExited(with event: NSEvent) {

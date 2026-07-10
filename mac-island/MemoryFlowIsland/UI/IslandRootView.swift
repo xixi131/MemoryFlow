@@ -8,6 +8,7 @@ struct IslandRootView: View {
     let previewContent: IslandPreviewContent
     var onAdvancePreviewState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
+    var onMusicControlInteraction: (() -> Void)?
 
     var body: some View {
         IslandVisualStatePreview(
@@ -17,7 +18,8 @@ struct IslandRootView: View {
             widthConstraints: widthConstraints,
             previewContent: previewContent,
             onAdvanceState: onAdvancePreviewState,
-            onGreetingLifecycleCompleted: onGreetingLifecycleCompleted
+            onGreetingLifecycleCompleted: onGreetingLifecycleCompleted,
+            onMusicControlInteraction: onMusicControlInteraction
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

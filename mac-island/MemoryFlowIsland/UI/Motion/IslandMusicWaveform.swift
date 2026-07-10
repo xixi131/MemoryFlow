@@ -36,3 +36,35 @@ enum IslandMusicWaveform {
         return (start + ((end - start) * eased)) * displayScale
     }
 }
+
+/// A local presentation clock for mock music; it never invokes playback providers.
+struct IslandMockMusicProgressClock: Equatable {
+    private var hasMusic = false
+    private var elapsedAtAnchor: TimeInterval = 0
+    private var anchorDate: Date = .distantPast
+    private var isPlaying = false
+    private var duration: TimeInterval?
+
+    mutating func reset(for music: IslandMockMusicActivity?, isPlaying: Bool, at date: Date) {
+        guard let music else {
+            hasMusic = false
+            elapsedAtAnchor = 0
+            anchorDate = date
+            self.isPlaying = false
+            duration = nil
+            return
+        }
+        hasMusic = true
+        elapsedAtAnchor = music.elapsedSeconds
+        anchorDate = date
+        self.isPlaying = isPlaying
+        duration = music.durationSeconds
+    }
+
+    func elapsed(at date: Date) -> TimeInterval? {
+        guard hasMusic else { return nil }
+        let advanced = isPlaying ? max(0, date.timeIntervalSince(anchorDate)) : 0
+        let value = max(0, elapsedAtAnchor + advanced)
+        return duration.map { min(value, max(0, $0)) } ?? value
+    }
+}

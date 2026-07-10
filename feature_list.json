@@ -295,7 +295,7 @@
       "Verify controls stop pointer propagation so pressing them never collapses the island."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-track-swipe",

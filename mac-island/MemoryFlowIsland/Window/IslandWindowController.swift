@@ -90,7 +90,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 widthConstraints: initialLayoutInput.widthConstraints,
                 previewContent: initialLayoutInput.previewContent,
                 onAdvancePreviewState: nil,
-                onGreetingLifecycleCompleted: nil
+                onGreetingLifecycleCompleted: nil,
+                onMusicControlInteraction: nil
             )
         )
         self.screenMetricsResolver = screenMetricsResolver ?? { window, preferredDisplayIdentity in
@@ -394,7 +395,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             onGreetingLifecycleCompleted: usesPhase5PreviewInteractionRouting ? { [weak self] in
                 self?.shouldAnimateGreetingShellCollapse = true
                 self?.dispatchPhase5Intent(.greetingLifecycleCompleted)
-            } : nil
+            } : nil,
+            onMusicControlInteraction: { [weak self] in
+                self?.hostingView.consumeNextPointerTap()
+            }
         )
     }
 
