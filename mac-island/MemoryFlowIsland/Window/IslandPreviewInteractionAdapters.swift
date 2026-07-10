@@ -2,25 +2,38 @@ import CoreGraphics
 import Foundation
 
 struct IslandPointerGestureAdapter: Equatable {
+    static let maximumInteractiveTranslation: Double = 12
+
+    private(set) var capturedPointerID: Int?
     private(set) var startX: Double?
     private(set) var currentX: Double?
 
     var isTracking: Bool {
-        startX != nil
+        capturedPointerID != nil && startX != nil
     }
 
-    mutating func pointerDown(at x: Double) {
+    /// Captures one non-button pointer stream. Button controls own their gestures and must
+    /// never accidentally become island swipe drags.
+    @discardableResult
+    mutating func pointerDown(
+        pointerID: Int,
+        at x: Double,
+        isButtonOrigin: Bool
+    ) -> Bool {
+        guard capturedPointerID == nil, isButtonOrigin == false else { return false }
+        capturedPointerID = pointerID
         startX = x
         currentX = x
+        return true
     }
 
-    mutating func pointerDragged(to x: Double) {
-        guard startX != nil else { return }
+    mutating func pointerDragged(pointerID: Int, to x: Double) {
+        guard capturedPointerID == pointerID, startX != nil else { return }
         currentX = x
     }
 
-    mutating func pointerUp(at x: Double) -> IslandInteractionIntent? {
-        guard let startX else { return nil }
+    mutating func pointerUp(pointerID: Int, at x: Double) -> IslandInteractionIntent? {
+        guard capturedPointerID == pointerID, let startX else { return nil }
         let resolvedCurrentX = currentX ?? x
         let deltaX = resolvedCurrentX - startX
         reset()
@@ -36,11 +49,21 @@ struct IslandPointerGestureAdapter: Equatable {
         return nil
     }
 
-    mutating func cancel() {
+    @discardableResult
+    mutating func cancel(pointerID: Int? = nil) -> Bool {
+        guard pointerID == nil || capturedPointerID == pointerID else { return false }
+        let wasTracking = isTracking
         reset()
+        return wasTracking
+    }
+
+    var interactiveTranslationX: Double {
+        guard let startX, let currentX else { return 0 }
+        return min(max((currentX - startX) * 0.35, -Self.maximumInteractiveTranslation), Self.maximumInteractiveTranslation)
     }
 
     private mutating func reset() {
+        capturedPointerID = nil
         startX = nil
         currentX = nil
     }
@@ -144,6 +167,57 @@ struct IslandTrackpadWheelAdapter: Equatable {
     }
 }
 
+/// Deterministic coverage for the capture and feedback rules used by the native host.
+struct IslandPointerGestureFeedbackProbe: Equatable {
+    let capturesSinglePointer: Bool
+    let ignoresButtonDrag: Bool
+    let ignoresMismatchedPointer: Bool
+    let capsInteractiveTranslation: Bool
+    let resolvesSwipeAndReleasesCapture: Bool
+    let cancellationReleasesCapture: Bool
+
+    var passes: Bool {
+        capturesSinglePointer &&
+            ignoresButtonDrag &&
+            ignoresMismatchedPointer &&
+            capsInteractiveTranslation &&
+            resolvesSwipeAndReleasesCapture &&
+            cancellationReleasesCapture
+    }
+
+    static func run() -> IslandPointerGestureFeedbackProbe {
+        var adapter = IslandPointerGestureAdapter()
+        let capturesSinglePointer = adapter.pointerDown(pointerID: 1, at: 0, isButtonOrigin: false) &&
+            adapter.pointerDown(pointerID: 2, at: 0, isButtonOrigin: false) == false
+
+        adapter.pointerDragged(pointerID: 2, to: 80)
+        let ignoresMismatchedPointer = adapter.interactiveTranslationX == 0
+
+        adapter.pointerDragged(pointerID: 1, to: 80)
+        let capsInteractiveTranslation = adapter.interactiveTranslationX == IslandPointerGestureAdapter.maximumInteractiveTranslation
+        let swipe = adapter.pointerUp(pointerID: 1, at: 80)
+        let resolvesSwipeAndReleasesCapture = swipe == .pointerSwipe(.right) && adapter.isTracking == false
+
+        let ignoresButtonDrag = adapter.pointerDown(pointerID: 3, at: 0, isButtonOrigin: true) == false &&
+            adapter.isTracking == false
+
+        _ = adapter.pointerDown(pointerID: 4, at: 0, isButtonOrigin: false)
+        adapter.pointerDragged(pointerID: 4, to: 18)
+        let cancellationReleasesCapture = adapter.cancel(pointerID: 4) &&
+            adapter.isTracking == false &&
+            adapter.interactiveTranslationX == 0
+
+        return IslandPointerGestureFeedbackProbe(
+            capturesSinglePointer: capturesSinglePointer,
+            ignoresButtonDrag: ignoresButtonDrag,
+            ignoresMismatchedPointer: ignoresMismatchedPointer,
+            capsInteractiveTranslation: capsInteractiveTranslation,
+            resolvesSwipeAndReleasesCapture: resolvesSwipeAndReleasesCapture,
+            cancellationReleasesCapture: cancellationReleasesCapture
+        )
+    }
+}
+
 struct IslandPreviewInteractionProbeRow: Codable, Equatable {
     let scenarioID: String
     let emittedIntents: [String]
@@ -202,9 +276,9 @@ enum IslandPreviewInteractionProbe {
         var pointerAdapter = IslandPointerGestureAdapter()
         var intents: [String] = []
 
-        pointerAdapter.pointerDown(at: 0)
-        pointerAdapter.pointerDragged(to: 40)
-        if let intent = pointerAdapter.pointerUp(at: 40) {
+        pointerAdapter.pointerDown(pointerID: 1, at: 0, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 1, to: 40)
+        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: 40) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }
@@ -216,9 +290,9 @@ enum IslandPreviewInteractionProbe {
             )
         )
 
-        pointerAdapter.pointerDown(at: 40)
-        pointerAdapter.pointerDragged(to: 0)
-        if let intent = pointerAdapter.pointerUp(at: 0) {
+        pointerAdapter.pointerDown(pointerID: 2, at: 40, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 2, to: 0)
+        if let intent = pointerAdapter.pointerUp(pointerID: 2, at: 0) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }
@@ -235,9 +309,9 @@ enum IslandPreviewInteractionProbe {
         var pointerAdapter = IslandPointerGestureAdapter()
         var intents: [String] = []
 
-        pointerAdapter.pointerDown(at: 100)
-        pointerAdapter.pointerDragged(to: 106)
-        if let intent = pointerAdapter.pointerUp(at: 106) {
+        pointerAdapter.pointerDown(pointerID: 1, at: 100, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 1, to: 106)
+        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: 106) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }

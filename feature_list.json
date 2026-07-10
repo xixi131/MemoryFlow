@@ -360,7 +360,7 @@
       "Verify click-through remains disabled during capture and recovers after finalization when the pointer is no longer over the shell."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-trackpad-vertical",

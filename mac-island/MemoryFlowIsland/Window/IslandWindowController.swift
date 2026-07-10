@@ -31,6 +31,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var previewWidthConstraints: IslandWidthConstraints = .none
     private var trackpadCooldownWorkItem: DispatchWorkItem?
     private var pointerGestureAdapter = IslandPointerGestureAdapter()
+    private var pointerFeedbackTranslationX: CGFloat = 0
     private var modeSwitchHoldAdapter = IslandModeSwitchHoldAdapter()
     private var modeSwitchHoldWorkItem: DispatchWorkItem?
     private var modeSwitchSequenceWorkItems: [DispatchWorkItem] = []
@@ -136,6 +137,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     func hide() {
         hoverMonitor.stopMonitoring()
         pointerGestureAdapter.cancel()
+        resetPointerFeedbackImmediately()
         cancelModeSwitchInteraction()
         trackpadWheelAdapter.reset()
         musicTakeoverController.stop()
@@ -164,17 +166,17 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func configureInteractionHandlers() {
-        hostingView.onPointerDown = { [weak self] point in
-            self?.handlePointerDown(at: point)
+        hostingView.onPointerDown = { [weak self] input in
+            self?.handlePointerDown(input)
         }
-        hostingView.onPointerDragged = { [weak self] point in
-            self?.handlePointerDragged(at: point)
+        hostingView.onPointerDragged = { [weak self] input in
+            self?.handlePointerDragged(input)
         }
-        hostingView.onPointerUp = { [weak self] point in
-            self?.handlePointerUp(at: point)
+        hostingView.onPointerUp = { [weak self] input in
+            self?.handlePointerUp(input)
         }
-        hostingView.onPointerCancelled = { [weak self] in
-            self?.cancelPendingModeSwitchHold()
+        hostingView.onPointerCancelled = { [weak self] pointerID in
+            self?.handlePointerCancelled(pointerID: pointerID)
         }
         hostingView.onScrollWheel = { [weak self] event in
             self?.handleScrollWheel(event)
@@ -313,7 +315,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         _ sizingResult: IslandWindowSizingResult,
         on screenMetrics: ScreenMetrics
     ) {
-        let panelFrame = islandPanel.applySizingResult(sizingResult)
+        let unshiftedPanelFrame = islandPanel.applySizingResult(sizingResult)
+        let panelFrame = unshiftedPanelFrame.offsetBy(dx: pointerFeedbackTranslationX, dy: 0)
         if shouldAnimateGreetingShellCollapse {
             shouldAnimateGreetingShellCollapse = false
             NSAnimationContext.runAnimationGroup { context in
@@ -519,40 +522,86 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         requestPreviewStateChange(to: previewState.nextPreviewState)
     }
 
-    private func handlePointerDown(at point: CGPoint) {
+    private func handlePointerDown(_ input: IslandPointerInput) {
         guard usesPhase5PreviewInteractionRouting else { return }
         activateInteractiveHoverMode()
-        pointerGestureAdapter.pointerDown(at: Double(point.x))
-        beginModeSwitchHoldIfNeeded(at: point)
+        _ = pointerGestureAdapter.pointerDown(
+            pointerID: input.identifier,
+            at: Double(input.location.x),
+            isButtonOrigin: input.isButtonOrigin
+        )
+        beginModeSwitchHoldIfNeeded(at: input.location)
         synchronizePanelClickThroughState()
     }
 
-    private func handlePointerDragged(at point: CGPoint) {
+    private func handlePointerDragged(_ input: IslandPointerInput) {
         guard usesPhase5PreviewInteractionRouting else { return }
-        pointerGestureAdapter.pointerDragged(to: Double(point.x))
-        if isModeSwitchLeadingIcon(point) == false {
+        pointerGestureAdapter.pointerDragged(pointerID: input.identifier, to: Double(input.location.x))
+        applyPointerFeedback(pointerGestureAdapter.interactiveTranslationX)
+        if isModeSwitchLeadingIcon(input.location) == false {
             modeSwitchHoldAdapter.pointerLeftLeadingIcon()
             modeSwitchHoldWorkItem?.cancel()
             modeSwitchHoldWorkItem = nil
         }
     }
 
-    private func handlePointerUp(at point: CGPoint) {
+    private func handlePointerUp(_ input: IslandPointerInput) {
         guard usesPhase5PreviewInteractionRouting else { return }
         let modeSwitchTriggered = modeSwitchHoldAdapter.hasTriggered
         modeSwitchHoldAdapter.pointerReleased()
         modeSwitchHoldWorkItem?.cancel()
         modeSwitchHoldWorkItem = nil
         if modeSwitchTriggered {
-            pointerGestureAdapter.cancel()
+            pointerGestureAdapter.cancel(pointerID: input.identifier)
+            springPointerFeedbackBack()
             synchronizePanelClickThroughState()
             return
         }
-        if let intent = pointerGestureAdapter.pointerUp(at: Double(point.x)) {
+        let intent = pointerGestureAdapter.pointerUp(pointerID: input.identifier, at: Double(input.location.x))
+        springPointerFeedbackBack()
+        if let intent {
             dispatchPhase5Intent(intent)
         } else {
             synchronizePanelClickThroughState()
         }
+    }
+
+    private func handlePointerCancelled(pointerID: Int?) {
+        guard usesPhase5PreviewInteractionRouting else { return }
+        let cancelled = pointerGestureAdapter.cancel(pointerID: pointerID)
+        cancelPendingModeSwitchHold()
+        if cancelled {
+            springPointerFeedbackBack()
+        }
+        synchronizePanelClickThroughState()
+    }
+
+    private func applyPointerFeedback(_ translationX: Double) {
+        let nextTranslation = CGFloat(translationX)
+        guard pointerFeedbackTranslationX != nextTranslation else { return }
+        let delta = nextTranslation - pointerFeedbackTranslationX
+        pointerFeedbackTranslationX = nextTranslation
+        islandPanel.setFrame(islandPanel.frame.offsetBy(dx: delta, dy: 0), display: true)
+    }
+
+    private func springPointerFeedbackBack() {
+        guard pointerFeedbackTranslationX != 0 else { return }
+        let targetFrame = islandPanel.frame.offsetBy(dx: -pointerFeedbackTranslationX, dy: 0)
+        pointerFeedbackTranslationX = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.24
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.18, 0.88, 0.32, 1.22)
+            islandPanel.animator().setFrame(targetFrame, display: true)
+        }
+    }
+
+    private func resetPointerFeedbackImmediately() {
+        guard pointerFeedbackTranslationX != 0 else { return }
+        islandPanel.setFrame(
+            islandPanel.frame.offsetBy(dx: -pointerFeedbackTranslationX, dy: 0),
+            display: false
+        )
+        pointerFeedbackTranslationX = 0
     }
 
     private func handleScrollWheel(_ event: NSEvent) {

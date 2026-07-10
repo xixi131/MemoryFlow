@@ -1,15 +1,23 @@
 import AppKit
 import SwiftUI
 
+struct IslandPointerInput {
+    let identifier: Int
+    let location: CGPoint
+    let isButtonOrigin: Bool
+}
+
 final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
-    var onPointerDown: ((CGPoint) -> Void)?
-    var onPointerDragged: ((CGPoint) -> Void)?
-    var onPointerUp: ((CGPoint) -> Void)?
-    var onPointerCancelled: (() -> Void)?
+    var onPointerDown: ((IslandPointerInput) -> Void)?
+    var onPointerDragged: ((IslandPointerInput) -> Void)?
+    var onPointerUp: ((IslandPointerInput) -> Void)?
+    var onPointerCancelled: ((Int?) -> Void)?
     var onScrollWheel: ((NSEvent) -> Void)?
     var interactiveBounds: CGRect = .zero
     private var pointerTrackingArea: NSTrackingArea?
     private var consumesNextPointerTap = false
+    private var nextPointerIdentifier = 0
+    private var activePointerIdentifier: Int?
 
     func consumeNextPointerTap() {
         consumesNextPointerTap = true
@@ -25,12 +33,18 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     }
 
     override func mouseDown(with event: NSEvent) {
-        onPointerDown?(convert(event.locationInWindow, from: nil))
+        nextPointerIdentifier += 1
+        activePointerIdentifier = nextPointerIdentifier
+        onPointerDown?(pointerInput(for: event, identifier: nextPointerIdentifier))
         super.mouseDown(with: event)
     }
 
     override func mouseDragged(with event: NSEvent) {
-        onPointerDragged?(convert(event.locationInWindow, from: nil))
+        guard let activePointerIdentifier else {
+            super.mouseDragged(with: event)
+            return
+        }
+        onPointerDragged?(pointerInput(for: event, identifier: activePointerIdentifier))
         super.mouseDragged(with: event)
     }
 
@@ -38,13 +52,17 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
         super.mouseUp(with: event)
         if consumesNextPointerTap {
             consumesNextPointerTap = false
+            activePointerIdentifier = nil
             return
         }
-        onPointerUp?(convert(event.locationInWindow, from: nil))
+        guard let activePointerIdentifier else { return }
+        onPointerUp?(pointerInput(for: event, identifier: activePointerIdentifier))
+        self.activePointerIdentifier = nil
     }
 
     override func mouseExited(with event: NSEvent) {
-        onPointerCancelled?()
+        onPointerCancelled?(activePointerIdentifier)
+        activePointerIdentifier = nil
         super.mouseExited(with: event)
     }
 
@@ -71,5 +89,25 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard interactiveBounds.contains(point) else { return nil }
         return super.hitTest(point)
+    }
+
+    private func pointerInput(for event: NSEvent, identifier: Int) -> IslandPointerInput {
+        let location = convert(event.locationInWindow, from: nil)
+        return IslandPointerInput(
+            identifier: identifier,
+            location: location,
+            isButtonOrigin: isButton(at: location)
+        )
+    }
+
+    private func isButton(at point: CGPoint) -> Bool {
+        var candidate = super.hitTest(point)
+        while let view = candidate {
+            if view is NSButton || view.accessibilityRole() == .button {
+                return true
+            }
+            candidate = view.superview
+        }
+        return false
     }
 }
