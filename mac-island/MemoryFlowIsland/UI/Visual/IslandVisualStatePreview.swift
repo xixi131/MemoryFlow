@@ -7,6 +7,7 @@ struct IslandVisualStatePreview: View {
     let horizontalScale: CGFloat
     let widthConstraints: IslandWidthConstraints
     let previewContent: IslandPreviewContent
+    let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
@@ -136,6 +137,7 @@ struct IslandVisualStatePreview: View {
             greetingPhase: greetingPhase,
             greetingExpired: greetingExpired,
             musicArtworkNamespace: musicArtworkNamespace,
+            musicTrackSwipeDirection: musicTrackSwipeDirection,
             onMusicControlInteraction: onMusicControlInteraction
         )
             .frame(
@@ -351,6 +353,7 @@ private struct IslandPreviewContentOverlay: View {
     let greetingPhase: IslandGreetingPhase
     let greetingExpired: Bool
     let musicArtworkNamespace: Namespace.ID
+    let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     var onMusicControlInteraction: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
@@ -484,24 +487,13 @@ private struct IslandPreviewContentOverlay: View {
 
     private var compactActivityContent: some View {
         HStack(spacing: 8) {
-            musicArtwork(
+            musicTrackIdentity(
                 presentation: IslandVisualTokens.activityMusicArtwork,
-                isExpanded: false
+                isExpanded: false,
+                titleSize: 10,
+                subtitleSize: 8,
+                spacing: 1
             )
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(content.title)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Text(content.subtitle)
-                    .font(.system(size: 8, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
 
             Spacer(minLength: 4)
 
@@ -548,12 +540,13 @@ private struct IslandPreviewContentOverlay: View {
     private var expandedMusicContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 14) {
-                musicArtwork(
+                musicTrackIdentity(
                     presentation: IslandVisualTokens.expandedMusicArtwork,
-                    isExpanded: true
+                    isExpanded: true,
+                    titleSize: 16,
+                    subtitleSize: 13,
+                    spacing: 5
                 )
-
-                MusicTrackMetadata(title: content.title, artist: content.subtitle)
 
                 Spacer(minLength: 12)
 
@@ -770,6 +763,29 @@ private struct IslandPreviewContentOverlay: View {
         .accessibilityLabel(content.music?.artworkData == nil ? "Music artwork placeholder" : "Music artwork")
     }
 
+    private func musicTrackIdentity(
+        presentation: IslandMusicArtworkPresentation,
+        isExpanded: Bool,
+        titleSize: CGFloat,
+        subtitleSize: CGFloat,
+        spacing: CGFloat
+    ) -> some View {
+        HStack(alignment: .center, spacing: isExpanded ? 14 : 8) {
+            musicArtwork(presentation: presentation, isExpanded: isExpanded)
+            MusicTrackMetadata(
+                title: content.title,
+                artist: content.subtitle,
+                titleSize: titleSize,
+                subtitleSize: subtitleSize,
+                spacing: spacing
+            )
+        }
+        .islandMusicTrackSwipe(
+            trackID: [content.title, content.subtitle].joined(separator: "|"),
+            direction: musicTrackSwipeDirection
+        )
+    }
+
     private var tintColor: Color {
         if let themeColorHex = content.music?.themeColorHex {
             return Color(memoryFlowHex: themeColorHex)
@@ -927,14 +943,17 @@ private struct MusicArtworkMask: Shape {
 private struct MusicTrackMetadata: View {
     let title: String
     let artist: String
+    let titleSize: CGFloat
+    let subtitleSize: CGFloat
+    let spacing: CGFloat
 
     @State private var displayedTitle = ""
     @State private var displayedArtist = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            metadataText(displayedTitle, fontSize: 16, color: .white)
-            metadataText(displayedArtist, fontSize: 13, color: .white.opacity(0.48))
+        VStack(alignment: .leading, spacing: spacing) {
+            metadataText(displayedTitle, fontSize: titleSize, color: .white)
+            metadataText(displayedArtist, fontSize: subtitleSize, color: .white.opacity(0.48))
         }
         .onAppear { updateMetadata(animated: false) }
         .onChange(of: title) { _ in updateMetadata(animated: true) }

@@ -308,7 +308,7 @@
       "Verify horizontal gestures are ignored in app mode and repeated threshold crossings during cooldown produce one mock command."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-review-expanded-content",

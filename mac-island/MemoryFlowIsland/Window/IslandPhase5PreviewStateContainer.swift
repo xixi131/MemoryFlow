@@ -93,6 +93,23 @@ struct IslandPhase5PreviewStateContainer: Equatable {
     mutating func retarget(to layoutInput: IslandPreviewLayoutInput) -> IslandPhase5PreviewReducerUpdate {
         dispatch(intent: .retargetPresentation(.init(visualState: layoutInput.visualState)))
     }
+
+    mutating func advanceMockMusicTrack(_ command: IslandHorizontalMusicCommand) {
+        guard command != .playPause, var music = domainState.mockSources.music else { return }
+        let tracks = [
+            ("Mock Track", "MemoryFlow", "#22d3ee"),
+            ("Focus Flow", "MemoryFlow", "#a3e635"),
+            ("Recall Loop", "MemoryFlow", "#fb7185")
+        ]
+        let current = tracks.firstIndex { $0.0 == music.trackTitle } ?? 0
+        let step = command == .nextTrack ? 1 : -1
+        let next = tracks[(current + step + tracks.count) % tracks.count]
+        music.trackTitle = next.0
+        music.artistName = next.1
+        music.themeColorHex = next.2
+        music.elapsedSeconds = 0
+        domainState.mockSources.music = music
+    }
 }
 
 extension IslandPresentationRetargetTarget {

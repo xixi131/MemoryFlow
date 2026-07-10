@@ -37,6 +37,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var isModeSwitchSequenceActive = false
     private var trackpadWheelAdapter = IslandTrackpadWheelAdapter()
     private var shouldAnimateGreetingShellCollapse = false
+    private var musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     private var applicationTerminationObserver: NSObjectProtocol?
     private var lastSizingResult: IslandWindowSizingResult?
 
@@ -89,6 +90,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 horizontalScale: 1,
                 widthConstraints: initialLayoutInput.widthConstraints,
                 previewContent: initialLayoutInput.previewContent,
+                musicTrackSwipeDirection: nil,
                 onAdvancePreviewState: nil,
                 onGreetingLifecycleCompleted: nil,
                 onMusicControlInteraction: nil
@@ -389,6 +391,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             horizontalScale: previewHorizontalScale,
             widthConstraints: previewWidthConstraints,
             previewContent: activeLayoutInput.previewContent,
+            musicTrackSwipeDirection: musicTrackSwipeDirection,
             onAdvancePreviewState: usesPhase5PreviewInteractionRouting ? nil : { [weak self] in
                 self?.advancePreviewState()
             },
@@ -564,19 +567,27 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     ) {
         guard usesPhase5PreviewInteractionRouting else { return }
         let update = phase5PreviewStateContainer.dispatch(intent: intent)
+        if case let .horizontalMusicCommand(command) = intent,
+           update.reducerResult.reason != .intentIgnored {
+            phase5PreviewStateContainer.advanceMockMusicTrack(command)
+            musicTrackSwipeDirection = IslandMusicTrackSwipeDirection(command)
+        }
         applyPhase5PreviewUpdate(
             update,
             using: providedScreenMetrics,
             allowLockScheduling: allowLockScheduling
         )
+        if case .horizontalMusicCommand = intent,
+           update.reducerResult.reason != .intentIgnored {
+            requestPreviewLayoutChange(
+                to: phase5PreviewStateContainer.layoutInput,
+                using: providedScreenMetrics
+            )
+        }
         if update.reducerResult.state.presentationLockState.transitionID == "expandedCollapseRecovery" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { [weak self] in
                 self?.dispatchPhase5Intent(.transitionComplete("expandedCollapseRecovery"))
             }
-        }
-        if case let .horizontalMusicCommand(command) = intent,
-           update.reducerResult.reason != .intentIgnored {
-            musicTakeoverController.sendCommand(command.musicCommand)
         }
     }
 

@@ -328,7 +328,7 @@ struct IslandPreviewContentMarker: Equatable {
         showTodoActivity: Bool,
         showReminder: Bool
     ) -> IslandPreviewContentMarker {
-        if state.isGestureTracking || state.isTrackpadGestureLocked {
+        if state.isGestureTracking || (state.isTrackpadGestureLocked && state.primaryMode != .music) {
             return marker(glyph: "LOCK", label: "Gesture", tone: .gestureLock, textWidth: 86)
         }
 
@@ -427,7 +427,7 @@ struct IslandPreviewContent: Equatable {
         showTodoActivity: Bool,
         showReminder: Bool
     ) -> IslandPreviewContent {
-        if state.isGestureTracking || state.isTrackpadGestureLocked {
+        if state.isGestureTracking || (state.isTrackpadGestureLocked && state.primaryMode != .music) {
             return IslandPreviewContent(
                 kind: .gestureLock,
                 eyebrow: "Gesture",

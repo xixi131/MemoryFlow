@@ -1,5 +1,39 @@
 import CoreGraphics
 import Foundation
+import SwiftUI
+
+/// The visual direction follows the physical horizontal trackpad movement.
+enum IslandMusicTrackSwipeDirection: Equatable {
+    case next
+    case previous
+
+    init(_ command: IslandHorizontalMusicCommand) {
+        self = command == .nextTrack ? .next : .previous
+    }
+
+    private var outgoingOffset: CGFloat {
+        self == .next ? 30 : -30
+    }
+
+    var transition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .offset(x: -outgoingOffset, y: 0)),
+            removal: .opacity.combined(with: .offset(x: outgoingOffset, y: 0))
+        )
+    }
+}
+
+extension View {
+    /// Changes only track-specific content; the surrounding island shell is not part of this transition.
+    func islandMusicTrackSwipe(
+        trackID: String,
+        direction: IslandMusicTrackSwipeDirection?
+    ) -> some View {
+        self.id(trackID)
+            .transition(direction?.transition ?? .opacity)
+            .animation(.easeOut(duration: 0.26), value: trackID)
+    }
+}
 
 /// The waveform's timing model is independent from the island shell animation.
 /// This allows the bar view to redraw locally without retargeting panel geometry.
