@@ -61,6 +61,7 @@
 		E00102080000000000000001 /* IslandMotionProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101080000000000000001 /* IslandMotionProbe.swift */; };
 		E00102090000000000000001 /* IslandMusicWaveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101090000000000000001 /* IslandMusicWaveform.swift */; };
 		E001020A0000000000000001 /* IslandMusicWaveformProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */; };
+		E001020B0000000000000001 /* IslandTrackpadMotionE2EProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001010B0000000000000001 /* IslandTrackpadMotionE2EProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -120,6 +121,7 @@
 		E00101080000000000000001 /* IslandMotionProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionProbe.swift; sourceTree = "<group>"; };
 		E00101090000000000000001 /* IslandMusicWaveform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMusicWaveform.swift; sourceTree = "<group>"; };
 		E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMusicWaveformProbe.swift; sourceTree = "<group>"; };
+		E001010B0000000000000001 /* IslandTrackpadMotionE2EProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandTrackpadMotionE2EProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,6 +238,7 @@
 				E00101080000000000000001 /* IslandMotionProbe.swift */,
 				E00101090000000000000001 /* IslandMusicWaveform.swift */,
 				E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */,
+				E001010B0000000000000001 /* IslandTrackpadMotionE2EProbe.swift */,
 			);
 			path = Motion;
 			sourceTree = "<group>";
@@ -413,6 +416,7 @@
 				E00102080000000000000001 /* IslandMotionProbe.swift in Sources */,
 				E00102090000000000000001 /* IslandMusicWaveform.swift in Sources */,
 				E001020A0000000000000001 /* IslandMusicWaveformProbe.swift in Sources */,
+				E001020B0000000000000001 /* IslandTrackpadMotionE2EProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

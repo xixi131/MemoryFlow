@@ -1,0 +1,167 @@
+{
+  "constants" : {
+    "cooldownMilliseconds" : 320,
+    "resetMilliseconds" : 160,
+    "threshold" : 70
+  },
+  "hostPath" : "IslandInteractionHostingView.scrollWheel -> IslandWindowController.handleScrollWheel -> IslandTrackpadWheelAdapter -> reducer -> IslandMotionEngine; the host supplies the matching motion-driver transition ID.",
+  "realDeviceCaptureStatus" : "Pending manual capture on a Mac trackpad. The fallback does not claim physical gesture delivery or hover-focus observation.",
+  "rows" : [
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-01-open",
+      "emittedIntent" : "trackpadSwipe(down)",
+      "event" : "down 70 compact -> activity",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "activityCollapsed",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "trackpadSwipedDownToActivity",
+      "sequenceID" : "vertical-round-trip",
+      "transitionKind" : "compactToActivity"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-02-expand",
+      "emittedIntent" : "trackpadSwipe(down)",
+      "event" : "down 70 activity -> expanded",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "expandedApp",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "trackpadSwipedDownToExpandedApp",
+      "sequenceID" : "vertical-round-trip",
+      "transitionKind" : "activityToExpanded"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-03-recover",
+      "emittedIntent" : "trackpadSwipe(up)",
+      "event" : "up 70 expanded -> activity",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "compactCollapsed",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "trackpadSwipedUpToCompact",
+      "sequenceID" : "vertical-round-trip",
+      "transitionKind" : "expandedToCompact"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-04-compact",
+      "emittedIntent" : "trackpadSwipe(up)",
+      "event" : "up 70 activity -> compact",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "compactCollapsed",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "trackpadSwipedUpToCompact",
+      "sequenceID" : "vertical-round-trip",
+      "transitionKind" : "activityToCompact"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-05-previous",
+      "emittedIntent" : "horizontalMusicCommand(previousTrack)",
+      "event" : "left 70 previous",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "activityCollapsed",
+      "mockCommand" : "previousTrack",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "mockPreviousTrackCommanded",
+      "sequenceID" : "horizontal-music",
+      "transitionKind" : "defaultProfile"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "trackpad-06-next",
+      "emittedIntent" : "horizontalMusicCommand(nextTrack)",
+      "event" : "right 70 next",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "activityCollapsed",
+      "mockCommand" : "nextTrack",
+      "notes" : "Accepted trackpad gesture through adapter, reducer, motion plan, and driver.",
+      "reducerReason" : "mockNextTrackCommanded",
+      "sequenceID" : "horizontal-music",
+      "transitionKind" : "defaultProfile"
+    },
+    {
+      "accepted" : false,
+      "event" : "below threshold 69",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "activityCollapsed",
+      "notes" : "The 70-point threshold rejects this event.",
+      "sequenceID" : "ignored-input"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "axis-horizontal",
+      "emittedIntent" : "horizontalMusicCommand(nextTrack)",
+      "event" : "equal-axis 70,70",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "activityCollapsed",
+      "mockCommand" : "nextTrack",
+      "notes" : "Equal axes select horizontal handling by contract.",
+      "reducerReason" : "mockNextTrackCommanded",
+      "sequenceID" : "ignored-input",
+      "transitionKind" : "defaultProfile"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "axis-vertical",
+      "emittedIntent" : "trackpadSwipe(up)",
+      "event" : "vertical dominance 20,70",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "compactCollapsed",
+      "notes" : "The larger vertical axis controls presentation.",
+      "reducerReason" : "trackpadSwipedUpToCompact",
+      "sequenceID" : "ignored-input",
+      "transitionKind" : "activityToCompact"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "cooldown-first",
+      "emittedIntent" : "trackpadSwipe(down)",
+      "event" : "cooldown first",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "activityCollapsed",
+      "notes" : "Starts the 320ms gesture cooldown.",
+      "reducerReason" : "trackpadSwipedDownToActivity",
+      "sequenceID" : "ignored-input",
+      "transitionKind" : "compactToActivity"
+    },
+    {
+      "accepted" : false,
+      "event" : "cooldown duplicate",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "activityCollapsed",
+      "notes" : "Rejected during the active cooldown.",
+      "sequenceID" : "ignored-input"
+    },
+    {
+      "accepted" : false,
+      "event" : "reset seed 45",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "compactCollapsed",
+      "notes" : "Below threshold accumulation starts.",
+      "sequenceID" : "ignored-input"
+    },
+    {
+      "accepted" : false,
+      "event" : "reset gap 161ms",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "compactCollapsed",
+      "notes" : "The 160ms reset clears the preceding accumulation.",
+      "sequenceID" : "ignored-input"
+    },
+    {
+      "accepted" : true,
+      "animationTransitionID" : "app-horizontal",
+      "emittedIntent" : "horizontalMusicCommand(nextTrack)",
+      "event" : "app horizontal next",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "activityCollapsed",
+      "notes" : "Horizontal mock commands are accepted only in music mode.",
+      "reducerReason" : "intentIgnored",
+      "sequenceID" : "ignored-input",
+      "transitionKind" : "defaultProfile"
+    }
+  ],
+  "verificationMode" : "Swift fallback probe; no physical GUI trackpad capture was available in this environment."
+}
