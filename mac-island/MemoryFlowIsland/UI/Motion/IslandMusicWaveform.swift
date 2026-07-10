@@ -27,11 +27,17 @@ extension View {
     /// Changes only track-specific content; the surrounding island shell is not part of this transition.
     func islandMusicTrackSwipe(
         trackID: String,
-        direction: IslandMusicTrackSwipeDirection?
+        direction: IslandMusicTrackSwipeDirection?,
+        reduceMotion: Bool
     ) -> some View {
         self.id(trackID)
-            .transition(direction?.transition ?? .opacity)
-            .animation(.easeOut(duration: 0.26), value: trackID)
+            .transition(reduceMotion ? .opacity : (direction?.transition ?? .opacity))
+            .animation(
+                reduceMotion
+                    ? .linear(duration: IslandMotionTokens.reduceMotionDuration)
+                    : .easeOut(duration: 0.26),
+                value: trackID
+            )
     }
 }
 

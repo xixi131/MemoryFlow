@@ -9,6 +9,7 @@ struct IslandVisualStatePreview: View {
     let previewContent: IslandPreviewContent
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
+    let reduceMotion: Bool
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
@@ -141,6 +142,7 @@ struct IslandVisualStatePreview: View {
             greetingExpired: greetingExpired,
             musicArtworkNamespace: musicArtworkNamespace,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
+            reduceMotion: reduceMotion,
             onMusicControlInteraction: onMusicControlInteraction,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
             onTodoTaskInteraction: onTodoTaskInteraction
@@ -152,8 +154,8 @@ struct IslandVisualStatePreview: View {
             )
             .opacity(contentPresentation.opacity)
             .blur(radius: contentPresentation.blurRadius)
-            .scaleEffect(contentPresentation.scale)
-            .offset(y: contentPresentation.offsetY)
+            .scaleEffect(reduceMotion ? 1 : contentPresentation.scale)
+            .offset(y: reduceMotion ? 0 : contentPresentation.offsetY)
             .allowsHitTesting(contentPresentation.allowsHitTesting)
             .accessibilityElement(children: .contain)
     }
@@ -360,6 +362,7 @@ private struct IslandPreviewContentOverlay: View {
     let greetingExpired: Bool
     let musicArtworkNamespace: Namespace.ID
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
+    let reduceMotion: Bool
     var onMusicControlInteraction: (() -> Void)?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onTodoTaskInteraction: (() -> Void)?
@@ -389,8 +392,8 @@ private struct IslandPreviewContentOverlay: View {
             if state == .activityCollapsed {
                 compactActivityContent
                     .opacity(isActivityContentVisible ? 1 : 0)
-                    .blur(radius: isActivityContentVisible ? 0 : IslandVisualTokens.activityContentEnter.initialBlurRadius)
-                    .offset(y: isActivityContentVisible ? 0 : 4)
+                    .blur(radius: reduceMotion || isActivityContentVisible ? 0 : IslandVisualTokens.activityContentEnter.initialBlurRadius)
+                    .offset(y: reduceMotion || isActivityContentVisible ? 0 : 4)
                     .allowsHitTesting(isActivityContentVisible)
                     .frame(
                         width: visibleContentFrame.width,
@@ -400,8 +403,13 @@ private struct IslandPreviewContentOverlay: View {
             } else if state == .compactCollapsed || state == .hoverCollapsed {
                 compactContent
                     .id(content.kind)
-                    .transition(.islandCompactContentCrossfade)
-                    .animation(.easeOut(duration: 0.26), value: content.kind)
+                    .transition(reduceMotion ? .opacity : .islandCompactContentCrossfade)
+                    .animation(
+                        reduceMotion
+                            ? .linear(duration: IslandMotionTokens.reduceMotionDuration)
+                            : .easeOut(duration: 0.26),
+                        value: content.kind
+                    )
                     .opacity(isCompactContentVisible ? 1 : 0)
                     .allowsHitTesting(isCompactContentVisible)
                     .frame(
@@ -485,7 +493,7 @@ private struct IslandPreviewContentOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 12)
             .opacity(presentation.opacity)
-            .offset(y: presentation.offsetY)
+            .offset(y: reduceMotion ? 0 : presentation.offsetY)
             .accessibilityLabel("Greeting")
     }
 
@@ -510,7 +518,8 @@ private struct IslandPreviewContentOverlay: View {
                     tint: tintColor,
                     isPlaying: music.isPlaying,
                     count: 4,
-                    displayScale: snapshot.metrics.scale
+                    displayScale: snapshot.metrics.scale,
+                    reduceMotion: reduceMotion
                 )
                 .frame(width: 22, height: 22)
             } else {
@@ -562,7 +571,8 @@ private struct IslandPreviewContentOverlay: View {
                     tint: tintColor,
                     isPlaying: effectiveMusicIsPlaying,
                     count: 5,
-                    displayScale: snapshot.metrics.scale
+                    displayScale: snapshot.metrics.scale,
+                    reduceMotion: reduceMotion
                 )
                 .frame(width: 34, height: 26)
             }
@@ -787,8 +797,12 @@ private struct IslandPreviewContentOverlay: View {
         }
         .frame(width: presentation.width, height: presentation.height)
         .clipShape(MusicArtworkMask(radius: presentation.radius, smoothness: presentation.smoothness))
-        .matchedGeometryEffect(id: "music-artwork", in: musicArtworkNamespace, properties: .frame, anchor: .leading, isSource: !isExpanded)
-        .animation(.easeInOut(duration: 0.46), value: presentation)
+        .modifier(MusicArtworkMotionModifier(
+            namespace: musicArtworkNamespace,
+            isExpanded: isExpanded,
+            presentation: presentation,
+            reduceMotion: reduceMotion
+        ))
         .accessibilityLabel(content.music?.artworkData == nil ? "Music artwork placeholder" : "Music artwork")
     }
 
@@ -811,7 +825,8 @@ private struct IslandPreviewContentOverlay: View {
         }
         .islandMusicTrackSwipe(
             trackID: [content.title, content.subtitle].joined(separator: "|"),
-            direction: musicTrackSwipeDirection
+            direction: musicTrackSwipeDirection,
+            reduceMotion: reduceMotion
         )
     }
 
@@ -1701,11 +1716,12 @@ private struct MusicWaveformMark: View {
     let isPlaying: Bool
     let count: Int
     let displayScale: CGFloat
+    let reduceMotion: Bool
 
     var body: some View {
         // TimelineView only re-evaluates this mark. The shell and panel keep their
         // existing presentation values while music animates.
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !isPlaying)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !isPlaying || reduceMotion)) { timeline in
             HStack(alignment: .center, spacing: 2) {
                 ForEach(0..<count, id: \.self) { index in
                     Capsule()
@@ -1716,7 +1732,7 @@ private struct MusicWaveformMark: View {
                                 at: timeline.date.timeIntervalSinceReferenceDate,
                                 barIndex: index,
                                 displayScale: displayScale,
-                                isPlaying: isPlaying
+                                isPlaying: isPlaying && !reduceMotion
                             )
                         )
                 }
@@ -1725,6 +1741,24 @@ private struct MusicWaveformMark: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(isPlaying ? "Music playing" : "Music paused")
+    }
+}
+
+private struct MusicArtworkMotionModifier: ViewModifier {
+    let namespace: Namespace.ID
+    let isExpanded: Bool
+    let presentation: IslandMusicArtworkPresentation
+    let reduceMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content.animation(.linear(duration: IslandMotionTokens.reduceMotionDuration), value: presentation)
+        } else {
+            content
+                .matchedGeometryEffect(id: "music-artwork", in: namespace, properties: .frame, anchor: .leading, isSource: !isExpanded)
+                .animation(.easeInOut(duration: 0.46), value: presentation)
+        }
     }
 }
 

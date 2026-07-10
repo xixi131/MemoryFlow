@@ -309,6 +309,37 @@ enum IslandMotionProbe {
         guard kinds.allSatisfy({ IslandMotionTokens.profile(for: $0).shellKeyframes.duration > 0 }) else { throw IslandMotionProbeError.defaultPlan }
         return kinds
     }
+
+    static func validateReduceMotion() throws -> [String] {
+        let rows = IslandMockScenario.phase5Catalog.flatMap { scenario in
+            IslandPhase5InteractionDemoControl.allCases.map { control -> (String, IslandMotionPlan) in
+                let result = IslandPresentationReducer.reduce(
+                    current: scenario.initialState,
+                    intent: control.intent
+                )
+                let plan = IslandMotionEngine.plan(
+                    previous: IslandDerivedState.derive(from: scenario.initialState),
+                    next: result.derivedState,
+                    reason: result.reason,
+                    presentation: .idle,
+                    reduceMotion: true
+                )
+                return ("\(scenario.id):\(control.rawValue)", plan)
+            }
+        }
+
+        guard rows.allSatisfy({ row in
+            row.1.reduceMotion &&
+                row.1.shellFrame.keyframes == IslandMotionTokens.reduceMotionShell &&
+                row.1.shapeMorph.duration == 0 &&
+                row.1.content.enter == IslandMotionTokens.reduceMotionContent &&
+                row.1.content.exit == IslandMotionTokens.reduceMotionContent &&
+                row.1.duration == IslandMotionTokens.reduceMotionDuration
+        }) else {
+            throw IslandMotionProbeError.invalidReduceMotionProfile
+        }
+        return rows.map(\.0)
+    }
 }
 
 enum IslandMotionProbeError: Error, CustomStringConvertible {
@@ -320,6 +351,7 @@ enum IslandMotionProbeError: Error, CustomStringConvertible {
     case invalidExpandedMusicOpenPlan
     case invalidExpandedCollapseRecovery
     case invalidReminderAutoOpen
+    case invalidReduceMotionProfile
     var description: String {
         switch self {
         case let .missingPlans(kinds): return "Missing motion plans: \(kinds.map(\.rawValue).sorted())"
@@ -330,6 +362,7 @@ enum IslandMotionProbeError: Error, CustomStringConvertible {
         case .invalidExpandedMusicOpenPlan: return "Tap and trackpad music expansion do not share the 460 by 210 mock music shell."
         case .invalidExpandedCollapseRecovery: return "Expanded content did not recover activity sources or respect force-compact collapse."
         case .invalidReminderAutoOpen: return "Reminder due did not use keyed compact-to-review activity opening and segmented recovery."
+        case .invalidReduceMotionProfile: return "Reduce Motion did not preserve mock scenarios and commands while using the short opacity profile."
         }
     }
 }

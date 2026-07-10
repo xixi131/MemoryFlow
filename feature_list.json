@@ -412,7 +412,7 @@
       "Verify every mock scenario and mouse or trackpad command remains usable with Reduce Motion enabled."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-responsive-layout",

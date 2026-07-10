@@ -45,7 +45,7 @@ struct IslandMotionPlan: Equatable {
     let reduceMotion: Bool
     let isRetargeting: Bool
 
-    var duration: TimeInterval { reduceMotion ? 0 : max(shellFrame.keyframes.duration, shapeMorph.duration) }
+    var duration: TimeInterval { max(shellFrame.keyframes.duration, shapeMorph.duration) }
 }
 
 enum IslandMotionEngine {
@@ -62,7 +62,13 @@ enum IslandMotionEngine {
         let tokens = kind.motionTokens
         let scale = nextSizingResult?.diagnostics.visualScale ?? presentation.visualScale
         let shadow = IslandVisualTokens.shadow.appearance(for: next.visualState, visualScale: scale)
-        let instant = IslandKeyframeMotionToken(duration: 0, times: [0, 1], curve: .linear)
+        let shellKeyframes = reduceMotion ? IslandMotionTokens.reduceMotionShell : tokens.shellKeyframes
+        let content = reduceMotion
+            ? IslandContentVisibilityMotionPlan(
+                enter: IslandMotionTokens.reduceMotionContent,
+                exit: IslandMotionTokens.reduceMotionContent
+            )
+            : IslandContentVisibilityMotionPlan(enter: tokens.contentEnter, exit: tokens.contentExit)
 
         return IslandMotionPlan(
             transitionKind: kind,
@@ -70,7 +76,7 @@ enum IslandMotionEngine {
                 fromFrame: presentation.visibleFrame ?? currentSizingResult?.visibleFrame,
                 toFrame: nextSizingResult?.visibleFrame,
                 spring: tokens.shellSpring,
-                keyframes: reduceMotion ? instant : tokens.shellKeyframes
+                keyframes: shellKeyframes
             ),
             shapeMorph: IslandShapeMorphMotionPlan(
                 fromState: presentation.isAnimating ? presentation.visualState : previous.visualState,
@@ -78,17 +84,19 @@ enum IslandMotionEngine {
                 duration: reduceMotion ? 0 : tokens.pathMorphDuration
             ),
             shadow: IslandShadowMotionPlan(
-                animation: reduceMotion ? IslandShadowMotionToken(duration: 0, curve: .linear) : tokens.shadow,
+                animation: reduceMotion
+                    ? IslandShadowMotionToken(duration: IslandMotionTokens.reduceMotionDuration, curve: .linear)
+                    : tokens.shadow,
                 targetOpacity: shadow.opacity,
                 targetRadius: shadow.radius,
                 targetOffsetY: shadow.offsetY
             ),
-            content: IslandContentVisibilityMotionPlan(enter: tokens.contentEnter, exit: tokens.contentExit),
+            content: content,
             contentChoreography: IslandContentChoreographyPlan(
                 transitionKind: kind,
-                shellDuration: reduceMotion ? 0 : tokens.shellKeyframes.duration,
-                enter: tokens.contentEnter,
-                exit: tokens.contentExit
+                shellDuration: shellKeyframes.duration,
+                enter: content.enter,
+                exit: content.exit
             ),
             reduceMotion: reduceMotion,
             isRetargeting: presentation.isAnimating

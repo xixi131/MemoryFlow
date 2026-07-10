@@ -8,6 +8,7 @@ struct IslandRootView: View {
     let previewContent: IslandPreviewContent
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
+    let reduceMotion: Bool
     var onAdvancePreviewState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
@@ -22,6 +23,7 @@ struct IslandRootView: View {
             previewContent: previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
+            reduceMotion: reduceMotion,
             onAdvanceState: onAdvancePreviewState,
             onGreetingLifecycleCompleted: onGreetingLifecycleCompleted,
             onMusicControlInteraction: onMusicControlInteraction,

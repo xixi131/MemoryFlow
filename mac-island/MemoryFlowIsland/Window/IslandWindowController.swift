@@ -65,6 +65,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var todoToggleScenarioSequence = 0
     private var applicationTerminationObserver: NSObjectProtocol?
     private var applicationDeactivationObserver: NSObjectProtocol?
+    private var accessibilityDisplayOptionsObserver: NSObjectProtocol?
     private var localPointerDownMonitor: Any?
     private var globalPointerDownMonitor: Any?
     private var expandedExitInteractivityWorkItem: DispatchWorkItem?
@@ -122,6 +123,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 previewContent: initialLayoutInput.previewContent,
                 musicTrackSwipeDirection: nil,
                 todoToggleScenarioRequest: nil,
+                reduceMotion: false,
                 onAdvancePreviewState: nil,
                 onGreetingLifecycleCompleted: nil,
                 onMusicControlInteraction: nil,
@@ -143,10 +145,14 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         beginDisplayObservation()
         beginApplicationTerminationObservation()
         beginOutsideCollapseObservation()
+        beginAccessibilityDisplayOptionsObservation()
     }
 
     deinit {
         stopObservation()
+        if let accessibilityDisplayOptionsObserver {
+            NotificationCenter.default.removeObserver(accessibilityDisplayOptionsObserver)
+        }
     }
 
     @available(*, unavailable)
@@ -491,6 +497,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             previewContent: activeLayoutInput.previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
+            reduceMotion: reduceMotionEnabled,
             onAdvancePreviewState: usesPhase5PreviewInteractionRouting ? nil : { [weak self] in
                 self?.advancePreviewState()
             },
@@ -505,6 +512,20 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 self?.hostingView.consumeNextPointerTap()
             }
         )
+    }
+
+    private var reduceMotionEnabled: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private func beginAccessibilityDisplayOptionsObservation() {
+        accessibilityDisplayOptionsObserver = NotificationCenter.default.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: NSWorkspace.shared,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateRootView()
+        }
     }
 
     private var usesPhase5PreviewInteractionRouting: Bool {
@@ -608,7 +629,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                     visualScale: previewVisualScale,
                     isAnimating: false
                 ),
-                reduceMotion: false,
+                reduceMotion: reduceMotionEnabled,
                 currentSizingResult: lastSizingResult,
                 nextSizingResult: resolvedLayout.sizingResult
             )
