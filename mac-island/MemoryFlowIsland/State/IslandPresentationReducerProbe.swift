@@ -1385,13 +1385,13 @@ enum IslandPresentationReducerProbe {
                         reason: "pausedMusicTimedOutToApp",
                         guardOutcome: "passed",
                         mockMusicCommand: nil,
-                        state: snapshot(for: .pausedMusicTimeoutCompact),
-                        visualState: "compactCollapsed",
-                        collapsedWidth: 160
+                        state: snapshot(for: .pausedMusicTimeoutActivity),
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
                     )
                 ],
-                finalState: snapshot(for: .pausedMusicTimeoutCompact),
-                finalVisualState: "compactCollapsed"
+                finalState: snapshot(for: .pausedMusicTimeoutActivity),
+                finalVisualState: "activityCollapsed"
             ),
             IslandPresentationReducerSequenceEvidenceRow(
                 scenarioID: "rapid-retargeting",

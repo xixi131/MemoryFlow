@@ -488,6 +488,30 @@ struct IslandDomainState: Codable, Equatable {
             music: nil
         )
     )
+
+    static let pausedMusicTimeoutActivity = IslandDomainState(
+        authState: .loggedIn,
+        primaryMode: .app,
+        appDisplayMode: .review,
+        presentationState: .activity,
+        forceCompactMode: false,
+        isHovered: false,
+        gestureState: .idle,
+        presentationLockState: .idle,
+        isReminderActive: false,
+        isReminderCollapsing: false,
+        isGreetingActive: false,
+        greetingText: nil,
+        mockSources: IslandMockActivitySources(
+            review: IslandMockReviewActivity(
+                pendingCount: 3,
+                completedTodayCount: 2,
+                nextSubjectTitle: IslandMockScenarioMarkerText.pausedMusicTimeout
+            ),
+            todo: nil,
+            music: nil
+        )
+    )
 }
 
 extension IslandMockReviewActivity {

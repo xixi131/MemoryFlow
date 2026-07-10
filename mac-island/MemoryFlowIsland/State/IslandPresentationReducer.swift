@@ -302,13 +302,7 @@ enum IslandPresentationReducer {
                 return unchanged(state, reason: .intentIgnored)
             }
 
-            return transition(state, reason: .musicStoppedToApp) { nextState in
-                nextState.primaryMode = .app
-                nextState.presentationState = .collapsed
-                nextState.forceCompactMode = true
-                nextState.isHovered = false
-                nextState.mockSources.music = nil
-            }
+            return exitMusic(state, reason: .musicStoppedToApp)
         case let .musicCommandRequested(command):
             guard state.primaryMode == .music else {
                 return unchanged(state, reason: .intentIgnored)
@@ -375,13 +369,7 @@ enum IslandPresentationReducer {
                 return unchanged(state, reason: .intentIgnored)
             }
 
-            return transition(state, reason: .pausedMusicTimedOutToApp) { nextState in
-                nextState.primaryMode = .app
-                nextState.presentationState = .collapsed
-                nextState.forceCompactMode = true
-                nextState.isHovered = false
-                nextState.mockSources.music = nil
-            }
+            return exitMusic(state, reason: .pausedMusicTimedOutToApp)
         case .transitionComplete,
              .greetingLifecycleCompleted,
              .greetingFastForward,
@@ -401,6 +389,22 @@ enum IslandPresentationReducer {
             return .mockPlayPauseCommanded
         case .nextTrack:
             return .mockNextTrackCommanded
+        }
+    }
+
+    /// Music content must leave before the shell resolves the retained app surface.
+    /// The app display mode and compact guard are already authoritative on the state.
+    private static func exitMusic(
+        _ state: IslandDomainState,
+        reason: IslandPresentationTransitionReason
+    ) -> IslandPresentationReducerResult {
+        transition(state, reason: reason) { nextState in
+            nextState.primaryMode = .app
+            nextState.presentationState = state.forceCompactMode ? .collapsed : .activity
+            nextState.forceCompactMode = state.forceCompactMode
+            nextState.isHovered = false
+            nextState.mockSources.music = nil
+            ensureAppMockSource(&nextState, for: state.appDisplayMode)
         }
     }
 

@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-music-release`.
-- Remaining queue size: `20` Phase 6 tasks.
+- First pending task: `mac-motion-music-waveform`.
+- Remaining queue size: `19` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
@@ -53,3 +53,7 @@
 ### 2026-07-10 - Music takeover
 - A mock playback-start control is auth-gated, clears force compact, and opens music activity; active-music snapshots use a 0.18s content retarget rather than replaying shell takeover.
 - `init.sh`, the focused music-takeover probe, and Xcode Debug build passed.
+
+### 2026-07-10 - Music release
+- Paused 30-second and stopped controls now deterministically leave music; resumed or newer snapshots cancel/restart the pending timeout and app targets retain review/todo mode plus compact intent.
+- Focused release probe, `init.sh`, and Xcode Debug build passed; broad legacy reducer evidence retains an unrelated tap expectation mismatch.

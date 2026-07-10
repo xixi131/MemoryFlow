@@ -72,6 +72,7 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
     case horizontalPrevious
     case horizontalNext
     case musicPlaybackStart
+    case musicStopped
     case modeSwitchToggle
     case reminderDue
     case pausedMusicTimeout
@@ -103,12 +104,14 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return "Horizontal Next"
         case .musicPlaybackStart:
             return "Music Playback Start"
+        case .musicStopped:
+            return "Music Stopped"
         case .modeSwitchToggle:
             return "Mode Switch Toggle"
         case .reminderDue:
             return "Reminder Due"
         case .pausedMusicTimeout:
-            return "Paused Music Timeout"
+            return "Paused 30s Fast Forward"
         case .greetingFastForward:
             return "Greeting Fast Forward"
         }
@@ -136,6 +139,8 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return .horizontalMusicCommand(.nextTrack)
         case .musicPlaybackStart:
             return .mockPlaybackStarted(.mockPlaybackStart)
+        case .musicStopped:
+            return .musicStopped
         case .modeSwitchToggle:
             return .modeSwitchToggle
         case .reminderDue:

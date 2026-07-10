@@ -256,7 +256,7 @@
       "Verify paused-resume, paused-timeout, and stopped sequences do not leave music artwork, progress, or waveform visible in app mode."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-waveform",

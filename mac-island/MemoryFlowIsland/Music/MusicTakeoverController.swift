@@ -77,8 +77,8 @@ final class MusicTakeoverController {
         case .playing, .paused:
             updateLocalSnapshot(from: providerSnapshot)
             guard let localSnapshot else { return }
-            forwardSnapshotIfNeeded(localSnapshot)
-            handlePlaybackTimers(for: localSnapshot)
+            let forwarded = forwardSnapshotIfNeeded(localSnapshot)
+            handlePlaybackTimers(for: localSnapshot, resetPausedTimeout: forwarded)
         case .stopped:
             clearMusicState()
         case .unknown:
@@ -117,13 +117,20 @@ final class MusicTakeoverController {
         localSnapshot = current
     }
 
-    private func handlePlaybackTimers(for snapshot: MusicTrackSnapshot) {
+    private func handlePlaybackTimers(
+        for snapshot: MusicTrackSnapshot,
+        resetPausedTimeout: Bool
+    ) {
         if snapshot.isPlaying {
             pausedTimeoutWorkItem?.cancel()
             pausedTimeoutWorkItem = nil
             startProgressTimerIfNeeded()
         } else {
             stopProgressTimer()
+            if resetPausedTimeout {
+                pausedTimeoutWorkItem?.cancel()
+                pausedTimeoutWorkItem = nil
+            }
             schedulePausedTimeout()
         }
     }
@@ -171,11 +178,13 @@ final class MusicTakeoverController {
         onUpdate?(MusicTakeoverUpdate(intent: .musicStopped, commandToSend: nil))
     }
 
-    private func forwardSnapshotIfNeeded(_ snapshot: MusicTrackSnapshot) {
-        guard shouldForward(snapshot) else { return }
+    @discardableResult
+    private func forwardSnapshotIfNeeded(_ snapshot: MusicTrackSnapshot) -> Bool {
+        guard shouldForward(snapshot) else { return false }
         lastForwardedSnapshot = snapshot
         print("[MusicTakeover] Forward status=\(snapshot.status.rawValue) title=\(snapshot.title) artist=\(snapshot.artist)")
         onUpdate?(MusicTakeoverUpdate(intent: .musicSnapshotUpdated(snapshot), commandToSend: nil))
+        return true
     }
 
     private func shouldForward(_ next: MusicTrackSnapshot) -> Bool {

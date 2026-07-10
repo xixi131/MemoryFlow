@@ -874,6 +874,8 @@ enum IslandPhase5Probe {
             return .musicActivity
         case .musicPlaybackStart:
             return .loggedInReviewActivity
+        case .musicStopped:
+            return .musicActivityWithAppFallback
         case .modeSwitchToggle:
             return .loggedInReviewActivityPlain
         case .reminderDue:
