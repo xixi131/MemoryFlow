@@ -24,6 +24,18 @@ struct IslandShapeLayoutSnapshot {
 }
 
 enum IslandShapeEngine {
+    static func interpolatedSnapshot(
+        from source: IslandShapeLayoutSnapshot,
+        to target: IslandShapeLayoutSnapshot,
+        progress: CGFloat
+    ) -> IslandShapeLayoutSnapshot {
+        // Every layer is regenerated from one interpolated metric set to keep path topology stable.
+        snapshot(
+            for: source.metrics.interpolated(to: target.metrics, progress: progress),
+            state: progress >= 0.5 ? target.state : source.state
+        )
+    }
+
     static func snapshot(for state: IslandVisualState, visualScale: CGFloat) -> IslandShapeLayoutSnapshot {
         snapshot(for: state, visualScale: visualScale, horizontalScale: nil)
     }
@@ -159,7 +171,9 @@ enum IslandShapeEngine {
             return .zero
         }
 
-        let tokenHeight = IslandVisualTokens.shell(for: state.tokenSet).height
+        let tokenHeight = state == .hoverCollapsed
+            ? IslandVisualTokens.hover.collapsedHeight
+            : IslandVisualTokens.shell(for: state.tokenSet).height
         let visualScale = max(metrics.height / max(tokenHeight, 1), 0.78)
         return IslandVisualTokens.shadow.outsets(for: state, visualScale: visualScale)
     }

@@ -3,6 +3,27 @@ import Foundation
 struct IslandPreviewLayoutInput: Equatable {
     let visualState: IslandVisualState
     let widthConstraints: IslandWidthConstraints
+    let previewMarker: IslandPreviewContentMarker
+    let previewContent: IslandPreviewContent
+
+    init(
+        visualState: IslandVisualState,
+        widthConstraints: IslandWidthConstraints,
+        previewMarker: IslandPreviewContentMarker = .hidden,
+        previewContent: IslandPreviewContent = IslandPreviewContent.derive(
+            from: .loggedInReviewCompact,
+            derivedVisualState: .compactCollapsed,
+            showMusicActivity: false,
+            showReviewActivity: false,
+            showTodoActivity: false,
+            showReminder: false
+        )
+    ) {
+        self.visualState = visualState
+        self.widthConstraints = widthConstraints
+        self.previewMarker = previewMarker
+        self.previewContent = previewContent
+    }
 }
 
 struct IslandPhase5PreviewReducerUpdate: Equatable {
@@ -15,14 +36,18 @@ struct IslandPhase5PreviewReducerUpdate: Equatable {
     var previousLayoutInput: IslandPreviewLayoutInput {
         IslandPreviewLayoutInput(
             visualState: previousDerivedState.visualState,
-            widthConstraints: previousDerivedState.widthConstraints
+            widthConstraints: previousDerivedState.widthConstraints,
+            previewMarker: previousDerivedState.previewMarker,
+            previewContent: previousDerivedState.previewContent
         )
     }
 
     var currentLayoutInput: IslandPreviewLayoutInput {
         IslandPreviewLayoutInput(
             visualState: currentDerivedState.visualState,
-            widthConstraints: currentDerivedState.widthConstraints
+            widthConstraints: currentDerivedState.widthConstraints,
+            previewMarker: currentDerivedState.previewMarker,
+            previewContent: currentDerivedState.previewContent
         )
     }
 }
@@ -41,7 +66,9 @@ struct IslandPhase5PreviewStateContainer: Equatable {
     var layoutInput: IslandPreviewLayoutInput {
         IslandPreviewLayoutInput(
             visualState: derivedState.visualState,
-            widthConstraints: derivedState.widthConstraints
+            widthConstraints: derivedState.widthConstraints,
+            previewMarker: derivedState.previewMarker,
+            previewContent: derivedState.previewContent
         )
     }
 
@@ -61,5 +88,40 @@ struct IslandPhase5PreviewStateContainer: Equatable {
             currentDerivedState: reducerResult.derivedState,
             reducerResult: reducerResult
         )
+    }
+
+    mutating func retarget(to layoutInput: IslandPreviewLayoutInput) -> IslandPhase5PreviewReducerUpdate {
+        dispatch(intent: .retargetPresentation(.init(visualState: layoutInput.visualState)))
+    }
+}
+
+extension IslandPresentationRetargetTarget {
+    init(visualState: IslandVisualState) {
+        switch visualState {
+        case .compactCollapsed:
+            self.init(
+                presentationState: .collapsed,
+                forceCompactMode: true,
+                isHovered: false
+            )
+        case .hoverCollapsed:
+            self.init(
+                presentationState: .collapsed,
+                forceCompactMode: true,
+                isHovered: true
+            )
+        case .activityCollapsed:
+            self.init(
+                presentationState: .activity,
+                forceCompactMode: false,
+                isHovered: false
+            )
+        case .expandedApp, .expandedMusic:
+            self.init(
+                presentationState: .expanded,
+                forceCompactMode: false,
+                isHovered: false
+            )
+        }
     }
 }

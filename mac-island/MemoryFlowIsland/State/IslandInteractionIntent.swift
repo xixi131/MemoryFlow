@@ -12,7 +12,27 @@ enum IslandTrackpadSwipeDirection: String, Codable, Equatable {
 
 enum IslandHorizontalMusicCommand: String, Codable, Equatable {
     case previousTrack
+    case playPause
     case nextTrack
+}
+
+struct IslandPresentationRetargetTarget: Codable, Equatable {
+    let presentationState: IslandPresentationState
+    let forceCompactMode: Bool
+    let isHovered: Bool
+    let locksTrackpadGesture: Bool
+
+    init(
+        presentationState: IslandPresentationState,
+        forceCompactMode: Bool,
+        isHovered: Bool,
+        locksTrackpadGesture: Bool = false
+    ) {
+        self.presentationState = presentationState
+        self.forceCompactMode = forceCompactMode
+        self.isHovered = isHovered
+        self.locksTrackpadGesture = locksTrackpadGesture
+    }
 }
 
 enum IslandInteractionIntent: Codable, Equatable {
@@ -23,9 +43,16 @@ enum IslandInteractionIntent: Codable, Equatable {
     case pointerSwipe(IslandPointerSwipeDirection)
     case trackpadSwipe(IslandTrackpadSwipeDirection)
     case horizontalMusicCommand(IslandHorizontalMusicCommand)
+    case musicSnapshotUpdated(MusicTrackSnapshot)
+    case musicStopped
+    case musicCommandRequested(IslandHorizontalMusicCommand)
+    case modeSwitchToggle
     case reminderDue
     case pausedMusicTimeout
+    case greetingLifecycleCompleted
+    case greetingFastForward
     case mockScenarioSelect(String)
+    case retargetPresentation(IslandPresentationRetargetTarget)
     case transitionComplete(String?)
 }
 
@@ -39,6 +66,10 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
     case trackpadDown
     case horizontalPrevious
     case horizontalNext
+    case modeSwitchToggle
+    case reminderDue
+    case pausedMusicTimeout
+    case greetingFastForward
 
     var id: String {
         rawValue
@@ -64,6 +95,14 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return "Horizontal Previous"
         case .horizontalNext:
             return "Horizontal Next"
+        case .modeSwitchToggle:
+            return "Mode Switch Toggle"
+        case .reminderDue:
+            return "Reminder Due"
+        case .pausedMusicTimeout:
+            return "Paused Music Timeout"
+        case .greetingFastForward:
+            return "Greeting Fast Forward"
         }
     }
 
@@ -87,6 +126,14 @@ enum IslandPhase5InteractionDemoControl: String, CaseIterable, Identifiable {
             return .horizontalMusicCommand(.previousTrack)
         case .horizontalNext:
             return .horizontalMusicCommand(.nextTrack)
+        case .modeSwitchToggle:
+            return .modeSwitchToggle
+        case .reminderDue:
+            return .reminderDue
+        case .pausedMusicTimeout:
+            return .pausedMusicTimeout
+        case .greetingFastForward:
+            return .greetingFastForward
         }
     }
 }

@@ -2,11 +2,11 @@
   {
     "emittedIntents" : [
       "tapExpandedToApp->expandedApp",
-      "tapCollapsedToCompact->compactCollapsed"
+      "tapCollapsedToActivity->activityCollapsed"
     ],
-    "finalPresentationState" : "collapsed",
-    "finalVisualState" : "compactCollapsed",
-    "isForceCompactMode" : true,
+    "finalPresentationState" : "activity",
+    "finalVisualState" : "activityCollapsed",
+    "isForceCompactMode" : false,
     "isHovered" : false,
     "scenarioID" : "tap-expand-collapse"
   },
@@ -45,6 +45,46 @@
     "isForceCompactMode" : false,
     "isHovered" : false,
     "scenarioID" : "pointer-collapse-restore"
+  },
+  {
+    "emittedIntents" : [
+      "outsideCollapsedToActivity->activityCollapsed"
+    ],
+    "finalPresentationState" : "activity",
+    "finalVisualState" : "activityCollapsed",
+    "isForceCompactMode" : false,
+    "isHovered" : false,
+    "scenarioID" : "expanded-app-source-collapse-recovery"
+  },
+  {
+    "emittedIntents" : [
+      "outsideCollapsedToActivity->activityCollapsed"
+    ],
+    "finalPresentationState" : "activity",
+    "finalVisualState" : "activityCollapsed",
+    "isForceCompactMode" : false,
+    "isHovered" : false,
+    "scenarioID" : "expanded-music-source-collapse-recovery"
+  },
+  {
+    "emittedIntents" : [
+      "outsideCollapsedToCompact->compactCollapsed"
+    ],
+    "finalPresentationState" : "collapsed",
+    "finalVisualState" : "compactCollapsed",
+    "isForceCompactMode" : true,
+    "isHovered" : false,
+    "scenarioID" : "expanded-logged-out-collapse-recovery"
+  },
+  {
+    "emittedIntents" : [
+      "outsideCollapsedToCompact->compactCollapsed"
+    ],
+    "finalPresentationState" : "collapsed",
+    "finalVisualState" : "compactCollapsed",
+    "isForceCompactMode" : true,
+    "isHovered" : false,
+    "scenarioID" : "expanded-compact-only-collapse-recovery"
   },
   {
     "emittedIntents" : [

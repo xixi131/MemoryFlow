@@ -114,6 +114,10 @@ enum IslandPreviewInteractionProbe {
             hoverEnterLeaveRow(),
             pointerTapClassificationRow(),
             pointerCollapseRestoreRow(),
+            expandedAppCollapseRecoveryRow(),
+            expandedMusicCollapseRecoveryRow(),
+            expandedLoggedOutCollapseRecoveryRow(),
+            expandedCompactOnlyCollapseRecoveryRow(),
             trackpadHorizontalMusicRow(),
             trackpadCooldownRow()
         ]
@@ -194,6 +198,63 @@ enum IslandPreviewInteractionProbe {
 
         return row(
             scenarioID: "pointer-tap-classification",
+            intents: intents,
+            container: container
+        )
+    }
+
+    private static func expandedAppCollapseRecoveryRow() -> IslandPreviewInteractionProbeRow {
+        var container = IslandPhase5PreviewStateContainer(initialState: .expandedAppReview)
+        let intents = [
+            record(container.dispatch(intent: .outsideCollapse).reducerResult)
+        ]
+
+        return row(
+            scenarioID: "expanded-app-source-collapse-recovery",
+            intents: intents,
+            container: container
+        )
+    }
+
+    private static func expandedMusicCollapseRecoveryRow() -> IslandPreviewInteractionProbeRow {
+        var container = IslandPhase5PreviewStateContainer(initialState: .expandedMusic)
+        let intents = [
+            record(container.dispatch(intent: .outsideCollapse).reducerResult)
+        ]
+
+        return row(
+            scenarioID: "expanded-music-source-collapse-recovery",
+            intents: intents,
+            container: container
+        )
+    }
+
+    private static func expandedLoggedOutCollapseRecoveryRow() -> IslandPreviewInteractionProbeRow {
+        var state = IslandDomainState.loggedOutCompact
+        state.presentationState = .expanded
+        var container = IslandPhase5PreviewStateContainer(initialState: state)
+        let intents = [
+            record(container.dispatch(intent: .outsideCollapse).reducerResult)
+        ]
+
+        return row(
+            scenarioID: "expanded-logged-out-collapse-recovery",
+            intents: intents,
+            container: container
+        )
+    }
+
+    private static func expandedCompactOnlyCollapseRecoveryRow() -> IslandPreviewInteractionProbeRow {
+        var state = IslandDomainState.loggedInReviewCompact
+        state.presentationState = .expanded
+        state.mockSources = .none
+        var container = IslandPhase5PreviewStateContainer(initialState: state)
+        let intents = [
+            record(container.dispatch(intent: .outsideCollapse).reducerResult)
+        ]
+
+        return row(
+            scenarioID: "expanded-compact-only-collapse-recovery",
             intents: intents,
             container: container
         )
@@ -302,12 +363,26 @@ enum IslandPreviewInteractionProbe {
             return "trackpadSwipe(\(direction.rawValue))"
         case let .horizontalMusicCommand(command):
             return "horizontalMusicCommand(\(command.rawValue))"
+        case let .musicSnapshotUpdated(snapshot):
+            return "musicSnapshotUpdated(\(snapshot.title))"
+        case .musicStopped:
+            return "musicStopped"
+        case let .musicCommandRequested(command):
+            return "musicCommandRequested(\(command.rawValue))"
+        case .modeSwitchToggle:
+            return "modeSwitchToggle"
         case .reminderDue:
             return "reminderDue"
         case .pausedMusicTimeout:
             return "pausedMusicTimeout"
+        case .greetingLifecycleCompleted:
+            return "greetingLifecycleCompleted"
+        case .greetingFastForward:
+            return "greetingFastForward"
         case let .mockScenarioSelect(identifier):
             return "mockScenarioSelect(\(identifier))"
+        case .retargetPresentation:
+            return "retargetPresentation"
         case let .transitionComplete(identifier):
             return "transitionComplete(\(identifier ?? "nil"))"
         }

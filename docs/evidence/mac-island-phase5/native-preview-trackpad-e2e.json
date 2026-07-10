@@ -1,0 +1,185 @@
+{
+  "environmentCaveats" : [
+    "Backend port 8080 is already in use by PID 59013 in this session.",
+    "xcodebuild requires full Xcode, but xcode-select points at \/Library\/Developer\/CommandLineTools.",
+    "No physical macOS GUI capture path was available from the sandboxed worker, so the matching Phase 5 interaction-demo menu fallback was used."
+  ],
+  "generatedFrom" : "IslandTrackpadWheelAdapter, IslandPhase5PreviewStateContainer.dispatch, IslandPresentationReducer, IslandWindowSizingEngine, NotchLayoutEngine",
+  "nativeHostLaunchAttempt" : ".\/init.sh stopped before launch because backend port 8080 is occupied; xcodebuild is unavailable with CommandLineTools-only developer directory",
+  "physicalCaptureAvailable" : false,
+  "requiredChecks" : [
+    "trackpad-vertical-open-expand",
+    "trackpad-vertical-close-compact",
+    "trackpad-horizontal-music-commands",
+    "trackpad-horizontal-app-mode-ignored"
+  ],
+  "rows" : [
+    {
+      "appModeHorizontalIgnored" : false,
+      "appModeRemainedApp" : false,
+      "baselineVisibleFrameWidth" : 210,
+      "checkID" : "trackpad-vertical-open-expand",
+      "displayMaxY" : 982,
+      "emittedIntents" : [
+        "trackpadSwipe(down)",
+        "trackpadSwipe(down)"
+      ],
+      "evidence" : "visibleFrame.width 210.0 -> 518.5; reasons=trackpadSwipedDownToActivity,noChange,noChange,trackpadSwipedDownToExpandedApp; mockMusicCommands=; centerX=756.25, notchCenterX=756.0, maxY=982.0",
+      "finalPresentationState" : "expanded",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "expandedApp",
+      "horizontalNextCommanded" : false,
+      "horizontalPreviousCommanded" : false,
+      "interactionSource" : "real vertical trackpad swipes down on island shell when GUI capture is available",
+      "menuFallbackPath" : "MF status item > Phase 5 Interactions > Trackpad Down, cooldown completion, then Trackpad Down",
+      "mockMusicCommands" : [
+
+      ],
+      "notchCenterX" : 756,
+      "observedOutcome" : "first vertical down swipe opens compact review to activity; second down swipe expands activity to the app surface",
+      "rawGestureDeltas" : [
+        "deltaX=0.0, deltaY=-82.0",
+        "deltaX=0.0, deltaY=-86.0"
+      ],
+      "reducerReasons" : [
+        "trackpadSwipedDownToActivity",
+        "noChange",
+        "noChange",
+        "trackpadSwipedDownToExpandedApp"
+      ],
+      "staysCenteredOnNotch" : true,
+      "staysTopAttached" : true,
+      "verticalClosedExpanded" : false,
+      "verticalCompactedActivity" : false,
+      "verticalExpanded" : true,
+      "verticalOpenedActivity" : true,
+      "visibleFrameCenterX" : 756.25,
+      "visibleFrameMaxY" : 982,
+      "visibleFrameWidth" : 518.5
+    },
+    {
+      "appModeHorizontalIgnored" : false,
+      "appModeRemainedApp" : false,
+      "baselineVisibleFrameWidth" : 518.5,
+      "checkID" : "trackpad-vertical-close-compact",
+      "displayMaxY" : 982,
+      "emittedIntents" : [
+        "trackpadSwipe(up)",
+        "trackpadSwipe(up)"
+      ],
+      "evidence" : "visibleFrame.width 518.5 -> 210.0; reasons=trackpadSwipedUpToActivity,noChange,trackpadSwipedUpToCompact; mockMusicCommands=; centerX=756.0, notchCenterX=756.0, maxY=982.0",
+      "finalPresentationState" : "activity",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "compactCollapsed",
+      "horizontalNextCommanded" : false,
+      "horizontalPreviousCommanded" : false,
+      "interactionSource" : "real vertical trackpad swipes up on island shell when GUI capture is available",
+      "menuFallbackPath" : "MF status item > Phase 5 Interactions > Trackpad Up, cooldown completion, then Trackpad Up",
+      "mockMusicCommands" : [
+
+      ],
+      "notchCenterX" : 756,
+      "observedOutcome" : "first vertical up swipe closes expanded app to activity; second up swipe compacts the activity shell",
+      "rawGestureDeltas" : [
+        "deltaX=0.0, deltaY=82.0",
+        "deltaX=0.0, deltaY=86.0"
+      ],
+      "reducerReasons" : [
+        "trackpadSwipedUpToActivity",
+        "noChange",
+        "trackpadSwipedUpToCompact"
+      ],
+      "staysCenteredOnNotch" : true,
+      "staysTopAttached" : true,
+      "verticalClosedExpanded" : true,
+      "verticalCompactedActivity" : true,
+      "verticalExpanded" : false,
+      "verticalOpenedActivity" : false,
+      "visibleFrameCenterX" : 756,
+      "visibleFrameMaxY" : 982,
+      "visibleFrameWidth" : 210
+    },
+    {
+      "appModeHorizontalIgnored" : false,
+      "appModeRemainedApp" : false,
+      "baselineVisibleFrameWidth" : 288,
+      "checkID" : "trackpad-horizontal-music-commands",
+      "displayMaxY" : 982,
+      "emittedIntents" : [
+        "horizontalMusicCommand(previousTrack)",
+        "horizontalMusicCommand(nextTrack)"
+      ],
+      "evidence" : "visibleFrame.width 288.0 -> 288.0; reasons=mockPreviousTrackCommanded,noChange,mockNextTrackCommanded; mockMusicCommands=previousTrack,nextTrack; centerX=756.0, notchCenterX=756.0, maxY=982.0",
+      "finalPresentationState" : "activity",
+      "finalPrimaryMode" : "music",
+      "finalVisualState" : "activityCollapsed",
+      "horizontalNextCommanded" : true,
+      "horizontalPreviousCommanded" : true,
+      "interactionSource" : "real horizontal trackpad swipes on music island shell when GUI capture is available",
+      "menuFallbackPath" : "MF status item > Phase 5 Interactions > Horizontal Previous, cooldown completion, then Horizontal Next",
+      "mockMusicCommands" : [
+        "previousTrack",
+        "nextTrack"
+      ],
+      "notchCenterX" : 756,
+      "observedOutcome" : "horizontal music gestures emit mock previous and next commands while staying in music activity mode",
+      "rawGestureDeltas" : [
+        "deltaX=-82.0, deltaY=4.0",
+        "deltaX=86.0, deltaY=4.0"
+      ],
+      "reducerReasons" : [
+        "mockPreviousTrackCommanded",
+        "noChange",
+        "mockNextTrackCommanded"
+      ],
+      "staysCenteredOnNotch" : true,
+      "staysTopAttached" : true,
+      "verticalClosedExpanded" : false,
+      "verticalCompactedActivity" : false,
+      "verticalExpanded" : false,
+      "verticalOpenedActivity" : false,
+      "visibleFrameCenterX" : 756,
+      "visibleFrameMaxY" : 982,
+      "visibleFrameWidth" : 288
+    },
+    {
+      "appModeHorizontalIgnored" : true,
+      "appModeRemainedApp" : true,
+      "baselineVisibleFrameWidth" : 280,
+      "checkID" : "trackpad-horizontal-app-mode-ignored",
+      "displayMaxY" : 982,
+      "emittedIntents" : [
+        "horizontalMusicCommand(nextTrack)"
+      ],
+      "evidence" : "visibleFrame.width 280.0 -> 280.0; reasons=intentIgnored; mockMusicCommands=; centerX=756.0, notchCenterX=756.0, maxY=982.0",
+      "finalPresentationState" : "activity",
+      "finalPrimaryMode" : "app",
+      "finalVisualState" : "activityCollapsed",
+      "horizontalNextCommanded" : false,
+      "horizontalPreviousCommanded" : false,
+      "interactionSource" : "real horizontal trackpad swipe on app island shell when GUI capture is available",
+      "menuFallbackPath" : "MF status item > Phase 5 Interactions > Horizontal Next while app mode is selected",
+      "mockMusicCommands" : [
+
+      ],
+      "notchCenterX" : 756,
+      "observedOutcome" : "horizontal music gesture is ignored in app mode and leaves the app activity shell unchanged",
+      "rawGestureDeltas" : [
+        "deltaX=86.0, deltaY=4.0"
+      ],
+      "reducerReasons" : [
+        "intentIgnored"
+      ],
+      "staysCenteredOnNotch" : true,
+      "staysTopAttached" : true,
+      "verticalClosedExpanded" : false,
+      "verticalCompactedActivity" : false,
+      "verticalExpanded" : false,
+      "verticalOpenedActivity" : false,
+      "visibleFrameCenterX" : 756,
+      "visibleFrameMaxY" : 982,
+      "visibleFrameWidth" : 280
+    }
+  ],
+  "verificationMode" : "fallback Swift probe for native preview host trackpad interactions and matching interaction-demo menu controls"
+}

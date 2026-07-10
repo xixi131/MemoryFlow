@@ -29,6 +29,7 @@ final class IslandPanel: NSPanel {
     private var requestedVisibleShellSizeOverride: NSSize?
     private var currentShadowOutsets: IslandShadowOutsets = .zero
     private var renderedVisibleShellSize: NSSize?
+    private(set) var currentHitTestFrame: CGRect = .zero
 
     var isClickThroughEnabled: Bool {
         ignoresMouseEvents
@@ -108,6 +109,15 @@ final class IslandPanel: NSPanel {
         )
     }
 
+    func applySizingResult(_ sizingResult: IslandWindowSizingResult) -> CGRect {
+        setRequestedShellLayout(
+            visibleShellSize: sizingResult.visibleSize,
+            shadowOutsets: sizingResult.shadowOutsets
+        )
+        currentHitTestFrame = sizingResult.hitTestFrame
+        return panelFrame(forVisibleShellFrame: sizingResult.visibleFrame)
+    }
+
     private func configureAppearance() {
         isOpaque = false
         backgroundColor = .clear
@@ -118,7 +128,7 @@ final class IslandPanel: NSPanel {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         hidesOnDeactivate = false
-        animationBehavior = .utilityWindow
+        animationBehavior = .none
         acceptsMouseMovedEvents = true
         becomesKeyOnlyIfNeeded = true
         worksWhenModal = true

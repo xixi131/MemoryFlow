@@ -6,6 +6,7 @@ struct IslandMockScenario: Equatable, Identifiable {
     let initialState: IslandDomainState
     let expectedDerivedVisualState: IslandVisualState
 
+    // Selection only replaces preview state through the reducer; it never starts media providers.
     static let phase5Catalog: [IslandMockScenario] = [
         IslandMockScenario(
             id: "logged-out-compact",
@@ -15,56 +16,68 @@ struct IslandMockScenario: Equatable, Identifiable {
         ),
         IslandMockScenario(
             id: "logged-in-review-compact",
-            menuTitle: "Review Compact",
+            menuTitle: "Logged In Compact",
             initialState: .loggedInReviewCompact,
             expectedDerivedVisualState: .compactCollapsed
         ),
         IslandMockScenario(
-            id: "logged-in-todo-compact",
-            menuTitle: "Todo Compact",
-            initialState: .loggedInTodoCompact,
+            id: "greeting",
+            menuTitle: "Greeting",
+            initialState: .mockGreetingCompact,
             expectedDerivedVisualState: .compactCollapsed
         ),
         IslandMockScenario(
             id: "review-activity",
             menuTitle: "Review Activity",
-            initialState: .loggedInReviewActivityPlain,
+            initialState: .mockReviewActivity,
             expectedDerivedVisualState: .activityCollapsed
         ),
         IslandMockScenario(
             id: "todo-activity",
             menuTitle: "Todo Activity",
-            initialState: .loggedInTodoActivity,
+            initialState: .mockTodoActivity,
             expectedDerivedVisualState: .activityCollapsed
         ),
         IslandMockScenario(
-            id: "music-activity",
-            menuTitle: "Music Activity",
-            initialState: .musicActivity,
+            id: "music-playing",
+            menuTitle: "Music Playing",
+            initialState: .mockMusicPlayingActivity,
             expectedDerivedVisualState: .activityCollapsed
+        ),
+        IslandMockScenario(
+            id: "music-paused",
+            menuTitle: "Music Paused",
+            initialState: .mockMusicPausedActivity,
+            expectedDerivedVisualState: .activityCollapsed
+        ),
+        IslandMockScenario(
+            id: "expanded-review",
+            menuTitle: "Expanded Review",
+            initialState: .mockExpandedReview,
+            expectedDerivedVisualState: .expandedApp
+        ),
+        IslandMockScenario(
+            id: "expanded-todo",
+            menuTitle: "Expanded Todo",
+            initialState: .mockExpandedTodo,
+            expectedDerivedVisualState: .expandedApp
         ),
         IslandMockScenario(
             id: "expanded-music",
             menuTitle: "Expanded Music",
-            initialState: .expandedMusic,
+            initialState: .mockExpandedMusic,
             expectedDerivedVisualState: .expandedMusic
-        ),
-        IslandMockScenario(
-            id: "expanded-app",
-            menuTitle: "Expanded App",
-            initialState: .expandedAppReview,
-            expectedDerivedVisualState: .expandedApp
         ),
         IslandMockScenario(
             id: "reminder-due",
             menuTitle: "Reminder Due",
-            initialState: .loggedInReviewActivity,
+            initialState: .mockReminderDue,
             expectedDerivedVisualState: .activityCollapsed
         ),
         IslandMockScenario(
-            id: "paused-music-timeout",
-            menuTitle: "Paused Music Timeout",
-            initialState: .pausedMusicTimeoutCompact,
+            id: "music-stopped-fallback",
+            menuTitle: "Music Stopped Fallback",
+            initialState: .mockMusicStoppedFallback,
             expectedDerivedVisualState: .compactCollapsed
         )
     ]

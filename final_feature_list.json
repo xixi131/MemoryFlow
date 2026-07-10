@@ -1,0 +1,453 @@
+[
+  {
+    "task_type": "docs",
+    "description": "Create the Phase 5 interaction and mock-state acceptance document shell.",
+    "steps": [
+      "Create docs/mac-island-phase5-interaction-state-acceptance.md with headings for State Model, Derived State, Interaction Intents, Mock Scenarios, Window Wiring, Gesture Guards, Preview Evidence, and Non-Goals.",
+      "Add a one-sentence scope note that Phase 5 uses mock data and native interaction intents without real backend or real music provider integration.",
+      "Check that every heading is unique and the document opens from repository root."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Phase 5 acceptance rows for state and derived-state behavior.",
+    "steps": [
+      "Add acceptance rows for authState, primaryMode, appDisplayMode, presentationState, forceCompactMode, hover, gesture, mode-switch, reminder, and greeting flags.",
+      "Add acceptance rows for hasMusicActivitySource, hasAppActivitySource, showMusicActivity, showAppActivity, showAnyActivity, isActivityVisualState, collapsedWidth, radius, and smoothness outputs.",
+      "Link each row to the Phase 5 section in 灵动岛迁移方案.md and to docs/mac-island-state-spec.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Phase 5 acceptance rows for mouse and trackpad interaction intents.",
+    "steps": [
+      "Add acceptance rows for hover enter, hover leave, tap expand, tap collapse, pointer swipe compact/activity, trackpad vertical open/close, and trackpad horizontal music command intents.",
+      "Record the Windows baseline thresholds for tap, pointer swipe, trackpad horizontal, trackpad vertical, reset window, and cooldown window.",
+      "Link each row to docs/mac-island-interaction-spec.md and docs/mac-island-animation-spec.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native Phase 5 domain state types for mock-driven island behavior.",
+    "steps": [
+      "Create a Phase 5 state model file under mac-island/MemoryFlowIsland/State/ for authState, primaryMode, appDisplayMode, presentationState, forceCompactMode, hover, gesture, animation, reminder, and greeting flags.",
+      "Include lightweight mock payload fields for review, todo, and music activity sources without adding real providers or API calls.",
+      "Check the full native Swift source set with swiftc typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native Phase 5 interaction intent types and gesture thresholds.",
+    "steps": [
+      "Create an IslandInteractionIntent model with cases for hoverEnter, hoverLeave, tap, outsideCollapse, pointerSwipe, trackpadSwipe, horizontalMusicCommand, mockScenarioSelect, and transitionComplete.",
+      "Add threshold constants that mirror the documented Windows tap, pointer swipe, trackpad threshold, reset, and cooldown values.",
+      "Check that the model has no dependency on AppKit windows or SwiftUI views."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add derived-state output for Phase 5 visual decisions.",
+    "steps": [
+      "Create IslandDerivedState with booleans for music, app, review, todo, reminder, any-activity, and activity-visual branches.",
+      "Compute collapsed width, radius, smoothness, visual state, and content-width requirement from the mock domain state.",
+      "Check representative logged-out, logged-in review, todo, and music inputs with a lightweight Swift harness or typecheck-safe probe."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the Phase 5 presentation reducer shell.",
+    "steps": [
+      "Create IslandPresentationReducer with an API that accepts current domain state and IslandInteractionIntent and returns the next domain state plus a transition reason.",
+      "Keep the reducer pure and free of window mutation, timers, menu objects, or real provider calls.",
+      "Check that unknown or no-op intents preserve state without changing visual output."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement logged-out and logged-in compact derivation in the Phase 5 reducer path.",
+    "steps": [
+      "Map logged-out mock state to compact collapsed visual output with the documented signed-out width branch.",
+      "Map logged-in app/review compact state to compact collapsed visual output with the documented logged-in width branch.",
+      "Check derived-state probe rows for logged-out and logged-in review compact scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement app review and todo activity derivation for mock scenarios.",
+    "steps": [
+      "Map logged-in review activity mock state to app activity visual output when forceCompactMode is false.",
+      "Map logged-in todo activity mock state to todo activity visual output when forceCompactMode is false.",
+      "Check derived-state probe rows for review activity, todo activity, and todo compact special-width scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement music activity derivation for mock takeover scenarios.",
+    "steps": [
+      "Map mock music data plus primaryMode music to music activity visual output when forceCompactMode is false.",
+      "Keep the music branch independent from real MediaRemote, Apple Music, Spotify, or IPC provider code.",
+      "Check derived-state probe rows for music activity and music compact fallback scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement tap-driven expand and collapse transitions in the reducer.",
+    "steps": [
+      "Make tap intent expand collapsed or activity states into the correct expanded app or expanded music presentation.",
+      "Make tap or collapse intent return expanded states to the correct collapsed or activity presentation based on activity-source availability.",
+      "Check a reducer probe sequence for compact to expanded to activity or compact recovery."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement hover enter and hover leave transitions in the reducer.",
+    "steps": [
+      "Make hoverEnter set isHovered and produce hoverCollapsed only when the island is not expanded.",
+      "Make hoverLeave clear isHovered and preserve expanded presentation when the island is expanded.",
+      "Check reducer probe sequences for compact hover enter/leave and expanded hover leave."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement pointer swipe compact and activity transitions in the reducer.",
+    "steps": [
+      "Map pointer swipe right to forceCompactMode true when an activity source is visible.",
+      "Map pointer swipe left to forceCompactMode false when an activity source exists and the island is compact.",
+      "Check reducer probe sequences for review activity collapse and compact activity restore."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement trackpad vertical open and close transitions in the reducer.",
+    "steps": [
+      "Map trackpad swipe up to close expanded presentation or collapse activity presentation to compact.",
+      "Map trackpad swipe down to reopen activity from compact or expand activity presentation.",
+      "Check reducer probe sequences for expanded close, activity close, activity reopen, and activity expand."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement mock music horizontal trackpad command intents.",
+    "steps": [
+      "Map horizontal trackpad intents to previous-track and next-track mock command outputs only when primaryMode is music.",
+      "Keep command output as mock reducer metadata instead of sending real media keys.",
+      "Check reducer probe rows for music horizontal swipe and app-mode ignored horizontal swipe."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add reducer guards for gesture locks and animation locks.",
+    "steps": [
+      "Add state fields or helper logic that blocks overlapping trackpad gestures during the cooldown window.",
+      "Add mode-switch and force-compact transition guards so repeated intents do not skip visual states.",
+      "Check rapid tap, hover, and trackpad probe sequences for stable target-state output."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add reminder and paused-music mock timer intents without real timers.",
+    "steps": [
+      "Add reducer intents that simulate reminder becoming due and paused music timeout completion.",
+      "Make reminder due open the app review activity path only when compact, app-mode, and not expanded.",
+      "Make paused music timeout return to app mode and clear mock music activity source in reducer output."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the Phase 5 mock scenario catalog.",
+    "steps": [
+      "Create IslandMockScenario definitions for logged-out compact, logged-in review compact, logged-in todo compact, review activity, todo activity, music activity, expanded music, expanded app, reminder due, and paused music timeout scenarios.",
+      "Give every scenario a stable id, menu title, initial state, and expected derived visual state.",
+      "Check that the scenario catalog compiles without referencing backend or real music provider modules."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create a Phase 5 state-machine probe for derived-state coverage.",
+    "steps": [
+      "Extend or add a lightweight Swift probe that evaluates every mock scenario and writes derived visual state, width, mode, presentation, and activity booleans to docs/evidence/mac-island-phase5/.",
+      "Check that every required Phase 5 scenario appears exactly once in the generated JSON output.",
+      "Check that no generated row reports an unsupported visual state or missing width value."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create a Phase 5 reducer probe for interaction sequence coverage.",
+    "steps": [
+      "Add reducer sequence cases for hover enter/leave, tap expand/collapse, pointer compact/activity swipes, trackpad vertical swipes, horizontal music command, reminder due, paused timeout, and rapid retargeting.",
+      "Write sequence outputs under docs/evidence/mac-island-phase5/ as JSON or Markdown evidence.",
+      "Check that every sequence records initial state, intents, final state, visual state, and guard outcome."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Wire IslandWindowController to own Phase 5 domain state behind preview mode.",
+    "steps": [
+      "Add a Phase 5 preview state container to IslandWindowController without removing the existing Phase 4 sizing and motion engine paths.",
+      "Map IslandDerivedState visual output into the existing resolvePreviewLayout and IslandMotionEngine request path.",
+      "Check that the native source set typechecks and compact startup still renders when Phase 5 preview mode is enabled."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Route tap interaction through the Phase 5 reducer in preview mode.",
+    "steps": [
+      "Replace preview-only tap cycling with a reducer tap intent when Phase 5 preview mode is enabled.",
+      "Keep the old preview cycling path available only when Phase 5 preview mode is disabled or explicitly requested.",
+      "Check that tapping compact opens expanded and tapping or collapse intent returns to the expected state in a reducer-backed probe."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Route hover monitoring through the Phase 5 reducer in preview mode.",
+    "steps": [
+      "Make IslandHoverMonitor callbacks send hoverEnter and hoverLeave intents to the Phase 5 reducer path.",
+      "Keep click-through disable and recovery tied to the derived hover or expanded state instead of direct preview-state checks.",
+      "Check that hover enter grows the compact shell and hover leave returns it without moving away from the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native pointer drag classification for Phase 5 preview interactions.",
+    "steps": [
+      "Add a small pointer gesture adapter that records pointer-down, pointer-move, and pointer-up horizontal deltas for the island view or panel.",
+      "Convert tap-sized movement into tap intent and swipe-sized movement into pointer swipe intents using the documented thresholds.",
+      "Check with a focused probe or manual preview path that drag right collapses activity and drag left restores activity."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native trackpad wheel classification for Phase 5 preview interactions.",
+    "steps": [
+      "Add a wheel or scroll event adapter that accumulates deltaX and deltaY over the documented reset window.",
+      "Convert dominant vertical and horizontal movement into trackpad intents using the documented threshold and cooldown values.",
+      "Check that repeated wheel events during cooldown do not emit duplicate reducer intents."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose Phase 5 mock scenarios in the status menu.",
+    "steps": [
+      "Add a preview-only Phase 5 Scenarios submenu gated by a clear environment flag.",
+      "Wire each scenario menu item to select the corresponding IslandMockScenario through the reducer path.",
+      "Check that selecting logged-out, review activity, todo activity, music activity, expanded music, and expanded app changes the visible shell state."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose Phase 5 interaction demo controls in the status menu.",
+    "steps": [
+      "Add a preview-only Phase 5 Interactions submenu for hover enter, hover leave, tap, pointer swipe left, pointer swipe right, trackpad up, trackpad down, horizontal previous, and horizontal next intents.",
+      "Route every menu item through the same reducer path used by real preview interactions.",
+      "Check that menu-triggered interaction demos produce the same derived final states as reducer probe sequences."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add minimal mock content markers so Phase 5 state changes are visible.",
+    "steps": [
+      "Add lightweight preview-only labels or glyph markers for logged-out, review, todo, music, reminder, and gesture-lock states without implementing the full Phase 6 content layout.",
+      "Keep marker sizing inputs flowing through IslandContentWidthRequirement rather than directly resizing the window from the view layer.",
+      "Check that each mock scenario has a visibly distinct marker while the shell remains attached to the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Connect Phase 5 content width requirements to mock derived state.",
+    "steps": [
+      "Make derived state declare content width requirements for review, todo, music, greeting, and compact branches.",
+      "Feed the derived content width requirement into IslandWindowSizingEngine through the controller path.",
+      "Check that activity width changes with mock scenario requirements and remains centered around the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Keep expanded collapse recovery tied to activity-source availability.",
+    "steps": [
+      "When expanded app or music collapses, return to activity presentation if a mock activity source is still available.",
+      "When expanded logged-out or compact-only scenarios collapse, return to compact presentation.",
+      "Check reducer and visible preview paths for expanded music, expanded app, and logged-out collapse recovery."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add Phase 5 motion-plan selection from reducer transition reasons.",
+    "steps": [
+      "Map reducer transition reasons to existing IslandTransitionKind values for compact, activity, expanded, hover, and retarget paths.",
+      "Preserve Phase 4 motion tokens while making Phase 5 state transitions choose the correct motion path.",
+      "Check that tap, hover, pointer swipe, and trackpad swipe sequences each record the expected transition kind."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add Phase 5 retarget handling for rapid mouse and gesture input.",
+    "steps": [
+      "Allow a new reducer intent to retarget the in-flight presentation target without resetting to an old source state.",
+      "Keep hover leave, tap collapse, and trackpad close from fighting over stale animation locks.",
+      "Check rapid hover-tap-hover and tap-tap-trackpad reducer sequences for stable final state and no skipped root view update."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 5 scenario matrix evidence.",
+    "steps": [
+      "Generate docs/evidence/mac-island-phase5/scenario-matrix.json from the Phase 5 scenario probe.",
+      "Confirm the matrix includes logged-out, review compact, todo compact, review activity, todo activity, music activity, expanded app, expanded music, reminder due, and paused timeout rows.",
+      "Check that every row includes domain state, derived state, visual state, width, and expected transition metadata."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 5 interaction sequence evidence.",
+    "steps": [
+      "Generate docs/evidence/mac-island-phase5/interaction-sequences.json or Markdown from the reducer sequence probe.",
+      "Confirm the evidence covers hover, tap, pointer swipe, trackpad vertical, horizontal music, reminder, paused timeout, and rapid retargeting paths.",
+      "Check that guard outcomes are explicit for click-through, gesture lock, animation lock, and cooldown behavior."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 mock scenarios in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 scenario controls enabled when the local environment supports it.",
+      "Select at least logged-out, review activity, todo activity, music activity, expanded app, and expanded music scenarios from the status menu.",
+      "Record whether each scenario visibly changes shell shape, marker content, and notch attachment, noting any environment limitation if physical capture is unavailable."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 mouse interactions in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 interactions enabled when the local environment supports it.",
+      "Use real hover, tap, and pointer drag interactions on the island shell or the matching interaction menu fallbacks.",
+      "Record whether hover grows with shadow, tap expands or collapses, pointer swipes compact or restore activity, and the island stays attached to the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 trackpad interactions in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 interactions enabled when the local environment supports it.",
+      "Use real trackpad vertical and horizontal gestures on the island shell or the matching interaction menu fallbacks.",
+      "Record whether vertical swipes open, expand, close, or compact as expected and horizontal music gestures emit mock previous or next commands without breaking app mode."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Fill the Phase 5 acceptance document with state and reducer evidence links.",
+    "steps": [
+      "Link scenario-matrix evidence and interaction-sequence evidence from docs/mac-island-phase5-interaction-state-acceptance.md.",
+      "Mark state, derived-state, and reducer rows as Passed only when the corresponding generated evidence exists.",
+      "Leave native runtime rows Prepared or Real-device pending if visible preview evidence is unavailable."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Fill the Phase 5 acceptance document with visible interaction evidence.",
+    "steps": [
+      "Add links or notes for manual preview observations, screenshots, videos, or environment limitations for scenario, mouse, and trackpad visible checks.",
+      "Mark visible scenario and interaction rows according to the actual evidence captured by the e2e tasks.",
+      "Check that the document clearly distinguishes mock Phase 5 behavior from real provider or backend integration."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Update the migration checklist with Phase 5 state and interaction gates.",
+    "steps": [
+      "Add Phase 5 checklist rows for state model, derived state, mock scenarios, mouse interactions, trackpad interactions, gesture guards, and visible preview evidence.",
+      "Link each row to docs/mac-island-phase5-interaction-state-acceptance.md and the generated evidence files.",
+      "Check that Phase 6 content migration and Phase 8 real music provider work remain explicitly out of scope."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Refresh the handoff notes after the Phase 5 queue is initialized.",
+    "steps": [
+      "Update agent-state.md with Phase 5 as the current queue, the first pending task, and recommended startup files for state-machine and interaction work.",
+      "Add a concise codex-progress.md record that Phase 4 tasks were archived into feature_list_summary.json and Phase 5 tasks were generated.",
+      "Check that normal startup does not require reading codex-progress-archive.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  }
+]

@@ -16,6 +16,14 @@ struct IslandContentWidthRequirement: Equatable {
             max(trailingContentWidth, 0) +
             (max(horizontalPadding, 0) * 2)
     }
+
+    func merging(_ other: IslandContentWidthRequirement) -> IslandContentWidthRequirement {
+        IslandContentWidthRequirement(
+            leadingContentWidth: max(leadingContentWidth, other.leadingContentWidth),
+            trailingContentWidth: max(trailingContentWidth, other.trailingContentWidth),
+            horizontalPadding: max(horizontalPadding, other.horizontalPadding)
+        )
+    }
 }
 
 struct IslandWidthConstraints: Equatable {
@@ -42,6 +50,28 @@ struct IslandShapeMetrics: Equatable {
     let showsShadow: Bool
 
     init(
+        width: CGFloat,
+        height: CGFloat,
+        radius: CGFloat,
+        smoothness: CGFloat,
+        earTension: CGFloat,
+        earBlendHeight: CGFloat,
+        scale: CGFloat,
+        showsStroke: Bool,
+        showsShadow: Bool
+    ) {
+        self.width = max(width, 1)
+        self.height = max(height, 1)
+        self.radius = max(radius, 0)
+        self.smoothness = max(smoothness, 0.01)
+        self.earTension = max(earTension, 0)
+        self.earBlendHeight = max(earBlendHeight, 0)
+        self.scale = max(scale, 0.01)
+        self.showsStroke = showsStroke
+        self.showsShadow = showsShadow
+    }
+
+    init(
         state: IslandVisualState,
         visualScale: CGFloat,
         horizontalScale: CGFloat? = nil,
@@ -50,12 +80,16 @@ struct IslandShapeMetrics: Equatable {
         let resolvedVisualScale = max(visualScale, 0.01)
         let resolvedHorizontalScale = max(horizontalScale ?? resolvedVisualScale, 0.01)
         let shellTokens = IslandVisualTokens.shell(for: state.tokenSet)
-        let resolvedHeight = shellTokens.height * resolvedVisualScale
+        let isHoverCollapsed = state == .hoverCollapsed
+        let hoverWidthScale = isHoverCollapsed ? IslandVisualTokens.hover.collapsedWidthScale : 1
+        let resolvedHeight = (isHoverCollapsed
+            ? IslandVisualTokens.hover.collapsedHeight
+            : shellTokens.height) * resolvedVisualScale
         let resolvedEarBlendHeight = shellTokens.earBlendHeight * resolvedVisualScale
         let tokenWidth = shellTokens.previewWidth * resolvedHorizontalScale
         let baseBodyWidth = max(widthConstraints.baseBodyWidth ?? tokenWidth, 0)
         let contentDrivenWidth = baseBodyWidth + widthConstraints.contentWidthRequirement.requiredExtensionWidth
-        let unconstrainedWidth = max(tokenWidth, contentDrivenWidth)
+        let unconstrainedWidth = max(tokenWidth, contentDrivenWidth) * hoverWidthScale
         let earReach = (resolvedEarBlendHeight * shellTokens.earTension) + IslandPathFactory.shellEarTipExtension
         let maximumBodyWidth = widthConstraints.maximumVisibleWidth.map {
             max($0 - (earReach * 2), 1)
@@ -67,7 +101,7 @@ struct IslandShapeMetrics: Equatable {
         smoothness = shellTokens.smoothness
         earTension = shellTokens.earTension
         earBlendHeight = resolvedEarBlendHeight
-        scale = state == .hoverCollapsed ? IslandVisualTokens.hover.collapsedScale : 1
+        scale = 1
         showsStroke = state.isExpanded && shellTokens.showsStroke
         showsShadow = state.allowsShadow
     }
@@ -83,6 +117,23 @@ struct IslandShapeMetrics: Equatable {
             visualScale: visualScale,
             horizontalScale: horizontalScale,
             widthConstraints: widthConstraints
+        )
+    }
+
+    func interpolated(to target: IslandShapeMetrics, progress: CGFloat) -> IslandShapeMetrics {
+        let t = min(max(progress, 0), 1)
+        func lerp(_ start: CGFloat, _ end: CGFloat) -> CGFloat { start + ((end - start) * t) }
+
+        return IslandShapeMetrics(
+            width: lerp(width, target.width),
+            height: lerp(height, target.height),
+            radius: lerp(radius, target.radius),
+            smoothness: lerp(smoothness, target.smoothness),
+            earTension: lerp(earTension, target.earTension),
+            earBlendHeight: lerp(earBlendHeight, target.earBlendHeight),
+            scale: lerp(scale, target.scale),
+            showsStroke: t >= 0.5 ? target.showsStroke : showsStroke,
+            showsShadow: t >= 0.5 ? target.showsShadow : showsShadow
         )
     }
 }

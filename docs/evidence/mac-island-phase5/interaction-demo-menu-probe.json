@@ -142,5 +142,53 @@
     "reducerFinalPresentationState" : "activity",
     "reducerFinalVisualState" : "activityCollapsed",
     "reducerGuardOutcome" : "mockNextTrackCommanded"
+  },
+  {
+    "controlID" : "modeSwitchToggle",
+    "intent" : "modeSwitchToggle",
+    "matchesReducerSequence" : true,
+    "menuFinalForceCompactMode" : false,
+    "menuFinalGestureState" : "idle",
+    "menuFinalPresentationState" : "activity",
+    "menuFinalVisualState" : "activityCollapsed",
+    "menuGuardOutcome" : "activitySwitchedToTodo",
+    "menuTitle" : "Mode Switch Toggle",
+    "reducerFinalForceCompactMode" : false,
+    "reducerFinalGestureState" : "idle",
+    "reducerFinalPresentationState" : "activity",
+    "reducerFinalVisualState" : "activityCollapsed",
+    "reducerGuardOutcome" : "activitySwitchedToTodo"
+  },
+  {
+    "controlID" : "reminderDue",
+    "intent" : "reminderDue",
+    "matchesReducerSequence" : true,
+    "menuFinalForceCompactMode" : false,
+    "menuFinalGestureState" : "idle",
+    "menuFinalPresentationState" : "activity",
+    "menuFinalVisualState" : "activityCollapsed",
+    "menuGuardOutcome" : "reminderDueOpenedReviewActivity",
+    "menuTitle" : "Reminder Due",
+    "reducerFinalForceCompactMode" : false,
+    "reducerFinalGestureState" : "idle",
+    "reducerFinalPresentationState" : "activity",
+    "reducerFinalVisualState" : "activityCollapsed",
+    "reducerGuardOutcome" : "reminderDueOpenedReviewActivity"
+  },
+  {
+    "controlID" : "pausedMusicTimeout",
+    "intent" : "pausedMusicTimeout",
+    "matchesReducerSequence" : true,
+    "menuFinalForceCompactMode" : true,
+    "menuFinalGestureState" : "idle",
+    "menuFinalPresentationState" : "collapsed",
+    "menuFinalVisualState" : "compactCollapsed",
+    "menuGuardOutcome" : "pausedMusicTimedOutToApp",
+    "menuTitle" : "Paused Music Timeout",
+    "reducerFinalForceCompactMode" : true,
+    "reducerFinalGestureState" : "idle",
+    "reducerFinalPresentationState" : "collapsed",
+    "reducerFinalVisualState" : "compactCollapsed",
+    "reducerGuardOutcome" : "pausedMusicTimedOutToApp"
   }
 ]

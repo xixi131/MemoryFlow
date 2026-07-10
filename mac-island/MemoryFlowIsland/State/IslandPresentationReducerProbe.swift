@@ -75,7 +75,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
-                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: beforeDerivedState.visualState.rawValue,
                 visualStateAfter: afterDerivedState.visualState.rawValue,
@@ -97,7 +97,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
-                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
@@ -119,7 +119,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
-                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
@@ -141,7 +141,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
-                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: derivedState.visualState.rawValue,
                 visualStateAfter: derivedState.visualState.rawValue,
@@ -164,7 +164,7 @@ enum IslandPresentationReducerProbe {
                 scenarioID: entry.id,
                 intent: entry.intentDescription,
                 reason: result.reason.rawValue,
-                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                 stateChanged: result.state != entry.state,
                 visualStateBefore: beforeDerivedState.visualState.rawValue,
                 visualStateAfter: afterDerivedState.visualState.rawValue,
@@ -306,7 +306,7 @@ enum IslandPresentationReducerProbe {
                     intent: intentDescription,
                     reason: result.reason.rawValue,
                     guardOutcome: guardOutcome(for: result.reason),
-                    mockMusicCommand: result.metadata.mockMusicCommand?.rawValue,
+                    mockMusicCommand: result.metadata.mockMusicCommand?.rawValue ?? result.metadata.musicCommand?.rawValue,
                     state: snapshot(for: result.state),
                     visualState: derivedState.visualState.rawValue,
                     collapsedWidth: scalar(derivedState.collapsedWidth)
@@ -565,10 +565,10 @@ enum IslandPresentationReducerProbe {
                     ),
                     IslandPresentationReducerSequenceProbeStep(
                         intent: "tap",
-                        reason: "tapCollapsedToCompact",
-                        presentationState: "collapsed",
-                        visualState: "compactCollapsed",
-                        collapsedWidth: 160
+                        reason: "tapCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
                     )
                 ]
             ),
@@ -605,10 +605,10 @@ enum IslandPresentationReducerProbe {
                     ),
                     IslandPresentationReducerSequenceProbeStep(
                         intent: "tap",
-                        reason: "tapCollapsedToCompact",
-                        presentationState: "collapsed",
-                        visualState: "compactCollapsed",
-                        collapsedWidth: 160
+                        reason: "tapCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
                     )
                 ]
             ),
@@ -655,6 +655,58 @@ enum IslandPresentationReducerProbe {
                         reason: "tapExpandedToApp",
                         presentationState: "expanded",
                         visualState: "expandedApp",
+                        collapsedWidth: 160
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "expanded-app-source-collapse-recovery",
+                initialVisualState: "expandedApp",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "expanded-music-source-collapse-recovery",
+                initialVisualState: "expandedMusic",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "expanded-logged-out-collapse-recovery",
+                initialVisualState: "expandedApp",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToCompact",
+                        presentationState: "collapsed",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 180
+                    )
+                ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "expanded-compact-only-collapse-recovery",
+                initialVisualState: "expandedApp",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "outsideCollapse",
+                        reason: "outsideCollapsedToCompact",
+                        presentationState: "collapsed",
+                        visualState: "compactCollapsed",
                         collapsedWidth: 160
                     )
                 ]
@@ -754,7 +806,7 @@ enum IslandPresentationReducerProbe {
                         collapsedWidth: 160
                     ),
                     IslandPresentationReducerSequenceProbeStep(
-                        intent: "transitionComplete(modeSwitchAnimation)",
+                        intent: "transitionComplete(modeSwitchLock)",
                         reason: "noChange",
                         presentationState: "collapsed",
                         visualState: "hoverCollapsed",
@@ -968,6 +1020,33 @@ enum IslandPresentationReducerProbe {
                         collapsedWidth: 160
                     )
                 ]
+            ),
+            IslandPresentationReducerSequenceProbeRow(
+                scenarioID: "review-tap-collapse-trackpad-close",
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        presentationState: "expanded",
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "tap",
+                        reason: "tapCollapsedToActivity",
+                        presentationState: "activity",
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    ),
+                    IslandPresentationReducerSequenceProbeStep(
+                        intent: "trackpadSwipe(up)",
+                        reason: "trackpadSwipedUpToCompact",
+                        presentationState: "activity",
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ]
             )
         ]
 
@@ -1035,16 +1114,16 @@ enum IslandPresentationReducerProbe {
                     ),
                     IslandPresentationReducerSequenceEvidenceStep(
                         intent: "tap",
-                        reason: "tapCollapsedToCompact",
+                        reason: "tapCollapsedToActivity",
                         guardOutcome: "passed",
                         mockMusicCommand: nil,
-                        state: snapshot(for: .loggedInReviewCompact),
-                        visualState: "compactCollapsed",
-                        collapsedWidth: 160
+                        state: snapshot(for: .loggedInReviewActivityPlain),
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
                     )
                 ],
-                finalState: snapshot(for: .loggedInReviewCompact),
-                finalVisualState: "compactCollapsed"
+                finalState: snapshot(for: .loggedInReviewActivityPlain),
+                finalVisualState: "activityCollapsed"
             ),
             IslandPresentationReducerSequenceEvidenceRow(
                 scenarioID: "pointer-compact-activity-swipes",
@@ -1066,7 +1145,7 @@ enum IslandPresentationReducerProbe {
                                 from: .loggedInReviewActivityPlain,
                                 forceCompactMode: true,
                                 presentationState: .activity,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1097,7 +1176,7 @@ enum IslandPresentationReducerProbe {
                             for: lockedState(
                                 from: .loggedInReviewActivityPlain,
                                 presentationState: .activity,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1109,7 +1188,7 @@ enum IslandPresentationReducerProbe {
                     for: lockedState(
                         from: .loggedInReviewActivityPlain,
                         presentationState: .activity,
-                        isForceCompactTransitioning: true,
+                        isForceCompactLocked: true,
                         transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                     )
                 ),
@@ -1137,7 +1216,7 @@ enum IslandPresentationReducerProbe {
                                 forceCompactMode: true,
                                 presentationState: .activity,
                                 gestureState: .cooldown,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1154,7 +1233,7 @@ enum IslandPresentationReducerProbe {
                                 from: .loggedInReviewActivityPlain,
                                 forceCompactMode: true,
                                 presentationState: .activity,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1186,7 +1265,7 @@ enum IslandPresentationReducerProbe {
                                 from: .loggedInReviewActivityPlain,
                                 presentationState: .activity,
                                 gestureState: .cooldown,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1199,7 +1278,7 @@ enum IslandPresentationReducerProbe {
                         from: .loggedInReviewActivityPlain,
                         presentationState: .activity,
                         gestureState: .cooldown,
-                        isForceCompactTransitioning: true,
+                        isForceCompactLocked: true,
                         transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                     )
                 ),
@@ -1275,7 +1354,7 @@ enum IslandPresentationReducerProbe {
                         state: snapshot(
                             for: lockedState(
                                 from: .loggedInReviewActivity,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1343,7 +1422,7 @@ enum IslandPresentationReducerProbe {
                         state: snapshot(
                             for: lockedState(
                                 from: .loggedInReviewActivityPlain,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1358,7 +1437,7 @@ enum IslandPresentationReducerProbe {
                         state: snapshot(
                             for: lockedState(
                                 from: .loggedInReviewActivityPlain,
-                                isForceCompactTransitioning: true,
+                                isForceCompactLocked: true,
                                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
                             )
                         ),
@@ -1386,6 +1465,116 @@ enum IslandPresentationReducerProbe {
                 ],
                 finalState: snapshot(for: .expandedAppReview),
                 finalVisualState: "expandedApp"
+            ),
+            IslandPresentationReducerSequenceEvidenceRow(
+                scenarioID: "rapid-hover-tap-hover",
+                intents: [
+                    "hoverEnter",
+                    "tap",
+                    "retargetPresentation(hoverCollapsed)"
+                ],
+                initialState: snapshot(for: .loggedInReviewCompact),
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "hoverEnter",
+                        reason: "hoverEntered",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(for: hoveredState(from: .loggedInReviewCompact)),
+                        visualState: "hoverCollapsed",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(
+                            for: lockedState(
+                                from: .loggedInReviewCompact,
+                                presentationState: .expanded
+                            )
+                        ),
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "retargetPresentation(hoverCollapsed)",
+                        reason: "presentationRetargeted",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(for: hoveredState(from: .loggedInReviewCompact)),
+                        visualState: "hoverCollapsed",
+                        collapsedWidth: 160
+                    )
+                ],
+                finalState: snapshot(for: hoveredState(from: .loggedInReviewCompact)),
+                finalVisualState: "hoverCollapsed"
+            ),
+            IslandPresentationReducerSequenceEvidenceRow(
+                scenarioID: "tap-tap-trackpad",
+                intents: [
+                    "tap",
+                    "tap",
+                    "trackpadSwipe(up)"
+                ],
+                initialState: snapshot(for: .loggedInReviewCompact),
+                initialVisualState: "compactCollapsed",
+                steps: [
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "tap",
+                        reason: "tapExpandedToApp",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(
+                            for: lockedState(
+                                from: .loggedInReviewCompact,
+                                presentationState: .expanded
+                            )
+                        ),
+                        visualState: "expandedApp",
+                        collapsedWidth: 160
+                    ),
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "tap",
+                        reason: "tapCollapsedToActivity",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(for: .loggedInReviewActivityPlain),
+                        visualState: "activityCollapsed",
+                        collapsedWidth: 240
+                    ),
+                    IslandPresentationReducerSequenceEvidenceStep(
+                        intent: "trackpadSwipe(up)",
+                        reason: "trackpadSwipedUpToCompact",
+                        guardOutcome: "passed",
+                        mockMusicCommand: nil,
+                        state: snapshot(
+                            for: lockedState(
+                                from: .loggedInReviewActivityPlain,
+                                forceCompactMode: true,
+                                presentationState: .activity,
+                                gestureState: .cooldown,
+                                isForceCompactLocked: true,
+                                transitionID: IslandTransitionLockIdentifier.forceCompactTransition
+                            )
+                        ),
+                        visualState: "compactCollapsed",
+                        collapsedWidth: 160
+                    )
+                ],
+                finalState: snapshot(
+                    for: lockedState(
+                        from: .loggedInReviewActivityPlain,
+                        forceCompactMode: true,
+                        presentationState: .activity,
+                        gestureState: .cooldown,
+                        isForceCompactLocked: true,
+                        transitionID: IslandTransitionLockIdentifier.forceCompactTransition
+                    )
+                ),
+                finalVisualState: "compactCollapsed"
             )
         ]
 
@@ -1425,9 +1614,10 @@ enum IslandPresentationReducerProbe {
         forceCompactMode: Bool? = nil,
         presentationState: IslandPresentationState? = nil,
         gestureState: IslandGestureState? = nil,
-        isModeSwitchAnimating: Bool? = nil,
-        isForceCompactTransitioning: Bool? = nil,
-        transitionID: String? = nil
+        isModeSwitchLocked: Bool? = nil,
+        isForceCompactLocked: Bool? = nil,
+        transitionID: String? = nil,
+        mutate: ((inout IslandDomainState) -> Void)? = nil
     ) -> IslandDomainState {
         var state = base
 
@@ -1443,17 +1633,19 @@ enum IslandPresentationReducerProbe {
             state.gestureState = gestureState
         }
 
-        if let isModeSwitchAnimating {
-            state.animationState.isModeSwitchAnimating = isModeSwitchAnimating
+        if let isModeSwitchLocked {
+            state.presentationLockState.isModeSwitchLocked = isModeSwitchLocked
         }
 
-        if let isForceCompactTransitioning {
-            state.animationState.isForceCompactTransitioning = isForceCompactTransitioning
+        if let isForceCompactLocked {
+            state.presentationLockState.isForceCompactLocked = isForceCompactLocked
         }
 
         if let transitionID {
-            state.animationState.transitionID = transitionID
+            state.presentationLockState.transitionID = transitionID
         }
+
+        mutate?(&state)
 
         return state
     }
@@ -1578,7 +1770,7 @@ enum IslandPresentationReducerProbe {
                 from: .loggedInReviewActivity,
                 forceCompactMode: true,
                 presentationState: .activity,
-                isForceCompactTransitioning: true,
+                isForceCompactLocked: true,
                 transitionID: IslandTransitionLockIdentifier.forceCompactTransition
             ),
             intents: [
@@ -1589,6 +1781,34 @@ enum IslandPresentationReducerProbe {
                 ),
                 (.tap, "tap")
             ]
+        ),
+        (
+            id: "expanded-app-source-collapse-recovery",
+            initialState: .expandedAppReview,
+            intents: [(.outsideCollapse, "outsideCollapse")]
+        ),
+        (
+            id: "expanded-music-source-collapse-recovery",
+            initialState: .expandedMusic,
+            intents: [(.outsideCollapse, "outsideCollapse")]
+        ),
+        (
+            id: "expanded-logged-out-collapse-recovery",
+            initialState: lockedState(
+                from: .loggedOutCompact,
+                presentationState: .expanded
+            ),
+            intents: [(.outsideCollapse, "outsideCollapse")]
+        ),
+        (
+            id: "expanded-compact-only-collapse-recovery",
+            initialState: lockedState(
+                from: .loggedInReviewCompact,
+                presentationState: .expanded
+            ) { state in
+                state.mockSources = .none
+            },
+            intents: [(.outsideCollapse, "outsideCollapse")]
         )
     ]
 
@@ -1612,15 +1832,15 @@ enum IslandPresentationReducerProbe {
             id: "review-mode-switch-hover-tap-lock",
             initialState: lockedState(
                 from: .loggedInReviewCompact,
-                isModeSwitchAnimating: true,
-                transitionID: IslandTransitionLockIdentifier.modeSwitchAnimation
+                isModeSwitchLocked: true,
+                transitionID: IslandTransitionLockIdentifier.modeSwitchLock
             ),
             intents: [
                 (.hoverEnter, "hoverEnter"),
                 (.tap, "tap"),
                 (
-                    .transitionComplete(IslandTransitionLockIdentifier.modeSwitchAnimation),
-                    "transitionComplete(modeSwitchAnimation)"
+                    .transitionComplete(IslandTransitionLockIdentifier.modeSwitchLock),
+                    "transitionComplete(modeSwitchLock)"
                 ),
                 (.tap, "tap")
             ]
@@ -1695,6 +1915,15 @@ enum IslandPresentationReducerProbe {
                     "transitionComplete(forceCompactTransition)"
                 ),
                 (.trackpadSwipe(.down), "trackpadSwipe(down)")
+            ]
+        ),
+        (
+            id: "review-tap-collapse-trackpad-close",
+            initialState: .loggedInReviewCompact,
+            intents: [
+                (.tap, "tap"),
+                (.tap, "tap"),
+                (.trackpadSwipe(.up), "trackpadSwipe(up)")
             ]
         )
     ]
@@ -1778,6 +2007,33 @@ enum IslandPresentationReducerProbe {
                     "transitionComplete(forceCompactTransition)"
                 ),
                 (.tap, "tap")
+            ]
+        ),
+        (
+            id: "rapid-hover-tap-hover",
+            initialState: .loggedInReviewCompact,
+            intents: [
+                (.hoverEnter, "hoverEnter"),
+                (.tap, "tap"),
+                (
+                    .retargetPresentation(
+                        IslandPresentationRetargetTarget(
+                            presentationState: .collapsed,
+                            forceCompactMode: true,
+                            isHovered: true
+                        )
+                    ),
+                    "retargetPresentation(hoverCollapsed)"
+                )
+            ]
+        ),
+        (
+            id: "tap-tap-trackpad",
+            initialState: .loggedInReviewCompact,
+            intents: [
+                (.tap, "tap"),
+                (.tap, "tap"),
+                (.trackpadSwipe(.up), "trackpadSwipe(up)")
             ]
         )
     ]

@@ -37,6 +37,95 @@ enum IslandWindowSizingEngine {
         )
     }
 
+    /// Rebuilds a presentation sample around the immutable display top-center anchor.
+    /// The motion layer owns progress; window layout owns the resulting interactive geometry.
+    static func resolveAnimatedSample(
+        from source: IslandWindowSizingResult,
+        to target: IslandWindowSizingResult,
+        progress: CGFloat,
+        attachmentMetrics: TopAttachmentMetrics
+    ) -> IslandWindowSizingResult {
+        let fraction = min(max(progress, 0), 1)
+        let visibleSize = interpolated(source.visibleSize, target.visibleSize, fraction)
+        let shadowOutsets = interpolated(source.shadowOutsets, target.shadowOutsets, fraction)
+        // Align the size, then derive origin from the immutable attachment point. Rounding
+        // both origin and width independently moves odd-pixel samples off center by half a pixel.
+        let alignedVisibleSize = CGSize(
+            width: pixelAligned(visibleSize.width, scale: attachmentMetrics.pixelScale),
+            height: pixelAligned(visibleSize.height, scale: attachmentMetrics.pixelScale)
+        )
+        let visibleFrame = CGRect(
+            x: attachmentMetrics.centerX - (alignedVisibleSize.width / 2),
+            y: attachmentMetrics.topBandFrame.maxY - alignedVisibleSize.height,
+            width: alignedVisibleSize.width,
+            height: alignedVisibleSize.height
+        )
+        let provisionalShadowFrame = pixelAligned(
+            CGRect(
+                x: visibleFrame.minX - shadowOutsets.horizontal,
+                y: visibleFrame.minY - shadowOutsets.bottom,
+                width: visibleFrame.width + (shadowOutsets.horizontal * 2),
+                height: visibleFrame.height + shadowOutsets.bottom
+            ),
+            scale: attachmentMetrics.pixelScale
+        )
+        let contentFrame = anchoredFrame(
+            source.contentFrame,
+            target.contentFrame,
+            sourceVisibleFrame: source.visibleFrame,
+            targetVisibleFrame: target.visibleFrame,
+            visibleFrame: visibleFrame,
+            progress: fraction,
+            scale: attachmentMetrics.pixelScale
+        )
+        let hitTestFrame = anchoredFrame(
+            source.hitTestFrame,
+            target.hitTestFrame,
+            sourceVisibleFrame: source.visibleFrame,
+            targetVisibleFrame: target.visibleFrame,
+            visibleFrame: visibleFrame,
+            progress: fraction,
+            scale: attachmentMetrics.pixelScale
+        )
+        let requiredBounds = visibleFrame.union(contentFrame).union(hitTestFrame)
+        let protectedOutsets = IslandShadowOutsets(
+            horizontal: max(
+                shadowOutsets.horizontal,
+                visibleFrame.minX - requiredBounds.minX,
+                requiredBounds.maxX - visibleFrame.maxX
+            ),
+            bottom: max(shadowOutsets.bottom, visibleFrame.minY - requiredBounds.minY)
+        )
+        let shadowFrame = pixelAligned(
+            CGRect(
+                x: visibleFrame.minX - protectedOutsets.horizontal,
+                y: visibleFrame.minY - protectedOutsets.bottom,
+                width: visibleFrame.width + (protectedOutsets.horizontal * 2),
+                height: max(provisionalShadowFrame.maxY, requiredBounds.maxY) - (visibleFrame.minY - protectedOutsets.bottom)
+            ),
+            scale: attachmentMetrics.pixelScale
+        )
+
+        return IslandWindowSizingResult(
+            visibleFrame: visibleFrame,
+            shadowFrame: shadowFrame,
+            contentFrame: contentFrame,
+            hitTestFrame: hitTestFrame,
+            diagnostics: IslandWindowSizingDiagnostics(
+                state: fraction < 1 ? source.diagnostics.state : target.diagnostics.state,
+                visualScale: interpolated(source.diagnostics.visualScale, target.diagnostics.visualScale, fraction),
+                horizontalScale: interpolated(source.diagnostics.horizontalScale, target.diagnostics.horizontalScale, fraction),
+                requestedBaseBodyWidth: target.diagnostics.requestedBaseBodyWidth,
+                requestedMaximumVisibleWidth: target.diagnostics.requestedMaximumVisibleWidth,
+                contentWidthRequirement: target.diagnostics.contentWidthRequirement,
+                visibleSize: visibleFrame.size,
+                shadowSize: shadowFrame.size,
+                contentSize: contentFrame.size,
+                hitTestFrame: hitTestFrame
+            )
+        )
+    }
+
     private static func resolvedWidthConstraints(for request: IslandWindowSizingRequest) -> IslandWidthConstraints {
         let initialSnapshot = IslandShapeEngine.snapshot(
             for: request.state,
@@ -139,5 +228,41 @@ enum IslandWindowSizingEngine {
 
     private static func pixelAligned(_ value: CGFloat, scale: CGFloat) -> CGFloat {
         (value * scale).rounded() / scale
+    }
+
+    private static func anchoredFrame(
+        _ source: CGRect,
+        _ target: CGRect,
+        sourceVisibleFrame: CGRect,
+        targetVisibleFrame: CGRect,
+        visibleFrame: CGRect,
+        progress: CGFloat,
+        scale: CGFloat
+    ) -> CGRect {
+        let sourceOffset = source.offsetBy(dx: -sourceVisibleFrame.minX, dy: -sourceVisibleFrame.minY)
+        let targetOffset = target.offsetBy(dx: -targetVisibleFrame.minX, dy: -targetVisibleFrame.minY)
+        let offset = interpolated(sourceOffset, targetOffset, progress)
+        return pixelAligned(offset.offsetBy(dx: visibleFrame.minX, dy: visibleFrame.minY), scale: scale)
+    }
+
+    private static func interpolated(_ source: CGSize, _ target: CGSize, _ progress: CGFloat) -> CGSize {
+        CGSize(width: interpolated(source.width, target.width, progress), height: interpolated(source.height, target.height, progress))
+    }
+
+    private static func interpolated(_ source: CGRect, _ target: CGRect, _ progress: CGFloat) -> CGRect {
+        CGRect(
+            x: interpolated(source.minX, target.minX, progress),
+            y: interpolated(source.minY, target.minY, progress),
+            width: interpolated(source.width, target.width, progress),
+            height: interpolated(source.height, target.height, progress)
+        )
+    }
+
+    private static func interpolated(_ source: IslandShadowOutsets, _ target: IslandShadowOutsets, _ progress: CGFloat) -> IslandShadowOutsets {
+        IslandShadowOutsets(horizontal: interpolated(source.horizontal, target.horizontal, progress), bottom: interpolated(source.bottom, target.bottom, progress))
+    }
+
+    private static func interpolated(_ source: CGFloat, _ target: CGFloat, _ progress: CGFloat) -> CGFloat {
+        source + ((target - source) * progress)
     }
 }

@@ -1,3 +1,177 @@
+
+
+# 2026-07-10 Auto Archive
+
+The following was moved from codex-progress.md to keep default startup context small.
+
+## Current Summary
+
+### Current phase
+- Phase 0 to Phase 3 are complete enough for handoff.
+- Phase 4 native sizing, shadow, motion, preview-control, and synthetic evidence coverage is complete and archived into `feature_list_summary.json`.
+- Phase 5 native state machine, interaction intents, mock scenarios, compact/hover sizing, tap-loop routing, and visible mouse/trackpad preview behavior for the macOS island shell are complete after the repair pass.
+- Phase 5 has reducer-backed state, scenarios, tap/hover/pointer/trackpad routing, mode-switch/reminder/paused-timeout interaction demos, status-menu scenario demos, preview-only mock content, mock-derived activity content width routing, expanded collapse recovery tied to mock activity-source availability, reducer-reason motion-plan selection, in-flight retarget handling for rapid input, generated scenario-matrix evidence with domain/derived/visual/width/preview-content/transition metadata, reducer-backed interaction-sequence evidence with explicit guard outcomes, repaired native-preview scenario e2e evidence, repaired native-preview mouse e2e fallback evidence, native-preview trackpad e2e fallback evidence, acceptance-doc links for generated state/reducer plus repaired visible fallback evidence, and migration-checklist gates for Phase 5 state/interaction evidence plus Phase 6/Phase 8 out-of-scope boundaries.
+
+### Queue snapshot
+- First pending task: `mac-motion-expanded-app-open`.
+- Remaining queue size: `28` tasks in the active Phase 6 queue.
+- Execution mode: parent-led `$Auto_dev`, dependency-layer dispatch with parallel workers only for disjoint write scopes.
+
+### Runtime / environment notes
+- [`init.sh`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/init.sh) remains the runtime entry point for heavy execution-path tasks.
+- `xcodebuild` is unavailable because the active developer directory is CommandLineTools only.
+- Native validation relies on `swiftc -module-cache-path /tmp/... -typecheck` plus focused Swift evidence/probe harnesses.
+- Sandbox/runtime caveat: backend port `8080` may already be occupied, and local bind attempts can fail with `SocketException: Operation not permitted` or `listen EPERM`.
+
+### Archive note
+- Older detailed history has been rolled into [`codex-progress-archive.md`](/Users/tangxitao/code/Project/AI-coding/MemoryFlow-trae/codex-progress-archive.md).
+- Default startup path remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json`; read `codex-progress.md` only for recent audit detail. Normal startup does not require `codex-progress-archive.md`.
+
+## Recent Key Records
+
+## 2026-07-10 - Phase 6 acceptance shell completed
+
+- Added the Phase 6 mock animation acceptance shell with required parity, motion, input, mock-data, accessibility, performance, evidence, and non-goal sections.
+- Validation: required headings, mock-only scope exclusions, linked state/interaction/animation specifications, and the Phase 6 migration reference were checked; `git diff --check` passed for the new document.
+
+## 2026-07-10 - Phase 6 Windows parity contract completed
+
+- Added a source-linked Windows state matrix covering compact, greeting, activity, expanded, reminder, paused, and stopped states, together with timing/gesture constants and the long-press mode-switch sequence.
+- Validation: every cited Widget/Electron source line and required constant was checked; `git diff --check` passed for the new document.
+
+## 2026-07-10 - Phase 6 motion-plan foundation completed
+
+- Restored pure native motion planning for reducer-driven transitions, including Windows-parity hover, open, collapse, expand, mode-switch, reminder, and music profiles plus Reduce Motion plans.
+- Validation: full native Swift typecheck and a focused probe covered every non-default transition kind. `xcodebuild` remains unavailable with the active CommandLineTools developer directory; the frontend dev server also has an existing missing `@emotion/is-prop-valid` dependency.
+
+## 2026-07-10 - Phase 6 scenario, driver, and shape foundations completed
+
+- Added a deterministic twelve-state mock catalog with complete review, todo, reminder, greeting, and music payloads; its focused probe verifies distinct derived state, preview content, visual state, and width requirements without backend or media providers.
+- Added a CVDisplayLink-based animation driver with retargetable presentation metrics, velocity, phases, transition identifiers, and deterministic compact/activity/expanded/reverse frame sampling.
+- Added continuous shape-metric and shadow interpolation, regenerating the body, cap, ear, and stroke paths from each frame's metrics; the shape probe checks nonnegative geometry, valid paths, and ear/body overlap.
+- Validation: full native Swift typechecks and focused probes passed. Backend `8080` contention and the existing frontend dependency issue remain unrelated environment limitations.
+
+## 2026-07-10 - Phase 6 compact content completed
+
+- Added mock-only signed-out login, logged-in idle, and greeting compact content with opacity, blur, and vertical-offset choreography; login remains a local non-expanding command.
+- Validation: native Swift typecheck and compact-content probe passed with the signed-out/idle/greeting sequence `180/160/300/300/160`, all nonexpanded and unclipped.
+
+## 2026-07-10 - Phase 6 window-anchor implementation awaiting executable probe
+
+- Implemented per-frame top-center anchored sizing, transparent shadow bounds, synchronized panel/hit-test/click-through state, and a notch/flat-display matrix probe. Full Swift typecheck passed.
+- The focused probe compile first raced a concurrent visual-file write, then the settled executable link was blocked by the CommandLineTools SwiftUICore client restriction. The implementation is intentionally not marked accepted until a usable native link path runs the probe.
+
+## 2026-07-10 - Phase 6 anchored window and hover completed
+
+- Fixed animated panel samples to derive their frame from one immutable top-center anchor and registered the sizing-probe source in the Xcode target. Full Xcode probe validated 20 compact/activity/expanded samples across notch and flat displays.
+- Prevented duplicate Dynamic Islands by declaring the native helper single-instance; a normal relaunch followed by a second `open` kept exactly one helper process.
+- Added exact compact hover breathing (`1.025` width, `37` height, `0/5/12/0.14` shadow) with retarget, hotspot, and click-through validation.
+- Validation: focused Swift probes and `xcodebuild -project mac-island/MemoryFlowIsland.xcodeproj -scheme MemoryFlowIsland -configuration Debug build CODE_SIGNING_ALLOWED=NO` passed.
+
+## 2026-07-10 - Phase 6 activity opening completed
+
+- Added the Windows-parity compact-to-activity timing: `0.56s` shell open, then `0.10s` content wait and `0.26s` opacity/blur (`4 -> 0`) reveal for review, todo, and music mock content.
+- Validation: focused review/todo/music motion probe, full Xcode Debug build, and `init.sh` runtime startup passed. Test application processes were closed after validation.
+
+## 2026-07-10 - Phase 6 activity collapse completed
+
+- Added the shared `0.85s` segmented activity collapse with `[0, .45, .55, 1]` timing, held mid-width frame, content exit before shell compression, and delayed compact content reveal.
+- Validation: focused review/todo/music/reminder/expanded recovery probe, Xcode Debug build, and `init.sh` passed; no native test process was launched or left running.
+
+## 2026-04-30 - Phase 5 repair patch completed
+
+- Repaired native preview interaction and shell sizing so compact stays notch-sized, hover only makes a small visible/shadow growth, the rendered hotspot follows the shell frame, and click-through synchronization keeps an immediate second tap routable after expand/collapse.
+- Replaced marker-only preview output with `IslandPreviewContent` mock content for logged-out, review, todo, music, reminder, paused-timeout, expanded app, and expanded music states while keeping Phase 5 mock-only and deferring real backend/music-provider work.
+- Extended reducer/demo evidence for mode switch, reminder due, paused music timeout, tap-loop-without-hover-leave, compact/hover width checks, distinct scenario preview content, music cover/waveform placeholders, expanded music controls, and expanded app structure.
+- Updated Phase 5 checklist and acceptance docs to record the repair evidence instead of treating the marker-only visible preview as final.
+- Validation: full native Swift typecheck passed; the Phase 5 evidence generator compiled and regenerated scenario-matrix, interaction-sequences, preview-interaction, preview-marker-layout, native-preview scenario, mouse, and trackpad fallback evidence. Physical screenshot/video capture remains pending because this environment has CommandLineTools-only developer tools and no GUI host capture path.
+
+## 2026-04-30 - Phase 5 handoff refreshed
+
+- Updated `agent-state.md` so the current handoff records Phase 4 archival into `feature_list_summary.json`, Phase 5 queue generation, Phase 5 completion, no pending product task, and startup files for future state-machine or interaction follow-up.
+- Confirmed the normal startup route does not require `codex-progress-archive.md`; keep it only for older audit detail beyond the concise handoff and recent progress summary.
+- Validation: lightweight docs checks only. `rg` confirmed the current summary and handoff record no pending task and normal startup without `codex-progress-archive.md`, Node JSON inspection confirmed every current `feature_list.json` item passes, and `feature_list_summary.json` remains present as the Phase 4 archive.
+
+## 2026-04-30 - Phase 5 checklist gates added
+
+- Updated `docs/mac-island-migration-checklist.md` with Phase 5 gates for state model, derived state, mock scenarios, mouse interactions, trackpad interactions, gesture guards, visible preview evidence, and explicit Phase 6/Phase 8 out-of-scope rows.
+- Linked each Phase 5 checklist row back to `docs/mac-island-phase5-interaction-state-acceptance.md` and the generated `docs/evidence/mac-island-phase5/*.json` artifacts that support the gate.
+- Validation: lightweight docs checks only. `rg` confirmed the new Phase 5 checklist section, evidence links, and out-of-scope wording; Node JSON inspection confirmed feature item 40 is passed and item 41 is now the first pending task.
+
+## 2026-04-30 - Phase 5 acceptance visible evidence linked
+
+- Updated `docs/mac-island-phase5-interaction-state-acceptance.md` with visible-preview acceptance rows for scenario selections, mouse hover/tap/pointer checks, and trackpad vertical/horizontal checks.
+- Linked `native-preview-scenario-e2e.json`, `native-preview-mouse-e2e.json`, and `native-preview-trackpad-e2e.json`; rows are marked passed only where the e2e JSON records captured menu/probe evidence, while screenshots/videos and physical-device capture remain Real-device pending.
+- Clarified that Phase 5 evidence is mock-only: horizontal music rows record mock command metadata, and backend/provider integration remains out of scope.
+- Validation: lightweight docs checks only. Node JSON assertions confirmed required evidence rows, `physicalCaptureAvailable=false`, and mock-only provider/backend wording; `rg` confirmed the acceptance doc links the three visible e2e evidence files.
+
+## 2026-04-30 - Phase 5 acceptance state/reducer evidence linked
+
+- Updated `docs/mac-island-phase5-interaction-state-acceptance.md` with a generated evidence index and explicit status/evidence columns for state-model, derived-state, and interaction-intent rows.
+- Linked `scenario-matrix.json` for domain/derived/visual/width state evidence and `interaction-sequences.json` for reducer intent and guard evidence; rows are marked Passed only where generated evidence exists, while native runtime token/capture rows remain Prepared or Real-device pending.
+- Validation: lightweight docs checks only. `jq` confirmed scenario-matrix has 10 generated rows with state/derived/transition metadata, interaction-sequences has the required coverage and guard outcomes, and `rg` confirmed the acceptance doc links both evidence files.
+
+## 2026-04-30 - Phase 5 native preview trackpad e2e verified by fallback probe
+
+- Added `native-preview-trackpad-e2e.json` generation to the Phase 5 evidence harness. The document records vertical trackpad open/expand and close/compact checks, horizontal music previous/next mock commands, app-mode horizontal ignore behavior, matching interaction-demo menu fallback paths, and synthetic notch attachment.
+- The generated rows show Trackpad Down opens compact review to activity and then expands to app, Trackpad Up closes expanded app to activity and then compacts it, horizontal music gestures emit `previousTrack` and `nextTrack` while staying in music mode, and the same horizontal gesture is ignored in app mode without breaking app activity.
+- Validation: `./init.sh` stopped because backend port `8080` is occupied by PID `59013`; `xcodebuild -version` failed because the active developer directory is CommandLineTools only, so no physical GUI capture was available. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed all four required trackpad rows and notch attachment.
+
+## 2026-04-30 - Phase 5 native preview mouse e2e verified by fallback probe
+
+- Added `native-preview-mouse-e2e.json` generation to the Phase 5 evidence harness. The document records hover shadow growth, tap expand/collapse, pointer drag compact/restore, matching interaction-demo menu fallback paths, and synthetic notch attachment.
+- The generated rows show hover changes compact to hover with larger visible/shadow frames and nonzero shadow tokens, tap expands then collapses to activity, and pointer drag emits right/left swipe intents to compact then restore activity; all rows remain centered on the synthetic notch with `visibleFrame.maxY == display.maxY`.
+- Validation: `./init.sh` stopped because backend port `8080` is occupied by PID `59013`; `xcodebuild -version` failed because the active developer directory is CommandLineTools only, so no physical GUI capture was available. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed all three required mouse rows and notch attachment.
+
+## 2026-04-30 - Phase 5 native preview scenario e2e verified by fallback probe
+
+- Added `native-preview-scenario-e2e.json` generation to the Phase 5 evidence harness. The document records the required status-menu paths for logged-out, review activity, todo activity, music activity, expanded app, and expanded music scenarios.
+- The generated rows now show each selected `.mockScenarioSelect(...)` changes shell shape and preview content from the logged-in review compact seed, and all rows remain centered on the synthetic notch with `visibleFrame.maxY == display.maxY`.
+- Validation: `./init.sh` stopped because backend port `8080` is occupied by PID `59013`; `xcodebuild -version` failed because the active developer directory is CommandLineTools only, so no physical GUI capture was available. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed all six required scenario rows have shell deltas, preview-content deltas, and notch attachment.
+
+## 2026-04-30 - Phase 5 interaction sequence evidence captured
+
+- Updated the Phase 5 evidence generator so `docs/evidence/mac-island-phase5/interaction-sequences.json` is generated from `IslandPresentationReducerProbe.validateInteractionSequenceEvidenceRows` and includes reducer sequence state snapshots.
+- Regenerated `interaction-sequences.json`; it records hover, tap, pointer swipe, trackpad vertical, horizontal music, reminder due, paused music timeout, rapid retargeting, rapid hover/tap/hover retargeting, and tap/tap/trackpad rows.
+- Added explicit guard-outcome evidence for click-through routing, gesture lock, animation lock, and cooldown behavior in the generated JSON.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; native fallback was used. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed required path coverage plus guard outcomes.
+
+## 2026-04-30 - Phase 5 scenario matrix evidence captured
+
+- Extended `IslandPhase5Probe.scenarioRows()` so `scenario-matrix.json` preserves the existing flat fields and also records nested domain state, derived state, visual state, width, and expected scenario-selection transition metadata for each Phase 5 mock scenario.
+- Regenerated `docs/evidence/mac-island-phase5/scenario-matrix.json`; it includes the 10 required rows: logged-out compact, review compact, todo compact, review activity, todo activity, music activity, expanded app, expanded music, reminder due, and paused music timeout.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; native fallback was used. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed row coverage plus required nested evidence sections and transition metadata.
+
+## 2026-04-30 - Phase 5 rapid input retargets in-flight presentation
+
+- Added a reducer-level `retargetPresentation` intent with a typed presentation target so preview routing can move an in-flight animation to the latest target without resetting through the old source state.
+- Updated Phase 5 preview retarget handling to clear stale force-compact/mode-switch animation locks, cancel their completion work items, and keep the root view layout input synchronized when rapid hover, tap, and trackpad sequences retarget the shell.
+- Extended reducer and Phase 5 evidence probes with `rapid-hover-tap-hover` and `tap-tap-trackpad` rows. The regenerated interaction evidence shows stable final states: `rapid-hover-tap-hover` ends at `hoverCollapsed`, and `tap-tap-trackpad` ends at `compactCollapsed` with trackpad cooldown.
+- Validation: `./init.sh` stopped because backend port `8080` is already occupied by PID `59013`; native fallback was used. Focused Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and Node inspection confirmed the two new rapid-input evidence rows.
+
+## 2026-04-30 - Phase 5 motion plans select from reducer transition reasons
+
+- Routed Phase 5 reducer transition reasons into `IslandMotionEngine` so compact/activity/expanded/hover paths choose existing `IslandTransitionKind` profiles while preserving Phase 4 motion token definitions.
+- Extended Phase 5 interaction evidence to record `transitionKind` for tap, hover, pointer swipe, trackpad swipe, and retarget-like rapid sequences.
+- Validation: `./init.sh` stopped at occupied backend port `8080` (PID `59013`), so native fallback was used. Full Swift typecheck passed, the Phase 5 evidence generator compiled and ran, and a Node JSON assertion confirmed expected transition-kind sequences.
+
+## 2026-04-30 - Phase 5 expanded collapse recovery follows activity-source availability
+
+- Updated `IslandPresentationReducer` so expanded app/music collapse recovers to `.activity` whenever the active mock source still exists, clearing `forceCompactMode` so the visible shell derives as `activityCollapsed`; logged-out and compact-only expanded states still collapse to compact.
+- Extended reducer and preview probes with expanded app, expanded music, expanded logged-out, and expanded compact-only collapse recovery rows, then regenerated Phase 5 interaction evidence.
+- Validation: `find mac-island/MemoryFlowIsland -name '*.swift' -print0 | xargs -0 swiftc -module-cache-path /tmp/memoryflow-swift-module-cache -typecheck` passed. The Phase 5 evidence generator compiled and ran, and `preview-interaction-probe.json` reports app/music source recovery to activity plus logged-out/compact-only recovery to compact.
+
+## 2026-04-30 - Phase 5 mock content width requirements route through sizing
+
+- Updated `IslandDerivedState` so review, todo, music, greeting, and compact branches declare mock `IslandContentWidthRequirement` values, then merge those requirements with preview marker widths before exposing `widthConstraints`.
+- Extended the Phase 5 preview marker layout probe so derived widths are checked through `IslandPreviewLayoutInput` and `IslandWindowSizingEngine` diagnostics, including a synthetic greeting row.
+- Validation: full Swift typecheck passed. The Phase 5 evidence generator compiled and ran. `preview-marker-layout-probe.json` reports content-extension width consistency across derived/layout/sizing, branches `compact`, `greeting`, `music`, `review`, `todo`, eight distinct visible widths, centered shell output, and top attachment.
+
+## 2026-04-30 - Phase 5 preview mock content markers are visible
+
+- Added preview-only marker derivation to `IslandDerivedState` for logged-out, review, todo, music, reminder, and gesture-lock states, with marker width flowing through `IslandContentWidthRequirement` and the existing `IslandPreviewLayoutInput` sizing path.
+- Updated `IslandRootView`, `IslandVisualStatePreview`, `IslandPhase5PreviewStateContainer`, and `IslandWindowController` so SwiftUI renders lightweight markers without directly resizing the panel from the view layer.
+- Validation: full Swift typecheck passed. The Phase 5 evidence generator compiled and ran. `preview-marker-layout-probe.json` confirms marker glyphs/tones, derived-state width routing, and notch attachment.
 ## Archive Summary
 
 - This file preserves the full detailed history that has been rolled out of the default startup path.
@@ -827,3 +1001,43 @@
   - 2026-04-25 - Phase 2 acceptance checklist now covers shell recovery and hover behaviors.
 - Archive note:
   - Keep the three newest path-factory records in the main log because they are the closest setup context for the next `IslandShapeEngine` and preview-host tasks.
+
+## 2026-04-30 - Main-log rollover for the Phase 5 preview interaction slice
+
+- Reason for rollover:
+  - `codex-progress.md` exceeded the default startup size threshold during `$Auto_dev` Phase 5 execution.
+  - The current first pending task is `Add Phase 5 motion-plan selection from reducer transition reasons.`
+  - The main log now keeps the current summary plus the three most recent records: mock markers, content-width routing, and expanded collapse recovery.
+- Detailed records moved out of the default startup path:
+  - 2026-04-30 - Phase 5 interaction demo controls exposed in the status menu.
+    - Added `IslandPhase5InteractionDemoControl` for hover enter/leave, tap, pointer swipe left/right, trackpad up/down, and horizontal previous/next.
+    - Routed the `Phase 5 Interactions` submenu through the same `dispatchPhase5Intent(...)` reducer path used by real preview interactions.
+    - Generated `docs/evidence/mac-island-phase5/interaction-demo-menu-probe.json`; all nine controls matched direct reducer sequences.
+  - 2026-04-30 - Phase 5 preview controller routed native tap, hover, pointer, and wheel input.
+    - `IslandWindowController` now owns a Phase 5 preview state container and maps `IslandDerivedState` into the existing sizing and motion path.
+    - Added `IslandInteractionHostingView`, `IslandPhase5PreviewStateContainer`, and `IslandPreviewInteractionAdapters`.
+    - Validation used full Swift typecheck plus preview and layout probes because `init.sh` hit occupied backend ports.
+  - 2026-04-30 - Phase 5 reminder, scenarios, probes, and scenario menu routing landed.
+    - Reducer support for `reminderDue`, `pausedMusicTimeout`, and reducer-backed mock scenario selection landed with the 10-scenario Phase 5 catalog.
+    - `MEMORYFLOW_ISLAND_PHASE5_SCENARIOS=1` exposes preview-only scenario selection through the status menu.
+    - Generated `scenario-matrix.json`, `interaction-sequences.json`, `preview-interaction-probe.json`, and `scenario-selection-probe.json`.
+  - 2026-04-27 - Phase 5 reducer guarded gesture cooldown and animation locks.
+    - Added reducer-visible trackpad cooldown and animation-lock state, with `transitionComplete(...)` clearing locks.
+    - Probes cover guarded tap, hover, pointer, and rapid trackpad sequences.
+  - 2026-04-27 - Phase 5 reducer emitted mock horizontal music commands.
+    - `horizontalMusicCommand` emits mock previous/next metadata only in music mode and leaves app-mode swipes side-effect free.
+    - Probes validate music previous/next rows and the ignored app-mode horizontal swipe.
+  - 2026-04-27 - Phase 5 reducer drove trackpad vertical open and close.
+    - Trackpad up closes expanded/activity shells; trackpad down reopens activity or expands visible activity.
+    - Probes cover expanded close, activity close, compact reopen, and activity expand.
+  - 2026-04-27 - Phase 5 reducer drove pointer swipe compact/activity recovery.
+    - Pointer swipe right forces compact when activity is visible, and pointer swipe left restores activity when a source exists.
+    - Probes cover review activity collapse and compact activity restore.
+  - 2026-04-27 - Phase 5 reducer drove hover enter and leave state.
+    - Hover enter sets `isHovered` for non-expanded states and derives `hoverCollapsed`; hover leave clears hover while preserving expanded presentation.
+    - Probes cover compact hover enter/leave and expanded app/music hover leave.
+  - 2026-04-27 - Phase 5 reducer drove tap expand and collapse recovery.
+    - Tap expands compact/activity states into app or music expanded presentation and collapses expanded states back to activity or compact based on source availability.
+    - Probes cover app/music expansion plus activity/compact recovery.
+- Validation note:
+  - The rollover preserved project history in this archive while returning the default startup path to `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.

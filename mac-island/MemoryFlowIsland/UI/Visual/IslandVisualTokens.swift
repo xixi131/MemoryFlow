@@ -23,7 +23,20 @@ struct IslandShellGeometryTokens: Equatable {
 }
 
 struct IslandHoverBehaviorTokens: Equatable {
-    let collapsedScale: CGFloat
+    let collapsedWidthScale: CGFloat
+    let collapsedHeight: CGFloat
+}
+
+struct IslandActivityContentChoreographyTokens: Equatable {
+    let delay: TimeInterval
+    let duration: TimeInterval
+    let initialBlurRadius: CGFloat
+}
+
+struct IslandActivityCollapseContentChoreographyTokens: Equatable {
+    let exitDuration: TimeInterval
+    let exitBlurRadius: CGFloat
+    let compactContentDelay: TimeInterval
 }
 
 struct IslandShadowBufferTokens: Equatable {
@@ -50,10 +63,19 @@ struct IslandShadowAppearanceTokens: Equatable {
             offsetY: offsetY * visualScale
         )
     }
+
+    func interpolated(to target: IslandShadowAppearanceTokens, progress: CGFloat) -> IslandShadowAppearanceTokens {
+        let t = min(max(progress, 0), 1)
+        func lerp(_ start: CGFloat, _ end: CGFloat) -> CGFloat { start + ((end - start) * t) }
+        return IslandShadowAppearanceTokens(
+            opacity: Double(lerp(CGFloat(opacity), CGFloat(target.opacity))),
+            radius: lerp(radius, target.radius),
+            offsetY: lerp(offsetY, target.offsetY)
+        )
+    }
 }
 
 struct IslandShadowBehaviorTokens: Equatable {
-    let fadeDuration: TimeInterval
     let visibleInHoverCollapsed: Bool
     let visibleInExpanded: Bool
     let hoverBuffer: IslandShadowBufferTokens
@@ -91,6 +113,33 @@ enum IslandVisualTokens {
     static let compactGreetingMinWidth: CGFloat = 220
     static let compactGreetingMaxWidth: CGFloat = 300
     static let compactTodoNoActivityWidth: CGFloat = 230
+    // Kept in the Visual module because the production target compiles its
+    // content layer independently from the motion-plan support sources.
+    static let activityContentEnter = IslandActivityContentChoreographyTokens(
+        delay: 0.10,
+        duration: 0.26,
+        initialBlurRadius: 4
+    )
+    static let activityCollapseContent = IslandActivityCollapseContentChoreographyTokens(
+        exitDuration: 0.15,
+        exitBlurRadius: 5,
+        compactContentDelay: 0.4675
+    )
+    static let expandedAppContentEnter = IslandActivityContentChoreographyTokens(
+        delay: 0.15,
+        duration: 0.26,
+        initialBlurRadius: 4
+    )
+    static let expandedMusicContentEnter = IslandActivityContentChoreographyTokens(
+        delay: 0.15,
+        duration: 0.26,
+        initialBlurRadius: 4
+    )
+    static let expandedContentExit = IslandActivityCollapseContentChoreographyTokens(
+        exitDuration: 0.15,
+        exitBlurRadius: 5,
+        compactContentDelay: 0
+    )
 
     // 普通收起态：对应最接近 Mac 刘海的状态。
     // 如果觉得液态连接太小，优先把 earBlendHeight 从 11 往 13-16 调；
@@ -148,25 +197,28 @@ enum IslandVisualTokens {
     )
 
     static let hover = IslandHoverBehaviorTokens(
-        collapsedScale: 1.06
+        // Hover remains intentionally smaller than the activity shell. Keep width
+        // proportional to each compact content branch while using the fixed 37pt
+        // shell height specified by the Windows-parity hover plan.
+        collapsedWidthScale: 1.025,
+        collapsedHeight: 37
     )
 
     static let shadow = IslandShadowBehaviorTokens(
-        fadeDuration: 0.26,
         visibleInHoverCollapsed: true,
         visibleInExpanded: true,
         hoverBuffer: IslandShadowBufferTokens(
-            horizontal: 18,
-            bottom: 24
+            horizontal: 12,
+            bottom: 17
         ),
         expandedBuffer: IslandShadowBufferTokens(
             horizontal: 64,
             bottom: 136
         ),
         hoverAppearance: IslandShadowAppearanceTokens(
-            opacity: 0.28,
+            opacity: 0.14,
             radius: 12,
-            offsetY: 10
+            offsetY: 5
         ),
         expandedAppearance: IslandShadowAppearanceTokens(
             opacity: 0.22,

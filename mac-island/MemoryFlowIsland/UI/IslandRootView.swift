@@ -5,8 +5,9 @@ struct IslandRootView: View {
     let visualScale: CGFloat
     let horizontalScale: CGFloat
     let widthConstraints: IslandWidthConstraints
-    let motionPlan: IslandMotionPlan?
+    let previewContent: IslandPreviewContent
     var onAdvancePreviewState: (() -> Void)?
+    var onGreetingLifecycleCompleted: (() -> Void)?
 
     var body: some View {
         IslandVisualStatePreview(
@@ -14,8 +15,9 @@ struct IslandRootView: View {
             visualScale: visualScale,
             horizontalScale: horizontalScale,
             widthConstraints: widthConstraints,
-            motionPlan: motionPlan,
-            onAdvanceState: onAdvancePreviewState
+            previewContent: previewContent,
+            onAdvanceState: onAdvancePreviewState,
+            onGreetingLifecycleCompleted: onGreetingLifecycleCompleted
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

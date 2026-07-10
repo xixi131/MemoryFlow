@@ -1,221 +1,1015 @@
-[
-  {
-    "initialVisualState" : "compactCollapsed",
-    "sequenceID" : "hover-enter-leave",
-    "steps" : [
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "hoverEntered",
-        "intent" : "hoverEnter",
-        "presentationState" : "collapsed",
-        "primaryMode" : "app",
-        "visualState" : "hoverCollapsed"
-      },
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "hoverLeft",
-        "intent" : "hoverLeave",
-        "presentationState" : "collapsed",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      }
+{
+  "coverage" : {
+    "coveredPaths" : [
+      "hover",
+      "tap",
+      "pointer-swipe",
+      "trackpad-vertical",
+      "horizontal-music",
+      "reminder",
+      "paused-timeout",
+      "rapid-retargeting"
+    ],
+    "reducerProbeRows" : 10,
+    "requiredPaths" : [
+      "hover",
+      "tap",
+      "pointer-swipe",
+      "trackpad-vertical",
+      "horizontal-music",
+      "reminder",
+      "paused-timeout",
+      "rapid-retargeting"
     ]
   },
-  {
-    "initialVisualState" : "compactCollapsed",
-    "sequenceID" : "tap-expand-collapse",
-    "steps" : [
-      {
+  "generatedFrom" : "IslandPresentationReducerProbe.validateInteractionSequenceEvidenceRows",
+  "guardOutcomes" : [
+    {
+      "evidenceSequences" : [
+        "hover-enter-leave",
+        "tap-expand-collapse",
+        "rapid-hover-tap-hover"
+      ],
+      "expectedOutcome" : "panel passes through pointer events while compact idle, and disables click-through while hover, expanded, or pointer tracking needs interactive routing",
+      "guardID" : "click-through",
+      "notes" : "Reducer rows expose the hoverCollapsed and expandedApp states that keep native routing interactive; compactCollapsed rows are the pass-through recovery targets.",
+      "observedOutcome" : "explicit",
+      "reducerProbeSource" : "IslandWindowController.synchronizePanelClickThroughState with reducer visual states from hover-enter-leave, tap-expand-collapse, and rapid-hover-tap-hover"
+    },
+    {
+      "evidenceSequences" : [
+        "review-activity-trackpad-cooldown-lock"
+      ],
+      "expectedOutcome" : "overlapping trackpad gestures are blocked during cooldown",
+      "guardID" : "gesture-lock",
+      "notes" : "The reducer trackpad sequence probe records the immediate second trackpad intent as trackpadGestureLocked before cooldown completion.",
+      "observedOutcome" : "trackpadGestureLocked -> blocked",
+      "reducerProbeSource" : "IslandPresentationReducerProbe.validateTrackpadTransitionSequences"
+    },
+    {
+      "evidenceSequences" : [
+        "review-mode-switch-hover-tap-lock",
+        "rapid-retargeting"
+      ],
+      "expectedOutcome" : "mode-switch and force-compact presentation locks block stale intents until their completion intent clears the lock",
+      "guardID" : "presentation-lock",
+      "notes" : "The generated rapid-retargeting row contains forceCompactTransitionLocked, and the reducer hover sequence probe covers modeSwitchLocked.",
+      "observedOutcome" : "modeSwitchLocked -> blocked; forceCompactTransitionLocked -> blocked",
+      "reducerProbeSource" : "IslandPresentationReducerProbe.validateHoverTransitionSequences and validateInteractionSequenceEvidenceRows"
+    },
+    {
+      "evidenceSequences" : [
+        "trackpad-vertical-swipes",
+        "horizontal-music-command",
+        "tap-tap-trackpad"
+      ],
+      "expectedOutcome" : "trackpad and horizontal music gestures enter cooldown and return to idle only after transitionComplete(trackpadGestureCooldown)",
+      "guardID" : "cooldown",
+      "notes" : "Sequence state snapshots record cooldown after trackpad and horizontal music intents and idle recovery after the cooldown completion step.",
+      "observedOutcome" : "gestureState=cooldown, then transitionComplete(trackpadGestureCooldown) -> idle",
+      "reducerProbeSource" : "IslandPresentationReducerProbe.validateInteractionSequenceEvidenceRows"
+    }
+  ],
+  "sequences" : [
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
         "forceCompactMode" : true,
         "gestureState" : "idle",
-        "guardOutcome" : "tapExpandedToApp",
-        "intent" : "tap",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "compactCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "hoverEnter",
+        "hoverLeave"
+      ],
+      "scenarioID" : "hover-enter-leave",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "hoverEnter",
+          "reason" : "hoverEntered",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : true,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "hoverCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "hoverLeave",
+          "reason" : "hoverLeft",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "activityCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "tap",
+        "tap"
+      ],
+      "scenarioID" : "tap-expand-collapse",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapExpandedToApp",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "expanded",
+            "primaryMode" : "app"
+          },
+          "visualState" : "expandedApp"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapCollapsedToActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "activityCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "activityCollapsed",
+      "intents" : [
+        "pointerSwipe(right)",
+        "transitionComplete(forceCompactTransition)",
+        "pointerSwipe(left)"
+      ],
+      "scenarioID" : "pointer-compact-activity-swipes",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "pointerSwipe(right)",
+          "reason" : "pointerSwipedToCompact",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(forceCompactTransition)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "pointerSwipe(left)",
+          "reason" : "pointerSwipedToActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "cooldown",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "activityCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "activityCollapsed",
+      "intents" : [
+        "trackpadSwipe(up)",
+        "transitionComplete(trackpadGestureCooldown)",
+        "transitionComplete(forceCompactTransition)",
+        "trackpadSwipe(down)"
+      ],
+      "scenarioID" : "trackpad-vertical-swipes",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "trackpadSwipe(up)",
+          "reason" : "trackpadSwipedUpToCompact",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "cooldown",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(trackpadGestureCooldown)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(forceCompactTransition)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "trackpadSwipe(down)",
+          "reason" : "trackpadSwipedDownToActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "cooldown",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "cooldown",
+        "hasMusicSource" : true,
+        "hasReviewSource" : false,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "music"
+      },
+      "finalVisualState" : "activityCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : true,
+        "hasReviewSource" : false,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "music"
+      },
+      "initialVisualState" : "activityCollapsed",
+      "intents" : [
+        "horizontalMusicCommand(previousTrack)",
+        "transitionComplete(trackpadGestureCooldown)",
+        "horizontalMusicCommand(nextTrack)"
+      ],
+      "scenarioID" : "horizontal-music-command",
+      "steps" : [
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "horizontalMusicCommand(previousTrack)",
+          "mockMusicCommand" : "previousTrack",
+          "reason" : "mockPreviousTrackCommanded",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "cooldown",
+            "hasMusicSource" : true,
+            "hasReviewSource" : false,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "music"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(trackpadGestureCooldown)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : true,
+            "hasReviewSource" : false,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "music"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "horizontalMusicCommand(nextTrack)",
+          "mockMusicCommand" : "nextTrack",
+          "reason" : "mockNextTrackCommanded",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "cooldown",
+            "hasMusicSource" : true,
+            "hasReviewSource" : false,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "music"
+          },
+          "visualState" : "activityCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : true,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "activityCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "reminderDue",
+        "transitionComplete(forceCompactTransition)"
+      ],
+      "scenarioID" : "reminder-due",
+      "steps" : [
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "reminderDue",
+          "reason" : "reminderDueOpenedReviewActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : true,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(forceCompactTransition)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : true,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : true,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "compactCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : true,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "music"
+      },
+      "initialVisualState" : "activityCollapsed",
+      "intents" : [
+        "pausedMusicTimeout"
+      ],
+      "scenarioID" : "paused-music-timeout",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "pausedMusicTimeout",
+          "reason" : "pausedMusicTimedOutToApp",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : false,
+        "gestureState" : "idle",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
         "presentationState" : "expanded",
-        "primaryMode" : "app",
-        "visualState" : "expandedApp"
+        "primaryMode" : "app"
       },
-      {
+      "finalVisualState" : "expandedApp",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
         "forceCompactMode" : true,
         "gestureState" : "idle",
-        "guardOutcome" : "outsideCollapsedToCompact",
-        "intent" : "outsideCollapse",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
         "presentationState" : "collapsed",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "activityCollapsed",
-    "sequenceID" : "pointer-compact-restore",
-    "steps" : [
-      {
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "hoverEnter",
+        "pointerSwipe(left)",
+        "tap",
+        "transitionComplete(forceCompactTransition)",
+        "tap"
+      ],
+      "scenarioID" : "rapid-retargeting",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "hoverEnter",
+          "reason" : "hoverEntered",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : true,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "hoverCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "pointerSwipe(left)",
+          "reason" : "pointerSwipedToActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "blocked",
+          "intent" : "tap",
+          "reason" : "forceCompactTransitionLocked",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "transitionComplete(forceCompactTransition)",
+          "reason" : "noChange",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapExpandedToApp",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "expanded",
+            "primaryMode" : "app"
+          },
+          "visualState" : "expandedApp"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
         "forceCompactMode" : true,
         "gestureState" : "idle",
-        "guardOutcome" : "pointerSwipedToCompact",
-        "intent" : "pointerSwipe(right)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      },
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "noChange",
-        "intent" : "transitionComplete(forceCompactTransition)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      },
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "idle",
-        "guardOutcome" : "pointerSwipedToActivity",
-        "intent" : "pointerSwipe(left)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "activityCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "activityCollapsed",
-    "sequenceID" : "trackpad-vertical-cycle",
-    "steps" : [
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "cooldown",
-        "guardOutcome" : "trackpadSwipedUpToCompact",
-        "intent" : "trackpadSwipe(up)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      },
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "noChange",
-        "intent" : "transitionComplete(trackpadGestureCooldown)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      },
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "noChange",
-        "intent" : "transitionComplete(forceCompactTransition)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      },
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "cooldown",
-        "guardOutcome" : "trackpadSwipedDownToActivity",
-        "intent" : "trackpadSwipe(down)",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "activityCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "activityCollapsed",
-    "sequenceID" : "horizontal-music-command",
-    "steps" : [
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "cooldown",
-        "guardOutcome" : "mockPreviousTrackCommanded",
-        "intent" : "horizontalMusicCommand(previousTrack)",
-        "presentationState" : "activity",
-        "primaryMode" : "music",
-        "visualState" : "activityCollapsed"
-      },
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "idle",
-        "guardOutcome" : "noChange",
-        "intent" : "transitionComplete(trackpadGestureCooldown)",
-        "presentationState" : "activity",
-        "primaryMode" : "music",
-        "visualState" : "activityCollapsed"
-      },
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "cooldown",
-        "guardOutcome" : "mockNextTrackCommanded",
-        "intent" : "horizontalMusicCommand(nextTrack)",
-        "presentationState" : "activity",
-        "primaryMode" : "music",
-        "visualState" : "activityCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "compactCollapsed",
-    "sequenceID" : "reminder-due-open",
-    "steps" : [
-      {
-        "forceCompactMode" : false,
-        "gestureState" : "idle",
-        "guardOutcome" : "reminderDueOpenedReviewActivity",
-        "intent" : "reminderDue",
-        "presentationState" : "activity",
-        "primaryMode" : "app",
-        "visualState" : "activityCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "activityCollapsed",
-    "sequenceID" : "paused-music-timeout",
-    "steps" : [
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "pausedMusicTimedOutToApp",
-        "intent" : "pausedMusicTimeout",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : true,
+        "isReminderActive" : false,
         "presentationState" : "collapsed",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
-      }
-    ]
-  },
-  {
-    "initialVisualState" : "compactCollapsed",
-    "sequenceID" : "rapid-retargeting",
-    "steps" : [
-      {
-        "forceCompactMode" : true,
-        "gestureState" : "idle",
-        "guardOutcome" : "tapExpandedToApp",
-        "intent" : "tap",
-        "presentationState" : "expanded",
-        "primaryMode" : "app",
-        "visualState" : "expandedApp"
+        "primaryMode" : "app"
       },
-      {
+      "finalVisualState" : "hoverCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
         "forceCompactMode" : true,
         "gestureState" : "idle",
-        "guardOutcome" : "outsideCollapsedToCompact",
-        "intent" : "outsideCollapse",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
         "presentationState" : "collapsed",
-        "primaryMode" : "app",
-        "visualState" : "compactCollapsed"
+        "primaryMode" : "app"
       },
-      {
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "hoverEnter",
+        "tap",
+        "retargetPresentation(hoverCollapsed)"
+      ],
+      "scenarioID" : "rapid-hover-tap-hover",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "hoverEnter",
+          "reason" : "hoverEntered",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : true,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "hoverCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapExpandedToApp",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "expanded",
+            "primaryMode" : "app"
+          },
+          "visualState" : "expandedApp"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "retargetPresentation(hoverCollapsed)",
+          "reason" : "presentationRetargeted",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : true,
+            "isReminderActive" : false,
+            "presentationState" : "collapsed",
+            "primaryMode" : "app"
+          },
+          "visualState" : "hoverCollapsed"
+        }
+      ]
+    },
+    {
+      "finalState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
+        "forceCompactMode" : true,
+        "gestureState" : "cooldown",
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "activity",
+        "primaryMode" : "app"
+      },
+      "finalVisualState" : "compactCollapsed",
+      "initialState" : {
+        "appDisplayMode" : "review",
+        "authState" : "loggedIn",
         "forceCompactMode" : true,
         "gestureState" : "idle",
-        "guardOutcome" : "tapExpandedToApp",
-        "intent" : "tap",
-        "presentationState" : "expanded",
-        "primaryMode" : "app",
-        "visualState" : "expandedApp"
-      }
-    ]
-  }
-]
+        "hasMusicSource" : false,
+        "hasReviewSource" : true,
+        "hasTodoSource" : false,
+        "isHovered" : false,
+        "isReminderActive" : false,
+        "presentationState" : "collapsed",
+        "primaryMode" : "app"
+      },
+      "initialVisualState" : "compactCollapsed",
+      "intents" : [
+        "tap",
+        "tap",
+        "trackpadSwipe(up)"
+      ],
+      "scenarioID" : "tap-tap-trackpad",
+      "steps" : [
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapExpandedToApp",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "expanded",
+            "primaryMode" : "app"
+          },
+          "visualState" : "expandedApp"
+        },
+        {
+          "collapsedWidth" : 240,
+          "guardOutcome" : "passed",
+          "intent" : "tap",
+          "reason" : "tapCollapsedToActivity",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : false,
+            "gestureState" : "idle",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "activityCollapsed"
+        },
+        {
+          "collapsedWidth" : 160,
+          "guardOutcome" : "passed",
+          "intent" : "trackpadSwipe(up)",
+          "reason" : "trackpadSwipedUpToCompact",
+          "state" : {
+            "appDisplayMode" : "review",
+            "authState" : "loggedIn",
+            "forceCompactMode" : true,
+            "gestureState" : "cooldown",
+            "hasMusicSource" : false,
+            "hasReviewSource" : true,
+            "hasTodoSource" : false,
+            "isHovered" : false,
+            "isReminderActive" : false,
+            "presentationState" : "activity",
+            "primaryMode" : "app"
+          },
+          "visualState" : "compactCollapsed"
+        }
+      ]
+    }
+  ]
+}

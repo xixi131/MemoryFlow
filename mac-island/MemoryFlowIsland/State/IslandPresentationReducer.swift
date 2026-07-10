@@ -8,10 +8,21 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case modeSwitchLocked
     case forceCompactTransitionLocked
     case mockPreviousTrackCommanded
+    case mockPlayPauseCommanded
     case mockNextTrackCommanded
+    case musicSnapshotAccepted
+    case musicSnapshotIgnoredLoggedOut
+    case musicStoppedToApp
+    case musicCommandRequested
+    case modeSwitchedToReview
+    case modeSwitchedToTodo
+    case activitySwitchedToReview
+    case activitySwitchedToTodo
+    case activitySwitchedToMusic
     case reminderDueMarkedActive
     case reminderDueOpenedReviewActivity
     case pausedMusicTimedOutToApp
+    case greetingLifecycleCompleted
     case hoverEntered
     case hoverLeft
     case pointerSwipedToCompact
@@ -27,13 +38,16 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case tapCollapsedToActivity
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
+    case presentationRetargeted
 }
 
 struct IslandPresentationReducerMetadata: Codable, Equatable {
     let mockMusicCommand: IslandHorizontalMusicCommand?
+    let musicCommand: IslandHorizontalMusicCommand?
 
     static let none = IslandPresentationReducerMetadata(
-        mockMusicCommand: nil
+        mockMusicCommand: nil,
+        musicCommand: nil
     )
 }
 
@@ -55,6 +69,8 @@ enum IslandPresentationReducer {
         switch intent {
         case let .transitionComplete(identifier):
             return completeTransition(state, identifier: identifier)
+        case let .retargetPresentation(target):
+            return retargetPresentation(state, target: target)
         case let .mockScenarioSelect(scenarioID):
             guard scenarioID.isEmpty == false else {
                 return unchanged(state, reason: .noChange)
@@ -67,6 +83,15 @@ enum IslandPresentationReducer {
             return transition(state, reason: .mockScenarioSelected) { nextState in
                 nextState = scenario.initialState
             }
+        case .greetingLifecycleCompleted, .greetingFastForward:
+            guard state.isGreetingActive else {
+                return unchanged(state, reason: .noChange)
+            }
+
+            return transition(state, reason: .greetingLifecycleCompleted) { nextState in
+                nextState.isGreetingActive = false
+                nextState.greetingText = nil
+            }
         default:
             break
         }
@@ -76,12 +101,12 @@ enum IslandPresentationReducer {
             return unchanged(state, reason: .trackpadGestureLocked)
         }
 
-        if state.isModeSwitchAnimating,
+        if state.isModeSwitchLocked,
            shouldRespectModeSwitchLock(intent) {
             return unchanged(state, reason: .modeSwitchLocked)
         }
 
-        if state.isForceCompactTransitioning,
+        if state.isForceCompactLocked,
            shouldRespectForceCompactLock(intent) {
             return unchanged(state, reason: .forceCompactTransitionLocked)
         }
@@ -223,14 +248,83 @@ enum IslandPresentationReducer {
 
             return transition(
                 state,
-                reason: command == .previousTrack
-                    ? .mockPreviousTrackCommanded
-                    : .mockNextTrackCommanded,
+                reason: mockMusicCommandReason(for: command),
                 metadata: IslandPresentationReducerMetadata(
-                    mockMusicCommand: command
+                    mockMusicCommand: command,
+                    musicCommand: command
                 )
             ) { nextState in
                 lockTrackpadGesture(&nextState)
+            }
+        case let .musicSnapshotUpdated(snapshot):
+            if state.authState != .loggedIn && state.primaryMode != .music {
+                return unchanged(state, reason: .musicSnapshotIgnoredLoggedOut)
+            }
+
+            return transition(state, reason: .musicSnapshotAccepted) { nextState in
+                nextState.primaryMode = .music
+                nextState.presentationState = nextState.presentationState == .expanded ? .expanded : .activity
+                nextState.forceCompactMode = false
+                nextState.isHovered = false
+                nextState.isReminderActive = false
+                nextState.isGreetingActive = false
+                nextState.greetingText = nil
+                nextState.mockSources.music = IslandMockMusicActivity(snapshot: snapshot)
+                nextState.mockSources.todo = nil
+                if nextState.presentationLockState.isForceCompactLocked == false,
+                   state.primaryMode != .music || state.forceCompactMode {
+                    lockForceCompactTransition(&nextState)
+                }
+            }
+        case .musicStopped:
+            guard state.primaryMode == .music || state.mockSources.music != nil else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(state, reason: .musicStoppedToApp) { nextState in
+                nextState.primaryMode = .app
+                nextState.presentationState = .collapsed
+                nextState.forceCompactMode = true
+                nextState.isHovered = false
+                nextState.mockSources.music = nil
+            }
+        case let .musicCommandRequested(command):
+            guard state.primaryMode == .music else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(
+                state,
+                reason: .musicCommandRequested,
+                metadata: IslandPresentationReducerMetadata(
+                    mockMusicCommand: nil,
+                    musicCommand: command
+                )
+            ) { _ in }
+        case .modeSwitchToggle:
+            let derivedState = IslandDerivedState.derive(from: state)
+            guard state.primaryMode == .app,
+                  state.authState == .loggedIn,
+                  state.presentationState != .expanded,
+                  derivedState.hasAppActivitySource else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            let nextMode: IslandAppDisplayMode = state.appDisplayMode == .review ? .todo : .review
+            return transition(
+                state,
+                reason: state.presentationState == .activity && state.forceCompactMode == false
+                    ? (nextMode == .todo ? .activitySwitchedToTodo : .activitySwitchedToReview)
+                    : (nextMode == .todo ? .modeSwitchedToTodo : .modeSwitchedToReview)
+            ) { nextState in
+                nextState.appDisplayMode = nextMode
+                nextState.primaryMode = .app
+                nextState.presentationState = .activity
+                nextState.forceCompactMode = false
+                nextState.isHovered = false
+                nextState.isReminderActive = false
+                ensureAppMockSource(&nextState, for: nextMode)
+                lockModeSwitch(&nextState)
             }
         case .reminderDue:
             guard state.authState == .loggedIn,
@@ -270,8 +364,25 @@ enum IslandPresentationReducer {
                 nextState.isHovered = false
                 nextState.mockSources.music = nil
             }
-        case .transitionComplete, .mockScenarioSelect:
+        case .transitionComplete,
+             .greetingLifecycleCompleted,
+             .greetingFastForward,
+             .mockScenarioSelect,
+             .retargetPresentation:
             return unchanged(state, reason: .noChange)
+        }
+    }
+
+    private static func mockMusicCommandReason(
+        for command: IslandHorizontalMusicCommand
+    ) -> IslandPresentationTransitionReason {
+        switch command {
+        case .previousTrack:
+            return .mockPreviousTrackCommanded
+        case .playPause:
+            return .mockPlayPauseCommanded
+        case .nextTrack:
+            return .mockNextTrackCommanded
         }
     }
 
@@ -291,15 +402,37 @@ enum IslandPresentationReducer {
             return unchanged(state, reason: .intentIgnored)
         }
 
-        let hasActivitySource = IslandDerivedState.derive(from: state).hasAnyActivitySource
-        let shouldRecoverActivity = hasActivitySource && state.forceCompactMode == false
+        // A forced compact presentation wins even when the expanded source still
+        // has activity data. Otherwise retain the source mode for its compact to
+        // activity recovery animation.
+        let shouldRecoverActivity = state.forceCompactMode == false && hasRecoverableMockActivitySource(state)
 
+        let stageActivityRecovery = shouldRecoverActivity
         return transition(
             state,
-            reason: shouldRecoverActivity ? activityReason : compactReason
+            reason: compactReason
         ) {
-            $0.presentationState = shouldRecoverActivity ? .activity : .collapsed
+            $0.presentationState = .collapsed
+            if stageActivityRecovery {
+                $0.presentationLockState.transitionID = "expandedCollapseRecovery"
+            }
             $0.isHovered = false
+        }
+    }
+
+    private static func hasRecoverableMockActivitySource(_ state: IslandDomainState) -> Bool {
+        switch state.primaryMode {
+        case .app:
+            guard state.authState == .loggedIn else { return false }
+
+            switch state.appDisplayMode {
+            case .review:
+                return state.mockSources.review != nil
+            case .todo:
+                return state.mockSources.todo != nil
+            }
+        case .music:
+            return state.mockSources.music != nil
         }
     }
 
@@ -313,19 +446,24 @@ enum IslandPresentationReducer {
 
         return transition(state, reason: .noChange) {
             switch identifier {
+            case "expandedCollapseRecovery":
+                if $0.forceCompactMode == false && hasRecoverableMockActivitySource($0) {
+                    $0.presentationState = .activity
+                }
+                if $0.presentationLockState.transitionID == identifier { $0.presentationLockState.transitionID = nil }
             case IslandTransitionLockIdentifier.trackpadGestureCooldown:
                 if $0.gestureState == .cooldown {
                     $0.gestureState = .idle
                 }
             case IslandTransitionLockIdentifier.forceCompactTransition:
-                $0.animationState.isForceCompactTransitioning = false
-                if $0.animationState.transitionID == identifier {
-                    $0.animationState.transitionID = nil
+                $0.presentationLockState.isForceCompactLocked = false
+                if $0.presentationLockState.transitionID == identifier {
+                    $0.presentationLockState.transitionID = nil
                 }
-            case IslandTransitionLockIdentifier.modeSwitchAnimation:
-                $0.animationState.isModeSwitchAnimating = false
-                if $0.animationState.transitionID == identifier {
-                    $0.animationState.transitionID = nil
+            case IslandTransitionLockIdentifier.modeSwitchLock:
+                $0.presentationLockState.isModeSwitchLocked = false
+                if $0.presentationLockState.transitionID == identifier {
+                    $0.presentationLockState.transitionID = nil
                 }
             default:
                 break
@@ -333,15 +471,36 @@ enum IslandPresentationReducer {
         }
     }
 
+    private static func retargetPresentation(
+        _ state: IslandDomainState,
+        target: IslandPresentationRetargetTarget
+    ) -> IslandPresentationReducerResult {
+        transition(state, reason: .presentationRetargeted) {
+            $0.presentationState = target.presentationState
+            $0.forceCompactMode = target.forceCompactMode
+            $0.isHovered = target.isHovered
+            if target.locksTrackpadGesture {
+                lockTrackpadGesture(&$0)
+            }
+            unlockPresentationLocks(&$0)
+        }
+    }
+
     private static func shouldRespectModeSwitchLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle:
             return true
         case .hoverEnter,
              .hoverLeave,
+             .musicSnapshotUpdated,
+             .musicStopped,
+             .musicCommandRequested,
              .reminderDue,
              .pausedMusicTimeout,
+             .greetingLifecycleCompleted,
+             .greetingFastForward,
              .mockScenarioSelect,
+             .retargetPresentation,
              .transitionComplete:
             return false
         }
@@ -349,13 +508,19 @@ enum IslandPresentationReducer {
 
     private static func shouldRespectForceCompactLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle:
             return true
         case .hoverEnter,
              .hoverLeave,
+             .musicSnapshotUpdated,
+             .musicStopped,
+             .musicCommandRequested,
              .reminderDue,
              .pausedMusicTimeout,
+             .greetingLifecycleCompleted,
+             .greetingFastForward,
              .mockScenarioSelect,
+             .retargetPresentation,
              .transitionComplete:
             return false
         }
@@ -370,9 +535,16 @@ enum IslandPresentationReducer {
              .tap,
              .outsideCollapse,
              .pointerSwipe,
+             .musicSnapshotUpdated,
+             .musicStopped,
+             .musicCommandRequested,
+             .modeSwitchToggle,
              .reminderDue,
              .pausedMusicTimeout,
+             .greetingLifecycleCompleted,
+             .greetingFastForward,
              .mockScenarioSelect,
+             .retargetPresentation,
              .transitionComplete:
             return false
         }
@@ -383,8 +555,46 @@ enum IslandPresentationReducer {
     }
 
     private static func lockForceCompactTransition(_ state: inout IslandDomainState) {
-        state.animationState.isForceCompactTransitioning = true
-        state.animationState.transitionID = IslandTransitionLockIdentifier.forceCompactTransition
+        state.presentationLockState.isForceCompactLocked = true
+        state.presentationLockState.transitionID = IslandTransitionLockIdentifier.forceCompactTransition
+    }
+
+    private static func lockModeSwitch(_ state: inout IslandDomainState) {
+        state.presentationLockState.isModeSwitchLocked = true
+        state.presentationLockState.transitionID = IslandTransitionLockIdentifier.modeSwitchLock
+    }
+
+    private static func ensureAppMockSource(
+        _ state: inout IslandDomainState,
+        for mode: IslandAppDisplayMode
+    ) {
+        switch mode {
+        case .review:
+            if state.mockSources.review == nil {
+                state.mockSources.review = IslandMockReviewActivity(
+                    pendingCount: 3,
+                    completedTodayCount: 2,
+                    nextSubjectTitle: "Review"
+                )
+            }
+            state.mockSources.todo = nil
+        case .todo:
+            if state.mockSources.todo == nil {
+                state.mockSources.todo = IslandMockTodoActivity(
+                    pendingCount: 4,
+                    dueTodayCount: 1,
+                    overdueCount: 0,
+                    nextTaskTitle: "Todo"
+                )
+            }
+            state.mockSources.review = nil
+        }
+    }
+
+    private static func unlockPresentationLocks(_ state: inout IslandDomainState) {
+        state.presentationLockState.isForceCompactLocked = false
+        state.presentationLockState.isModeSwitchLocked = false
+        state.presentationLockState.transitionID = nil
     }
 
     private static func transition(
