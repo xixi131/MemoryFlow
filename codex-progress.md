@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-acceptance-fill`.
-- Remaining queue size: `2` Phase 6 tasks.
+- First pending task: `mac-motion-handoff`.
+- Remaining queue size: `1` Phase 6 task.
 
 ### 2026-07-10 - Phase 6 E2E evidence
 - Generated 55 deterministic visual-state frames across 11 mock scenarios, with shape, shadow, content-phase, and rejection metadata.

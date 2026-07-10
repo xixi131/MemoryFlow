@@ -490,7 +490,7 @@
       "Update docs/mac-island-migration-checklist.md with Phase 6 mock animation and content gates."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-handoff",
