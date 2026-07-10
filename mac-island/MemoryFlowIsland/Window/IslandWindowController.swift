@@ -64,6 +64,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     private var todoToggleScenarioSequence = 0
     private var applicationTerminationObserver: NSObjectProtocol?
+    private var applicationDeactivationObserver: NSObjectProtocol?
+    private var localPointerDownMonitor: Any?
+    private var globalPointerDownMonitor: Any?
+    private var expandedExitInteractivityWorkItem: DispatchWorkItem?
+    private var keepsExpandedExitInteractive = false
     private var lastSizingResult: IslandWindowSizingResult?
 
     private(set) var lastAppliedDisplayIdentity: ScreenMetrics.DisplayIdentity?
@@ -137,6 +142,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         applyInitialWindowState()
         beginDisplayObservation()
         beginApplicationTerminationObservation()
+        beginOutsideCollapseObservation()
     }
 
     deinit {
@@ -163,6 +169,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         cancelModeSwitchInteraction()
         trackpadWheelAdapter.reset()
         keepsTrackpadHoverFocus = false
+        cancelExpandedExitInteractivity()
         musicTakeoverController.stop()
         window?.orderOut(nil)
     }
@@ -261,6 +268,30 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
     }
 
+    private func beginOutsideCollapseObservation() {
+        applicationDeactivationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.collapseExpandedForOutsideInteraction()
+        }
+
+        localPointerDownMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] event in
+            self?.handleObservedPointerDown()
+            return event
+        }
+        globalPointerDownMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.handleObservedPointerDown()
+            }
+        }
+    }
+
     private func stopObservation() {
         displayObserver.stopObserving()
         hoverMonitor.stopMonitoring()
@@ -269,6 +300,17 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         trackpadCooldownWorkItem = nil
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
         applicationTerminationObserver = nil
+        NotificationCenter.default.removeObserverIfNeeded(applicationDeactivationObserver)
+        applicationDeactivationObserver = nil
+        if let localPointerDownMonitor {
+            NSEvent.removeMonitor(localPointerDownMonitor)
+            self.localPointerDownMonitor = nil
+        }
+        if let globalPointerDownMonitor {
+            NSEvent.removeMonitor(globalPointerDownMonitor)
+            self.globalPointerDownMonitor = nil
+        }
+        cancelExpandedExitInteractivity()
     }
 
     private func handleDisplayChange(_ changeSignal: DisplayObserver.ChangeSignal) {
@@ -388,6 +430,23 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private func hoverHotspotFrameForMonitoring() -> CGRect? {
         guard islandPanel.isVisible else { return nil }
         return islandPanel.hoverHotspotFrame
+    }
+
+    private func handleObservedPointerDown() {
+        guard islandPanel.isVisible,
+              phase5PreviewStateContainer.derivedState.visualState.isExpanded,
+              islandPanel.currentInteractiveFrame.contains(NSEvent.mouseLocation) == false else {
+            return
+        }
+        collapseExpandedForOutsideInteraction()
+    }
+
+    private func collapseExpandedForOutsideInteraction() {
+        guard usesPhase5PreviewInteractionRouting,
+              phase5PreviewStateContainer.derivedState.visualState.isExpanded else {
+            return
+        }
+        dispatchPhase5Intent(.outsideCollapse)
     }
 
     private func handleHoverStart() {
@@ -632,11 +691,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         let delta = nextTranslation - pointerFeedbackTranslationX
         pointerFeedbackTranslationX = nextTranslation
         islandPanel.setFrame(islandPanel.frame.offsetBy(dx: delta, dy: 0), display: true)
+        islandPanel.translateHitTestFrame(by: delta)
     }
 
     private func springPointerFeedbackBack() {
         guard pointerFeedbackTranslationX != 0 else { return }
         let targetFrame = islandPanel.frame.offsetBy(dx: -pointerFeedbackTranslationX, dy: 0)
+        islandPanel.translateHitTestFrame(by: -pointerFeedbackTranslationX)
         pointerFeedbackTranslationX = 0
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.24
@@ -651,6 +712,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             islandPanel.frame.offsetBy(dx: -pointerFeedbackTranslationX, dy: 0),
             display: false
         )
+        islandPanel.translateHitTestFrame(by: -pointerFeedbackTranslationX)
         pointerFeedbackTranslationX = 0
     }
 
@@ -817,6 +879,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         using providedScreenMetrics: ScreenMetrics?,
         allowLockScheduling: Bool
     ) {
+        updateExpandedExitInteractivity(
+            from: update.previousDerivedState,
+            to: update.currentDerivedState
+        )
         let isExpandedTrackpadRecovery =
             update.previousState.presentationLockState.transitionID == "expandedCollapseRecovery" &&
             update.currentDerivedState.visualState == .activityCollapsed
@@ -879,10 +945,43 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
         let derivedState = phase5PreviewStateContainer.derivedState
         let shouldKeepInteractiveRouting = derivedState.visualState.isExpanded ||
+            keepsExpandedExitInteractive ||
             phase5PreviewStateContainer.domainState.isHovered ||
             pointerGestureAdapter.isTracking ||
             keepsTrackpadHoverFocus
         islandPanel.setClickThroughEnabled(shouldKeepInteractiveRouting == false)
+    }
+
+    private func updateExpandedExitInteractivity(
+        from previous: IslandDerivedState,
+        to next: IslandDerivedState
+    ) {
+        expandedExitInteractivityWorkItem?.cancel()
+        expandedExitInteractivityWorkItem = nil
+
+        guard previous.visualState.isExpanded, next.visualState.isExpanded == false else {
+            keepsExpandedExitInteractive = false
+            return
+        }
+
+        keepsExpandedExitInteractive = true
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.keepsExpandedExitInteractive = false
+            self.expandedExitInteractivityWorkItem = nil
+            self.synchronizePanelClickThroughState()
+        }
+        expandedExitInteractivityWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + IslandVisualTokens.expandedContentExit.exitDuration,
+            execute: workItem
+        )
+    }
+
+    private func cancelExpandedExitInteractivity() {
+        expandedExitInteractivityWorkItem?.cancel()
+        expandedExitInteractivityWorkItem = nil
+        keepsExpandedExitInteractive = false
     }
 
     private func resolvedLayoutAttachmentMetrics(for screenMetrics: ScreenMetrics) -> TopAttachmentMetrics {

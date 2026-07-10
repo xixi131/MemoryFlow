@@ -44,12 +44,20 @@ final class IslandPanel: NSPanel {
     }
 
     var hoverHotspotFrame: CGRect {
-        CGRect(
+        guard currentHitTestFrame.isEmpty else {
+            return currentHitTestFrame
+        }
+
+        return CGRect(
             x: frame.minX + currentShadowOutsets.horizontal,
             y: frame.minY + currentShadowOutsets.bottom,
             width: visibleShellSize.width,
             height: visibleShellSize.height
         )
+    }
+
+    var currentInteractiveFrame: CGRect {
+        hoverHotspotFrame
     }
 
     init(shellSizePreset: IslandShellSizePreset = .compactPlaceholder) {
@@ -92,6 +100,13 @@ final class IslandPanel: NSPanel {
     func setClickThroughEnabled(_ isEnabled: Bool) {
         guard ignoresMouseEvents != isEnabled else { return }
         ignoresMouseEvents = isEnabled
+    }
+
+    /// Pointer-drag feedback moves the panel without producing a new sizing sample.
+    /// Keep the cached screen-space hit geometry attached to that presentation offset.
+    func translateHitTestFrame(by deltaX: CGFloat) {
+        guard currentHitTestFrame.isEmpty == false, deltaX != 0 else { return }
+        currentHitTestFrame = currentHitTestFrame.offsetBy(dx: deltaX, dy: 0)
     }
 
     func activateInteractiveHoverMode() {

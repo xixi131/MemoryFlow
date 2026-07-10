@@ -386,7 +386,7 @@
       "Verify immediate tap-expand then tap-collapse works without requiring hover leave and re-entry."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-rapid-retarget",
