@@ -167,6 +167,131 @@ struct IslandTrackpadWheelAdapter: Equatable {
     }
 }
 
+struct IslandTrackpadVerticalMotionProbeRow: Equatable {
+    let gesture: String
+    let transitionKind: IslandTransitionKind
+    let visualState: IslandVisualState
+    let cooldownBlockedDuplicate: Bool
+}
+
+/// Covers the vertical gesture path as a reducer-plus-motion contract. The AppKit host
+/// supplies the real event timestamps; this probe keeps the direction, cooldown, and
+/// motion-plan mapping deterministic when physical trackpad capture is unavailable.
+enum IslandTrackpadVerticalMotionProbe {
+    static func run() throws -> [IslandTrackpadVerticalMotionProbeRow] {
+        var container = IslandPhase5PreviewStateContainer(initialState: .loggedInReviewCompact)
+        var adapter = IslandTrackpadWheelAdapter()
+        var rows: [IslandTrackpadVerticalMotionProbeRow] = []
+
+        guard adapter.registerEvent(deltaX: 0, deltaY: -69, timestamp: 0) == nil else {
+            throw IslandTrackpadVerticalMotionProbeError.thresholdAcceptedTooEarly
+        }
+
+        adapter.reset()
+        let first = try dispatch(deltaY: -70, timestamp: 0, adapter: &adapter, container: &container)
+        rows.append(first)
+        releaseCooldown(adapter: &adapter, container: &container)
+
+        let second = try dispatch(deltaY: -70, timestamp: 0.4, adapter: &adapter, container: &container)
+        rows.append(second)
+        releaseCooldown(adapter: &adapter, container: &container)
+
+        let third = try dispatch(deltaY: 70, timestamp: 0.8, adapter: &adapter, container: &container)
+        rows.append(third)
+        _ = container.dispatch(intent: .transitionComplete("expandedCollapseRecovery"))
+        guard container.derivedState.visualState == .activityCollapsed else {
+            throw IslandTrackpadVerticalMotionProbeError.expandedUpDidNotRecoverActivity
+        }
+        releaseCooldown(adapter: &adapter, container: &container)
+
+        let fourth = try dispatch(deltaY: 70, timestamp: 1.2, adapter: &adapter, container: &container)
+        rows.append(fourth)
+
+        var resetAdapter = IslandTrackpadWheelAdapter()
+        _ = resetAdapter.registerEvent(deltaX: 0, deltaY: 45, timestamp: 2)
+        guard resetAdapter.registerEvent(deltaX: 0, deltaY: 45, timestamp: 2.161) == nil else {
+            throw IslandTrackpadVerticalMotionProbeError.accumulationDidNotReset
+        }
+
+        guard rows.map(\.transitionKind) == [
+            .compactToActivity,
+            .activityToExpanded,
+            .expandedToCompact,
+            .activityToCompact
+        ],
+        rows.map(\.visualState) == [
+            .activityCollapsed,
+            .expandedApp,
+            .compactCollapsed,
+            .compactCollapsed
+        ],
+        rows.allSatisfy(\.cooldownBlockedDuplicate) else {
+            throw IslandTrackpadVerticalMotionProbeError.invalidVerticalSequence
+        }
+        return rows
+    }
+
+    private static func dispatch(
+        deltaY: Double,
+        timestamp: TimeInterval,
+        adapter: inout IslandTrackpadWheelAdapter,
+        container: inout IslandPhase5PreviewStateContainer
+    ) throws -> IslandTrackpadVerticalMotionProbeRow {
+        guard let intent = adapter.registerEvent(deltaX: 0, deltaY: deltaY, timestamp: timestamp),
+              case .trackpadSwipe = intent else {
+            throw IslandTrackpadVerticalMotionProbeError.missingVerticalIntent
+        }
+
+        let previous = container.derivedState
+        let update = container.dispatch(intent: intent)
+        let plan = IslandMotionEngine.plan(
+            previous: previous,
+            next: update.currentDerivedState,
+            reason: update.reducerResult.reason,
+            presentation: .idle,
+            reduceMotion: false
+        )
+        let duplicateBlocked = adapter.registerEvent(
+            deltaX: 0,
+            deltaY: deltaY,
+            timestamp: timestamp + 0.05
+        ) == nil
+        return IslandTrackpadVerticalMotionProbeRow(
+            gesture: deltaY > 0 ? "up" : "down",
+            transitionKind: plan.transitionKind,
+            visualState: update.currentDerivedState.visualState,
+            cooldownBlockedDuplicate: duplicateBlocked
+        )
+    }
+
+    private static func releaseCooldown(
+        adapter: inout IslandTrackpadWheelAdapter,
+        container: inout IslandPhase5PreviewStateContainer
+    ) {
+        adapter.clearCooldown()
+        _ = container.dispatch(intent: .transitionComplete(IslandTransitionLockIdentifier.trackpadGestureCooldown))
+        _ = container.dispatch(intent: .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition))
+    }
+}
+
+enum IslandTrackpadVerticalMotionProbeError: Error, CustomStringConvertible {
+    case thresholdAcceptedTooEarly
+    case missingVerticalIntent
+    case expandedUpDidNotRecoverActivity
+    case accumulationDidNotReset
+    case invalidVerticalSequence
+
+    var description: String {
+        switch self {
+        case .thresholdAcceptedTooEarly: return "A vertical delta below 70 triggered a trackpad transition."
+        case .missingVerticalIntent: return "A 70-point vertical gesture did not emit a vertical trackpad intent."
+        case .expandedUpDidNotRecoverActivity: return "Expanded swipe-up did not recover the activity presentation."
+        case .accumulationDidNotReset: return "Trackpad accumulation survived the 160ms reset window."
+        case .invalidVerticalSequence: return "Vertical gestures did not map to the expected motion sequence or cooldown guards."
+        }
+    }
+}
+
 /// Deterministic coverage for the capture and feedback rules used by the native host.
 struct IslandPointerGestureFeedbackProbe: Equatable {
     let capturesSinglePointer: Bool

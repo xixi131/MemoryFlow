@@ -11,6 +11,27 @@ protocol IslandPhase5InteractionDemoControlling: AnyObject {
     func triggerPhase5InteractionDemo(_ control: IslandPhase5InteractionDemoControl)
 }
 
+private struct IslandMotionTransitionRequest {
+    let previous: IslandDerivedState
+    let next: IslandDerivedState
+    let reason: IslandPresentationTransitionReason
+}
+
+private extension IslandPresentationTransitionReason {
+    var isAcceptedTrackpadPresentationTransition: Bool {
+        switch self {
+        case .trackpadSwipedUpToCompact,
+             .trackpadSwipedUpToActivity,
+             .trackpadSwipedDownToActivity,
+             .trackpadSwipedDownToExpandedApp,
+             .trackpadSwipedDownToExpandedMusic:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 final class IslandWindowController: NSWindowController, IslandWindowControlling {
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
@@ -37,6 +58,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var modeSwitchSequenceWorkItems: [DispatchWorkItem] = []
     private var isModeSwitchSequenceActive = false
     private var trackpadWheelAdapter = IslandTrackpadWheelAdapter()
+    private var keepsTrackpadHoverFocus = false
     private var shouldAnimateGreetingShellCollapse = false
     private var musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     private var todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
@@ -140,6 +162,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         resetPointerFeedbackImmediately()
         cancelModeSwitchInteraction()
         trackpadWheelAdapter.reset()
+        keepsTrackpadHoverFocus = false
         musicTakeoverController.stop()
         window?.orderOut(nil)
     }
@@ -291,7 +314,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func applyResolvedPreviewLayout(
         _ resolvedLayout: (attachmentMetrics: TopAttachmentMetrics, widthConstraints: IslandWidthConstraints, sizingResult: IslandWindowSizingResult),
-        on screenMetrics: ScreenMetrics
+        on screenMetrics: ScreenMetrics,
+        motionPlan: IslandMotionPlan? = nil
     ) {
         let sizingResult = resolvedLayout.sizingResult
         previewVisualScale = sizingResult.diagnostics.visualScale
@@ -306,18 +330,25 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             shadowOutsets: sizingResult.shadowOutsets
         )
         updateRootView()
-        applySizingResult(sizingResult, on: screenMetrics)
+        applySizingResult(sizingResult, on: screenMetrics, motionPlan: motionPlan)
         lastSizingResult = sizingResult
         logSizingDiagnosticsIfNeeded(sizingResult)
     }
 
     private func applySizingResult(
         _ sizingResult: IslandWindowSizingResult,
-        on screenMetrics: ScreenMetrics
+        on screenMetrics: ScreenMetrics,
+        motionPlan: IslandMotionPlan? = nil
     ) {
         let unshiftedPanelFrame = islandPanel.applySizingResult(sizingResult)
         let panelFrame = unshiftedPanelFrame.offsetBy(dx: pointerFeedbackTranslationX, dy: 0)
-        if shouldAnimateGreetingShellCollapse {
+        if let motionPlan, motionPlan.duration > 0 {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = motionPlan.duration
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                islandPanel.animator().setFrame(panelFrame, display: true)
+            }
+        } else if shouldAnimateGreetingShellCollapse {
             shouldAnimateGreetingShellCollapse = false
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = IslandGreetingSequence.transitionDuration
@@ -370,6 +401,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func handleHoverEnd() {
+        keepsTrackpadHoverFocus = false
         if usesPhase5PreviewInteractionRouting {
             dispatchPhase5Intent(.hoverLeave)
         } else if previewState == .hoverCollapsed {
@@ -486,7 +518,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func requestPreviewLayoutChange(
         to nextLayoutInput: IslandPreviewLayoutInput,
-        using providedScreenMetrics: ScreenMetrics? = nil
+        using providedScreenMetrics: ScreenMetrics? = nil,
+        motionTransition: IslandMotionTransitionRequest? = nil
     ) {
         guard let screenMetrics = providedScreenMetrics ?? screenMetricsResolver(islandPanel, lastAppliedDisplayIdentity) else {
             activeLayoutInput = nextLayoutInput
@@ -505,11 +538,28 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             for: nextLayoutInput,
             on: screenMetrics
         )
+        let motionPlan = motionTransition.map {
+            IslandMotionEngine.plan(
+                previous: $0.previous,
+                next: $0.next,
+                reason: $0.reason,
+                presentation: IslandPresentationSnapshot(
+                    visualState: previewState,
+                    visibleFrame: lastAppliedFrame,
+                    visualScale: previewVisualScale,
+                    isAnimating: false
+                ),
+                reduceMotion: false,
+                currentSizingResult: lastSizingResult,
+                nextSizingResult: resolvedLayout.sizingResult
+            )
+        }
         activeLayoutInput = nextLayoutInput
         previewState = nextLayoutInput.visualState
         applyResolvedPreviewLayout(
             resolvedLayout,
-            on: screenMetrics
+            on: screenMetrics,
+            motionPlan: motionPlan
         )
     }
 
@@ -614,15 +664,23 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             return
         }
 
-        dispatchPhase5Intent(intent)
+        let update = dispatchPhase5Intent(intent)
+        if case .trackpadSwipe(.up) = intent,
+           update?.previousState.presentationState == .expanded,
+           update?.reducerResult.reason.isAcceptedTrackpadPresentationTransition == true {
+            keepsTrackpadHoverFocus = true
+            activateInteractiveHoverMode()
+            synchronizePanelClickThroughState()
+        }
     }
 
+    @discardableResult
     private func dispatchPhase5Intent(
         _ intent: IslandInteractionIntent,
         using providedScreenMetrics: ScreenMetrics? = nil,
         allowLockScheduling: Bool = true
-    ) {
-        guard usesPhase5PreviewInteractionRouting else { return }
+    ) -> IslandPhase5PreviewReducerUpdate? {
+        guard usesPhase5PreviewInteractionRouting else { return nil }
         let update = phase5PreviewStateContainer.dispatch(intent: intent)
         if case let .horizontalMusicCommand(command) = intent,
            update.reducerResult.reason != .intentIgnored {
@@ -646,6 +704,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 self?.dispatchPhase5Intent(.transitionComplete("expandedCollapseRecovery"))
             }
         }
+        return update
     }
 
     private func beginModeSwitchHoldIfNeeded(at point: CGPoint) {
@@ -758,9 +817,21 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         using providedScreenMetrics: ScreenMetrics?,
         allowLockScheduling: Bool
     ) {
+        let isExpandedTrackpadRecovery =
+            update.previousState.presentationLockState.transitionID == "expandedCollapseRecovery" &&
+            update.currentDerivedState.visualState == .activityCollapsed
+        let motionTransition =
+            update.reducerResult.reason.isAcceptedTrackpadPresentationTransition || isExpandedTrackpadRecovery
+            ? IslandMotionTransitionRequest(
+                previous: update.previousDerivedState,
+                next: update.currentDerivedState,
+                reason: update.reducerResult.reason
+            )
+            : nil
         requestPreviewLayoutChange(
             to: update.currentLayoutInput,
-            using: providedScreenMetrics
+            using: providedScreenMetrics,
+            motionTransition: motionTransition
         )
         synchronizePanelClickThroughState()
 
@@ -809,7 +880,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         let derivedState = phase5PreviewStateContainer.derivedState
         let shouldKeepInteractiveRouting = derivedState.visualState.isExpanded ||
             phase5PreviewStateContainer.domainState.isHovered ||
-            pointerGestureAdapter.isTracking
+            pointerGestureAdapter.isTracking ||
+            keepsTrackpadHoverFocus
         islandPanel.setClickThroughEnabled(shouldKeepInteractiveRouting == false)
     }
 

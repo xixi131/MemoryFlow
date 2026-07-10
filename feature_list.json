@@ -373,7 +373,7 @@
       "Verify the sequence compact to activity to expanded to activity to compact and confirm each cooldown blocks duplicate transitions."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-hit-testing",
