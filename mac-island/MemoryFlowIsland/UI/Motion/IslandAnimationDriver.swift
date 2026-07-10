@@ -69,6 +69,7 @@ final class IslandAnimationDriver {
     private var startTime: TimeInterval = 0
     private var duration: TimeInterval = 0
     private var curve: IslandMotionTimingCurve = .linear
+    private var startVelocity: IslandAnimationVelocity = .zero
     private var completion: Completion?
 
     init(initialMetrics: IslandAnimationMetrics) {
@@ -93,8 +94,9 @@ final class IslandAnimationDriver {
         )
     }
 
-    /// Starts, or retargets, an animation. Retargeting takes the sampled presentation
-    /// metrics as its new start point, preserving visual continuity.
+    /// Starts, or retargets, an animation. A retarget captures the presentation
+    /// snapshot and its velocity before installing the replacement target. The seed
+    /// is bounded relative to the new distance so rapid reversals remain stable.
     func animate(
         to target: IslandAnimationMetrics,
         transitionID: String,
@@ -103,8 +105,12 @@ final class IslandAnimationDriver {
         at timestamp: TimeInterval,
         completion: Completion? = nil
     ) {
+        let presentationVelocity: IslandAnimationVelocity
         if isAnimating {
             advance(at: timestamp)
+            presentationVelocity = velocity
+        } else {
+            presentationVelocity = .zero
         }
 
         start = current
@@ -115,12 +121,18 @@ final class IslandAnimationDriver {
         startTime = timestamp
         self.completion = completion
         hasCompleted = false
-        velocity = .zero
+        startVelocity = boundedVelocity(
+            presentationVelocity,
+            from: start,
+            to: target,
+            duration: self.duration
+        )
+        velocity = startVelocity
 
         guard self.duration > 0, start != target else {
             current = target
             progress = 1
-            finish()
+            finish(expectedTransitionID: transitionID)
             return
         }
 
@@ -134,18 +146,29 @@ final class IslandAnimationDriver {
 
         let elapsed = max(timestamp - startTime, 0)
         let normalized = min(CGFloat(elapsed / duration), 1)
-        let eased = easedProgress(normalized, curve: curve)
-        current = .interpolate(from: start, to: target, progress: eased)
+        current = interpolatedMetrics(progress: normalized)
         progress = normalized
-        velocity = interpolatedVelocity(progress: normalized, curve: curve)
+        velocity = interpolatedVelocity(progress: normalized)
 
         if normalized >= 1 {
             current = target
-            finish()
+            finish(expectedTransitionID: transitionID)
         }
     }
 
-    private func finish() {
+    /// Allows a Core Animation completion delegate to report completion without an
+    /// older animation unlocking a newer reducer transition.
+    @discardableResult
+    func complete(transitionID: String) -> Bool {
+        guard isAnimating, self.transitionID == transitionID else { return false }
+        current = target
+        progress = 1
+        finish(expectedTransitionID: transitionID)
+        return true
+    }
+
+    private func finish(expectedTransitionID: String?) {
+        guard transitionID == expectedTransitionID else { return }
         phase = .completed
         progress = 1
         velocity = .zero
@@ -155,19 +178,68 @@ final class IslandAnimationDriver {
         completion?()
     }
 
-    private func interpolatedVelocity(progress: CGFloat, curve: IslandMotionTimingCurve) -> IslandAnimationVelocity {
+    private func interpolatedMetrics(progress: CGFloat) -> IslandAnimationMetrics {
+        let t = min(max(progress, 0), 1)
+        let eased = easedProgress(t, curve: curve)
+        let velocityWeight = t * (1 - t) * CGFloat(duration)
+        return IslandAnimationMetrics(
+            visibleFrame: CGRect(
+                x: start.visibleFrame.origin.x +
+                    (target.visibleFrame.origin.x - start.visibleFrame.origin.x) * eased + startVelocity.origin.x * velocityWeight,
+                y: start.visibleFrame.origin.y +
+                    (target.visibleFrame.origin.y - start.visibleFrame.origin.y) * eased + startVelocity.origin.y * velocityWeight,
+                width: start.visibleFrame.width +
+                    (target.visibleFrame.width - start.visibleFrame.width) * eased + startVelocity.size.width * velocityWeight,
+                height: start.visibleFrame.height +
+                    (target.visibleFrame.height - start.visibleFrame.height) * eased + startVelocity.size.height * velocityWeight
+            ),
+            visualScale: start.visualScale +
+                (target.visualScale - start.visualScale) * eased + startVelocity.visualScale * velocityWeight
+        )
+    }
+
+    private func interpolatedVelocity(progress: CGFloat) -> IslandAnimationVelocity {
         guard duration > 0 else { return .zero }
-        let multiplier = curveDerivative(progress, curve: curve) / CGFloat(duration)
+        let t = min(max(progress, 0), 1)
+        let multiplier = curveDerivative(t, curve: curve) / CGFloat(duration)
+        let velocityWeightDerivative = 1 - 2 * t
         return IslandAnimationVelocity(
             origin: CGPoint(
-                x: (target.visibleFrame.origin.x - start.visibleFrame.origin.x) * multiplier,
-                y: (target.visibleFrame.origin.y - start.visibleFrame.origin.y) * multiplier
+                x: (target.visibleFrame.origin.x - start.visibleFrame.origin.x) * multiplier + startVelocity.origin.x * velocityWeightDerivative,
+                y: (target.visibleFrame.origin.y - start.visibleFrame.origin.y) * multiplier + startVelocity.origin.y * velocityWeightDerivative
             ),
             size: CGSize(
-                width: (target.visibleFrame.width - start.visibleFrame.width) * multiplier,
-                height: (target.visibleFrame.height - start.visibleFrame.height) * multiplier
+                width: (target.visibleFrame.width - start.visibleFrame.width) * multiplier + startVelocity.size.width * velocityWeightDerivative,
+                height: (target.visibleFrame.height - start.visibleFrame.height) * multiplier + startVelocity.size.height * velocityWeightDerivative
             ),
-            visualScale: (target.visualScale - start.visualScale) * multiplier
+            visualScale: (target.visualScale - start.visualScale) * multiplier + startVelocity.visualScale * velocityWeightDerivative
+        )
+    }
+
+    private func boundedVelocity(
+        _ velocity: IslandAnimationVelocity,
+        from start: IslandAnimationMetrics,
+        to target: IslandAnimationMetrics,
+        duration: TimeInterval
+    ) -> IslandAnimationVelocity {
+        guard duration > 0 else { return .zero }
+        let duration = CGFloat(duration)
+        func bound(_ velocity: CGFloat, delta: CGFloat) -> CGFloat {
+            guard delta != 0 else { return 0 }
+            let maximum = abs(delta) * 1.5 / duration
+            return min(max(velocity, -maximum), maximum)
+        }
+
+        return IslandAnimationVelocity(
+            origin: CGPoint(
+                x: bound(velocity.origin.x, delta: target.visibleFrame.origin.x - start.visibleFrame.origin.x),
+                y: bound(velocity.origin.y, delta: target.visibleFrame.origin.y - start.visibleFrame.origin.y)
+            ),
+            size: CGSize(
+                width: bound(velocity.size.width, delta: target.visibleFrame.width - start.visibleFrame.width),
+                height: bound(velocity.size.height, delta: target.visibleFrame.height - start.visibleFrame.height)
+            ),
+            visualScale: bound(velocity.visualScale, delta: target.visualScale - start.visualScale)
         )
     }
 

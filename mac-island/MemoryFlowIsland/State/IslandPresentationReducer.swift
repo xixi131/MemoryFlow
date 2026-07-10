@@ -465,6 +465,12 @@ enum IslandPresentationReducer {
         guard let identifier else {
             return unchanged(state, reason: .noChange)
         }
+        let isCurrentCompletion = identifier == IslandTransitionLockIdentifier.trackpadGestureCooldown
+            ? state.gestureState == .cooldown
+            : state.presentationLockState.transitionID == identifier
+        guard isCurrentCompletion else {
+            return unchanged(state, reason: .noChange)
+        }
 
         return transition(state, reason: .noChange) {
             switch identifier {
@@ -472,21 +478,17 @@ enum IslandPresentationReducer {
                 if $0.forceCompactMode == false && hasRecoverableMockActivitySource($0) {
                     $0.presentationState = .activity
                 }
-                if $0.presentationLockState.transitionID == identifier { $0.presentationLockState.transitionID = nil }
+                $0.presentationLockState.transitionID = nil
             case IslandTransitionLockIdentifier.trackpadGestureCooldown:
                 if $0.gestureState == .cooldown {
                     $0.gestureState = .idle
                 }
             case IslandTransitionLockIdentifier.forceCompactTransition:
                 $0.presentationLockState.isForceCompactLocked = false
-                if $0.presentationLockState.transitionID == identifier {
-                    $0.presentationLockState.transitionID = nil
-                }
+                $0.presentationLockState.transitionID = nil
             case IslandTransitionLockIdentifier.modeSwitchLock:
                 $0.presentationLockState.isModeSwitchLocked = false
-                if $0.presentationLockState.transitionID == identifier {
-                    $0.presentationLockState.transitionID = nil
-                }
+                $0.presentationLockState.transitionID = nil
             default:
                 break
             }

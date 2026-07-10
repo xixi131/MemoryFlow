@@ -399,7 +399,7 @@
       "Verify frame deltas stay bounded and final reducer state, visual state, click-through state, and gesture locks converge."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-reduce-motion",

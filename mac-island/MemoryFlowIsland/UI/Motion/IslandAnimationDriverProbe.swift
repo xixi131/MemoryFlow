@@ -62,7 +62,83 @@ enum IslandAnimationDriverProbe {
               completions == ["compact-activity", "activity-expanded", "reverse-compact"] else {
             throw IslandAnimationDriverProbeError.unexpectedSamples
         }
+        try validateRapidRetargeting(
+            compact: compact,
+            hover: IslandAnimationMetrics(
+                visibleFrame: CGRect(x: 94, y: 898, width: 132, height: 36),
+                visualScale: 1.02
+            ),
+            activity: activity,
+            expanded: expanded
+        )
         return rows
+    }
+
+    @MainActor
+    private static func validateRapidRetargeting(
+        compact: IslandAnimationMetrics,
+        hover: IslandAnimationMetrics,
+        activity: IslandAnimationMetrics,
+        expanded: IslandAnimationMetrics
+    ) throws {
+        let driver = IslandAnimationDriver(initialMetrics: compact)
+        var completions: [String] = []
+
+        driver.animate(to: hover, transitionID: "hover", duration: 0.22, curve: .easeInOut, at: 0) {
+            completions.append("hover")
+        }
+        driver.advance(at: 0.06)
+        let hoverPresentation = driver.current
+        let hoverVelocity = driver.velocity
+
+        driver.animate(to: activity, transitionID: "activity", duration: 0.56, curve: .easeInOut, at: 0.06) {
+            completions.append("activity")
+        }
+        guard driver.current == hoverPresentation,
+              driver.velocity.size.width == hoverVelocity.size.width,
+              driver.velocity.origin.x == hoverVelocity.origin.x else {
+            throw IslandAnimationDriverProbeError.velocityWasNotSeeded
+        }
+
+        driver.advance(at: 0.12)
+        driver.animate(to: expanded, transitionID: "expanded", duration: 0.56, curve: .easeInOut, at: 0.12) {
+            completions.append("expanded")
+        }
+        driver.advance(at: 0.18)
+        driver.animate(to: compact, transitionID: "compact", duration: 0.56, curve: .easeInOut, at: 0.18) {
+            completions.append("compact")
+        }
+
+        // A delegate callback from the superseded expanded animation must be ignored.
+        guard driver.complete(transitionID: "expanded") == false,
+              driver.transitionID == "compact" else {
+            throw IslandAnimationDriverProbeError.staleCompletionAccepted
+        }
+
+        var previousWidth = driver.current.visibleFrame.width
+        for frame in 1...34 {
+            driver.advance(at: 0.18 + Double(frame) / 60)
+            let widthDelta = abs(driver.current.visibleFrame.width - previousWidth)
+            guard widthDelta <= 32 else {
+                throw IslandAnimationDriverProbeError.unboundedFrameDelta(widthDelta)
+            }
+            previousWidth = driver.current.visibleFrame.width
+        }
+
+        var state = IslandDomainState.loggedInReviewCompact
+        state = IslandPresentationReducer.reduce(current: state, intent: .pointerSwipe(.right)).state
+        let staleCompletion = IslandPresentationReducer.reduce(
+            current: state,
+            intent: .transitionComplete(IslandTransitionLockIdentifier.modeSwitchLock)
+        )
+        guard staleCompletion.state == state else {
+            throw IslandAnimationDriverProbeError.staleReducerCompletionAccepted
+        }
+
+        guard driver.current == compact,
+              completions == ["compact"] else {
+            throw IslandAnimationDriverProbeError.rapidSequenceDidNotConverge
+        }
     }
 
     @MainActor
@@ -81,12 +157,22 @@ enum IslandAnimationDriverProbe {
 enum IslandAnimationDriverProbeError: Error, CustomStringConvertible {
     case retargetSnapped
     case reverseDidNotMoveTowardCompact
+    case velocityWasNotSeeded
+    case staleCompletionAccepted
+    case staleReducerCompletionAccepted
+    case unboundedFrameDelta(CGFloat)
+    case rapidSequenceDidNotConverge
     case unexpectedSamples
 
     var description: String {
         switch self {
         case .retargetSnapped: return "Retargeting did not start from live presentation metrics."
         case .reverseDidNotMoveTowardCompact: return "Reverse transition did not preserve a negative width velocity."
+        case .velocityWasNotSeeded: return "Retargeting did not retain the sampled presentation velocity."
+        case .staleCompletionAccepted: return "A superseded animation completion was accepted."
+        case .staleReducerCompletionAccepted: return "A stale reducer completion changed the current transition state."
+        case let .unboundedFrameDelta(delta): return "Rapid retarget frame delta exceeded the 32pt bound: \(delta)."
+        case .rapidSequenceDidNotConverge: return "Rapid hover, activity, expanded, compact sequence did not converge."
         case .unexpectedSamples: return "Animation sample sequence did not reach the expected presentation metrics."
         }
     }
