@@ -12,6 +12,11 @@
 ### 2026-07-10 - Phase 6 E2E evidence
 - Generated 55 deterministic visual-state frames across 11 mock scenarios, with shape, shadow, content-phase, and rejection metadata.
 - Mouse and trackpad fallback probes cover native routing and guard behavior; both explicitly record that physical GUI capture remains pending.
+
+### 2026-07-10 - Phase 6 mock animation handoff
+- Phase 6 is complete: native deterministic mock motion now covers compact, greeting, review/todo/reminder, music, expanded states, input adapters, content choreography, and motion accessibility.
+- Acceptance and deterministic evidence are in `docs/mac-island-phase6-mock-animation-acceptance.md` and `docs/evidence/mac-island-phase6/`; mouse/trackpad evidence is explicitly fallback-only, not physical GUI capture.
+- Future work remains physical-device calibration/profiling and real backend, auth, persistence, provider, Keychain, and IPC integration.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes

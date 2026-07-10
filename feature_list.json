@@ -503,6 +503,6 @@
       "Keep real review, todo, reminder, authentication, and music-provider integration assigned to later phases."
     ],
     "budget_minutes": 5,
-    "passes": false
+    "passes": true
   }
 ]
