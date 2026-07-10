@@ -1,0 +1,62 @@
+{
+  "cadence" : [
+    {
+      "callbackCount" : 121,
+      "droppedFrameIndicators" : 0,
+      "expectedIntervalMilliseconds" : 16.666666666666668,
+      "largestIntervalMilliseconds" : 16.666666666666828,
+      "refreshRateHz" : 60
+    },
+    {
+      "callbackCount" : 241,
+      "droppedFrameIndicators" : 0,
+      "expectedIntervalMilliseconds" : 8.333333333333334,
+      "largestIntervalMilliseconds" : 8.333333333333526,
+      "refreshRateHz" : 120
+    }
+  ],
+  "invalidationAndClockAudit" : [
+    "IslandShapeEngine generates only the requested shell snapshot; it has no panel, view, or timer reference.",
+    "IslandMusicWaveform is a pure local height function. Its SwiftUI TimelineView is paused when playback is stopped or Reduce Motion is enabled, and is confined to the waveform mark.",
+    "IslandMockMusicProgressClock is pure elapsed-time state; it schedules no timer.",
+    "IslandAnimationDriver advances only when its display-link owner samples it; IslandAnimationDisplayLink.stop clears the callback and stops CVDisplayLink.",
+    "Content and greeting delayed callbacks are epoch-gated, so superseded transitions cannot apply stale presentation state."
+  ],
+  "limitations" : [
+    "The callback cadence is a deterministic 60Hz\/120Hz timestamp simulation, not a measured monitor callback stream.",
+    "No physical GUI capture, ProMotion monitor, Instruments Time Profiler, Core Animation FPS, GPU, or main-thread hitch trace was available.",
+    "Zero dropped-frame indicators means no invalid deterministic model sample. It does not establish device-wide frame-rate or CPU-budget compliance."
+  ],
+  "observationLabel" : "This records simulated monotonic display-link callback cadence and native state\/shape\/motion computations. It is not Instruments, GPU, or physical-display profiling.",
+  "stress" : {
+    "finalScenarioID" : "expanded-review",
+    "iterations" : 80,
+    "reducerEvents" : 560,
+    "scenarioReplacements" : 80
+  },
+  "taskID" : "mac-motion-performance-evidence",
+  "verificationMode" : "deterministic-native-model stress probe",
+  "workloadDurationSeconds" : 2,
+  "workloads" : [
+    {
+      "invalidSamples" : 0,
+      "name" : "shell-morph-and-expanded-shadow",
+      "samples" : 362
+    },
+    {
+      "invalidSamples" : 0,
+      "name" : "waveform-local-samples",
+      "samples" : 1810
+    },
+    {
+      "invalidSamples" : 0,
+      "name" : "content-stagger-presentation",
+      "samples" : 362
+    },
+    {
+      "invalidSamples" : 0,
+      "name" : "rapid-retarget-driver",
+      "samples" : 34
+    }
+  ]
+}

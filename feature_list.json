@@ -477,7 +477,7 @@
       "Record limitations when 120Hz or physical-device profiling is unavailable and keep acceptance claims bounded to observed evidence."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-acceptance-fill",
