@@ -491,11 +491,21 @@ private struct IslandPreviewContentOverlay: View {
 
             Spacer(minLength: 4)
 
-            Text(content.badge)
-                .font(.system(size: 8, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
-                .lineLimit(1)
-                .minimumScaleFactor(0.66)
+            if let music = content.music {
+                MusicWaveformMark(
+                    tint: tintColor,
+                    isPlaying: music.isPlaying,
+                    count: 4,
+                    displayScale: snapshot.metrics.scale
+                )
+                .frame(width: 22, height: 22)
+            } else {
+                Text(content.badge)
+                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.66)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 6)
@@ -544,7 +554,9 @@ private struct IslandPreviewContentOverlay: View {
 
                 MusicWaveformMark(
                     tint: tintColor,
-                    isPlaying: content.music?.isPlaying ?? true
+                    isPlaying: content.music?.isPlaying ?? true,
+                    count: 5,
+                    displayScale: snapshot.metrics.scale
                 )
                 .frame(width: 34, height: 26)
             }
@@ -769,17 +781,32 @@ private extension AnyTransition {
 private struct MusicWaveformMark: View {
     let tint: Color
     let isPlaying: Bool
-
-    private let bars: [CGFloat] = [0.74, 0.96, 0.58, 0.82, 0.44]
+    let count: Int
+    let displayScale: CGFloat
 
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
-            ForEach(Array(bars.enumerated()), id: \.offset) { _, heightScale in
-                Capsule()
-                    .fill(tint.opacity(isPlaying ? 0.95 : 0.42))
-                    .frame(width: 4, height: 24 * heightScale)
+        // TimelineView only re-evaluates this mark. The shell and panel keep their
+        // existing presentation values while music animates.
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !isPlaying)) { timeline in
+            HStack(alignment: .center, spacing: 2) {
+                ForEach(0..<count, id: \.self) { index in
+                    Capsule()
+                        .fill(tint.opacity(isPlaying ? 0.95 : 0.42))
+                        .frame(
+                            width: 3 * displayScale,
+                            height: IslandMusicWaveform.height(
+                                at: timeline.date.timeIntervalSinceReferenceDate,
+                                barIndex: index,
+                                displayScale: displayScale,
+                                isPlaying: isPlaying
+                            )
+                        )
+                }
             }
+            .animation(.easeOut(duration: IslandMusicWaveform.pausedSettleDuration), value: isPlaying)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isPlaying ? "Music playing" : "Music paused")
     }
 }
 

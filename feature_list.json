@@ -269,7 +269,7 @@
       "Verify waveform animation stops when the view is hidden and does not continuously invalidate the entire panel."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-artwork",

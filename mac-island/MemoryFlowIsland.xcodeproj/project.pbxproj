@@ -59,6 +59,8 @@
 		E00102060000000000000001 /* IslandGreetingSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101060000000000000001 /* IslandGreetingSequence.swift */; };
 		E00102070000000000000001 /* IslandGreetingSequenceProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */; };
 		E00102080000000000000001 /* IslandMotionProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101080000000000000001 /* IslandMotionProbe.swift */; };
+		E00102090000000000000001 /* IslandMusicWaveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00101090000000000000001 /* IslandMusicWaveform.swift */; };
+		E001020A0000000000000001 /* IslandMusicWaveformProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -116,6 +118,8 @@
 		E00101060000000000000001 /* IslandGreetingSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandGreetingSequence.swift; sourceTree = "<group>"; };
 		E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandGreetingSequenceProbe.swift; sourceTree = "<group>"; };
 		E00101080000000000000001 /* IslandMotionProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMotionProbe.swift; sourceTree = "<group>"; };
+		E00101090000000000000001 /* IslandMusicWaveform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMusicWaveform.swift; sourceTree = "<group>"; };
+		E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandMusicWaveformProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -230,6 +234,8 @@
 				E00101060000000000000001 /* IslandGreetingSequence.swift */,
 				E00101070000000000000001 /* IslandGreetingSequenceProbe.swift */,
 				E00101080000000000000001 /* IslandMotionProbe.swift */,
+				E00101090000000000000001 /* IslandMusicWaveform.swift */,
+				E001010A0000000000000001 /* IslandMusicWaveformProbe.swift */,
 			);
 			path = Motion;
 			sourceTree = "<group>";
@@ -405,6 +411,8 @@
 				E00102060000000000000001 /* IslandGreetingSequence.swift in Sources */,
 				E00102070000000000000001 /* IslandGreetingSequenceProbe.swift in Sources */,
 				E00102080000000000000001 /* IslandMotionProbe.swift in Sources */,
+				E00102090000000000000001 /* IslandMusicWaveform.swift in Sources */,
+				E001020A0000000000000001 /* IslandMusicWaveformProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
