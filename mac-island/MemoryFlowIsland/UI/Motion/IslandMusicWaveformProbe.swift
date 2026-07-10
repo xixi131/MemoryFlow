@@ -51,6 +51,57 @@ enum IslandMusicWaveformProbe {
     }
 }
 
+struct IslandMusicArtworkProbeRow: Equatable {
+    let scenario: String
+    let presentation: IslandMusicArtworkPresentation
+    let usesPlaceholder: Bool
+}
+
+enum IslandMusicArtworkProbe {
+    static func validateTransitions() throws -> [IslandMusicArtworkProbeRow] {
+        let activity = IslandVisualTokens.activityMusicArtwork
+        let expanded = IslandVisualTokens.expandedMusicArtwork
+        let midpoint = IslandMusicArtworkPresentation.interpolated(
+            from: activity,
+            to: expanded,
+            progress: 0.5
+        )
+        let collapsed = IslandMusicArtworkPresentation.interpolated(
+            from: expanded,
+            to: activity,
+            progress: 1
+        )
+        let rows = [
+            IslandMusicArtworkProbeRow(scenario: "expand", presentation: activity, usesPlaceholder: false),
+            IslandMusicArtworkProbeRow(scenario: "expand-midpoint", presentation: midpoint, usesPlaceholder: false),
+            IslandMusicArtworkProbeRow(scenario: "track-change", presentation: expanded, usesPlaceholder: false),
+            IslandMusicArtworkProbeRow(scenario: "missing-artwork", presentation: expanded, usesPlaceholder: true),
+            IslandMusicArtworkProbeRow(scenario: "collapse", presentation: collapsed, usesPlaceholder: true)
+        ]
+
+        guard activity == IslandMusicArtworkPresentation(width: 24, height: 27, radius: 6.4, smoothness: 1.92),
+              expanded == IslandMusicArtworkPresentation(width: 72, height: 80, radius: 16, smoothness: 1.85),
+              midpoint == IslandMusicArtworkPresentation(width: 48, height: 53.5, radius: 11.2, smoothness: 1.885),
+              collapsed == activity,
+              rows.map(\.scenario) == ["expand", "expand-midpoint", "track-change", "missing-artwork", "collapse"],
+              rows.filter(\.usesPlaceholder).count == 2 else {
+            throw IslandMusicArtworkProbeError.invalidTransitionPresentation
+        }
+        return rows
+    }
+}
+
+enum IslandMusicArtworkProbeError: Error, CustomStringConvertible {
+    case invalidTransitionPresentation
+
+    var description: String {
+        switch self {
+        case .invalidTransitionPresentation:
+            return "Music artwork does not preserve its expected expand, collapse, track-change, and placeholder presentations."
+        }
+    }
+}
+
 enum IslandMusicWaveformProbeError: Error {
     case invalidTokens
     case invalidPhaseOffsets

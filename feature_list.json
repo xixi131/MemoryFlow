@@ -282,7 +282,7 @@
       "Verify expand, collapse, track change, and missing-artwork scenarios have no duplicate covers or flashes."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-motion-music-controls",

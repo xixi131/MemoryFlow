@@ -39,6 +39,28 @@ struct IslandActivityCollapseContentChoreographyTokens: Equatable {
     let compactContentDelay: TimeInterval
 }
 
+struct IslandMusicArtworkPresentation: Equatable {
+    let width: CGFloat
+    let height: CGFloat
+    let radius: CGFloat
+    let smoothness: CGFloat
+
+    static func interpolated(
+        from source: IslandMusicArtworkPresentation,
+        to target: IslandMusicArtworkPresentation,
+        progress: CGFloat
+    ) -> IslandMusicArtworkPresentation {
+        let t = min(max(progress, 0), 1)
+        func lerp(_ start: CGFloat, _ end: CGFloat) -> CGFloat { start + ((end - start) * t) }
+        return IslandMusicArtworkPresentation(
+            width: lerp(source.width, target.width),
+            height: lerp(source.height, target.height),
+            radius: lerp(source.radius, target.radius),
+            smoothness: lerp(source.smoothness, target.smoothness)
+        )
+    }
+}
+
 struct IslandShadowBufferTokens: Equatable {
     let horizontal: CGFloat
     let bottom: CGFloat
@@ -134,6 +156,21 @@ enum IslandVisualTokens {
         delay: 0.15,
         duration: 0.26,
         initialBlurRadius: 4
+    )
+    // Keep the music cover as one matched presentation while the shell expands.
+    // Artwork is intentionally taller than wide in both layouts to preserve the
+    // source artwork's aspect-fill crop rather than stretching it.
+    static let activityMusicArtwork = IslandMusicArtworkPresentation(
+        width: 24,
+        height: 27,
+        radius: 6.4,
+        smoothness: 1.92
+    )
+    static let expandedMusicArtwork = IslandMusicArtworkPresentation(
+        width: 72,
+        height: 80,
+        radius: 16,
+        smoothness: 1.85
     )
     static let expandedContentExit = IslandActivityCollapseContentChoreographyTokens(
         exitDuration: 0.15,

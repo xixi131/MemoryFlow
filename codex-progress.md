@@ -6,8 +6,8 @@
 - The native helper now forbids multiple simultaneous instances, preventing duplicate Dynamic Island panels.
 
 ### Queue snapshot
-- First pending task: `mac-motion-music-artwork`.
-- Remaining queue size: `18` Phase 6 tasks.
+- First pending task: `mac-motion-music-controls`.
+- Remaining queue size: `17` Phase 6 tasks.
 - Execution mode: parent-led Auto_dev; parallel only for dependency-free, disjoint write scopes.
 
 ### Runtime notes
@@ -61,3 +61,7 @@
 ### 2026-07-10 - Music waveform
 - Music now renders four activity or five expanded local waveform bars with phase-shifted 2.2-second motion, theme tint, display scaling, and 0.3-second paused settling.
 - Focused waveform probe, `init.sh`, and Xcode Debug build passed; ticks stop when the waveform is not playing or visible.
+
+### 2026-07-10 - Music artwork
+- Artwork now uses a matched activity-to-expanded presentation model with interpolated geometry and isolated directional metadata changes.
+- Transition probe, `init.sh`, and Xcode Debug builds passed.

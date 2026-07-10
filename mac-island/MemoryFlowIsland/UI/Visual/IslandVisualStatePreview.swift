@@ -21,6 +21,7 @@ struct IslandVisualStatePreview: View {
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
+    @Namespace private var musicArtworkNamespace
 
     private var effectiveWidthConstraints: IslandWidthConstraints {
         guard greetingExpired else { return widthConstraints }
@@ -132,7 +133,8 @@ struct IslandVisualStatePreview: View {
             isExpandedAppContentVisible: expandedAppContentIsVisible,
             isExpandedMusicContentVisible: expandedMusicContentIsVisible,
             greetingPhase: greetingPhase,
-            greetingExpired: greetingExpired
+            greetingExpired: greetingExpired,
+            musicArtworkNamespace: musicArtworkNamespace
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -346,6 +348,7 @@ private struct IslandPreviewContentOverlay: View {
     let isExpandedMusicContentVisible: Bool
     let greetingPhase: IslandGreetingPhase
     let greetingExpired: Bool
+    let musicArtworkNamespace: Namespace.ID
 
     private var expandedSafePadding: CGFloat {
         IslandVisualTokens.compact.height
@@ -473,7 +476,10 @@ private struct IslandPreviewContentOverlay: View {
 
     private var compactActivityContent: some View {
         HStack(spacing: 8) {
-            artwork(size: 24)
+            musicArtwork(
+                presentation: IslandVisualTokens.activityMusicArtwork,
+                isExpanded: false
+            )
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(content.title)
@@ -534,21 +540,12 @@ private struct IslandPreviewContentOverlay: View {
     private var expandedMusicContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 14) {
-                artwork(size: 64)
+                musicArtwork(
+                    presentation: IslandVisualTokens.expandedMusicArtwork,
+                    isExpanded: true
+                )
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(content.title)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-
-                    Text(content.subtitle)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.48))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
+                MusicTrackMetadata(title: content.title, artist: content.subtitle)
 
                 Spacer(minLength: 12)
 
@@ -705,6 +702,38 @@ private struct IslandPreviewContentOverlay: View {
         .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
     }
 
+    private func musicArtwork(
+        presentation: IslandMusicArtworkPresentation,
+        isExpanded: Bool
+    ) -> some View {
+        ZStack {
+            if let artworkData = content.music?.artworkData,
+               let image = NSImage(data: artworkData) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                MusicArtworkMask(radius: presentation.radius, smoothness: presentation.smoothness)
+                    .fill(
+                        LinearGradient(
+                            colors: [tintColor.opacity(0.92), Color.white.opacity(0.18)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text(content.badge.prefix(1))
+                    .font(.system(size: max(10, presentation.width * 0.32), weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.88))
+            }
+        }
+        .frame(width: presentation.width, height: presentation.height)
+        .clipShape(MusicArtworkMask(radius: presentation.radius, smoothness: presentation.smoothness))
+        .matchedGeometryEffect(id: "music-artwork", in: musicArtworkNamespace, properties: .frame, anchor: .leading, isSource: !isExpanded)
+        .animation(.easeInOut(duration: 0.46), value: presentation)
+        .accessibilityLabel(content.music?.artworkData == nil ? "Music artwork placeholder" : "Music artwork")
+    }
+
     private var tintColor: Color {
         if let themeColorHex = content.music?.themeColorHex {
             return Color(memoryFlowHex: themeColorHex)
@@ -762,6 +791,97 @@ private struct IslandCompactContentTransitionStyle: ViewModifier {
             .opacity(opacity)
             .blur(radius: blurRadius)
             .offset(y: offsetY)
+    }
+}
+
+private struct MusicArtworkMask: Shape {
+    var radius: CGFloat
+    var smoothness: CGFloat
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(radius, smoothness) }
+        set {
+            radius = newValue.first
+            smoothness = newValue.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let corner = min(max(radius, 0), min(rect.width, rect.height) / 2)
+        // A lower exponent draws a slightly rounder continuous corner while
+        // retaining the token radius as the physical corner extent.
+        let control = corner * (0.552_284_75 / max(smoothness, 0.01))
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + corner, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - corner, y: rect.minY))
+        path.addCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + corner),
+            control1: CGPoint(x: rect.maxX - control, y: rect.minY),
+            control2: CGPoint(x: rect.maxX, y: rect.minY + control)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - corner))
+        path.addCurve(
+            to: CGPoint(x: rect.maxX - corner, y: rect.maxY),
+            control1: CGPoint(x: rect.maxX, y: rect.maxY - control),
+            control2: CGPoint(x: rect.maxX - control, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + corner, y: rect.maxY))
+        path.addCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - corner),
+            control1: CGPoint(x: rect.minX + control, y: rect.maxY),
+            control2: CGPoint(x: rect.minX, y: rect.maxY - control)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + corner))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + corner, y: rect.minY),
+            control1: CGPoint(x: rect.minX, y: rect.minY + control),
+            control2: CGPoint(x: rect.minX + control, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct MusicTrackMetadata: View {
+    let title: String
+    let artist: String
+
+    @State private var displayedTitle = ""
+    @State private var displayedArtist = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            metadataText(displayedTitle, fontSize: 16, color: .white)
+            metadataText(displayedArtist, fontSize: 13, color: .white.opacity(0.48))
+        }
+        .onAppear { updateMetadata(animated: false) }
+        .onChange(of: title) { _ in updateMetadata(animated: true) }
+        .onChange(of: artist) { _ in updateMetadata(animated: true) }
+    }
+
+    private func metadataText(_ text: String, fontSize: CGFloat, color: Color) -> some View {
+        Text(text)
+            .id(text)
+            .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                removal: .opacity.combined(with: .move(edge: .leading))
+            ))
+    }
+
+    private func updateMetadata(animated: Bool) {
+        let update = {
+            displayedTitle = title
+            displayedArtist = artist
+        }
+        if animated {
+            withAnimation(.easeOut(duration: 0.22), update)
+        } else {
+            update()
+        }
     }
 }
 
