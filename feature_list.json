@@ -105,7 +105,7 @@
       "Verify a real or controlled GET /widget/summary response matches the visible native counts and content and confirm no Windows, Electron, web login, or backend files changed."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-review-thirty-second-sync",

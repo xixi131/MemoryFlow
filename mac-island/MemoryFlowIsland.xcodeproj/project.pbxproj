@@ -74,6 +74,9 @@
 		F00102070000000000000001 /* DesktopLoginCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101070000000000000001 /* DesktopLoginCoordinator.swift */; };
 		F00102080000000000000001 /* DesktopLoginCallbackProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101080000000000000001 /* DesktopLoginCallbackProbe.swift */; };
 		F00102090000000000000001 /* AuthSessionLifecycleProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */; };
+		F001020A0000000000000001 /* ReviewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010A0000000000000001 /* ReviewModels.swift */; };
+		F001020B0000000000000001 /* ReviewRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010B0000000000000001 /* ReviewRepository.swift */; };
+		F001020C0000000000000001 /* ReviewLiveSummaryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -146,6 +149,9 @@
 		F00101070000000000000001 /* DesktopLoginCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopLoginCoordinator.swift; sourceTree = "<group>"; };
 		F00101080000000000000001 /* DesktopLoginCallbackProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopLoginCallbackProbe.swift; sourceTree = "<group>"; };
 		F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionLifecycleProbe.swift; sourceTree = "<group>"; };
+		F001010A0000000000000001 /* ReviewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewModels.swift; sourceTree = "<group>"; };
+		F001010B0000000000000001 /* ReviewRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRepository.swift; sourceTree = "<group>"; };
+		F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewLiveSummaryProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -196,6 +202,7 @@
 			children = (
 				F00100020000000000000001 /* API */,
 				F00100030000000000000001 /* Auth */,
+				F00100040000000000000001 /* Review */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -221,6 +228,16 @@
 				F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */,
 			);
 			path = Auth;
+			sourceTree = "<group>";
+		};
+		F00100040000000000000001 /* Review */ = {
+			isa = PBXGroup;
+			children = (
+				F001010A0000000000000001 /* ReviewModels.swift */,
+				F001010B0000000000000001 /* ReviewRepository.swift */,
+				F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */,
+			);
+			path = Review;
 			sourceTree = "<group>";
 		};
 		B00100060000000000000001 /* App */ = {
@@ -489,6 +506,9 @@
 				F00102070000000000000001 /* DesktopLoginCoordinator.swift in Sources */,
 				F00102080000000000000001 /* DesktopLoginCallbackProbe.swift in Sources */,
 				F00102090000000000000001 /* AuthSessionLifecycleProbe.swift in Sources */,
+				F001020A0000000000000001 /* ReviewModels.swift in Sources */,
+				F001020B0000000000000001 /* ReviewRepository.swift in Sources */,
+				F001020C0000000000000001 /* ReviewLiveSummaryProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

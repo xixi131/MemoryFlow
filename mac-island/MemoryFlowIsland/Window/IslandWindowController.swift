@@ -1270,6 +1270,19 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         )
     }
 
+    @MainActor
+    func applyReviewSnapshot(_ snapshot: ReviewSnapshot) {
+        var state = phase5PreviewStateContainer.domainState
+        guard state.authState == .loggedIn else { return }
+        state.reviewSnapshot = snapshot
+        state.mockSources.review = nil
+        applyPhase5PreviewUpdate(
+            phase5PreviewStateContainer.replaceDomainState(state),
+            using: nil,
+            allowLockScheduling: true
+        )
+    }
+
     private func handlePointerDown(_ input: IslandPointerInput) {
         guard usesPhase5PreviewInteractionRouting else { return }
         if pointerGestureAdapter.isTracking {

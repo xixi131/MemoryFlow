@@ -21,7 +21,7 @@ The native activity-state notch-clearance phase is complete. The next phase conn
 The active queue now covers browser-based desktop login callback, Keychain session storage, refresh/logout, review summary polling every 30 seconds, Windows-compatible todo querying every 60 seconds, and persisted todo completion. Physical-device calibration, performance capture, and remaining real music-provider work stay outside this phase.
 
 ## Queue status
-The active backend-integration queue contains 5 pending delivery slices: 2 review tasks, 2 todo tasks, and 1 lifecycle acceptance task. The first pending task is `mac-review-live-summary-display`. Read the `/widget/summary` backend contract, native review state/render models, auth services, and `SceneCoordinator` only as needed. Keep backend DTOs and transport out of SwiftUI, reducers, and window controllers, and retain mocks only for probes or explicit previews.
+The active backend-integration queue contains 4 pending delivery slices: 1 review sync task, 2 todo tasks, and 1 lifecycle acceptance task. The first pending task is `mac-review-thirty-second-sync`. Read the review repository, auth invalidation flow, lifecycle hooks, and `SceneCoordinator` only as needed. Add an injectable non-overlapping 30-second poller that retains last-good data and stops/restarts exactly with authentication lifecycle.
 
 ## Authentication reuse boundary
 - Reuse the existing browser login page, `POST /auth/login`, CAPTCHA flow, JWT implementation, and `memoryflow://callback` contract.

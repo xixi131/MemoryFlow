@@ -104,3 +104,7 @@
 ### 2026-07-11 - Native authentication session lifecycle
 - Added verified startup restoration, shared coalesced refresh with one protected-request retry, offline-aware credential handling, and menu-bar Logout with unconditional local cleanup and future review/todo cancellation hooks.
 - Deterministic startup, concurrent refresh, failed refresh, offline restoration, offline logout, and normal logout probes passed with the full native build; task-owned runtime processes were stopped afterward.
+
+### 2026-07-11 - Live native review summary
+- Added `/widget/summary` DTOs, a UI-independent `ReviewSnapshot`, an authenticated review repository, immediate post-login loading, and production review rendering across compact, hover, activity, and expanded states.
+- The full native build and controlled endpoint probe passed for pending/completed counts, subject titles, next-subject mapping, zero-safe values, and the exact `/api/widget/summary` request path.

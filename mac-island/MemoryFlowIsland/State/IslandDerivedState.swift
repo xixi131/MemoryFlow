@@ -509,7 +509,7 @@ struct IslandPreviewContent: Equatable {
                 subtitle: "Ready for your next review",
                 badge: "HI",
                 tone: .review,
-                review: state.mockSources.review,
+                review: state.reviewSnapshot?.presentationActivity ?? state.mockSources.review,
                 todo: nil,
                 music: nil,
                 contentWidthRequirement: width(leading: 30, trailing: 152, padding: 16)
@@ -534,7 +534,7 @@ struct IslandPreviewContent: Equatable {
             )
         }
 
-        let review = state.mockSources.review ?? .empty
+        let review = state.reviewSnapshot?.presentationActivity ?? state.mockSources.review ?? .empty
         let isPausedTimeout = review.nextSubjectTitle == IslandMockScenarioMarkerText.pausedMusicTimeout
         let isReminder = showReminder || state.isReminderActive || state.isReminderCollapsing
         let reminder = state.mockSources.reminder

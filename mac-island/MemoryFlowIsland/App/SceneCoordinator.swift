@@ -6,6 +6,7 @@ protocol IslandWindowControlling: AnyObject {
     func hide()
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
     func applyLoggedOutState()
+    func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
 }
 
 protocol MenuBarControlling {
@@ -19,6 +20,7 @@ final class SceneCoordinator {
     private let menuBarController: MenuBarControlling
     let authCoordinator: AuthCoordinating
     let desktopLoginCoordinator: DesktopLoginCoordinating
+    let reviewRepository: ReviewRepositoryProtocol
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
@@ -32,6 +34,8 @@ final class SceneCoordinator {
         )
         self.windowController = windowController
         self.preferencesWindowController = preferencesWindowController
+        let reviewRepository = ReviewRepository(apiClient: apiClient)
+        self.reviewRepository = reviewRepository
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
@@ -41,7 +45,13 @@ final class SceneCoordinator {
                 }
             },
             onUserChanged: { [weak windowController] user in
-                if let user { windowController?.applyAuthenticatedUser(user) }
+                if let user {
+                    windowController?.applyAuthenticatedUser(user)
+                    Task { [weak windowController, weak reviewRepository] in
+                        guard let snapshot = try? await reviewRepository?.fetchSummary() else { return }
+                        await MainActor.run { windowController?.applyReviewSnapshot(snapshot) }
+                    }
+                }
             }
         )
         self.authCoordinator = authCoordinator
@@ -68,7 +78,8 @@ final class SceneCoordinator {
         preferencesWindowController: PreferencesWindowControlling,
         menuBarController: MenuBarControlling? = nil,
         authCoordinator: AuthCoordinating? = nil,
-        desktopLoginCoordinator: DesktopLoginCoordinating? = nil
+        desktopLoginCoordinator: DesktopLoginCoordinating? = nil,
+        reviewRepository: ReviewRepositoryProtocol? = nil
     ) {
         self.windowController = windowController
         self.preferencesWindowController = preferencesWindowController
@@ -88,6 +99,9 @@ final class SceneCoordinator {
             resolvedAuthCoordinator = AuthCoordinator(apiClient: apiClient, sessionStore: sessionStore)
         }
         self.authCoordinator = resolvedAuthCoordinator
+        self.reviewRepository = reviewRepository ?? ReviewRepository(
+            apiClient: resolvedAuthCoordinator.authenticatedAPIClient
+        )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
             webBaseURL: URL(string: "https://memoryflow.tanxhub.com")!,
             sessionStore: resolvedSessionStore,
