@@ -112,3 +112,7 @@
 ### 2026-07-11 - Thirty-second review synchronization
 - Added an injectable 30-second review polling controller with immediate authenticated fetch, overlap prevention, main-actor delivery, stale last-good snapshots, refresh-failure invalidation, and logout/relogin lifecycle handling.
 - Deterministic timing and failure probes passed for two ticks, slow requests, offline recovery, failed refresh, cancellation, restart, and live review presentations; the full native build passed.
+
+### 2026-07-11 - Live todo preview and sixty-second sync
+- Added concurrent authenticated todo stats/tasks loading with the Windows-compatible due query, stable first-six `TodoSnapshot` mapping, native compact/activity/expanded rendering, and an independent 60-second poller.
+- The full native build and controlled probes passed for query semantics, counts, order/limit, due labels, mode switching, two ticks, overlap prevention, last-good recovery, and lifecycle cancellation.

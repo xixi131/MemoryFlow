@@ -21,7 +21,7 @@ The native activity-state notch-clearance phase is complete. The next phase conn
 The active queue now covers browser-based desktop login callback, Keychain session storage, refresh/logout, review summary polling every 30 seconds, Windows-compatible todo querying every 60 seconds, and persisted todo completion. Physical-device calibration, performance capture, and remaining real music-provider work stay outside this phase.
 
 ## Queue status
-The active backend-integration queue contains 3 pending delivery slices: 2 todo tasks and 1 lifecycle acceptance task. The first pending task is `mac-todo-live-preview-sync`. Read the Windows-compatible todo endpoint/query contract, native todo state/render models, shared auth client, and `SceneCoordinator` only as needed. Add a UI-independent first-six snapshot and independent 60-second lifecycle poller while preserving the existing native design.
+The active backend-integration queue contains 2 pending delivery slices: persisted todo completion and lifecycle acceptance. The first pending task is `mac-todo-persisted-completion`. Read the todo repository/snapshot, native todo row interaction, shared auth flow, and `SceneCoordinator` only as needed. Preserve exact optimistic aggregate semantics, guard each task mutation, refresh after success, and restore the exact pre-mutation snapshot once on failure.
 
 ## Authentication reuse boundary
 - Reuse the existing browser login page, `POST /auth/login`, CAPTCHA flow, JWT implementation, and `memoryflow://callback` contract.

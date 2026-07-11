@@ -59,10 +59,11 @@ final class APIClient {
         method: HTTPMethod = .get,
         body: Encodable? = nil,
         authenticated: Bool = false,
-        retryAfterRefresh: Bool = true
+        retryAfterRefresh: Bool = true,
+        queryItems: [URLQueryItem] = []
     ) async throws -> Response {
         do {
-            return try await performRequest(endpoint, method: method, body: body, authenticated: authenticated)
+            return try await performRequest(endpoint, method: method, body: body, authenticated: authenticated, queryItems: queryItems)
         } catch {
             guard authenticated, retryAfterRefresh, Self.isAuthenticationFailure(error), sessionStore != nil else {
                 throw error
@@ -71,7 +72,7 @@ final class APIClient {
                 guard let self else { throw APIClientError.missingData }
                 return try await self.refreshSession()
             }
-            return try await performRequest(endpoint, method: method, body: body, authenticated: true)
+            return try await performRequest(endpoint, method: method, body: body, authenticated: true, queryItems: queryItems)
         }
     }
 
@@ -99,13 +100,16 @@ final class APIClient {
         _ endpoint: String,
         method: HTTPMethod,
         body: Encodable?,
-        authenticated: Bool
+        authenticated: Bool,
+        queryItems: [URLQueryItem] = []
     ) async throws -> Response {
         let relativePath = endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard relativePath.isEmpty == false else {
             throw APIClientError.invalidEndpoint
         }
-        let url = apiBaseURL.appendingPathComponent(relativePath)
+        var components = URLComponents(url: apiBaseURL.appendingPathComponent(relativePath), resolvingAgainstBaseURL: false)!
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
+        guard let url = components.url else { throw APIClientError.invalidEndpoint }
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Accept")

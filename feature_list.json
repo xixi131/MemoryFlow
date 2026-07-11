@@ -133,7 +133,7 @@
       "Verify real or controlled endpoint responses, task ordering, six-item limit, counts, due labels, mode switching, two polling ticks, failure recovery, and cancellation without modifying Windows or backend behavior."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-todo-persisted-completion",

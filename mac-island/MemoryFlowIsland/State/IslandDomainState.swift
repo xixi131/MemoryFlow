@@ -197,6 +197,7 @@ struct IslandDomainState: Codable, Equatable {
     var isGreetingActive: Bool
     var greetingText: String?
     var reviewSnapshot: ReviewSnapshot? = nil
+    var todoSnapshot: TodoSnapshot? = nil
     var mockSources: IslandMockActivitySources
 
     var isGestureTracking: Bool {

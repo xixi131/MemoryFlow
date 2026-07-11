@@ -7,6 +7,7 @@ protocol IslandWindowControlling: AnyObject {
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
     func applyLoggedOutState()
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
+    func applyTodoSnapshot(_ snapshot: TodoSnapshot)
 }
 
 protocol MenuBarControlling {
@@ -23,6 +24,8 @@ final class SceneCoordinator {
     let desktopLoginCoordinator: DesktopLoginCoordinating
     let reviewRepository: ReviewRepositoryProtocol
     let reviewPollingController: ReviewPollingController
+    let todoRepository: TodoRepositoryProtocol
+    let todoPollingController: TodoPollingController
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
@@ -45,9 +48,21 @@ final class SceneCoordinator {
             }
         )
         self.reviewPollingController = reviewPollingController
+        let todoRepository = TodoRepository(apiClient: apiClient)
+        self.todoRepository = todoRepository
+        let todoPollingController = TodoPollingController(
+            repository: todoRepository,
+            onSnapshot: { [weak windowController] snapshot in
+                windowController?.applyTodoSnapshot(snapshot)
+            }
+        )
+        self.todoPollingController = todoPollingController
         let lifecycleHooks = AuthLifecycleHooks()
-        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController] in
-            Task { @MainActor in reviewPollingController?.stop() }
+        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController, weak todoPollingController] in
+            Task { @MainActor in
+                reviewPollingController?.stop()
+                todoPollingController?.stop()
+            }
         }
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
@@ -55,6 +70,7 @@ final class SceneCoordinator {
             onAuthStateChanged: { [weak windowController] state in
                 if state == .loggedOut {
                     reviewPollingController.stop()
+                    todoPollingController.stop()
                     windowController?.applyLoggedOutState()
                 }
             },
@@ -62,11 +78,15 @@ final class SceneCoordinator {
                 if let user {
                     windowController?.applyAuthenticatedUser(user)
                     reviewPollingController.start()
+                    todoPollingController.start()
                 }
             },
             lifecycleCleaner: lifecycleHooks
         )
         reviewPollingController.onAuthenticationInvalidated = { [weak authCoordinator] in
+            Task { await authCoordinator?.logout() }
+        }
+        todoPollingController.onAuthenticationInvalidated = { [weak authCoordinator] in
             Task { await authCoordinator?.logout() }
         }
         self.authCoordinator = authCoordinator
@@ -123,6 +143,13 @@ final class SceneCoordinator {
                 windowController?.applyReviewSnapshot(snapshot)
             }
         )
+        self.todoRepository = TodoRepository(apiClient: resolvedAuthCoordinator.authenticatedAPIClient)
+        self.todoPollingController = TodoPollingController(
+            repository: self.todoRepository,
+            onSnapshot: { [weak windowController] snapshot in
+                windowController?.applyTodoSnapshot(snapshot)
+            }
+        )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
             webBaseURL: URL(string: "https://memoryflow.tanxhub.com")!,
             sessionStore: resolvedSessionStore,
@@ -147,6 +174,7 @@ final class SceneCoordinator {
 
     func stop() {
         reviewPollingController.stop()
+        todoPollingController.stop()
         windowController.hide()
         menuBarController.uninstall()
     }

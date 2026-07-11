@@ -34,7 +34,7 @@ struct IslandDerivedState: Equatable {
         let showTodoActivity = canShowActivityContent &&
             hasAppActivitySource &&
             state.appDisplayMode == .todo &&
-            state.mockSources.todo != nil
+            (state.todoSnapshot != nil || state.mockSources.todo != nil)
         let showReminder = showReviewActivity && state.isReminderActive
         let showAppActivity = showReviewActivity || showTodoActivity
         let showAnyActivity = showMusicActivity || showAppActivity
@@ -517,7 +517,7 @@ struct IslandPreviewContent: Equatable {
         }
 
         if showTodoActivity || state.appDisplayMode == .todo {
-            let todo = state.mockSources.todo ?? .empty
+            let todo = state.todoSnapshot?.presentationActivity ?? state.mockSources.todo ?? .empty
             return IslandPreviewContent(
                 kind: derivedVisualState.isExpanded ? .expandedTodo : (showTodoActivity ? .todoActivity : .todoCompact),
                 eyebrow: "Todo",
