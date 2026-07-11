@@ -23,6 +23,6 @@
       "Run the full native Swift typecheck plus the focused rapid-retarget probe and confirm no Windows or Electron files changed."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   }
 ]

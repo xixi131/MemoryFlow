@@ -78,3 +78,7 @@
 ### 2026-07-11 - Global Apple spring API
 - Added one cached SwiftUI `Animation.spring(response: 0.35, dampingFraction: 0.70)` and the generic `.applyAppleSpring(value:)` modifier for Equatable state.
 - Full native Swift typecheck and focused Bool/enum compile probes passed; the API is documented for one-time outer-shell attachment and in-flight retargeting.
+
+### 2026-07-11 - Apple spring shell integration
+- Attached the shared spring once to the black SwiftUI shell layer while excluding the content overlay and stabilizing the key for display-link-owned geometry samples.
+- Full native typecheck and the rapid-retarget probe passed, covering forward/reverse keys, inherited velocity, snap prevention, stale completion rejection, bounded deltas, and final convergence.

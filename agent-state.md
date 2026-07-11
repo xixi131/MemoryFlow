@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-The Phase 6 native mock animation and content-parity queue is archived as complete. The active queue now adds a globally reusable Apple-style underdamped SwiftUI spring and applies it once at the outer native island shell boundary. The Windows Electron implementation remains read-only and out of scope.
+The global Apple-style SwiftUI spring queue is complete. The native helper now exposes one cached underdamped spring API and attaches it once at the black shell boundary while keeping display-link geometry and content-local animation ownership isolated. The Windows Electron implementation remains read-only and unchanged.
 
 ## Completed native modules
 - Motion plans, live animation driver, top-center window anchoring, shell shape morphing, compact/activity/expanded content choreography, hover breathing, Reduce Motion, responsive layout, and rapid-retarget guards.
@@ -21,4 +21,4 @@ The Phase 6 native mock animation and content-parity queue is archived as comple
 Physical-device spring/notch/hover and mouse/trackpad calibration; 60Hz/120Hz GUI capture; Instruments/Core Animation/GPU profiling; real backend, authentication, persisted todo, MediaRemote/Apple Music/Spotify/Keychain/IPC integration all remain future-phase work.
 
 ## Queue status
-One pending frontend task remains in `feature_list.json`. Start with `mac-apple-spring-shell-integration`, reading `mac-island/MemoryFlowIsland/UI/Motion/AppleSpringMotion.swift`, `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`, and the existing rapid-retarget probes. Preserve the current AppKit window animation driver and content-local animations unless a direct shell conflict is proven.
+No pending tasks remain. The reusable API lives in `mac-island/MemoryFlowIsland/UI/Motion/AppleSpringMotion.swift`; shell ownership and rapid-retarget checks live in `IslandVisualStatePreview.swift` and `IslandAnimationDriverProbe.swift`. Run `$Task_init` before beginning another implementation phase.

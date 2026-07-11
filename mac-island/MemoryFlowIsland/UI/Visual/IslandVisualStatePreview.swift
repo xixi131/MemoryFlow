@@ -10,19 +10,15 @@ struct IslandVisualStatePreview: View {
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     let reduceMotion: Bool
+    let presentationShapeMetrics: IslandShapeMetrics?
+    let presentationShapeState: IslandVisualState
+    let presentationShadowAppearance: IslandShadowAppearanceTokens?
+    let presentationShadowOutsets: IslandShadowOutsets?
+    let contentPresentation: IslandContentPresentation
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
     var onTodoTaskInteraction: (() -> Void)?
-    @State private var activityContentIsVisible = false
-    @State private var compactContentIsVisible = true
-    @State private var wasActivityCollapsed = false
-    @State private var expandedAppContentIsVisible = true
-    @State private var expandedMusicContentIsVisible = true
-    @State private var contentPresentation = IslandContentPresentation(phase: .visible, opacity: 1, blurRadius: 0, scale: 1, offsetY: 0, allowsHitTesting: true)
-    @State private var contentTransitionGate = IslandContentTransitionGate()
-    @State private var previousVisualState: IslandVisualState?
-    @State private var previousPreviewContent: IslandPreviewContent?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
@@ -33,16 +29,32 @@ struct IslandVisualStatePreview: View {
         return IslandWidthConstraints(
             baseBodyWidth: IslandVisualTokens.compact.previewWidth - 40,
             maximumVisibleWidth: widthConstraints.maximumVisibleWidth,
-            contentWidthRequirement: .none
+            contentWidthRequirement: .none,
+            fixedVisibleWidth: widthConstraints.fixedVisibleWidth
         )
     }
 
     private var snapshot: IslandShapeLayoutSnapshot {
-        IslandCompactContentLayout.snapshot(
+        if let presentationShapeMetrics {
+            return IslandShapeEngine.snapshot(
+                for: presentationShapeMetrics,
+                state: presentationShapeState,
+                shadowOutsetsOverride: presentationShadowOutsets
+            )
+        }
+
+        return IslandCompactContentLayout.snapshot(
             for: state,
             visualScale: visualScale,
             horizontalScale: horizontalScale,
             widthConstraints: effectiveWidthConstraints
+        )
+    }
+
+    private var shellSpringTarget: IslandShellSpringTarget {
+        IslandShellSpringTarget.resolve(
+            state: state,
+            presentationShapeMetrics: presentationShapeMetrics
         )
     }
 
@@ -51,24 +63,11 @@ struct IslandVisualStatePreview: View {
 
         previewContainer(snapshot: snapshot)
             .background(Color.clear)
-            .onAppear(perform: scheduleActivityContentEnter)
-            .onAppear { wasActivityCollapsed = state == .activityCollapsed }
             .onAppear {
-                previousVisualState = state
-                previousPreviewContent = previewContent
                 scheduleGreetingLifecycle(for: previewContent)
-            }
-            .onChange(of: state) { nextState in
-                scheduleContentForStateChange(to: nextState)
-                beginContentTransition(from: previousVisualState ?? nextState, to: nextState)
-                previousVisualState = nextState
-                previousPreviewContent = previewContent
             }
             .onChange(of: previewContent) { nextContent in
                 scheduleGreetingLifecycle(for: nextContent)
-                guard previousPreviewContent != nextContent else { return }
-                beginContentTransition(from: state, to: state)
-                previousPreviewContent = nextContent
             }
     }
 
@@ -76,6 +75,7 @@ struct IslandVisualStatePreview: View {
     private func previewContainer(snapshot: IslandShapeLayoutSnapshot) -> some View {
         let content = ZStack(alignment: .topLeading) {
             composedShapeLayer(snapshot: snapshot)
+                .applyAppleSpring(value: shellSpringTarget)
                 .shadow(
                     color: shadowColor(for: snapshot),
                     radius: shadowRadius(for: snapshot),
@@ -133,10 +133,10 @@ struct IslandVisualStatePreview: View {
             content: previewContent,
             state: state,
             snapshot: snapshot,
-            isActivityContentVisible: activityContentIsVisible,
-            isCompactContentVisible: compactContentIsVisible,
-            isExpandedAppContentVisible: expandedAppContentIsVisible,
-            isExpandedMusicContentVisible: expandedMusicContentIsVisible,
+            isActivityContentVisible: true,
+            isCompactContentVisible: true,
+            isExpandedAppContentVisible: true,
+            isExpandedMusicContentVisible: true,
             contentPhase: contentPresentation.phase,
             greetingPhase: greetingPhase,
             greetingExpired: greetingExpired,
@@ -161,6 +161,10 @@ struct IslandVisualStatePreview: View {
     }
 
     private func shadowColor(for snapshot: IslandShapeLayoutSnapshot) -> Color {
+        if let presentationShadowAppearance {
+            return Color.black.opacity(presentationShadowAppearance.opacity)
+        }
+
         guard snapshot.metrics.showsShadow else {
             return .clear
         }
@@ -169,6 +173,10 @@ struct IslandVisualStatePreview: View {
     }
 
     private func shadowRadius(for snapshot: IslandShapeLayoutSnapshot) -> CGFloat {
+        if let presentationShadowAppearance {
+            return presentationShadowAppearance.radius
+        }
+
         guard snapshot.metrics.showsShadow else {
             return 0
         }
@@ -177,6 +185,10 @@ struct IslandVisualStatePreview: View {
     }
 
     private func shadowOffsetY(for snapshot: IslandShapeLayoutSnapshot) -> CGFloat {
+        if let presentationShadowAppearance {
+            return presentationShadowAppearance.offsetY
+        }
+
         guard snapshot.metrics.showsShadow else {
             return 0
         }
@@ -189,96 +201,6 @@ struct IslandVisualStatePreview: View {
             for: snapshot.state,
             visualScale: visualScale
         )
-    }
-
-    private func scheduleActivityContentEnter() {
-        activityContentIsVisible = false
-        guard state == .activityCollapsed else { return }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + IslandVisualTokens.activityContentEnter.delay) {
-            guard state == .activityCollapsed else { return }
-            withAnimation(.easeOut(duration: IslandVisualTokens.activityContentEnter.duration)) {
-                activityContentIsVisible = true
-            }
-        }
-    }
-
-    private func scheduleContentForStateChange(to nextState: IslandVisualState) {
-        let isCollapsing = wasActivityCollapsed && nextState == .compactCollapsed
-        let isOpeningExpandedApp = wasActivityCollapsed && nextState == .expandedApp
-        let isOpeningExpandedMusic = wasActivityCollapsed && nextState == .expandedMusic
-        wasActivityCollapsed = nextState == .activityCollapsed
-        scheduleActivityContentEnter()
-        if isOpeningExpandedApp {
-            expandedAppContentIsVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + IslandVisualTokens.expandedAppContentEnter.delay) {
-                guard state == .expandedApp else { return }
-                withAnimation(.easeOut(duration: IslandVisualTokens.expandedAppContentEnter.duration)) {
-                    expandedAppContentIsVisible = true
-                }
-            }
-        } else if nextState != .expandedApp {
-            expandedAppContentIsVisible = true
-        }
-        if isOpeningExpandedMusic {
-            expandedMusicContentIsVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + IslandVisualTokens.expandedMusicContentEnter.delay) {
-                guard state == .expandedMusic else { return }
-                withAnimation(.easeOut(duration: IslandVisualTokens.expandedMusicContentEnter.duration)) {
-                    expandedMusicContentIsVisible = true
-                }
-            }
-        } else if nextState != .expandedMusic {
-            expandedMusicContentIsVisible = true
-        }
-        guard isCollapsing else {
-            compactContentIsVisible = true
-            return
-        }
-
-        compactContentIsVisible = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + IslandVisualTokens.activityCollapseContent.compactContentDelay) {
-            guard state == .compactCollapsed else { return }
-            withAnimation(.easeOut(duration: 0.12)) {
-                compactContentIsVisible = true
-            }
-        }
-    }
-
-    private func beginContentTransition(from previous: IslandVisualState, to next: IslandVisualState) {
-        let epoch = contentTransitionGate.begin()
-        let choreography = IslandContentChoreographyPlan.resolve(from: previous, to: next)
-
-        withAnimation(animation(for: choreography.exit)) {
-            contentPresentation = choreography.presentation(for: .exiting)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + choreography.exit.duration) {
-            guard contentTransitionGate.accepts(epoch) else { return }
-            contentPresentation = choreography.presentation(for: .waitingForShell)
-
-            let shellWait = max(choreography.shellDuration - choreography.exit.duration, 0) + choreography.enter.delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + shellWait) {
-                guard contentTransitionGate.accepts(epoch) else { return }
-                withAnimation(animation(for: choreography.enter)) {
-                    contentPresentation = choreography.presentation(for: .entering)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + choreography.enter.duration) {
-                    guard contentTransitionGate.accepts(epoch) else { return }
-                    contentPresentation = choreography.presentation(for: .visible)
-                }
-            }
-        }
-    }
-
-    private func animation(for token: IslandContentMotionToken) -> Animation {
-        switch token.curve {
-        case .easeInOut:
-            return .easeInOut(duration: token.duration)
-        case .easeOut:
-            return .easeOut(duration: token.duration)
-        case .linear:
-            return .linear(duration: token.duration)
-        }
     }
 
     private func scheduleGreetingLifecycle(for content: IslandPreviewContent) {
@@ -312,6 +234,21 @@ struct IslandVisualStatePreview: View {
     }
 }
 
+enum IslandShellSpringTarget: Equatable {
+    case swiftUI(IslandVisualState)
+    case displayLinkOwned
+
+    static func resolve(
+        state: IslandVisualState,
+        presentationShapeMetrics: IslandShapeMetrics?
+    ) -> IslandShellSpringTarget {
+        // AppKit supplies already-interpolated path and frame samples. Keeping this key
+        // stable prevents SwiftUI from applying a second easing pass to those samples.
+        guard presentationShapeMetrics == nil else { return .displayLinkOwned }
+        return .swiftUI(state)
+    }
+}
+
 enum IslandCompactContentLayout {
     static func snapshot(
         for state: IslandVisualState,
@@ -326,7 +263,8 @@ enum IslandCompactContentLayout {
             widthConstraints: widthConstraints
         )
 
-        guard state == .compactCollapsed,
+        guard widthConstraints.fixedVisibleWidth == nil,
+              state == .compactCollapsed,
               let compactBodyWidth = widthConstraints.baseBodyWidth,
               compactBodyWidth < metrics.width else {
             return IslandShapeEngine.snapshot(for: metrics, state: state)
@@ -370,6 +308,10 @@ private struct IslandPreviewContentOverlay: View {
     @State private var playbackOverride: Bool?
     @State private var isFavorite = false
 
+    private var visualScale: CGFloat {
+        snapshot.metrics.scale
+    }
+
     private var expandedSafePadding: CGFloat {
         IslandVisualTokens.compact.height
     }
@@ -402,14 +344,6 @@ private struct IslandPreviewContentOverlay: View {
                     .offset(x: visibleContentFrame.minX, y: visibleContentFrame.minY)
             } else if state == .compactCollapsed || state == .hoverCollapsed {
                 compactContent
-                    .id(content.kind)
-                    .transition(reduceMotion ? .opacity : .islandCompactContentCrossfade)
-                    .animation(
-                        reduceMotion
-                            ? .linear(duration: IslandMotionTokens.reduceMotionDuration)
-                            : .easeOut(duration: 0.26),
-                        value: content.kind
-                    )
                     .opacity(isCompactContentVisible ? 1 : 0)
                     .allowsHitTesting(isCompactContentVisible)
                     .frame(
@@ -546,8 +480,8 @@ private struct IslandPreviewContentOverlay: View {
                 .allowsHitTesting(isExpandedMusicContentVisible)
         } else {
             expandedAppContent
-                .padding(.horizontal, 34)
-                .padding(.top, 42)
+                .padding(.horizontal, 34 * visualScale)
+                .padding(.top, 42 * visualScale)
                 .opacity(isExpandedAppContentVisible ? 1 : 0)
                 .blur(radius: isExpandedAppContentVisible ? 0 : IslandVisualTokens.expandedAppContentEnter.initialBlurRadius)
                 .allowsHitTesting(isExpandedAppContentVisible)
@@ -923,19 +857,6 @@ private struct MusicTransportButtonStyle: ButtonStyle {
     }
 }
 
-private struct IslandCompactContentTransitionStyle: ViewModifier {
-    let opacity: Double
-    let blurRadius: CGFloat
-    let offsetY: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(opacity)
-            .blur(radius: blurRadius)
-            .offset(y: offsetY)
-    }
-}
-
 private struct MusicArtworkMask: Shape {
     var radius: CGFloat
     var smoothness: CGFloat
@@ -1266,14 +1187,14 @@ private struct IslandExpandedTodoContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TODO FLOW")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(tint.opacity(0.9))
                     Text("Today's plan")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
                 Spacer(minLength: 8)
@@ -1349,7 +1270,7 @@ private struct IslandExpandedTodoContent: View {
     private func todoCounter(value: Int, label: String, isUrgent: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("\(value)")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(isUrgent ? Color.red.opacity(0.92) : .white)
             Text(label)
                 .font(.system(size: 9, weight: .medium, design: .rounded))
@@ -1359,7 +1280,7 @@ private struct IslandExpandedTodoContent: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 9)
-        .padding(.vertical, 6)
+        .padding(.vertical, 3)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.10)))
     }
 
@@ -1595,8 +1516,8 @@ struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
 enum IslandExpandedTodoContentLayout {
     static let maximumVisibleTasks = 6
     static let rowHeight: CGFloat = 22
-    static let rowSpacing: CGFloat = 3
-    static let taskListHeight: CGFloat = 147
+    static let rowSpacing: CGFloat = 2
+    static let taskListHeight: CGFloat = 142
     static let rowsDelay: TimeInterval = 0.08
     static let rowStagger: TimeInterval = 0.035
     static let summaryAnimation = Animation.easeOut(duration: 0.16)
@@ -1686,7 +1607,7 @@ enum IslandExpandedTodoContentProbe {
               rows.map(\.overdueTaskCount) == [0, 0, 1, 0, 1],
               rows.map(\.completedTaskCount) == [0, 1, 0, 0, 1],
               rows.allSatisfy(\.supportsLongTitle),
-              rows.allSatisfy({ $0.fixedTaskListHeight == 147 }),
+              rows.allSatisfy({ $0.fixedTaskListHeight == 142 }),
               rows.allSatisfy(\.startsInsideContentPhase),
               IslandExpandedTodoContentLayout.maximumVisibleTasks == 6 else {
             throw IslandExpandedTodoContentProbeError.invalidLayout(rows)
@@ -1696,19 +1617,6 @@ enum IslandExpandedTodoContentProbe {
 
 enum IslandExpandedTodoContentProbeError: Error {
     case invalidLayout([IslandExpandedTodoContentProbeRow])
-}
-
-private extension AnyTransition {
-    static let islandCompactContentCrossfade = AnyTransition.asymmetric(
-        insertion: .modifier(
-            active: IslandCompactContentTransitionStyle(opacity: 0, blurRadius: 4, offsetY: 6),
-            identity: IslandCompactContentTransitionStyle(opacity: 1, blurRadius: 0, offsetY: 0)
-        ),
-        removal: .modifier(
-            active: IslandCompactContentTransitionStyle(opacity: 0, blurRadius: 4, offsetY: -4),
-            identity: IslandCompactContentTransitionStyle(opacity: 1, blurRadius: 0, offsetY: 0)
-        )
-    )
 }
 
 private struct MusicWaveformMark: View {

@@ -13,6 +13,8 @@ struct IslandAnimationDriverProbeRow: Equatable {
 enum IslandAnimationDriverProbe {
     @MainActor
     static func validateSampledFrames() throws -> [IslandAnimationDriverProbeRow] {
+        try validateShellSpringOwnership()
+
         let compact = IslandAnimationMetrics(visibleFrame: CGRect(x: 100, y: 900, width: 120, height: 32), visualScale: 1)
         let activity = IslandAnimationMetrics(visibleFrame: CGRect(x: 70, y: 892, width: 180, height: 40), visualScale: 1)
         let expanded = IslandAnimationMetrics(visibleFrame: CGRect(x: -70, y: 612, width: 460, height: 320), visualScale: 1)
@@ -72,6 +74,39 @@ enum IslandAnimationDriverProbe {
             expanded: expanded
         )
         return rows
+    }
+
+    private static func validateShellSpringOwnership() throws {
+        let forward = IslandShellSpringTarget.resolve(
+            state: .activityCollapsed,
+            presentationShapeMetrics: nil
+        )
+        let reverse = IslandShellSpringTarget.resolve(
+            state: .compactCollapsed,
+            presentationShapeMetrics: nil
+        )
+        guard forward == .swiftUI(.activityCollapsed),
+              reverse == .swiftUI(.compactCollapsed),
+              forward != reverse else {
+            throw IslandAnimationDriverProbeError.shellSpringRetargetWasStale
+        }
+
+        let sampledMetrics = IslandShapeMetrics.resolve(
+            for: .activityCollapsed,
+            visualScale: 1
+        )
+        let sampledForward = IslandShellSpringTarget.resolve(
+            state: .activityCollapsed,
+            presentationShapeMetrics: sampledMetrics
+        )
+        let sampledReverse = IslandShellSpringTarget.resolve(
+            state: .compactCollapsed,
+            presentationShapeMetrics: sampledMetrics
+        )
+        guard sampledForward == .displayLinkOwned,
+              sampledReverse == .displayLinkOwned else {
+            throw IslandAnimationDriverProbeError.displayLinkSamplesWouldBeDoubleEased
+        }
     }
 
     @MainActor
@@ -155,6 +190,8 @@ enum IslandAnimationDriverProbe {
 }
 
 enum IslandAnimationDriverProbeError: Error, CustomStringConvertible {
+    case shellSpringRetargetWasStale
+    case displayLinkSamplesWouldBeDoubleEased
     case retargetSnapped
     case reverseDidNotMoveTowardCompact
     case velocityWasNotSeeded
@@ -166,6 +203,8 @@ enum IslandAnimationDriverProbeError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
+        case .shellSpringRetargetWasStale: return "SwiftUI-owned shell spring target did not follow the forward/reverse state sequence."
+        case .displayLinkSamplesWouldBeDoubleEased: return "Display-link-owned shell samples changed the SwiftUI spring target."
         case .retargetSnapped: return "Retargeting did not start from live presentation metrics."
         case .reverseDidNotMoveTowardCompact: return "Reverse transition did not preserve a negative width velocity."
         case .velocityWasNotSeeded: return "Retargeting did not retain the sampled presentation velocity."
