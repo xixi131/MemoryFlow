@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-Phase 6 native mock animation and content-parity queue is complete. The macOS helper now has deterministic mock scenarios for logged-out/logged-in compact, greeting, review, todo, reminder, music playing/paused/stopped, and expanded review/todo/music states. The Windows Electron implementation remains the read-only parity reference.
+The Phase 6 native mock animation and content-parity queue is archived as complete. The active queue now adds a globally reusable Apple-style underdamped SwiftUI spring and applies it once at the outer native island shell boundary. The Windows Electron implementation remains read-only and out of scope.
 
 ## Completed native modules
 - Motion plans, live animation driver, top-center window anchoring, shell shape morphing, compact/activity/expanded content choreography, hover breathing, Reduce Motion, responsive layout, and rapid-retarget guards.
@@ -21,4 +21,4 @@ Phase 6 native mock animation and content-parity queue is complete. The macOS he
 Physical-device spring/notch/hover and mouse/trackpad calibration; 60Hz/120Hz GUI capture; Instruments/Core Animation/GPU profiling; real backend, authentication, persisted todo, MediaRemote/Apple Music/Spotify/Keychain/IPC integration all remain future-phase work.
 
 ## Queue status
-No pending tasks remain. Preserve Phase 5 history in `final_feature_list.json` and begin a new typed queue with `$Task_init` before further implementation.
+One pending frontend task remains in `feature_list.json`. Start with `mac-apple-spring-shell-integration`, reading `mac-island/MemoryFlowIsland/UI/Motion/AppleSpringMotion.swift`, `mac-island/MemoryFlowIsland/UI/Visual/IslandVisualStatePreview.swift`, and the existing rapid-retarget probes. Preserve the current AppKit window animation driver and content-local animations unless a direct shell conflict is proven.

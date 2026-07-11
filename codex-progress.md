@@ -74,3 +74,7 @@
 ### 2026-07-10 - Music artwork
 - Artwork now uses a matched activity-to-expanded presentation model with interpolated geometry and isolated directional metadata changes.
 - Transition probe, `init.sh`, and Xcode Debug builds passed.
+
+### 2026-07-11 - Global Apple spring API
+- Added one cached SwiftUI `Animation.spring(response: 0.35, dampingFraction: 0.70)` and the generic `.applyAppleSpring(value:)` modifier for Equatable state.
+- Full native Swift typecheck and focused Bool/enum compile probes passed; the API is documented for one-time outer-shell attachment and in-flight retargeting.
