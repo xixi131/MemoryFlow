@@ -77,7 +77,7 @@
       "Launch from a clean session, click the island login prompt, complete the existing browser login, and verify the browser callback returns the native app to confirmed logged-in state without changing Windows or Electron files."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-auth-session-lifecycle",

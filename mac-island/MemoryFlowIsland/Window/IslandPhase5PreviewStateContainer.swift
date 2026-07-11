@@ -90,6 +90,23 @@ struct IslandPhase5PreviewStateContainer: Equatable {
         )
     }
 
+    mutating func replaceDomainState(_ nextState: IslandDomainState) -> IslandPhase5PreviewReducerUpdate {
+        let previousState = domainState
+        let previousDerivedState = IslandDerivedState.derive(from: previousState)
+        domainState = nextState
+        return IslandPhase5PreviewReducerUpdate(
+            previousState: previousState,
+            currentState: nextState,
+            previousDerivedState: previousDerivedState,
+            currentDerivedState: IslandDerivedState.derive(from: nextState),
+            reducerResult: IslandPresentationReducerResult(
+                state: nextState,
+                reason: .mockScenarioSelected,
+                metadata: .none
+            )
+        )
+    }
+
     mutating func retarget(to layoutInput: IslandPreviewLayoutInput) -> IslandPhase5PreviewReducerUpdate {
         dispatch(intent: .retargetPresentation(.init(visualState: layoutInput.visualState)))
     }
@@ -127,11 +144,11 @@ extension IslandPresentationRetargetTarget {
                 forceCompactMode: true,
                 isHovered: true
             )
-        case .activityCollapsed:
+        case .activityCollapsed, .activityHoverCollapsed:
             self.init(
                 presentationState: .activity,
                 forceCompactMode: false,
-                isHovered: false
+                isHovered: visualState == .activityHoverCollapsed
             )
         case .expandedApp, .expandedMusic:
             self.init(

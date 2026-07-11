@@ -11,4 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         sceneCoordinator?.stop()
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            sceneCoordinator?.handleIncomingURL(url)
+        }
+    }
 }

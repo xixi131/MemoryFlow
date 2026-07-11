@@ -96,3 +96,7 @@
 ### 2026-07-11 - Native authentication adapter foundation
 - Added a typed native API transport, secure Keychain and in-memory auth session stores, authenticated-user models, and an injectable `AuthCoordinator` composed by `SceneCoordinator`.
 - The unsigned native Xcode build, authenticated `/auth/me` transport probe, Keychain round-trip probe, project lint, and diff checks passed without changing Windows, Electron, web-login, or backend files.
+
+### 2026-07-11 - Existing web login callback
+- Connected the logged-out native Login prompt to the existing browser login flow, registered the `memoryflow` callback scheme, persisted validated callback sessions, and mapped verified `/auth/me` users into native greeting state.
+- The full native build and deterministic browser/callback probe passed, including exact login URL, Bearer verification, nickname/email mapping, malformed input handling, and duplicate callback rejection.

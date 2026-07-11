@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+enum IslandDebugAppearance {
+    // Temporary contrast mode for calibrating compact and activity layout.
+    static let usesLightNonExpandedShell = false
+}
+
 struct IslandVisualStatePreview: View {
     let state: IslandVisualState
     let visualScale: CGFloat
@@ -19,6 +24,7 @@ struct IslandVisualStatePreview: View {
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
     var onTodoTaskInteraction: (() -> Void)?
+    var onLoginRequested: (() -> Void)?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
@@ -103,21 +109,26 @@ struct IslandVisualStatePreview: View {
 
     @ViewBuilder
     private func composedShapeLayer(snapshot: IslandShapeLayoutSnapshot) -> some View {
+        let usesLightShell = IslandDebugAppearance.usesLightNonExpandedShell && snapshot.state.isExpanded == false
+        let shellColor: Color = usesLightShell
+            ? .white
+            : .black
+
         ZStack(alignment: .topLeading) {
             Path(snapshot.leftCapPath)
-                .fill(Color.black)
+                .fill(shellColor)
             Path(snapshot.rightCapPath)
-                .fill(Color.black)
+                .fill(shellColor)
             Path(snapshot.leftEarPath)
-                .fill(Color.black)
+                .fill(shellColor)
             Path(snapshot.rightEarPath)
-                .fill(Color.black)
+                .fill(shellColor)
             Path(snapshot.bodyPath)
-                .fill(Color.black)
+                .fill(shellColor)
 
             if let strokePath = snapshot.strokePath {
                 Path(strokePath)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(usesLightShell ? Color.black.opacity(0.10) : Color.white.opacity(0.12), lineWidth: 1)
             }
         }
         .frame(
@@ -145,7 +156,8 @@ struct IslandVisualStatePreview: View {
             reduceMotion: reduceMotion,
             onMusicControlInteraction: onMusicControlInteraction,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
-            onTodoTaskInteraction: onTodoTaskInteraction
+            onTodoTaskInteraction: onTodoTaskInteraction,
+            onLoginRequested: onLoginRequested
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -304,12 +316,25 @@ private struct IslandPreviewContentOverlay: View {
     var onMusicControlInteraction: (() -> Void)?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onTodoTaskInteraction: (() -> Void)?
+    var onLoginRequested: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
     @State private var isFavorite = false
 
     private var visualScale: CGFloat {
         snapshot.metrics.scale
+    }
+
+    private var compactForegroundColor: Color {
+        IslandDebugAppearance.usesLightNonExpandedShell && state.isExpanded == false
+            ? .black
+            : .white
+    }
+
+    private var compactAccentColor: Color {
+        IslandDebugAppearance.usesLightNonExpandedShell && state.isExpanded == false
+            ? .black
+            : tintColor
     }
 
     private var expandedSafePadding: CGFloat {
@@ -331,7 +356,7 @@ private struct IslandPreviewContentOverlay: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            if state == .activityCollapsed {
+            if state == .activityCollapsed || state == .activityHoverCollapsed {
                 compactActivityContent
                     .opacity(isActivityContentVisible ? 1 : 0)
                     .blur(radius: reduceMotion || isActivityContentVisible ? 0 : IslandVisualTokens.activityContentEnter.initialBlurRadius)
@@ -388,29 +413,29 @@ private struct IslandPreviewContentOverlay: View {
     private var mockLoginCompactContent: some View {
         Button(action: runMockLoginCommand) {
             HStack(spacing: 8) {
-                Image(systemName: "arrow.right.to.line.compact")
+                Image(systemName: "circle.grid.2x2.fill")
                     .font(.system(size: 13, weight: .bold))
                 Text(content.title)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .lineLimit(1)
             }
-            .foregroundStyle(.white.opacity(0.92))
+            .foregroundStyle(compactForegroundColor.opacity(0.92))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("island-mock-login-command")
-        .accessibilityLabel("Mock login command")
+        .accessibilityIdentifier("island-login-command")
+        .accessibilityLabel("Login to MemoryFlow")
     }
 
     private var loggedInIdleCompactContent: some View {
         HStack(spacing: 7) {
             Image(systemName: "circle.grid.2x2.fill")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tintColor.opacity(0.94))
+                .foregroundStyle(compactAccentColor.opacity(0.94))
             Text("MemoryFlow")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(compactForegroundColor.opacity(0.78))
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -421,7 +446,7 @@ private struct IslandPreviewContentOverlay: View {
         let presentation = IslandGreetingSequence.presentation(for: greetingPhase)
         return Text(content.title)
             .font(.system(size: 13, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(compactForegroundColor.opacity(0.9))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -432,40 +457,79 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private func runMockLoginCommand() {
-        // Phase 6 deliberately keeps login local to the preview; no panel or auth flow opens.
+        onLoginRequested?()
     }
 
     private var compactActivityContent: some View {
-        HStack(spacing: 8) {
-            musicTrackIdentity(
-                presentation: IslandVisualTokens.activityMusicArtwork,
-                isExpanded: false,
-                titleSize: 10,
-                subtitleSize: 8,
-                spacing: 1
-            )
+        let frames = IslandActivityNotchClearContentFrames.resolve(
+            visibleSize: visibleContentFrame.size,
+            contentWidthRequirement: content.contentWidthRequirement
+        )
 
-            Spacer(minLength: 4)
+        return ZStack(alignment: .topLeading) {
+            activityModeIcon
+                .position(frames.leadingVisualCenter)
 
-            if let music = content.music {
-                MusicWaveformMark(
-                    tint: tintColor,
-                    isPlaying: music.isPlaying,
-                    count: 4,
-                    displayScale: snapshot.metrics.scale,
-                    reduceMotion: reduceMotion
-                )
-                .frame(width: 22, height: 22)
-            } else {
-                Text(content.badge)
-                    .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.66)
+            Group {
+                if let music = content.music {
+                    MusicWaveformMark(
+                        tint: compactForegroundColor,
+                        isPlaying: music.isPlaying,
+                        count: 4,
+                        displayScale: snapshot.metrics.scale,
+                        reduceMotion: reduceMotion
+                    )
+                    .frame(
+                        width: IslandActivityContentWidthProfile.waveformWidth,
+                        height: IslandActivityContentWidthProfile.waveformWidth
+                    )
+                } else {
+                    activityCount
+                }
             }
+            .position(frames.trailingVisualCenter)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 6)
+        .frame(
+            width: visibleContentFrame.width,
+            height: visibleContentFrame.height,
+            alignment: .topLeading
+        )
+    }
+
+    @ViewBuilder
+    private var activityModeIcon: some View {
+        if content.music != nil {
+            musicArtwork(
+                presentation: IslandVisualTokens.activityMusicArtwork,
+                isExpanded: false
+            )
+        } else {
+            Image(systemName: content.todo != nil ? "checklist" : "books.vertical.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(compactAccentColor.opacity(0.96))
+                .frame(
+                    width: IslandActivityContentWidthProfile.iconSize,
+                    height: IslandActivityContentWidthProfile.iconSize
+                )
+        }
+    }
+
+    private var activityCount: some View {
+        Text(activityCountText)
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundStyle(compactForegroundColor.opacity(0.84))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+    }
+
+    private var activityCountText: String {
+        if let todo = content.todo {
+            return String(max(todo.pendingCount, 0))
+        }
+        if let review = content.review {
+            return String(max(review.pendingCount, 0))
+        }
+        return "0"
     }
 
     @ViewBuilder
@@ -747,7 +811,10 @@ private struct IslandPreviewContentOverlay: View {
         subtitleSize: CGFloat,
         spacing: CGFloat
     ) -> some View {
-        HStack(alignment: .center, spacing: isExpanded ? 14 : 8) {
+        HStack(
+            alignment: .center,
+            spacing: isExpanded ? 14 : IslandActivityContentWidthProfile.identitySpacing
+        ) {
             musicArtwork(presentation: presentation, isExpanded: isExpanded)
             MusicTrackMetadata(
                 title: content.title,

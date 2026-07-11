@@ -84,7 +84,7 @@ struct IslandDerivedState: Equatable {
             showReminder: showReminder,
             showAppActivity: showAppActivity,
             showAnyActivity: showAnyActivity,
-            isActivityVisualState: visualState == .activityCollapsed,
+            isActivityVisualState: visualState == .activityCollapsed || visualState == .activityHoverCollapsed,
             collapsedWidth: collapsedWidth,
             collapsedCornerRadius: shellTokens.radius,
             collapsedCornerSmoothness: shellTokens.smoothness,
@@ -113,7 +113,7 @@ struct IslandDerivedState: Equatable {
             return state.primaryMode == .music ? .expandedMusic : .expandedApp
         case .activity:
             if showAnyActivity {
-                return .activityCollapsed
+                return state.isHovered ? .activityHoverCollapsed : .activityCollapsed
             }
             if state.isHovered {
                 return .hoverCollapsed
@@ -128,7 +128,7 @@ struct IslandDerivedState: Equatable {
         for state: IslandDomainState,
         visualState: IslandVisualState
     ) -> CGFloat {
-        if visualState == .activityCollapsed {
+        if visualState == .activityCollapsed || visualState == .activityHoverCollapsed {
             return IslandVisualTokens.activity.previewWidth
         }
 
@@ -165,7 +165,7 @@ struct IslandDerivedState: Equatable {
         previewMarker: IslandPreviewContentMarker,
         previewContent: IslandPreviewContent
     ) -> IslandMockContentWidthResolution {
-        if visualState != .activityCollapsed {
+        if visualState != .activityCollapsed && visualState != .activityHoverCollapsed {
             return IslandMockContentWidthResolution(
                 branch: compactContentWidthBranch(for: state),
                 requirement: .none
@@ -218,11 +218,7 @@ struct IslandDerivedState: Equatable {
         if state.primaryMode == .music || showMusicActivity {
             return IslandMockContentWidthResolution(
                 branch: .music,
-                requirement: IslandContentWidthRequirement(
-                    leadingContentWidth: 10,
-                    trailingContentWidth: 12,
-                    horizontalPadding: 4
-                )
+                requirement: IslandActivityContentWidthProfile.requirement(for: .music)
             )
         }
 
@@ -245,11 +241,7 @@ struct IslandDerivedState: Equatable {
            state.appDisplayMode == .todo || showTodoActivity {
             return IslandMockContentWidthResolution(
                 branch: .todo,
-                requirement: IslandContentWidthRequirement(
-                    leadingContentWidth: 8,
-                    trailingContentWidth: 10,
-                    horizontalPadding: 4
-                )
+                requirement: IslandActivityContentWidthProfile.requirement(for: .todo)
             )
         }
 
@@ -257,10 +249,9 @@ struct IslandDerivedState: Equatable {
            state.appDisplayMode == .review || showReviewActivity || showReminder {
             return IslandMockContentWidthResolution(
                 branch: .review,
-                requirement: IslandContentWidthRequirement(
-                    leadingContentWidth: showReminder ? 12 : 6,
-                    trailingContentWidth: showReminder ? 14 : 8,
-                    horizontalPadding: 4
+                requirement: IslandActivityContentWidthProfile.requirement(
+                    for: .review,
+                    isReminder: showReminder
                 )
             )
         }
@@ -282,6 +273,39 @@ enum IslandMockContentWidthBranch: String, Equatable {
     case music
     case greeting
     case compact
+}
+
+enum IslandActivityContentWidthProfile {
+    static let contentSlotWidth: CGFloat = 32
+    static let iconSize: CGFloat = 20
+    static let identitySpacing: CGFloat = 8
+    static let waveformWidth: CGFloat = 18
+    static let notchSpacing: CGFloat = 6
+    static let shellCurveCenterCompensation: CGFloat = 6
+
+    static var minimumLeadingIdentityWidth: CGFloat {
+        contentSlotWidth
+    }
+
+    static var minimumTrailingControlWidth: CGFloat {
+        contentSlotWidth
+    }
+
+    static func requirement(
+        for branch: IslandMockContentWidthBranch,
+        isReminder: Bool = false
+    ) -> IslandContentWidthRequirement {
+        switch branch {
+        case .review, .todo, .music:
+            return IslandContentWidthRequirement(
+                leadingContentWidth: minimumLeadingIdentityWidth,
+                trailingContentWidth: minimumTrailingControlWidth,
+                horizontalPadding: notchSpacing
+            )
+        case .greeting, .compact:
+            return .none
+        }
+    }
 }
 
 private struct IslandMockContentWidthResolution: Equatable {
@@ -456,7 +480,7 @@ struct IslandPreviewContent: Equatable {
                 music: music,
                 contentWidthRequirement: derivedVisualState.isExpanded
                     ? width(leading: 90, trailing: 260, padding: 28)
-                    : width(leading: 44, trailing: 72, padding: 18)
+                    : IslandActivityContentWidthProfile.requirement(for: .music)
             )
         }
 
@@ -464,7 +488,7 @@ struct IslandPreviewContent: Equatable {
             return IslandPreviewContent(
                 kind: .signedOutCompact,
                 eyebrow: "Signed Out",
-                title: "点击登录",
+                title: "Login",
                 subtitle: "MemoryFlow",
                 badge: "OUT",
                 tone: .signedOut,
@@ -506,7 +530,7 @@ struct IslandPreviewContent: Equatable {
                 music: nil,
                 contentWidthRequirement: derivedVisualState.isExpanded
                     ? width(leading: 120, trailing: 230, padding: 28)
-                    : width(leading: 38, trailing: showTodoActivity ? 118 : 96, padding: 16)
+                    : IslandActivityContentWidthProfile.requirement(for: .todo)
             )
         }
 
@@ -528,7 +552,10 @@ struct IslandPreviewContent: Equatable {
             music: nil,
             contentWidthRequirement: derivedVisualState.isExpanded
                 ? width(leading: 130, trailing: 220, padding: 28)
-                : width(leading: 38, trailing: isReminder ? 132 : 104, padding: 16)
+                : IslandActivityContentWidthProfile.requirement(
+                    for: .review,
+                    isReminder: isReminder
+                )
         )
     }
 
