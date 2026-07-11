@@ -18,7 +18,7 @@ The native activity-state notch-clearance phase is complete. The next phase conn
 - Performance: `docs/evidence/mac-island-phase6/motion-performance-evidence.{json,md}`.
 
 ## Remaining real-world work
-The active queue now covers browser-based desktop login callback, Keychain session storage, refresh/logout, review summary polling every 30 seconds, Windows-compatible todo querying every 60 seconds, and persisted todo completion. Physical-device calibration, performance capture, and remaining real music-provider work stay outside this phase.
+The backend-integration queue is complete: browser callback login, Keychain session lifecycle, refresh/logout, 30-second review sync, 60-second todo sync, and persisted todo completion are implemented and covered by controlled deterministic evidence. Live credential/device calibration, performance capture, and remaining real music-provider work stay outside this phase.
 
 ## Queue status
 The backend-integration queue is complete. No pending tasks remain in `feature_list.json`; run `$Task_init` before starting another delivery phase. Acceptance evidence lives under `docs/evidence/mac-island-backend-integration` and is explicitly labeled controlled-synthetic because no real user credentials were used for browser entry.
