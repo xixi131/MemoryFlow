@@ -14,6 +14,7 @@ protocol MenuBarControlling {
     func uninstall()
 }
 
+@MainActor
 final class SceneCoordinator {
     private let windowController: IslandWindowControlling
     private let preferencesWindowController: PreferencesWindowControlling
@@ -21,6 +22,7 @@ final class SceneCoordinator {
     let authCoordinator: AuthCoordinating
     let desktopLoginCoordinator: DesktopLoginCoordinating
     let reviewRepository: ReviewRepositoryProtocol
+    let reviewPollingController: ReviewPollingController
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
@@ -36,24 +38,37 @@ final class SceneCoordinator {
         self.preferencesWindowController = preferencesWindowController
         let reviewRepository = ReviewRepository(apiClient: apiClient)
         self.reviewRepository = reviewRepository
+        let reviewPollingController = ReviewPollingController(
+            repository: reviewRepository,
+            onSnapshot: { [weak windowController] snapshot in
+                windowController?.applyReviewSnapshot(snapshot)
+            }
+        )
+        self.reviewPollingController = reviewPollingController
+        let lifecycleHooks = AuthLifecycleHooks()
+        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController] in
+            Task { @MainActor in reviewPollingController?.stop() }
+        }
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
             onAuthStateChanged: { [weak windowController] state in
                 if state == .loggedOut {
+                    reviewPollingController.stop()
                     windowController?.applyLoggedOutState()
                 }
             },
             onUserChanged: { [weak windowController] user in
                 if let user {
                     windowController?.applyAuthenticatedUser(user)
-                    Task { [weak windowController, weak reviewRepository] in
-                        guard let snapshot = try? await reviewRepository?.fetchSummary() else { return }
-                        await MainActor.run { windowController?.applyReviewSnapshot(snapshot) }
-                    }
+                    reviewPollingController.start()
                 }
-            }
+            },
+            lifecycleCleaner: lifecycleHooks
         )
+        reviewPollingController.onAuthenticationInvalidated = { [weak authCoordinator] in
+            Task { await authCoordinator?.logout() }
+        }
         self.authCoordinator = authCoordinator
         self.desktopLoginCoordinator = DesktopLoginCoordinator(
             webBaseURL: URL(string: ProcessInfo.processInfo.environment["MEMORYFLOW_WEB_BASE_URL"] ?? "https://memoryflow.tanxhub.com")!,
@@ -102,6 +117,12 @@ final class SceneCoordinator {
         self.reviewRepository = reviewRepository ?? ReviewRepository(
             apiClient: resolvedAuthCoordinator.authenticatedAPIClient
         )
+        self.reviewPollingController = ReviewPollingController(
+            repository: self.reviewRepository,
+            onSnapshot: { [weak windowController] snapshot in
+                windowController?.applyReviewSnapshot(snapshot)
+            }
+        )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
             webBaseURL: URL(string: "https://memoryflow.tanxhub.com")!,
             sessionStore: resolvedSessionStore,
@@ -125,6 +146,7 @@ final class SceneCoordinator {
     }
 
     func stop() {
+        reviewPollingController.stop()
         windowController.hide()
         menuBarController.uninstall()
     }

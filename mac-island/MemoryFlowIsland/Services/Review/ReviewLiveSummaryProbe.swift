@@ -35,8 +35,6 @@ enum ReviewLiveSummaryProbe {
         ]
         let derived = states.map(IslandDerivedState.derive)
         let expectedKinds: [IslandPreviewContent.Kind] = [.reviewCompact, .reviewCompact, .reviewActivity, .expandedReview]
-        let path = transport.lastPath ?? "nil"
-        FileHandle.standardError.write(Data("review-probe kinds=\(derived.map(\.previewContent.kind)) pending=\(derived.map { $0.previewContent.review?.pendingCount ?? -1 }) path=\(path)\n".utf8))
         guard derived.map(\.previewContent.kind) == expectedKinds,
               derived.allSatisfy({ $0.previewContent.review?.pendingCount == 8 }),
               derived.allSatisfy({ $0.previewContent.review?.completedTodayCount == 5 }),

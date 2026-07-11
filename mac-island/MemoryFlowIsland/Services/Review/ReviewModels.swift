@@ -33,6 +33,8 @@ struct ReviewSnapshot: Codable, Equatable {
     let totalCompletedToday: Int
     let reminderTime: String?
     let subjects: [ReviewSubjectSnapshot]
+    var isStale: Bool = false
+    var lastSuccessfulSyncAt: Date? = nil
 
     var nextSubjectTitle: String? {
         subjects.first(where: { $0.pendingReviewCount > 0 })?.title ?? subjects.first?.title
@@ -54,6 +56,14 @@ struct ReviewSnapshot: Codable, Equatable {
                 goalTitle: $0.goalTitle
             )
         }
+        isStale = false
+        lastSuccessfulSyncAt = Date()
+    }
+
+    func markingStale() -> ReviewSnapshot {
+        var copy = self
+        copy.isStale = true
+        return copy
     }
 }
 

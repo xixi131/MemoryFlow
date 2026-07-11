@@ -77,6 +77,8 @@
 		F001020A0000000000000001 /* ReviewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010A0000000000000001 /* ReviewModels.swift */; };
 		F001020B0000000000000001 /* ReviewRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010B0000000000000001 /* ReviewRepository.swift */; };
 		F001020C0000000000000001 /* ReviewLiveSummaryProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */; };
+		F001020D0000000000000001 /* ReviewPollingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010D0000000000000001 /* ReviewPollingController.swift */; };
+		F001020E0000000000000001 /* ReviewPollingProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001010E0000000000000001 /* ReviewPollingProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -152,6 +154,8 @@
 		F001010A0000000000000001 /* ReviewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewModels.swift; sourceTree = "<group>"; };
 		F001010B0000000000000001 /* ReviewRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRepository.swift; sourceTree = "<group>"; };
 		F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewLiveSummaryProbe.swift; sourceTree = "<group>"; };
+		F001010D0000000000000001 /* ReviewPollingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewPollingController.swift; sourceTree = "<group>"; };
+		F001010E0000000000000001 /* ReviewPollingProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewPollingProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,6 +240,8 @@
 				F001010A0000000000000001 /* ReviewModels.swift */,
 				F001010B0000000000000001 /* ReviewRepository.swift */,
 				F001010C0000000000000001 /* ReviewLiveSummaryProbe.swift */,
+				F001010D0000000000000001 /* ReviewPollingController.swift */,
+				F001010E0000000000000001 /* ReviewPollingProbe.swift */,
 			);
 			path = Review;
 			sourceTree = "<group>";
@@ -509,6 +515,8 @@
 				F001020A0000000000000001 /* ReviewModels.swift in Sources */,
 				F001020B0000000000000001 /* ReviewRepository.swift in Sources */,
 				F001020C0000000000000001 /* ReviewLiveSummaryProbe.swift in Sources */,
+				F001020D0000000000000001 /* ReviewPollingController.swift in Sources */,
+				F001020E0000000000000001 /* ReviewPollingProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

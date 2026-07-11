@@ -30,7 +30,7 @@ struct IslandDerivedState: Equatable {
         let showReviewActivity = canShowActivityContent &&
             hasAppActivitySource &&
             state.appDisplayMode == .review &&
-            state.mockSources.review != nil
+            (state.reviewSnapshot != nil || state.mockSources.review != nil)
         let showTodoActivity = canShowActivityContent &&
             hasAppActivitySource &&
             state.appDisplayMode == .todo &&
