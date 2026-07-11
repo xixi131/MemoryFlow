@@ -82,3 +82,17 @@
 ### 2026-07-11 - Apple spring shell integration
 - Attached the shared spring once to the black SwiftUI shell layer while excluding the content overlay and stabilizing the key for display-link-owned geometry samples.
 - Full native typecheck and the rapid-retarget probe passed, covering forward/reverse keys, inherited velocity, snap prevention, stale completion rejection, bounded deltas, and final convergence.
+
+### 2026-07-11 - Activity notch-clearance layout
+- Added a shared native activity-clearance calculation that derives centered activity width from the physical-notch or compact center span plus balanced leading and trailing content reach and shared padding.
+- Compact notch matching remains unchanged; focused notched and flat-display probes passed at 450pt and 411pt activity widths, along with the full native Swift typecheck.
+
+### 2026-07-11 - Three-mode activity notch-clearance integration
+- Unified review, todo, music, reminder, and activity-hover sizing around two shared 32pt square slots with 6pt notch spacing.
+- Each side-region centers its content with balanced horizontal and vertical breathing room. Review and todo render icon-left/count-right; music renders cover-left/waveform-right. A three-segment HStack keeps both sides present around the empty notch center. Production-derived probes passed for all three modes on notched and flat displays (286pt on the 210pt-notch fixture), and the full native Swift typecheck passed.
+- Visual calibration is complete and `IslandDebugAppearance.usesLightNonExpandedShell` is disabled, restoring the original dark compact, hover, and activity appearance.
+- Expanded review, todo, and music collapse recovery now retargets to activity at 92% of the collapse with the driver still running, preserving the live frame and velocity instead of settling at compact. The continuity driver probe and all 9 tap/outside/trackpad recovery routes pass.
+
+### 2026-07-11 - Native authentication adapter foundation
+- Added a typed native API transport, secure Keychain and in-memory auth session stores, authenticated-user models, and an injectable `AuthCoordinator` composed by `SceneCoordinator`.
+- The unsigned native Xcode build, authenticated `/auth/me` transport probe, Keychain round-trip probe, project lint, and diff checks passed without changing Windows, Electron, web-login, or backend files.
