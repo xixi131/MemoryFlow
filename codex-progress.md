@@ -116,3 +116,7 @@
 ### 2026-07-11 - Live todo preview and sixty-second sync
 - Added concurrent authenticated todo stats/tasks loading with the Windows-compatible due query, stable first-six `TodoSnapshot` mapping, native compact/activity/expanded rendering, and an independent 60-second poller.
 - The full native build and controlled probes passed for query semantics, counts, order/limit, due labels, mode switching, two ticks, overlap prevention, last-good recovery, and lifecycle cancellation.
+
+### 2026-07-11 - Persisted native todo completion
+- Routed native todo row completion through a per-task mutation controller and authenticated PATCH repository operation with exact optimistic aggregate updates, success refresh reconciliation, and one-time snapshot rollback.
+- The full native build and deterministic probes passed for success persistence, duplicate clicks, offline/server failures, final authorization failure, exact rollback, and subsequent GET confirmation.

@@ -21,7 +21,7 @@ The native activity-state notch-clearance phase is complete. The next phase conn
 The active queue now covers browser-based desktop login callback, Keychain session storage, refresh/logout, review summary polling every 30 seconds, Windows-compatible todo querying every 60 seconds, and persisted todo completion. Physical-device calibration, performance capture, and remaining real music-provider work stay outside this phase.
 
 ## Queue status
-The active backend-integration queue contains 2 pending delivery slices: persisted todo completion and lifecycle acceptance. The first pending task is `mac-todo-persisted-completion`. Read the todo repository/snapshot, native todo row interaction, shared auth flow, and `SceneCoordinator` only as needed. Preserve exact optimistic aggregate semantics, guard each task mutation, refresh after success, and restore the exact pre-mutation snapshot once on failure.
+The active backend-integration queue contains 1 pending delivery slice: `mac-backend-integration-acceptance`. Exercise the complete native lifecycle from clean session through browser callback, review/todo polling, persisted completion, refresh, and logout. Record truthful controlled API/state evidence and native screenshots when available under `docs/evidence/mac-island-backend-integration`, and confirm protected data, timers, mutations, and credentials are cleared.
 
 ## Authentication reuse boundary
 - Reuse the existing browser login page, `POST /auth/login`, CAPTCHA flow, JWT implementation, and `memoryflow://callback` contract.

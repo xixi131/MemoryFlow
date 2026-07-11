@@ -147,7 +147,7 @@
       "Verify controlled success, duplicate click, offline failure, server failure, and expired-token cases, including a subsequent GET proving successful completion was persisted."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-backend-integration-acceptance",

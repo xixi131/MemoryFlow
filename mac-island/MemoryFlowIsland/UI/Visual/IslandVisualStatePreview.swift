@@ -23,7 +23,7 @@ struct IslandVisualStatePreview: View {
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
-    var onTodoTaskInteraction: (() -> Void)?
+    var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
@@ -315,7 +315,7 @@ private struct IslandPreviewContentOverlay: View {
     let reduceMotion: Bool
     var onMusicControlInteraction: (() -> Void)?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
-    var onTodoTaskInteraction: (() -> Void)?
+    var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
@@ -1240,7 +1240,7 @@ private struct IslandExpandedTodoContent: View {
     let tint: Color
     let contentPhase: IslandContentPhase
     let scenarioRequest: IslandTodoToggleScenarioRequest?
-    var onTaskInteraction: (() -> Void)?
+    var onTaskInteraction: ((String) -> Void)?
     @State private var summaryIsVisible = false
     @State private var rowsAreVisible = false
     @State private var localToggleState: IslandLocalTodoToggleState?
@@ -1354,7 +1354,7 @@ private struct IslandExpandedTodoContent: View {
     private func taskRow(_ task: IslandExpandedTodoTaskSlot) -> some View {
         HStack(spacing: 7) {
             Button {
-                onTaskInteraction?()
+                onTaskInteraction?(task.id)
                 toggleTask(id: task.id)
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")

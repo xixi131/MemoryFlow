@@ -78,6 +78,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     var onLoginRequested: (() -> Void)? {
         didSet { renderModel.onLoginRequested = onLoginRequested }
     }
+    var onTodoCompletionRequested: ((Int64) -> Void)?
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
@@ -299,8 +300,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         renderModel.onMusicControlInteraction = { [weak self] in
             self?.hostingView.consumeNextPointerTap()
         }
-        renderModel.onTodoTaskInteraction = { [weak self] in
+        renderModel.onTodoTaskInteraction = { [weak self] taskID in
             self?.hostingView.consumeNextPointerTap()
+            guard let id = Int64(taskID) else { return }
+            self?.onTodoCompletionRequested?(id)
         }
         hostingView.onPointerDown = { [weak self] input in
             self?.handlePointerDown(input)

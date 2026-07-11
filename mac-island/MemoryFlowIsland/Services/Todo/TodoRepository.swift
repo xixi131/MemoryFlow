@@ -2,7 +2,14 @@ import Foundation
 
 protocol TodoRepositoryProtocol: AnyObject {
     func fetchSnapshot() async throws -> TodoSnapshot
+    func completeTask(id: Int64) async throws
 }
+
+extension TodoRepositoryProtocol {
+    func completeTask(id: Int64) async throws { throw APIClientError.invalidEndpoint }
+}
+
+private struct CompleteTodoTaskRequest: Encodable { let completed: Bool }
 final class TodoRepository: TodoRepositoryProtocol {
     private let apiClient: APIClient
     init(apiClient: APIClient) { self.apiClient = apiClient }
@@ -19,5 +26,14 @@ final class TodoRepository: TodoRepositoryProtocol {
             ]
         )
         return try await TodoSnapshot(stats: stats, tasks: tasks)
+    }
+
+    func completeTask(id: Int64) async throws {
+        let _: TodoTaskDTO = try await apiClient.request(
+            "todos/tasks/\(id)/status",
+            method: .patch,
+            body: CompleteTodoTaskRequest(completed: true),
+            authenticated: true
+        )
     }
 }

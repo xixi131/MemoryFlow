@@ -28,10 +28,10 @@ struct TodoTaskSnapshot: Codable, Equatable, Identifiable {
 }
 
 struct TodoSnapshot: Codable, Equatable {
-    let pendingTasks: Int
-    let dueToday: Int
-    let overdueTasks: Int
-    let tasks: [TodoTaskSnapshot]
+    var pendingTasks: Int
+    var dueToday: Int
+    var overdueTasks: Int
+    var tasks: [TodoTaskSnapshot]
     var isStale: Bool = false
 
     init(stats: TodoStatsDTO, tasks: [TodoTaskDTO]) {
@@ -55,6 +55,27 @@ struct TodoSnapshot: Codable, Equatable {
     func markingStale() -> TodoSnapshot {
         var copy = self
         copy.isStale = true
+        return copy
+    }
+
+    func completing(taskID: Int64) -> TodoSnapshot? {
+        guard let index = tasks.firstIndex(where: { $0.id == taskID }) else { return nil }
+        let task = tasks[index]
+        guard task.status != "done" && task.status != "completed" else { return nil }
+        var copy = self
+        copy.tasks[index] = TodoTaskSnapshot(
+            id: task.id,
+            title: task.title,
+            status: "completed",
+            priority: task.priority,
+            dueDate: task.dueDate,
+            dueTime: task.dueTime,
+            isOverdue: task.isOverdue,
+            isDueToday: task.isDueToday
+        )
+        copy.pendingTasks = max(0, pendingTasks - 1)
+        if task.isDueToday { copy.dueToday = max(0, dueToday - 1) }
+        if task.isOverdue { copy.overdueTasks = max(0, overdueTasks - 1) }
         return copy
     }
 }

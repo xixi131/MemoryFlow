@@ -83,6 +83,8 @@
 		F00102100000000000000001 /* TodoRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101100000000000000001 /* TodoRepository.swift */; };
 		F00102110000000000000001 /* TodoPollingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101110000000000000001 /* TodoPollingController.swift */; };
 		F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101120000000000000001 /* TodoLiveSyncProbe.swift */; };
+		F00102130000000000000001 /* TodoMutationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101130000000000000001 /* TodoMutationController.swift */; };
+		F00102140000000000000001 /* TodoMutationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101140000000000000001 /* TodoMutationProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -164,6 +166,8 @@
 		F00101100000000000000001 /* TodoRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoRepository.swift; sourceTree = "<group>"; };
 		F00101110000000000000001 /* TodoPollingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoPollingController.swift; sourceTree = "<group>"; };
 		F00101120000000000000001 /* TodoLiveSyncProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoLiveSyncProbe.swift; sourceTree = "<group>"; };
+		F00101130000000000000001 /* TodoMutationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationController.swift; sourceTree = "<group>"; };
+		F00101140000000000000001 /* TodoMutationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,6 +266,8 @@
 				F00101100000000000000001 /* TodoRepository.swift */,
 				F00101110000000000000001 /* TodoPollingController.swift */,
 				F00101120000000000000001 /* TodoLiveSyncProbe.swift */,
+				F00101130000000000000001 /* TodoMutationController.swift */,
+				F00101140000000000000001 /* TodoMutationProbe.swift */,
 			);
 			path = Todo;
 			sourceTree = "<group>";
@@ -541,6 +547,8 @@
 				F00102100000000000000001 /* TodoRepository.swift in Sources */,
 				F00102110000000000000001 /* TodoPollingController.swift in Sources */,
 				F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */,
+				F00102130000000000000001 /* TodoMutationController.swift in Sources */,
+				F00102140000000000000001 /* TodoMutationProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

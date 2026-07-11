@@ -55,7 +55,7 @@ final class IslandRenderModel: ObservableObject {
     var onAdvancePreviewState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
     var onMusicControlInteraction: (() -> Void)?
-    var onTodoTaskInteraction: (() -> Void)?
+    var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
 
     init(presentation: IslandRenderPresentation) {

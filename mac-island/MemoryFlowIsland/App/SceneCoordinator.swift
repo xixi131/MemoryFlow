@@ -2,6 +2,7 @@ import AppKit
 
 protocol IslandWindowControlling: AnyObject {
     var onLoginRequested: (() -> Void)? { get set }
+    var onTodoCompletionRequested: ((Int64) -> Void)? { get set }
     func show()
     func hide()
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
@@ -26,6 +27,7 @@ final class SceneCoordinator {
     let reviewPollingController: ReviewPollingController
     let todoRepository: TodoRepositoryProtocol
     let todoPollingController: TodoPollingController
+    let todoMutationController: TodoMutationController
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
@@ -50,18 +52,24 @@ final class SceneCoordinator {
         self.reviewPollingController = reviewPollingController
         let todoRepository = TodoRepository(apiClient: apiClient)
         self.todoRepository = todoRepository
-        let todoPollingController = TodoPollingController(
+        let todoMutationController = TodoMutationController(
             repository: todoRepository,
             onSnapshot: { [weak windowController] snapshot in
                 windowController?.applyTodoSnapshot(snapshot)
             }
         )
+        self.todoMutationController = todoMutationController
+        let todoPollingController = TodoPollingController(
+            repository: todoRepository,
+            onSnapshot: { [weak todoMutationController] snapshot in todoMutationController?.acceptSnapshot(snapshot) }
+        )
         self.todoPollingController = todoPollingController
         let lifecycleHooks = AuthLifecycleHooks()
-        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController, weak todoPollingController] in
+        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController, weak todoPollingController, weak todoMutationController] in
             Task { @MainActor in
                 reviewPollingController?.stop()
                 todoPollingController?.stop()
+                todoMutationController?.cancelAll()
             }
         }
         let authCoordinator = AuthCoordinator(
@@ -89,6 +97,9 @@ final class SceneCoordinator {
         todoPollingController.onAuthenticationInvalidated = { [weak authCoordinator] in
             Task { await authCoordinator?.logout() }
         }
+        todoMutationController.onAuthenticationInvalidated = { [weak authCoordinator] in
+            Task { await authCoordinator?.logout() }
+        }
         self.authCoordinator = authCoordinator
         self.desktopLoginCoordinator = DesktopLoginCoordinator(
             webBaseURL: URL(string: ProcessInfo.processInfo.environment["MEMORYFLOW_WEB_BASE_URL"] ?? "https://memoryflow.tanxhub.com")!,
@@ -98,6 +109,9 @@ final class SceneCoordinator {
         let desktopLoginCoordinator = self.desktopLoginCoordinator
         windowController.onLoginRequested = { [weak desktopLoginCoordinator] in
             _ = desktopLoginCoordinator?.openLogin()
+        }
+        windowController.onTodoCompletionRequested = { [weak todoMutationController] taskID in
+            todoMutationController?.complete(taskID: taskID)
         }
         self.menuBarController = StatusBarController(
             windowController: windowController,
@@ -144,10 +158,14 @@ final class SceneCoordinator {
             }
         )
         self.todoRepository = TodoRepository(apiClient: resolvedAuthCoordinator.authenticatedAPIClient)
+        self.todoMutationController = TodoMutationController(
+            repository: self.todoRepository,
+            onSnapshot: { [weak windowController] snapshot in windowController?.applyTodoSnapshot(snapshot) }
+        )
         self.todoPollingController = TodoPollingController(
             repository: self.todoRepository,
-            onSnapshot: { [weak windowController] snapshot in
-                windowController?.applyTodoSnapshot(snapshot)
+            onSnapshot: { [weak todoMutationController = self.todoMutationController] snapshot in
+                todoMutationController?.acceptSnapshot(snapshot)
             }
         )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
@@ -157,6 +175,9 @@ final class SceneCoordinator {
         )
         self.windowController.onLoginRequested = { [weak desktopLoginCoordinator = self.desktopLoginCoordinator] in
             _ = desktopLoginCoordinator?.openLogin()
+        }
+        self.windowController.onTodoCompletionRequested = { [weak todoMutationController = self.todoMutationController] taskID in
+            todoMutationController?.complete(taskID: taskID)
         }
         self.menuBarController = menuBarController ?? StatusBarController(
             windowController: windowController,
