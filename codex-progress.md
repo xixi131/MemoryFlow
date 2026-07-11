@@ -100,3 +100,7 @@
 ### 2026-07-11 - Existing web login callback
 - Connected the logged-out native Login prompt to the existing browser login flow, registered the `memoryflow` callback scheme, persisted validated callback sessions, and mapped verified `/auth/me` users into native greeting state.
 - The full native build and deterministic browser/callback probe passed, including exact login URL, Bearer verification, nickname/email mapping, malformed input handling, and duplicate callback rejection.
+
+### 2026-07-11 - Native authentication session lifecycle
+- Added verified startup restoration, shared coalesced refresh with one protected-request retry, offline-aware credential handling, and menu-bar Logout with unconditional local cleanup and future review/todo cancellation hooks.
+- Deterministic startup, concurrent refresh, failed refresh, offline restoration, offline logout, and normal logout probes passed with the full native build; task-owned runtime processes were stopped afterward.

@@ -73,6 +73,7 @@
 		F00102060000000000000001 /* AuthFoundationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101060000000000000001 /* AuthFoundationProbe.swift */; };
 		F00102070000000000000001 /* DesktopLoginCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101070000000000000001 /* DesktopLoginCoordinator.swift */; };
 		F00102080000000000000001 /* DesktopLoginCallbackProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101080000000000000001 /* DesktopLoginCallbackProbe.swift */; };
+		F00102090000000000000001 /* AuthSessionLifecycleProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -144,6 +145,7 @@
 		F00101060000000000000001 /* AuthFoundationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFoundationProbe.swift; sourceTree = "<group>"; };
 		F00101070000000000000001 /* DesktopLoginCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopLoginCoordinator.swift; sourceTree = "<group>"; };
 		F00101080000000000000001 /* DesktopLoginCallbackProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopLoginCallbackProbe.swift; sourceTree = "<group>"; };
+		F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionLifecycleProbe.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -216,6 +218,7 @@
 				F00101060000000000000001 /* AuthFoundationProbe.swift */,
 				F00101070000000000000001 /* DesktopLoginCoordinator.swift */,
 				F00101080000000000000001 /* DesktopLoginCallbackProbe.swift */,
+				F00101090000000000000001 /* AuthSessionLifecycleProbe.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -485,6 +488,7 @@
 				F00102060000000000000001 /* AuthFoundationProbe.swift in Sources */,
 				F00102070000000000000001 /* DesktopLoginCoordinator.swift in Sources */,
 				F00102080000000000000001 /* DesktopLoginCallbackProbe.swift in Sources */,
+				F00102090000000000000001 /* AuthSessionLifecycleProbe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

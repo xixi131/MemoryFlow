@@ -8,6 +8,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
+    private let logoutHandler: () -> Void
     private var isIslandVisible: Bool
 
     init(
@@ -15,6 +16,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
         preferencesWindowController: PreferencesWindowControlling,
         menuBuilder: StatusMenuBuilding = StatusMenuBuilder(),
         isIslandVisible: Bool = true,
+        logoutHandler: @escaping () -> Void = {},
         quitHandler: @escaping () -> Void = { NSApp.terminate(nil) }
     ) {
         self.windowController = windowController
@@ -24,6 +26,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
         self.menuBuilder = menuBuilder
         self.isIslandVisible = isIslandVisible
         self.quitHandler = quitHandler
+        self.logoutHandler = logoutHandler
         super.init()
     }
 
@@ -96,6 +99,10 @@ final class StatusBarController: NSObject, MenuBarControlling {
         quitHandler()
     }
 
+    @objc func logoutMenuItemClicked(_ sender: Any?) {
+        logoutHandler()
+    }
+
     private func configureButton(_ button: NSStatusBarButton?) {
         guard let button else { return }
         button.title = "MF"
@@ -116,6 +123,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
             phase5ScenarioAction: #selector(phase5ScenarioMenuItemClicked(_:)),
             phase5InteractionDemoAction: #selector(phase5InteractionDemoMenuItemClicked(_:)),
             preferencesAction: #selector(preferencesMenuItemClicked(_:)),
+            logoutAction: #selector(logoutMenuItemClicked(_:)),
             quitAction: #selector(quitMenuItemClicked(_:))
         )
     }

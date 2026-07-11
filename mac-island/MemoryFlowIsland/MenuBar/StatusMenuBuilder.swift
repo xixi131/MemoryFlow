@@ -10,6 +10,7 @@ protocol StatusMenuBuilding {
         phase5ScenarioAction: Selector,
         phase5InteractionDemoAction: Selector,
         preferencesAction: Selector,
+        logoutAction: Selector,
         quitAction: Selector
     ) -> NSMenu
 }
@@ -24,6 +25,7 @@ struct StatusMenuBuilder: StatusMenuBuilding {
         phase5ScenarioAction: Selector,
         phase5InteractionDemoAction: Selector,
         preferencesAction: Selector,
+        logoutAction: Selector,
         quitAction: Selector
     ) -> NSMenu {
         let menu = NSMenu()
@@ -72,6 +74,10 @@ struct StatusMenuBuilder: StatusMenuBuilding {
         let preferencesItem = NSMenuItem(title: "Preferences", action: preferencesAction, keyEquivalent: ",")
         preferencesItem.target = target
         menu.addItem(preferencesItem)
+
+        let logoutItem = NSMenuItem(title: "Logout", action: logoutAction, keyEquivalent: "")
+        logoutItem.target = target
+        menu.addItem(logoutItem)
 
         menu.addItem(NSMenuItem.separator())
 

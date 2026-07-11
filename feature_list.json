@@ -91,7 +91,7 @@
       "Run deterministic startup, concurrent refresh, failed refresh, offline logout, and normal logout probes and verify final Keychain, auth, timer, and island presentation state."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-review-live-summary-display",

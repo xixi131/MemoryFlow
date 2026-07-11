@@ -17,3 +17,13 @@ struct AuthenticatedUser: Codable, Equatable {
     let profession: String?
     let age: String?
 }
+
+struct AuthRefreshRequest: Encodable {
+    let refreshToken: String
+}
+
+struct AuthRefreshResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: TimeInterval
+}

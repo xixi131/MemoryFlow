@@ -21,20 +21,28 @@ final class SceneCoordinator {
     let desktopLoginCoordinator: DesktopLoginCoordinating
 
     init() {
-        let windowController = IslandWindowController()
+        let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
         let preferencesWindowController = PreferencesWindowController()
         let sessionStore = KeychainAuthSessionStore()
         let apiBaseURL = URL(string: ProcessInfo.processInfo.environment["MEMORYFLOW_API_BASE_URL"] ?? "http://127.0.0.1:8080")!
-        let apiClient = try! APIClient(baseURL: apiBaseURL, tokenProvider: sessionStore)
+        let apiClient = try! APIClient(
+            baseURL: apiBaseURL,
+            tokenProvider: sessionStore,
+            sessionStore: sessionStore
+        )
         self.windowController = windowController
         self.preferencesWindowController = preferencesWindowController
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
-            onAuthStateChanged: { _ in
-                // UI state integration is intentionally callback-based; tokens remain in Keychain.
+            onAuthStateChanged: { [weak windowController] state in
+                if state == .loggedOut {
+                    windowController?.applyLoggedOutState()
+                }
             },
-            onUserChanged: { _ in }
+            onUserChanged: { [weak windowController] user in
+                if let user { windowController?.applyAuthenticatedUser(user) }
+            }
         )
         self.authCoordinator = authCoordinator
         self.desktopLoginCoordinator = DesktopLoginCoordinator(
@@ -48,7 +56,10 @@ final class SceneCoordinator {
         }
         self.menuBarController = StatusBarController(
             windowController: windowController,
-            preferencesWindowController: preferencesWindowController
+            preferencesWindowController: preferencesWindowController,
+            logoutHandler: { [weak authCoordinator] in
+                Task { await authCoordinator?.logout() }
+            }
         )
     }
 
@@ -70,7 +81,8 @@ final class SceneCoordinator {
             let sessionStore = InMemoryAuthSessionStore()
             let apiClient = try! APIClient(
                 baseURL: URL(string: "http://127.0.0.1:8080")!,
-                tokenProvider: sessionStore
+                tokenProvider: sessionStore,
+                sessionStore: sessionStore
             )
             resolvedSessionStore = sessionStore
             resolvedAuthCoordinator = AuthCoordinator(apiClient: apiClient, sessionStore: sessionStore)
@@ -93,6 +105,9 @@ final class SceneCoordinator {
     func start() {
         menuBarController.install()
         windowController.show()
+        Task { [weak authCoordinator] in
+            _ = try? await authCoordinator?.restoreAndVerifySession()
+        }
     }
 
     func stop() {
