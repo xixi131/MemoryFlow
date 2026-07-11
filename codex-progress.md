@@ -120,3 +120,7 @@
 ### 2026-07-11 - Persisted native todo completion
 - Routed native todo row completion through a per-task mutation controller and authenticated PATCH repository operation with exact optimistic aggregate updates, success refresh reconciliation, and one-time snapshot rollback.
 - The full native build and deterministic probes passed for success persistence, duplicate clicks, offline/server failures, final authorization failure, exact rollback, and subsequent GET confirmation.
+
+### 2026-07-11 - Backend integration acceptance
+- Recorded controlled deterministic evidence for the reused browser callback, confirmed session, review and todo synchronization, persisted todo completion, token refresh, and complete logout cleanup under `docs/evidence/mac-island-backend-integration`.
+- The full native build and focused lifecycle probes passed; evidence is explicitly labeled controlled-synthetic because no real user credentials were available for live browser credential entry.

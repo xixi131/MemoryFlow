@@ -96,6 +96,7 @@ enum TodoLiveSyncProbe {
     private static func settle() async { for _ in 0..<8 { await Task.yield() } }
     @MainActor
     private static func waitUntilIdle(_ poller: TodoPollingController) async {
+        await settle()
         for _ in 0..<100 {
             if poller.isFetching == false { return }
             await Task.yield()

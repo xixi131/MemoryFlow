@@ -160,6 +160,6 @@
       "Record API request evidence and native screenshots or state evidence under docs/evidence/mac-island-backend-integration and confirm Windows Electron, Login.tsx, and backend authentication code remain unchanged."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   }
 ]
