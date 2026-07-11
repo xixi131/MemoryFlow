@@ -4,6 +4,7 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
     case hoverEnter
     case hoverLeave
     case compactToActivity
+    case compactToExpanded
     case activityToCompact
     case activityToExpanded
     case expandedToActivity
@@ -41,10 +42,17 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         switch (previous, next) {
         case (.compactCollapsed, .hoverCollapsed): return .hoverEnter
         case (.hoverCollapsed, .compactCollapsed): return .hoverLeave
+        case (.activityCollapsed, .activityHoverCollapsed): return .hoverEnter
+        case (.activityHoverCollapsed, .activityCollapsed): return .hoverLeave
         case (.compactCollapsed, .activityCollapsed), (.hoverCollapsed, .activityCollapsed): return .compactToActivity
-        case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed): return .activityToCompact
-        case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp): return .activityToExpanded
-        case (.expandedMusic, .activityCollapsed), (.expandedApp, .activityCollapsed): return .expandedToActivity
+        case (.compactCollapsed, .expandedMusic), (.compactCollapsed, .expandedApp),
+             (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp): return .compactToExpanded
+        case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed),
+             (.activityHoverCollapsed, .compactCollapsed), (.activityHoverCollapsed, .hoverCollapsed): return .activityToCompact
+        case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp),
+             (.activityHoverCollapsed, .expandedMusic), (.activityHoverCollapsed, .expandedApp): return .activityToExpanded
+        case (.expandedMusic, .activityCollapsed), (.expandedApp, .activityCollapsed),
+             (.expandedMusic, .activityHoverCollapsed), (.expandedApp, .activityHoverCollapsed): return .expandedToActivity
         case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed): return .expandedToCompact
         default: return .defaultProfile
         }

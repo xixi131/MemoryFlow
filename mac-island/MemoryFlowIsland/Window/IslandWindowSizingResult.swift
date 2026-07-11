@@ -7,6 +7,7 @@ struct IslandWindowSizingDiagnostics: Equatable {
     let horizontalScale: CGFloat
     let requestedBaseBodyWidth: CGFloat?
     let requestedMaximumVisibleWidth: CGFloat?
+    let requestedFixedVisibleWidth: CGFloat?
     let contentWidthRequirement: IslandContentWidthRequirement
     let visibleSize: CGSize
     let shadowSize: CGSize
@@ -18,6 +19,7 @@ struct IslandWindowSizingDiagnostics: Equatable {
             "state=\(state.rawValue)",
             "visualScale=\(formatted(visualScale))",
             "horizontalScale=\(formatted(horizontalScale))",
+            "fixedVisibleWidth=\(requestedFixedVisibleWidth.map(formatted) ?? "nil")",
             "visibleSize=\(formatted(visibleSize))",
             "shadowSize=\(formatted(shadowSize))",
             "contentSize=\(formatted(contentSize))",

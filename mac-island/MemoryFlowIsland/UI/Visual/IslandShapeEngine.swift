@@ -24,6 +24,27 @@ struct IslandShapeLayoutSnapshot {
 }
 
 enum IslandShapeEngine {
+    /// Fits the rendered shell to the pixel-aligned AppKit visible size. The
+    /// body's width and height are the only dimensions that affect the outer
+    /// bounds linearly, so radius and ear geometry keep their motion profile.
+    static func metrics(
+        _ metrics: IslandShapeMetrics,
+        fittedTo visibleSize: CGSize
+    ) -> IslandShapeMetrics {
+        let currentBounds = composeVisiblePaths(metrics: metrics).visibleBounds
+        return IslandShapeMetrics(
+            width: metrics.width + (visibleSize.width - currentBounds.width),
+            height: metrics.height + (visibleSize.height - currentBounds.height),
+            radius: metrics.radius,
+            smoothness: metrics.smoothness,
+            earTension: metrics.earTension,
+            earBlendHeight: metrics.earBlendHeight,
+            scale: metrics.scale,
+            showsStroke: metrics.showsStroke,
+            showsShadow: metrics.showsShadow
+        )
+    }
+
     static func interpolatedSnapshot(
         from source: IslandShapeLayoutSnapshot,
         to target: IslandShapeLayoutSnapshot,
@@ -70,9 +91,13 @@ enum IslandShapeEngine {
         )
     }
 
-    static func snapshot(for metrics: IslandShapeMetrics, state: IslandVisualState) -> IslandShapeLayoutSnapshot {
+    static func snapshot(
+        for metrics: IslandShapeMetrics,
+        state: IslandVisualState,
+        shadowOutsetsOverride: IslandShadowOutsets? = nil
+    ) -> IslandShapeLayoutSnapshot {
         let composedPaths = composeVisiblePaths(metrics: metrics)
-        let shadowOutsets = shadowOutsets(for: state, metrics: metrics)
+        let shadowOutsets = shadowOutsetsOverride ?? shadowOutsets(for: state, metrics: metrics)
         let contentFrame = CGRect(
             origin: .zero,
             size: CGSize(
@@ -171,7 +196,7 @@ enum IslandShapeEngine {
             return .zero
         }
 
-        let tokenHeight = state == .hoverCollapsed
+        let tokenHeight = state == .hoverCollapsed || state == .activityHoverCollapsed
             ? IslandVisualTokens.hover.collapsedHeight
             : IslandVisualTokens.shell(for: state.tokenSet).height
         let visualScale = max(metrics.height / max(tokenHeight, 1), 0.78)

@@ -4,6 +4,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case compactCollapsed
     case hoverCollapsed
     case activityCollapsed
+    case activityHoverCollapsed
     case expandedMusic
     case expandedApp
 
@@ -15,14 +16,14 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
         switch self {
         case .expandedMusic, .expandedApp:
             return true
-        case .compactCollapsed, .hoverCollapsed, .activityCollapsed:
+        case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
         }
     }
 
     var allowsShadow: Bool {
         switch self {
-        case .hoverCollapsed:
+        case .hoverCollapsed, .activityHoverCollapsed:
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
         case .expandedMusic, .expandedApp:
             return IslandVisualTokens.shadow.visibleInExpanded
@@ -35,7 +36,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
         switch self {
         case .compactCollapsed, .hoverCollapsed:
             return .compact
-        case .activityCollapsed:
+        case .activityCollapsed, .activityHoverCollapsed:
             return .activity
         case .expandedMusic:
             return .expandedMusic
@@ -52,6 +53,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Hover Compact"
         case .activityCollapsed:
             return "Activity Compact"
+        case .activityHoverCollapsed:
+            return "Hover Activity Compact"
         case .expandedMusic:
             return "Expanded Music"
         case .expandedApp:
@@ -73,7 +76,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var previewContentWidthRequirement: IslandContentWidthRequirement {
         switch self {
-        case .activityCollapsed:
+        case .activityCollapsed, .activityHoverCollapsed:
             // Preview-only stand-in for later measured activity content:
             // symmetric left cover + right waveform/action area + shell padding.
             return IslandContentWidthRequirement(

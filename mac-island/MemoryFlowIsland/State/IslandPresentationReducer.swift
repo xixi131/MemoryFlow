@@ -160,6 +160,9 @@ enum IslandPresentationReducer {
                 ) {
                     $0.presentationState = .expanded
                     $0.isHovered = false
+                    if $0.presentationLockState.transitionID == "expandedCollapseRecovery" {
+                        $0.presentationLockState.transitionID = nil
+                    }
                 }
             }
         case let .pointerSwipe(direction):

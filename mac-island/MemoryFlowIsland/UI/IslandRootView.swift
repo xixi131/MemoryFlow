@@ -5,6 +5,7 @@ struct IslandRenderPresentation {
     var visualScale: CGFloat
     var horizontalScale: CGFloat
     var widthConstraints: IslandWidthConstraints
+    var expandedContentTopInset: CGFloat
     var previewContent: IslandPreviewContent
     var musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     var todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
@@ -20,6 +21,7 @@ struct IslandRenderPresentation {
         visualScale: CGFloat,
         horizontalScale: CGFloat,
         widthConstraints: IslandWidthConstraints,
+        expandedContentTopInset: CGFloat = IslandVisualTokens.compact.height,
         previewContent: IslandPreviewContent,
         reduceMotion: Bool
     ) -> IslandRenderPresentation {
@@ -28,6 +30,7 @@ struct IslandRenderPresentation {
             visualScale: visualScale,
             horizontalScale: horizontalScale,
             widthConstraints: widthConstraints,
+            expandedContentTopInset: expandedContentTopInset,
             previewContent: previewContent,
             musicTrackSwipeDirection: nil,
             todoToggleScenarioRequest: nil,
@@ -74,6 +77,7 @@ struct IslandRootView: View {
             visualScale: presentation.visualScale,
             horizontalScale: presentation.horizontalScale,
             widthConstraints: presentation.widthConstraints,
+            expandedContentTopInset: presentation.expandedContentTopInset,
             previewContent: presentation.previewContent,
             musicTrackSwipeDirection: presentation.musicTrackSwipeDirection,
             todoToggleScenarioRequest: presentation.todoToggleScenarioRequest,

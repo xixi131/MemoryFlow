@@ -520,7 +520,7 @@ struct IslandPreviewContent: Equatable {
             let todo = state.todoSnapshot?.presentationActivity ?? state.mockSources.todo ?? .empty
             return IslandPreviewContent(
                 kind: derivedVisualState.isExpanded ? .expandedTodo : (showTodoActivity ? .todoActivity : .todoCompact),
-                eyebrow: "Todo",
+                eyebrow: "待办",
                 title: todo.pendingCount > 0 ? "待办 \(todo.pendingCount) 项" : "待办模式",
                 subtitle: todo.nextTaskTitle ?? "今日待办",
                 badge: todo.overdueCount > 0 ? "\(todo.overdueCount) 逾期" : "\(todo.dueTodayCount) 到期",
@@ -542,9 +542,9 @@ struct IslandPreviewContent: Equatable {
             kind: derivedVisualState.isExpanded
                 ? .expandedReview
                 : (isReminder ? .reminderActivity : (showReviewActivity ? .reviewActivity : .reviewCompact)),
-            eyebrow: isReminder ? "Reminder" : (isPausedTimeout ? "Music Timeout" : "Review"),
+            eyebrow: isReminder ? "Reminder" : (isPausedTimeout ? "Music Timeout" : "复习"),
             title: isPausedTimeout ? "音乐已收起" : "复习 \(review.pendingCount) 项",
-            subtitle: isReminder ? (reminder?.timeText ?? "Now") : (review.nextSubjectTitle ?? "Review"),
+            subtitle: isReminder ? (reminder?.timeText ?? "Now") : (review.nextSubjectTitle ?? "今日复习"),
             badge: isReminder ? (reminder?.isDue == true ? "DUE" : "REM") : "\(review.pendingCount)",
             tone: isReminder ? .reminder : (isPausedTimeout ? .music : .review),
             review: review,

@@ -1,6 +1,7 @@
 #if canImport(CoreVideo) && canImport(QuartzCore)
 import CoreVideo
 import Dispatch
+import Foundation
 import QuartzCore
 
 /// CVDisplayLink is available on macOS 13 and schedules samples per display refresh.
@@ -8,6 +9,8 @@ import QuartzCore
 final class IslandAnimationDisplayLink {
     private var displayLink: CVDisplayLink?
     private var tick: (() -> Void)?
+    private let pendingLock = NSLock()
+    private var isMainTickPending = false
 
     deinit {
         stop()
@@ -38,8 +41,19 @@ final class IslandAnimationDisplayLink {
     }
 
     fileprivate func fire() {
-        let tick = tick
+        pendingLock.lock()
+        guard isMainTickPending == false else {
+            pendingLock.unlock()
+            return
+        }
+        isMainTickPending = true
+        pendingLock.unlock()
+
         DispatchQueue.main.async {
+            self.pendingLock.lock()
+            self.isMainTickPending = false
+            let tick = self.tick
+            self.pendingLock.unlock()
             tick?()
         }
     }

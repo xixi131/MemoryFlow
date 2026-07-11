@@ -1,5 +1,31 @@
 import AppKit
 
+private enum MemoryFlowRuntimeEndpoints {
+    static var apiBaseURL: URL {
+        if let override = ProcessInfo.processInfo.environment["MEMORYFLOW_API_BASE_URL"],
+           let url = URL(string: override) {
+            return url
+        }
+#if DEBUG
+        return URL(string: "http://127.0.0.1:8080")!
+#else
+        return URL(string: "https://memoryflow.tanxhub.com")!
+#endif
+    }
+
+    static var webBaseURL: URL {
+        if let override = ProcessInfo.processInfo.environment["MEMORYFLOW_WEB_BASE_URL"],
+           let url = URL(string: override) {
+            return url
+        }
+#if DEBUG
+        return URL(string: "http://127.0.0.1:3101")!
+#else
+        return URL(string: "https://memoryflow.tanxhub.com")!
+#endif
+    }
+}
+
 protocol IslandWindowControlling: AnyObject {
     var onLoginRequested: (() -> Void)? { get set }
     var onTodoCompletionRequested: ((Int64) -> Void)? { get set }
@@ -21,6 +47,8 @@ final class SceneCoordinator {
     private let windowController: IslandWindowControlling
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBarController: MenuBarControlling
+    private let languageSettings: AppLanguageSettings
+    private let settingsAccountState: SettingsAccountState
     let authCoordinator: AuthCoordinating
     let desktopLoginCoordinator: DesktopLoginCoordinating
     let reviewRepository: ReviewRepositoryProtocol
@@ -31,16 +59,17 @@ final class SceneCoordinator {
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
-        let preferencesWindowController = PreferencesWindowController()
+        let languageSettings = AppLanguageSettings()
+        let settingsAccountState = SettingsAccountState()
         let sessionStore = KeychainAuthSessionStore()
-        let apiBaseURL = URL(string: ProcessInfo.processInfo.environment["MEMORYFLOW_API_BASE_URL"] ?? "http://127.0.0.1:8080")!
         let apiClient = try! APIClient(
-            baseURL: apiBaseURL,
+            baseURL: MemoryFlowRuntimeEndpoints.apiBaseURL,
             tokenProvider: sessionStore,
             sessionStore: sessionStore
         )
         self.windowController = windowController
-        self.preferencesWindowController = preferencesWindowController
+        self.languageSettings = languageSettings
+        self.settingsAccountState = settingsAccountState
         let reviewRepository = ReviewRepository(apiClient: apiClient)
         self.reviewRepository = reviewRepository
         let reviewPollingController = ReviewPollingController(
@@ -75,14 +104,16 @@ final class SceneCoordinator {
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
-            onAuthStateChanged: { [weak windowController] state in
+            onAuthStateChanged: { [weak windowController, weak settingsAccountState] state in
                 if state == .loggedOut {
+                    settingsAccountState?.apply(nil)
                     reviewPollingController.stop()
                     todoPollingController.stop()
                     windowController?.applyLoggedOutState()
                 }
             },
-            onUserChanged: { [weak windowController] user in
+            onUserChanged: { [weak windowController, weak settingsAccountState] user in
+                settingsAccountState?.apply(user)
                 if let user {
                     windowController?.applyAuthenticatedUser(user)
                     reviewPollingController.start()
@@ -102,11 +133,22 @@ final class SceneCoordinator {
         }
         self.authCoordinator = authCoordinator
         self.desktopLoginCoordinator = DesktopLoginCoordinator(
-            webBaseURL: URL(string: ProcessInfo.processInfo.environment["MEMORYFLOW_WEB_BASE_URL"] ?? "https://memoryflow.tanxhub.com")!,
+            webBaseURL: MemoryFlowRuntimeEndpoints.webBaseURL,
             sessionStore: sessionStore,
             authCoordinator: authCoordinator
         )
         let desktopLoginCoordinator = self.desktopLoginCoordinator
+        let preferencesWindowController = PreferencesWindowController(
+            languageSettings: languageSettings,
+            accountState: settingsAccountState,
+            onLoginRequested: { [weak desktopLoginCoordinator] in
+                _ = desktopLoginCoordinator?.openLogin()
+            },
+            onLogoutRequested: { [weak authCoordinator] in
+                Task { await authCoordinator?.logout() }
+            }
+        )
+        self.preferencesWindowController = preferencesWindowController
         windowController.onLoginRequested = { [weak desktopLoginCoordinator] in
             _ = desktopLoginCoordinator?.openLogin()
         }
@@ -116,6 +158,7 @@ final class SceneCoordinator {
         self.menuBarController = StatusBarController(
             windowController: windowController,
             preferencesWindowController: preferencesWindowController,
+            languageSettings: languageSettings,
             logoutHandler: { [weak authCoordinator] in
                 Task { await authCoordinator?.logout() }
             }
@@ -126,12 +169,15 @@ final class SceneCoordinator {
         windowController: IslandWindowControlling,
         preferencesWindowController: PreferencesWindowControlling,
         menuBarController: MenuBarControlling? = nil,
+        languageSettings: AppLanguageSettings = AppLanguageSettings(),
         authCoordinator: AuthCoordinating? = nil,
         desktopLoginCoordinator: DesktopLoginCoordinating? = nil,
         reviewRepository: ReviewRepositoryProtocol? = nil
     ) {
         self.windowController = windowController
         self.preferencesWindowController = preferencesWindowController
+        self.languageSettings = languageSettings
+        self.settingsAccountState = SettingsAccountState()
         let resolvedAuthCoordinator: AuthCoordinating
         let resolvedSessionStore: AuthSessionStoring
         if let authCoordinator {
@@ -140,7 +186,7 @@ final class SceneCoordinator {
         } else {
             let sessionStore = InMemoryAuthSessionStore()
             let apiClient = try! APIClient(
-                baseURL: URL(string: "http://127.0.0.1:8080")!,
+                baseURL: MemoryFlowRuntimeEndpoints.apiBaseURL,
                 tokenProvider: sessionStore,
                 sessionStore: sessionStore
             )
@@ -169,7 +215,7 @@ final class SceneCoordinator {
             }
         )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
-            webBaseURL: URL(string: "https://memoryflow.tanxhub.com")!,
+            webBaseURL: MemoryFlowRuntimeEndpoints.webBaseURL,
             sessionStore: resolvedSessionStore,
             authCoordinator: resolvedAuthCoordinator
         )
@@ -181,7 +227,8 @@ final class SceneCoordinator {
         }
         self.menuBarController = menuBarController ?? StatusBarController(
             windowController: windowController,
-            preferencesWindowController: preferencesWindowController
+            preferencesWindowController: preferencesWindowController,
+            languageSettings: languageSettings
         )
     }
 

@@ -69,6 +69,7 @@ final class IslandAnimationDriver {
     private var startTime: TimeInterval = 0
     private var duration: TimeInterval = 0
     private var curve: IslandMotionTimingCurve = .linear
+    private var spring: IslandSpringMotionToken?
     private var startVelocity: IslandAnimationVelocity = .zero
     private var completion: Completion?
 
@@ -94,6 +95,19 @@ final class IslandAnimationDriver {
         )
     }
 
+    func reset(to metrics: IslandAnimationMetrics) {
+        current = metrics
+        target = metrics
+        start = metrics
+        progress = 1
+        phase = .idle
+        velocity = .zero
+        transitionID = nil
+        hasCompleted = false
+        completion = nil
+        spring = nil
+    }
+
     /// Starts, or retargets, an animation. A retarget captures the presentation
     /// snapshot and its velocity before installing the replacement target. The seed
     /// is bounded relative to the new distance so rapid reversals remain stable.
@@ -102,6 +116,7 @@ final class IslandAnimationDriver {
         transitionID: String,
         duration: TimeInterval,
         curve: IslandMotionTimingCurve,
+        spring: IslandSpringMotionToken? = nil,
         at timestamp: TimeInterval,
         completion: Completion? = nil
     ) {
@@ -118,6 +133,7 @@ final class IslandAnimationDriver {
         self.transitionID = transitionID
         self.duration = max(duration, 0)
         self.curve = curve
+        self.spring = spring
         startTime = timestamp
         self.completion = completion
         hasCompleted = false
@@ -180,7 +196,7 @@ final class IslandAnimationDriver {
 
     private func interpolatedMetrics(progress: CGFloat) -> IslandAnimationMetrics {
         let t = min(max(progress, 0), 1)
-        let eased = easedProgress(t, curve: curve)
+        let eased = easedProgress(t, curve: curve, spring: spring)
         let velocityWeight = t * (1 - t) * CGFloat(duration)
         return IslandAnimationMetrics(
             visibleFrame: CGRect(
@@ -201,7 +217,7 @@ final class IslandAnimationDriver {
     private func interpolatedVelocity(progress: CGFloat) -> IslandAnimationVelocity {
         guard duration > 0 else { return .zero }
         let t = min(max(progress, 0), 1)
-        let multiplier = curveDerivative(t, curve: curve) / CGFloat(duration)
+        let multiplier = curveDerivative(t, curve: curve, spring: spring) / CGFloat(duration)
         let velocityWeightDerivative = 1 - 2 * t
         return IslandAnimationVelocity(
             origin: CGPoint(
@@ -243,7 +259,15 @@ final class IslandAnimationDriver {
         )
     }
 
-    private func easedProgress(_ progress: CGFloat, curve: IslandMotionTimingCurve) -> CGFloat {
+    private func easedProgress(
+        _ progress: CGFloat,
+        curve: IslandMotionTimingCurve,
+        spring: IslandSpringMotionToken?
+    ) -> CGFloat {
+        if let spring {
+            return springProgress(progress, token: spring)
+        }
+
         switch curve {
         case .linear:
             return progress
@@ -254,7 +278,20 @@ final class IslandAnimationDriver {
         }
     }
 
-    private func curveDerivative(_ progress: CGFloat, curve: IslandMotionTimingCurve) -> CGFloat {
+    private func curveDerivative(
+        _ progress: CGFloat,
+        curve: IslandMotionTimingCurve,
+        spring: IslandSpringMotionToken?
+    ) -> CGFloat {
+        if let spring {
+            let epsilon: CGFloat = 0.0005
+            let lower = max(progress - epsilon, 0)
+            let upper = min(progress + epsilon, 1)
+            guard upper > lower else { return 0 }
+            return (springProgress(upper, token: spring) - springProgress(lower, token: spring)) /
+                (upper - lower)
+        }
+
         switch curve {
         case .linear:
             return 1
@@ -263,5 +300,32 @@ final class IslandAnimationDriver {
         case .easeInOut:
             return 6 * progress * (1 - progress)
         }
+    }
+
+    private func springProgress(_ progress: CGFloat, token: IslandSpringMotionToken) -> CGFloat {
+        let t = min(max(progress, 0), 1) * CGFloat(duration)
+        let endTime = CGFloat(duration)
+        let raw = springResponse(at: t, token: token)
+        let end = springResponse(at: endTime, token: token)
+        guard abs(end) > 0.0001 else { return progress }
+        return raw / end
+    }
+
+    private func springResponse(at t: CGFloat, token: IslandSpringMotionToken) -> CGFloat {
+        let mass = max(token.mass, 0.001)
+        let stiffness = max(token.stiffness, 0.001)
+        let damping = max(token.damping, 0)
+        let omega0 = sqrt(stiffness / mass)
+        let dampingRatio = damping / (2 * sqrt(stiffness * mass))
+
+        guard dampingRatio < 1 else {
+            return 1 - exp(-omega0 * t)
+        }
+
+        let dampedOmega = omega0 * sqrt(max(1 - (dampingRatio * dampingRatio), 0.0001))
+        let envelope = exp(-dampingRatio * omega0 * t)
+        let phase = cos(dampedOmega * t) +
+            (dampingRatio / sqrt(max(1 - (dampingRatio * dampingRatio), 0.0001))) * sin(dampedOmega * t)
+        return 1 - (envelope * phase)
     }
 }

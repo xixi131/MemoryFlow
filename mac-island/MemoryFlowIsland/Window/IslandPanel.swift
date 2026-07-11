@@ -102,13 +102,6 @@ final class IslandPanel: NSPanel {
         ignoresMouseEvents = isEnabled
     }
 
-    /// Pointer-drag feedback moves the panel without producing a new sizing sample.
-    /// Keep the cached screen-space hit geometry attached to that presentation offset.
-    func translateHitTestFrame(by deltaX: CGFloat) {
-        guard currentHitTestFrame.isEmpty == false, deltaX != 0 else { return }
-        currentHitTestFrame = currentHitTestFrame.offsetBy(dx: deltaX, dy: 0)
-    }
-
     func activateInteractiveHoverMode() {
         setClickThroughEnabled(false)
     }

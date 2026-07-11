@@ -6,14 +6,17 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private let phase5ScenarioController: IslandPhase5ScenarioControlling?
     private let phase5InteractionDemoController: IslandPhase5InteractionDemoControlling?
     private let preferencesWindowController: PreferencesWindowControlling
+    private let languageSettings: AppLanguageSettings
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
     private let logoutHandler: () -> Void
     private var isIslandVisible: Bool
+    private var languageObserver: NSObjectProtocol?
 
     init(
         windowController: IslandWindowControlling,
         preferencesWindowController: PreferencesWindowControlling,
+        languageSettings: AppLanguageSettings,
         menuBuilder: StatusMenuBuilding = StatusMenuBuilder(),
         isIslandVisible: Bool = true,
         logoutHandler: @escaping () -> Void = {},
@@ -23,11 +26,20 @@ final class StatusBarController: NSObject, MenuBarControlling {
         self.phase5ScenarioController = windowController as? IslandPhase5ScenarioControlling
         self.phase5InteractionDemoController = windowController as? IslandPhase5InteractionDemoControlling
         self.preferencesWindowController = preferencesWindowController
+        self.languageSettings = languageSettings
         self.menuBuilder = menuBuilder
         self.isIslandVisible = isIslandVisible
         self.quitHandler = quitHandler
         self.logoutHandler = logoutHandler
         super.init()
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: AppLanguageSettings.didChangeNotification,
+            object: languageSettings,
+            queue: .main
+        ) { [weak self] _ in
+            self?.configureButton(self?.statusItem?.button)
+            self?.refreshMenu()
+        }
     }
 
     func install() {
@@ -43,6 +55,12 @@ final class StatusBarController: NSObject, MenuBarControlling {
         guard let statusItem else { return }
         NSStatusBar.system.removeStatusItem(statusItem)
         self.statusItem = nil
+    }
+
+    deinit {
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+        }
     }
 
     @objc func toggleIslandMenuItemClicked(_ sender: Any?) {
@@ -105,8 +123,16 @@ final class StatusBarController: NSObject, MenuBarControlling {
 
     private func configureButton(_ button: NSStatusBarButton?) {
         guard let button else { return }
-        button.title = "MF"
-        button.toolTip = "MemoryFlow Island"
+        if let image = NSImage(named: "MemoryFlowStatusBarIcon") {
+            image.isTemplate = true
+            image.size = NSSize(width: 18, height: 18)
+            button.image = image
+            button.imagePosition = .imageOnly
+            button.title = ""
+        } else {
+            button.title = "MF"
+        }
+        button.toolTip = AppCopy.text(.menuBarTooltip, language: languageSettings.language)
     }
 
     private func refreshMenu() {
@@ -117,6 +143,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
         statusItem.menu = menuBuilder.buildMenu(
             target: self,
             isIslandVisible: isIslandVisible,
+            language: languageSettings.language,
             phase5Scenarios: phase5Scenarios,
             phase5InteractionDemoControls: phase5InteractionDemoControls,
             showHideAction: #selector(toggleIslandMenuItemClicked(_:)),

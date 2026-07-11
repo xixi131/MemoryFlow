@@ -4,6 +4,8 @@ final class DisplayObserver {
     enum ChangeSignal {
         case screenParametersChanged
         case workspaceDidWake
+        case windowScreenChanged
+        case backingPropertiesChanged
     }
 
     private struct ObservationRegistration {
@@ -23,7 +25,7 @@ final class DisplayObserver {
         self.workspaceCenter = workspaceCenter
     }
 
-    func startObserving(onChange: @escaping (ChangeSignal) -> Void) {
+    func startObserving(window: NSWindow?, onChange: @escaping (ChangeSignal) -> Void) {
         stopObserving()
         observationRegistrations = [
             registerObserver(
@@ -39,6 +41,26 @@ final class DisplayObserver {
                 onChange: onChange
             )
         ]
+        if let window {
+            observationRegistrations.append(
+                registerObserver(
+                    center: center,
+                    name: NSWindow.didChangeScreenNotification,
+                    object: window,
+                    signal: .windowScreenChanged,
+                    onChange: onChange
+                )
+            )
+            observationRegistrations.append(
+                registerObserver(
+                    center: center,
+                    name: NSWindow.didChangeBackingPropertiesNotification,
+                    object: window,
+                    signal: .backingPropertiesChanged,
+                    onChange: onChange
+                )
+            )
+        }
     }
 
     func stopObserving() {
@@ -53,27 +75,26 @@ final class DisplayObserver {
         preferredDisplayIdentity: ScreenMetrics.DisplayIdentity? = nil
     ) -> ScreenMetrics? {
         let availableMetrics = NSScreen.screens.compactMap(ScreenMetrics.init(screen:))
-        let fallbackMetrics = currentScreen(for: window).flatMap(ScreenMetrics.init(screen:))
+        let windowMetrics = window?.screen.flatMap(ScreenMetrics.init(screen:))
+        let fallbackMetrics = (NSScreen.main ?? NSScreen.screens.first).flatMap(ScreenMetrics.init(screen:))
         return resolvePreferredScreenMetrics(
             availableMetrics: availableMetrics,
+            windowMetrics: windowMetrics,
             preferredDisplayIdentity: preferredDisplayIdentity,
             fallbackMetrics: fallbackMetrics
         )
     }
 
-    private func currentScreen(for window: NSWindow?) -> NSScreen? {
-        window?.screen ?? NSScreen.main ?? NSScreen.screens.first
-    }
-
     private func registerObserver(
         center: NotificationCenter,
         name: NSNotification.Name,
+        object: AnyObject? = nil,
         signal: ChangeSignal,
         onChange: @escaping (ChangeSignal) -> Void
     ) -> ObservationRegistration {
         let token = center.addObserver(
             forName: name,
-            object: nil,
+            object: object,
             queue: .main
         ) { _ in
             onChange(signal)
@@ -84,9 +105,14 @@ final class DisplayObserver {
 
     func resolvePreferredScreenMetrics(
         availableMetrics: [ScreenMetrics],
+        windowMetrics: ScreenMetrics?,
         preferredDisplayIdentity: ScreenMetrics.DisplayIdentity?,
         fallbackMetrics: ScreenMetrics?
     ) -> ScreenMetrics? {
+        if let windowMetrics {
+            return windowMetrics
+        }
+
         if let preferredDisplayIdentity,
            let matchedMetrics = availableMetrics.first(where: { $0.displayIdentity == preferredDisplayIdentity }) {
             return matchedMetrics

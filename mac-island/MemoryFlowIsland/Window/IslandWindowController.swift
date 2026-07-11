@@ -102,6 +102,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var previewVisualScale: CGFloat = 1
     private var previewHorizontalScale: CGFloat = 1
     private var previewWidthConstraints: IslandWidthConstraints = .none
+    private var expandedContentTopInset: CGFloat = IslandVisualTokens.compact.height
     private var trackpadCooldownWorkItem: DispatchWorkItem?
     private var presentationLockRecoveryWorkItem: DispatchWorkItem?
     private var presentationLockRecoveryIdentifier: String?
@@ -463,6 +464,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         motionPlan: IslandMotionPlan? = nil
     ) {
         let sizingResult = resolvedLayout.sizingResult
+        expandedContentTopInset = resolvedLayout.attachmentMetrics.expandedContentTopInset
         previewVisualScale = sizingResult.diagnostics.visualScale
         previewHorizontalScale = sizingResult.diagnostics.horizontalScale
         previewWidthConstraints = IslandWidthConstraints(
@@ -776,6 +778,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             visualScale: sizingResult.diagnostics.visualScale,
             horizontalScale: sizingResult.diagnostics.horizontalScale,
             widthConstraints: widthConstraints,
+            expandedContentTopInset: expandedContentTopInset,
             previewContent: layoutInput.previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
@@ -888,6 +891,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             visualScale: motion.targetVisualScale,
             horizontalScale: motion.targetHorizontalScale,
             widthConstraints: widthConstraints,
+            expandedContentTopInset: notchLayoutEngine
+                .topAttachmentMetrics(for: motion.screenMetrics)
+                .expandedContentTopInset,
             previewContent: previewContent,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
             todoToggleScenarioRequest: todoToggleScenarioRequest,

@@ -21,11 +21,11 @@ enum IslandGreetingSequenceProbe {
     static func validate() throws {
         let rows = rows()
         guard rows.map(\.phase) == [.hidden, .entering, .visible, .exiting, .expired],
-              rows[0].opacity == 0 && rows[0].offsetY == 6,
-              rows[1].opacity == 0.5 && rows[1].offsetY == 3,
-              rows[2].opacity == 1 && rows[2].offsetY == 0,
-              rows[3].opacity == 0.5 && rows[3].offsetY == -3,
-              rows[4].timestamp == 10.35,
+              approximatelyEqual(rows[0].opacity, 0) && approximatelyEqual(rows[0].offsetY, 6),
+              approximatelyEqual(rows[1].opacity, 0.5) && approximatelyEqual(rows[1].offsetY, 3),
+              approximatelyEqual(rows[2].opacity, 1) && approximatelyEqual(rows[2].offsetY, 0),
+              approximatelyEqual(rows[3].opacity, 0.5) && approximatelyEqual(rows[3].offsetY, -3),
+              approximatelyEqual(rows[4].timestamp, 10.35),
               IslandGreetingSequence.sample(at: IslandGreetingSequence.lifecycleDuration).shouldUseGreetingWidth,
               IslandGreetingSequence.sample(at: IslandGreetingSequence.lifecycleDuration + IslandGreetingSequence.transitionDuration).shouldUseGreetingWidth == false else {
             throw IslandGreetingSequenceProbeError.invalidTimeline(rows)
@@ -73,6 +73,10 @@ enum IslandGreetingSequenceProbe {
             opacity: sample.presentation.opacity,
             offsetY: sample.presentation.offsetY
         )
+    }
+
+    private static func approximatelyEqual(_ lhs: Double, _ rhs: Double) -> Bool {
+        abs(lhs - rhs) < 0.000_001
     }
 }
 

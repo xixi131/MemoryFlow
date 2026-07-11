@@ -36,21 +36,23 @@ struct ScreenMetrics: Equatable {
             return nil
         }
 
+        let resolvedBackingScaleFactor = max(screen.backingScaleFactor, 1)
         self.frame = screen.frame
         self.visibleFrame = screen.visibleFrame
+        self.backingScaleFactor = resolvedBackingScaleFactor
         if #available(macOS 12.0, *) {
             self.safeAreaInsets = screen.safeAreaInsets
             self.notchFrame = ScreenMetrics.notchFrame(
                 screenFrame: screen.frame,
                 safeAreaInsets: screen.safeAreaInsets,
                 auxiliaryTopLeftArea: screen.auxiliaryTopLeftArea,
-                auxiliaryTopRightArea: screen.auxiliaryTopRightArea
+                auxiliaryTopRightArea: screen.auxiliaryTopRightArea,
+                pixelScale: resolvedBackingScaleFactor
             )
         } else {
             self.safeAreaInsets = NSEdgeInsetsZero
             self.notchFrame = nil
         }
-        self.backingScaleFactor = screen.backingScaleFactor
         self.displayIdentity = DisplayIdentity(displayID: CGDirectDisplayID(screenNumber.uint32Value))
     }
 
@@ -71,24 +73,37 @@ struct ScreenMetrics: Equatable {
         screenFrame: CGRect,
         safeAreaInsets: NSEdgeInsets,
         auxiliaryTopLeftArea: CGRect?,
-        auxiliaryTopRightArea: CGRect?
+        auxiliaryTopRightArea: CGRect?,
+        pixelScale: CGFloat
     ) -> CGRect? {
-        guard let auxiliaryTopLeftArea, let auxiliaryTopRightArea else {
+        guard safeAreaInsets.top > 0,
+              let auxiliaryTopLeftArea,
+              let auxiliaryTopRightArea else {
             return nil
         }
 
-        let notchWidth = auxiliaryTopRightArea.minX - auxiliaryTopLeftArea.maxX
-        let notchHeight = max(safeAreaInsets.top, auxiliaryTopLeftArea.height, auxiliaryTopRightArea.height)
+        let minX = pixelAligned(auxiliaryTopLeftArea.maxX, scale: pixelScale)
+        let maxX = pixelAligned(auxiliaryTopRightArea.minX, scale: pixelScale)
+        let maxY = pixelAligned(screenFrame.maxY, scale: pixelScale)
+        let notchHeight = pixelAligned(
+            max(safeAreaInsets.top, auxiliaryTopLeftArea.height, auxiliaryTopRightArea.height),
+            scale: pixelScale
+        )
+        let notchWidth = maxX - minX
 
         guard notchWidth > 0, notchHeight > 0 else {
             return nil
         }
 
         return CGRect(
-            x: auxiliaryTopLeftArea.maxX,
-            y: screenFrame.maxY - notchHeight,
+            x: minX,
+            y: maxY - notchHeight,
             width: notchWidth,
             height: notchHeight
         )
+    }
+
+    private static func pixelAligned(_ value: CGFloat, scale: CGFloat) -> CGFloat {
+        (value * max(scale, 1)).rounded() / max(scale, 1)
     }
 }

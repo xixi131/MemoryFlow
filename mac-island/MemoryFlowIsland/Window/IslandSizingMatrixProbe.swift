@@ -65,6 +65,151 @@ struct IslandShadowEvidenceRow: Codable, Equatable {
 }
 
 enum IslandSizingMatrixProbe {
+    static func validateActivityModeNotchClearance() throws -> [IslandWindowSizingResult] {
+        let layoutEngine = NotchLayoutEngine()
+        let modes: [(name: String, state: IslandDomainState)] = [
+            ("review", .loggedInReviewActivityPlain),
+            ("todo", .loggedInTodoActivity),
+            ("music", .musicActivity)
+        ]
+        let representativeScenarios = syntheticDisplays().filter {
+            $0.name == "notch-display" || $0.name == "flat-top-display"
+        }
+
+        return try representativeScenarios.flatMap { scenario in
+            let attachment = layoutEngine.topAttachmentMetrics(for: scenario.metrics)
+            return try modes.map { mode in
+                let derivedState = IslandDerivedState.derive(from: mode.state)
+                var hoveredDomainState = mode.state
+                hoveredDomainState.isHovered = true
+                let hoveredDerivedState = IslandDerivedState.derive(from: hoveredDomainState)
+                let requirement = derivedState.contentWidthRequirement
+                let clearance = IslandActivityNotchClearanceLayout.resolve(
+                    attachmentMetrics: attachment,
+                    contentWidthRequirement: requirement
+                )
+                let result = IslandWindowSizingEngine.resolve(
+                    state: .activityCollapsed,
+                    attachmentMetrics: attachment,
+                    widthConstraints: IslandWidthConstraints(
+                        baseBodyWidth: clearance.requiredBodyWidth,
+                        maximumVisibleWidth: attachment.availableTopWidth,
+                        contentWidthRequirement: requirement
+                    )
+                )
+                let frames = IslandActivityNotchClearContentFrames.resolve(
+                    visibleSize: result.visibleSize,
+                    contentWidthRequirement: requirement
+                )
+
+                guard derivedState.visualState == .activityCollapsed,
+                      hoveredDerivedState.visualState == .activityHoverCollapsed,
+                      hoveredDerivedState.contentWidthRequirement == requirement,
+                      requirement == derivedState.previewContent.contentWidthRequirement,
+                      requirement.leadingContentWidth == IslandActivityContentWidthProfile.contentSlotWidth,
+                      requirement.trailingContentWidth == IslandActivityContentWidthProfile.contentSlotWidth,
+                      requirement.horizontalPadding == IslandActivityContentWidthProfile.notchSpacing,
+                      abs(frames.leadingContentFrame.width - (
+                        requirement.leadingContentWidth + requirement.horizontalPadding
+                      )) < 0.51,
+                      frames.trailingContentFrame.width > 0,
+                      abs(frames.trailingContentFrame.width - (
+                        requirement.trailingContentWidth + requirement.horizontalPadding
+                      )) < 0.51,
+                      frames.leadingContentFrame.minX == 0,
+                      abs(frames.trailingContentFrame.maxX - result.visibleSize.width) < 0.51,
+                      frames.leadingContentFrame.width >= IslandActivityContentWidthProfile.iconSize,
+                      frames.trailingContentFrame.width >= IslandActivityContentWidthProfile.waveformWidth,
+                      abs(frames.leadingVisualCenter.y - (result.visibleSize.height / 2)) < 0.01,
+                      abs(frames.trailingVisualCenter.y - (result.visibleSize.height / 2)) < 0.01,
+                      abs(
+                        frames.leadingVisualCenter.x -
+                        IslandActivityContentWidthProfile.shellCurveCenterCompensation -
+                        frames.leadingContentFrame.midX
+                      ) < 0.01,
+                      abs(
+                        frames.trailingVisualCenter.x +
+                        IslandActivityContentWidthProfile.shellCurveCenterCompensation -
+                        frames.trailingContentFrame.midX
+                      ) < 0.01,
+                      abs(frames.centerClearFrame.width - clearance.centerSpanWidth) < 0.51,
+                      frames.leadingContentFrame.maxX <= frames.centerClearFrame.minX,
+                      frames.trailingContentFrame.minX >= frames.centerClearFrame.maxX,
+                      frames.centerClearFrame.contains(
+                          CGPoint(x: result.visibleSize.width / 2, y: result.visibleSize.height / 2)
+                      ) else {
+                    throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+                }
+                return result
+            }
+        }
+    }
+
+    static func validateActivityNotchClearance() throws -> [IslandWindowSizingResult] {
+        let layoutEngine = NotchLayoutEngine()
+        let requirement = IslandDerivedState
+            .derive(from: .loggedInReviewActivityPlain)
+            .contentWidthRequirement
+        let representativeScenarios = syntheticDisplays().filter {
+            $0.name == "notch-display" || $0.name == "flat-top-display"
+        }
+
+        let rows = try representativeScenarios.map { scenario -> IslandWindowSizingResult in
+            let attachment = layoutEngine.topAttachmentMetrics(for: scenario.metrics)
+            let clearance = IslandActivityNotchClearanceLayout.resolve(
+                attachmentMetrics: attachment,
+                contentWidthRequirement: requirement
+            )
+            let result = IslandWindowSizingEngine.resolve(
+                state: .activityCollapsed,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandWidthConstraints(
+                    baseBodyWidth: clearance.requiredBodyWidth,
+                    maximumVisibleWidth: attachment.availableTopWidth,
+                    contentWidthRequirement: requirement
+                )
+            )
+            let availablePerEdge = (result.visibleSize.width - clearance.centerSpanWidth) / 2
+            let requiredPerEdge = max(
+                clearance.leadingContentSlotWidth,
+                clearance.trailingContentSlotWidth
+            ) + clearance.sharedHorizontalPadding
+
+            guard abs(result.visibleSize.width - clearance.requiredVisibleWidth) < 0.51,
+                  availablePerEdge + 0.01 >= requiredPerEdge,
+                  abs(result.visibleFrame.midX - attachment.centerX) < 0.01 else {
+                throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+            }
+
+            if let notchWidth = attachment.notchFrame?.width {
+                guard attachment.notchAlignedBodyWidth(for: .compactCollapsed) ==
+                        notchWidth - TopAttachmentMetrics.compactBodyWidthTrim,
+                      attachment.notchAlignedBodyWidth(for: .hoverCollapsed) == notchWidth else {
+                    throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+                }
+                let compactResult = IslandWindowSizingEngine.resolve(
+                    state: .compactCollapsed,
+                    attachmentMetrics: attachment,
+                    widthConstraints: IslandWidthConstraints(
+                        baseBodyWidth: notchWidth,
+                        maximumVisibleWidth: attachment.availableTopWidth,
+                        contentWidthRequirement: .none
+                    )
+                )
+                guard compactResult.visibleSize.width + 0.01 < result.visibleSize.width else {
+                    throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+                }
+            }
+
+            return result
+        }
+
+        guard rows.count == 2 else {
+            throw IslandSizingMatrixProbeError.invalidResponsiveLayout
+        }
+        return rows
+    }
+
     static func validateAnimatedAnchors() throws -> [IslandWindowSizingResult] {
         let layoutEngine = NotchLayoutEngine()
         let states: [IslandVisualState] = [.compactCollapsed, .activityCollapsed, .expandedApp]
@@ -404,7 +549,7 @@ enum IslandShadowEvidenceProbe {
             return "expanded-music-shadow.png"
         case .expandedApp:
             return "expanded-app-shadow.png"
-        case .compactCollapsed, .hoverCollapsed, .activityCollapsed:
+        case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return "\(state.rawValue)-shadow.png"
         }
     }

@@ -2,14 +2,17 @@ import CoreGraphics
 import Foundation
 
 struct IslandPointerGestureAdapter: Equatable {
-    static let maximumInteractiveTranslation: Double = 12
+    static let maximumHorizontalExtensionPerEdge: Double = 12
+    static let maximumDownwardExtension: Double = 8
+    static let releaseEdgeTolerance: Double = 5
 
     private(set) var capturedPointerID: Int?
-    private(set) var startX: Double?
-    private(set) var currentX: Double?
+    private(set) var startLocation: CGPoint?
+    private(set) var currentLocation: CGPoint?
+    private(set) var interactionBounds: CGRect?
 
     var isTracking: Bool {
-        capturedPointerID != nil && startX != nil
+        capturedPointerID != nil && startLocation != nil && interactionBounds != nil
     }
 
     /// Captures one non-button pointer stream. Button controls own their gestures and must
@@ -17,32 +20,43 @@ struct IslandPointerGestureAdapter: Equatable {
     @discardableResult
     mutating func pointerDown(
         pointerID: Int,
-        at x: Double,
+        at location: CGPoint,
+        interactionBounds: CGRect,
         isButtonOrigin: Bool
     ) -> Bool {
-        guard capturedPointerID == nil, isButtonOrigin == false else { return false }
+        guard capturedPointerID == nil,
+              isButtonOrigin == false,
+              interactionBounds.isEmpty == false else { return false }
         capturedPointerID = pointerID
-        startX = x
-        currentX = x
+        startLocation = location
+        currentLocation = location
+        self.interactionBounds = interactionBounds
         return true
     }
 
-    mutating func pointerDragged(pointerID: Int, to x: Double) {
-        guard capturedPointerID == pointerID, startX != nil else { return }
-        currentX = x
+    mutating func pointerDragged(pointerID: Int, to location: CGPoint) {
+        guard capturedPointerID == pointerID, startLocation != nil else { return }
+        currentLocation = location
     }
 
-    mutating func pointerUp(pointerID: Int, at x: Double) -> IslandInteractionIntent? {
-        guard capturedPointerID == pointerID, let startX else { return nil }
-        let resolvedCurrentX = currentX ?? x
-        let deltaX = resolvedCurrentX - startX
+    mutating func pointerUp(pointerID: Int, at location: CGPoint) -> IslandInteractionIntent? {
+        guard capturedPointerID == pointerID,
+              let startLocation,
+              let interactionBounds else { return nil }
+        let deltaX = location.x - startLocation.x
+        let deltaY = location.y - startLocation.y
         reset()
 
-        if let swipeDirection = IslandInteractionThresholds.pointerSwipeDirection(for: deltaX) {
+        if let swipeDirection = IslandInteractionThresholds.pointerSwipeDirection(for: deltaX),
+           isEligibleSwipeRelease(
+               location,
+               direction: swipeDirection,
+               interactionBounds: interactionBounds
+           ) {
             return .pointerSwipe(swipeDirection)
         }
 
-        if IslandInteractionThresholds.isTapMovement(deltaX: deltaX) {
+        if hypot(deltaX, deltaY) < IslandInteractionThresholds.tapMovementWindow {
             return .tap
         }
 
@@ -57,15 +71,85 @@ struct IslandPointerGestureAdapter: Equatable {
         return wasTracking
     }
 
-    var interactiveTranslationX: Double {
-        guard let startX, let currentX else { return 0 }
-        return min(max((currentX - startX) * 0.35, -Self.maximumInteractiveTranslation), Self.maximumInteractiveTranslation)
+    var stretchFeedback: IslandPointerStretchFeedback {
+        guard let startLocation, let currentLocation else { return .zero }
+        let deltaX = currentLocation.x - startLocation.x
+        let deltaY = currentLocation.y - startLocation.y
+        return IslandPointerStretchFeedback(
+            horizontalExtensionPerEdge: resistedExtension(
+                for: abs(deltaX),
+                maximum: Self.maximumHorizontalExtensionPerEdge
+            ),
+            downwardExtension: resistedExtension(
+                for: max(-deltaY, 0),
+                maximum: Self.maximumDownwardExtension
+            )
+        )
+    }
+
+    static func shouldExitHoverOnRelease(
+        at location: CGPoint,
+        interactionBounds: CGRect?
+    ) -> Bool {
+        interactionBounds.map { $0.contains(location) == false } ?? false
     }
 
     private mutating func reset() {
         capturedPointerID = nil
-        startX = nil
-        currentX = nil
+        startLocation = nil
+        currentLocation = nil
+        interactionBounds = nil
+    }
+
+    private func resistedExtension(for distance: Double, maximum: Double) -> Double {
+        guard distance > 0 else { return 0 }
+        return maximum * distance / (distance + 28)
+    }
+
+    private func releaseDistance(
+        from location: CGPoint,
+        to direction: IslandPointerSwipeDirection,
+        edgeOf bounds: CGRect
+    ) -> Double {
+        let edgeX = direction == .left ? bounds.minX : bounds.maxX
+        let nearestY = min(max(location.y, bounds.minY), bounds.maxY)
+        return hypot(location.x - edgeX, location.y - nearestY)
+    }
+
+    private func isEligibleSwipeRelease(
+        _ location: CGPoint,
+        direction: IslandPointerSwipeDirection,
+        interactionBounds: CGRect
+    ) -> Bool {
+        interactionBounds.contains(location) ||
+            releaseDistance(
+                from: location,
+                to: direction,
+                edgeOf: interactionBounds
+            ) <= Self.releaseEdgeTolerance
+    }
+}
+
+struct IslandPointerStretchFeedback: Equatable {
+    static let zero = IslandPointerStretchFeedback(
+        horizontalExtensionPerEdge: 0,
+        downwardExtension: 0
+    )
+
+    let horizontalExtensionPerEdge: Double
+    let downwardExtension: Double
+
+    func interpolated(
+        to target: IslandPointerStretchFeedback,
+        progress: Double
+    ) -> IslandPointerStretchFeedback {
+        let t = min(max(progress, 0), 1)
+        return IslandPointerStretchFeedback(
+            horizontalExtensionPerEdge: horizontalExtensionPerEdge +
+                ((target.horizontalExtensionPerEdge - horizontalExtensionPerEdge) * t),
+            downwardExtension: downwardExtension +
+                ((target.downwardExtension - downwardExtension) * t)
+        )
     }
 }
 
@@ -112,6 +196,21 @@ struct IslandModeSwitchHoldAdapter: Equatable {
         beganAt = nil
         isLeadingIconHold = false
         hasTriggered = false
+    }
+}
+
+enum IslandActivityLeadingIconHitRegion {
+    private static let leadingInset: CGFloat = 14
+    private static let trailingEdge: CGFloat = 58
+
+    static func contains(
+        _ screenPoint: CGPoint,
+        in visibleFrame: CGRect?
+    ) -> Bool {
+        guard let visibleFrame,
+              visibleFrame.contains(screenPoint) else { return false }
+        let relativeX = screenPoint.x - visibleFrame.minX
+        return relativeX >= leadingInset && relativeX <= trailingEdge
     }
 }
 
@@ -297,47 +396,120 @@ struct IslandPointerGestureFeedbackProbe: Equatable {
     let capturesSinglePointer: Bool
     let ignoresButtonDrag: Bool
     let ignoresMismatchedPointer: Bool
-    let capsInteractiveTranslation: Bool
-    let resolvesSwipeAndReleasesCapture: Bool
+    let producesSymmetricHorizontalStretch: Bool
+    let producesDiagonalStretch: Bool
+    let preservesStableHoverBounds: Bool
+    let exitsHoverDirectlyForOutsideRelease: Bool
+    let resolvesInteriorSwipe: Bool
+    let resolvesNearEdgeSwipe: Bool
+    let rejectsFarEdgeRelease: Bool
     let cancellationReleasesCapture: Bool
 
     var passes: Bool {
         capturesSinglePointer &&
             ignoresButtonDrag &&
             ignoresMismatchedPointer &&
-            capsInteractiveTranslation &&
-            resolvesSwipeAndReleasesCapture &&
+            producesSymmetricHorizontalStretch &&
+            producesDiagonalStretch &&
+            preservesStableHoverBounds &&
+            exitsHoverDirectlyForOutsideRelease &&
+            resolvesInteriorSwipe &&
+            resolvesNearEdgeSwipe &&
+            rejectsFarEdgeRelease &&
             cancellationReleasesCapture
     }
 
     static func run() -> IslandPointerGestureFeedbackProbe {
         var adapter = IslandPointerGestureAdapter()
-        let capturesSinglePointer = adapter.pointerDown(pointerID: 1, at: 0, isButtonOrigin: false) &&
-            adapter.pointerDown(pointerID: 2, at: 0, isButtonOrigin: false) == false
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 40)
+        let center = CGPoint(x: 50, y: 20)
+        let capturesSinglePointer = adapter.pointerDown(
+            pointerID: 1,
+            at: center,
+            interactionBounds: bounds,
+            isButtonOrigin: false
+        ) && adapter.pointerDown(
+            pointerID: 2,
+            at: center,
+            interactionBounds: bounds,
+            isButtonOrigin: false
+        ) == false
 
-        adapter.pointerDragged(pointerID: 2, to: 80)
-        let ignoresMismatchedPointer = adapter.interactiveTranslationX == 0
+        adapter.pointerDragged(pointerID: 2, to: CGPoint(x: 104, y: 20))
+        let ignoresMismatchedPointer = adapter.stretchFeedback == .zero
 
-        adapter.pointerDragged(pointerID: 1, to: 80)
-        let capsInteractiveTranslation = adapter.interactiveTranslationX == IslandPointerGestureAdapter.maximumInteractiveTranslation
-        let swipe = adapter.pointerUp(pointerID: 1, at: 80)
-        let resolvesSwipeAndReleasesCapture = swipe == .pointerSwipe(.right) && adapter.isTracking == false
+        adapter.pointerDragged(pointerID: 1, to: CGPoint(x: 104, y: 20))
+        let horizontalFeedback = adapter.stretchFeedback
+        let producesSymmetricHorizontalStretch = horizontalFeedback.horizontalExtensionPerEdge > 0 &&
+            horizontalFeedback.horizontalExtensionPerEdge < IslandPointerGestureAdapter.maximumHorizontalExtensionPerEdge &&
+            horizontalFeedback.downwardExtension == 0
+        adapter.pointerDragged(pointerID: 1, to: CGPoint(x: 104, y: 12))
+        let diagonalFeedback = adapter.stretchFeedback
+        let producesDiagonalStretch = diagonalFeedback.horizontalExtensionPerEdge > 0 &&
+            diagonalFeedback.downwardExtension > 0 &&
+            diagonalFeedback.downwardExtension < IslandPointerGestureAdapter.maximumDownwardExtension
+        let preservesStableHoverBounds = adapter.interactionBounds == bounds
+        let exitsHoverDirectlyForOutsideRelease = IslandPointerGestureAdapter.shouldExitHoverOnRelease(
+            at: CGPoint(x: 104, y: 20),
+            interactionBounds: adapter.interactionBounds
+        )
+        let swipe = adapter.pointerUp(pointerID: 1, at: CGPoint(x: 104, y: 20))
+        let resolvesNearEdgeSwipe = swipe == .pointerSwipe(.right) && adapter.isTracking == false
 
-        let ignoresButtonDrag = adapter.pointerDown(pointerID: 3, at: 0, isButtonOrigin: true) == false &&
+        _ = adapter.pointerDown(
+            pointerID: 6,
+            at: CGPoint(x: 25, y: 20),
+            interactionBounds: bounds,
+            isButtonOrigin: false
+        )
+        adapter.pointerDragged(pointerID: 6, to: CGPoint(x: 60, y: 20))
+        let resolvesInteriorSwipe = adapter.pointerUp(
+            pointerID: 6,
+            at: CGPoint(x: 60, y: 20)
+        ) == .pointerSwipe(.right)
+
+        let ignoresButtonDrag = adapter.pointerDown(
+            pointerID: 3,
+            at: center,
+            interactionBounds: bounds,
+            isButtonOrigin: true
+        ) == false &&
             adapter.isTracking == false
 
-        _ = adapter.pointerDown(pointerID: 4, at: 0, isButtonOrigin: false)
-        adapter.pointerDragged(pointerID: 4, to: 18)
-        let cancellationReleasesCapture = adapter.cancel(pointerID: 4) &&
+        _ = adapter.pointerDown(
+            pointerID: 4,
+            at: center,
+            interactionBounds: bounds,
+            isButtonOrigin: false
+        )
+        adapter.pointerDragged(pointerID: 4, to: CGPoint(x: 130, y: 20))
+        let rejectsFarEdgeRelease = adapter.pointerUp(
+            pointerID: 4,
+            at: CGPoint(x: 130, y: 20)
+        ) == nil
+
+        _ = adapter.pointerDown(
+            pointerID: 5,
+            at: center,
+            interactionBounds: bounds,
+            isButtonOrigin: false
+        )
+        adapter.pointerDragged(pointerID: 5, to: CGPoint(x: 68, y: 20))
+        let cancellationReleasesCapture = adapter.cancel(pointerID: 5) &&
             adapter.isTracking == false &&
-            adapter.interactiveTranslationX == 0
+            adapter.stretchFeedback == .zero
 
         return IslandPointerGestureFeedbackProbe(
             capturesSinglePointer: capturesSinglePointer,
             ignoresButtonDrag: ignoresButtonDrag,
             ignoresMismatchedPointer: ignoresMismatchedPointer,
-            capsInteractiveTranslation: capsInteractiveTranslation,
-            resolvesSwipeAndReleasesCapture: resolvesSwipeAndReleasesCapture,
+            producesSymmetricHorizontalStretch: producesSymmetricHorizontalStretch,
+            producesDiagonalStretch: producesDiagonalStretch,
+            preservesStableHoverBounds: preservesStableHoverBounds,
+            exitsHoverDirectlyForOutsideRelease: exitsHoverDirectlyForOutsideRelease,
+            resolvesInteriorSwipe: resolvesInteriorSwipe,
+            resolvesNearEdgeSwipe: resolvesNearEdgeSwipe,
+            rejectsFarEdgeRelease: rejectsFarEdgeRelease,
             cancellationReleasesCapture: cancellationReleasesCapture
         )
     }
@@ -400,10 +572,11 @@ enum IslandPreviewInteractionProbe {
         var container = IslandPhase5PreviewStateContainer(initialState: .loggedInReviewActivity)
         var pointerAdapter = IslandPointerGestureAdapter()
         var intents: [String] = []
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 40)
 
-        pointerAdapter.pointerDown(pointerID: 1, at: 0, isButtonOrigin: false)
-        pointerAdapter.pointerDragged(pointerID: 1, to: 40)
-        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: 40) {
+        pointerAdapter.pointerDown(pointerID: 1, at: CGPoint(x: 50, y: 20), interactionBounds: bounds, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 1, to: CGPoint(x: 104, y: 20))
+        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: CGPoint(x: 104, y: 20)) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }
@@ -415,9 +588,9 @@ enum IslandPreviewInteractionProbe {
             )
         )
 
-        pointerAdapter.pointerDown(pointerID: 2, at: 40, isButtonOrigin: false)
-        pointerAdapter.pointerDragged(pointerID: 2, to: 0)
-        if let intent = pointerAdapter.pointerUp(pointerID: 2, at: 0) {
+        pointerAdapter.pointerDown(pointerID: 2, at: CGPoint(x: 50, y: 20), interactionBounds: bounds, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 2, to: CGPoint(x: -4, y: 20))
+        if let intent = pointerAdapter.pointerUp(pointerID: 2, at: CGPoint(x: -4, y: 20)) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }
@@ -433,10 +606,11 @@ enum IslandPreviewInteractionProbe {
         var container = IslandPhase5PreviewStateContainer(initialState: .loggedInReviewCompact)
         var pointerAdapter = IslandPointerGestureAdapter()
         var intents: [String] = []
+        let bounds = CGRect(x: 0, y: 0, width: 100, height: 40)
 
-        pointerAdapter.pointerDown(pointerID: 1, at: 100, isButtonOrigin: false)
-        pointerAdapter.pointerDragged(pointerID: 1, to: 106)
-        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: 106) {
+        pointerAdapter.pointerDown(pointerID: 1, at: CGPoint(x: 50, y: 20), interactionBounds: bounds, isButtonOrigin: false)
+        pointerAdapter.pointerDragged(pointerID: 1, to: CGPoint(x: 56, y: 20))
+        if let intent = pointerAdapter.pointerUp(pointerID: 1, at: CGPoint(x: 56, y: 20)) {
             intents.append(describe(intent))
             intents.append(record(container.dispatch(intent: intent).reducerResult))
         }
@@ -640,6 +814,18 @@ enum IslandPreviewInteractionProbe {
 
 enum IslandModeSwitchProbe {
     static func validate() throws {
+        let visibleFrame = CGRect(x: 100, y: 900, width: 240, height: 38)
+        guard IslandActivityLeadingIconHitRegion.contains(
+                  CGPoint(x: 125, y: 919),
+                  in: visibleFrame
+              ),
+              IslandActivityLeadingIconHitRegion.contains(
+                  CGPoint(x: 25, y: 919),
+                  in: visibleFrame
+              ) == false else {
+            throw IslandModeSwitchProbeError.invalidLeadingIconHitRegion
+        }
+
         var hold = IslandModeSwitchHoldAdapter()
         hold.pointerDown(onLeadingIcon: true, at: 0)
         guard hold.triggerIfEligible(at: 0.419) == false else {
@@ -730,6 +916,7 @@ enum IslandModeSwitchProbe {
 }
 
 enum IslandModeSwitchProbeError: Error {
+    case invalidLeadingIconHitRegion
     case earlyHoldTriggered
     case releaseDidNotCancel
     case leaveDidNotCancel

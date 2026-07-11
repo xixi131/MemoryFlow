@@ -51,6 +51,19 @@ struct IslandWidthConstraints: Equatable {
     let baseBodyWidth: CGFloat?
     let maximumVisibleWidth: CGFloat?
     let contentWidthRequirement: IslandContentWidthRequirement
+    let fixedVisibleWidth: CGFloat?
+
+    init(
+        baseBodyWidth: CGFloat?,
+        maximumVisibleWidth: CGFloat?,
+        contentWidthRequirement: IslandContentWidthRequirement,
+        fixedVisibleWidth: CGFloat? = nil
+    ) {
+        self.baseBodyWidth = baseBodyWidth
+        self.maximumVisibleWidth = maximumVisibleWidth
+        self.contentWidthRequirement = contentWidthRequirement
+        self.fixedVisibleWidth = fixedVisibleWidth
+    }
 }
 
 struct IslandShapeMetrics: Equatable {
@@ -95,12 +108,13 @@ struct IslandShapeMetrics: Equatable {
         let resolvedVisualScale = max(visualScale, 0.01)
         let resolvedHorizontalScale = max(horizontalScale ?? resolvedVisualScale, 0.01)
         let shellTokens = IslandVisualTokens.shell(for: state.tokenSet)
-        let isHoverCollapsed = state == .hoverCollapsed
-        let hoverWidthScale = isHoverCollapsed ? IslandVisualTokens.hover.collapsedWidthScale : 1
-        let resolvedHeight = (isHoverCollapsed
+        let isHoverEmphasized = state == .hoverCollapsed || state == .activityHoverCollapsed
+        let hoverWidthScale = isHoverEmphasized ? IslandVisualTokens.hover.collapsedWidthScale : 1
+        let resolvedHeight = (isHoverEmphasized
             ? IslandVisualTokens.hover.collapsedHeight
             : shellTokens.height) * resolvedVisualScale
         let resolvedEarBlendHeight = shellTokens.earBlendHeight * resolvedVisualScale
+        let earReach = (resolvedEarBlendHeight * shellTokens.earTension) + IslandPathFactory.shellEarTipExtension
         let tokenWidth = shellTokens.previewWidth * resolvedHorizontalScale
         let baseBodyWidth = max(widthConstraints.baseBodyWidth ?? tokenWidth, 0)
         let contentDrivenWidth = max(
@@ -108,12 +122,18 @@ struct IslandShapeMetrics: Equatable {
             widthConstraints.contentWidthRequirement.requiredBodyWidth
         )
         let unconstrainedWidth = max(tokenWidth, contentDrivenWidth) * hoverWidthScale
-        let earReach = (resolvedEarBlendHeight * shellTokens.earTension) + IslandPathFactory.shellEarTipExtension
         let maximumBodyWidth = widthConstraints.maximumVisibleWidth.map {
             max($0 - (earReach * 2), 1)
         }
 
-        width = maximumBodyWidth.map { min(unconstrainedWidth, $0) } ?? unconstrainedWidth
+        if let fixedVisibleWidth = widthConstraints.fixedVisibleWidth {
+            let constrainedVisibleWidth = widthConstraints.maximumVisibleWidth.map {
+                min(max(fixedVisibleWidth, 1), $0)
+            } ?? max(fixedVisibleWidth, 1)
+            width = max(constrainedVisibleWidth - (earReach * 2), 1)
+        } else {
+            width = maximumBodyWidth.map { min(unconstrainedWidth, $0) } ?? unconstrainedWidth
+        }
         height = resolvedHeight
         radius = shellTokens.radius * resolvedVisualScale
         smoothness = shellTokens.smoothness

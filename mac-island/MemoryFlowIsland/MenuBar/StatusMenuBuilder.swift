@@ -4,6 +4,7 @@ protocol StatusMenuBuilding {
     func buildMenu(
         target: AnyObject,
         isIslandVisible: Bool,
+        language: AppLanguage,
         phase5Scenarios: [IslandMockScenario],
         phase5InteractionDemoControls: [IslandPhase5InteractionDemoControl],
         showHideAction: Selector,
@@ -19,6 +20,7 @@ struct StatusMenuBuilder: StatusMenuBuilding {
     func buildMenu(
         target: AnyObject,
         isIslandVisible: Bool,
+        language: AppLanguage,
         phase5Scenarios: [IslandMockScenario],
         phase5InteractionDemoControls: [IslandPhase5InteractionDemoControl],
         showHideAction: Selector,
@@ -30,13 +32,13 @@ struct StatusMenuBuilder: StatusMenuBuilding {
     ) -> NSMenu {
         let menu = NSMenu()
 
-        let showHideTitle = isIslandVisible ? "Hide Island" : "Show Island"
+        let showHideTitle = AppCopy.text(isIslandVisible ? .hideIsland : .showIsland, language: language)
         let showHideItem = NSMenuItem(title: showHideTitle, action: showHideAction, keyEquivalent: "")
         showHideItem.target = target
         menu.addItem(showHideItem)
 
         if phase5Scenarios.isEmpty == false {
-            let scenariosMenu = NSMenu(title: "Phase 5 Scenarios")
+            let scenariosMenu = NSMenu(title: AppCopy.text(.phase5Scenarios, language: language))
             for scenario in phase5Scenarios {
                 let scenarioItem = NSMenuItem(
                     title: scenario.menuTitle,
@@ -48,13 +50,13 @@ struct StatusMenuBuilder: StatusMenuBuilding {
                 scenariosMenu.addItem(scenarioItem)
             }
 
-            let scenariosRootItem = NSMenuItem(title: "Phase 5 Scenarios", action: nil, keyEquivalent: "")
+            let scenariosRootItem = NSMenuItem(title: AppCopy.text(.phase5Scenarios, language: language), action: nil, keyEquivalent: "")
             scenariosRootItem.submenu = scenariosMenu
             menu.addItem(scenariosRootItem)
         }
 
         if phase5InteractionDemoControls.isEmpty == false {
-            let interactionsMenu = NSMenu(title: "Phase 5 Interactions")
+            let interactionsMenu = NSMenu(title: AppCopy.text(.phase5Interactions, language: language))
             for control in phase5InteractionDemoControls {
                 let interactionItem = NSMenuItem(
                     title: control.menuTitle,
@@ -66,22 +68,22 @@ struct StatusMenuBuilder: StatusMenuBuilding {
                 interactionsMenu.addItem(interactionItem)
             }
 
-            let interactionsRootItem = NSMenuItem(title: "Phase 5 Interactions", action: nil, keyEquivalent: "")
+            let interactionsRootItem = NSMenuItem(title: AppCopy.text(.phase5Interactions, language: language), action: nil, keyEquivalent: "")
             interactionsRootItem.submenu = interactionsMenu
             menu.addItem(interactionsRootItem)
         }
 
-        let preferencesItem = NSMenuItem(title: "Preferences", action: preferencesAction, keyEquivalent: ",")
+        let preferencesItem = NSMenuItem(title: AppCopy.text(.settings, language: language), action: preferencesAction, keyEquivalent: ",")
         preferencesItem.target = target
         menu.addItem(preferencesItem)
 
-        let logoutItem = NSMenuItem(title: "Logout", action: logoutAction, keyEquivalent: "")
+        let logoutItem = NSMenuItem(title: AppCopy.text(.signOut, language: language), action: logoutAction, keyEquivalent: "")
         logoutItem.target = target
         menu.addItem(logoutItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "Quit", action: quitAction, keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: AppCopy.text(.quit, language: language), action: quitAction, keyEquivalent: "q")
         quitItem.target = target
         menu.addItem(quitItem)
 

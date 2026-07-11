@@ -39,7 +39,7 @@ final class DesktopLoginCoordinator: DesktopLoginCoordinating {
         let normalized = webBaseURL.absoluteString
             .components(separatedBy: "#")[0]
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        self.loginURL = URL(string: "\(normalized)/#/login?callback=desktop")!
+        self.loginURL = URL(string: "\(normalized)/#/login?callback=desktop&client=mac-island")!
         self.opener = opener
         self.sessionStore = sessionStore
         self.authCoordinator = authCoordinator
@@ -52,7 +52,7 @@ final class DesktopLoginCoordinator: DesktopLoginCoordinating {
 
     func handleCallback(_ url: URL) async throws -> AuthenticatedUser {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.scheme?.lowercased() == "memoryflow",
+              components.scheme?.lowercased() == "memoryflow-island",
               components.host?.lowercased() == "callback" else {
             throw DesktopLoginCallbackError.invalidCallback
         }

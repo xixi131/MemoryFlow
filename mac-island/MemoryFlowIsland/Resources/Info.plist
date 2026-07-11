@@ -29,7 +29,7 @@
 			<string>com.memoryflow.island.login-callback</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>memoryflow</string>
+				<string>memoryflow-island</string>
 			</array>
 		</dict>
 	</array>

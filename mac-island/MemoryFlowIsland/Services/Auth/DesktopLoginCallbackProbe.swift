@@ -19,10 +19,10 @@ enum DesktopLoginCallbackProbe {
         )
 
         guard coordinator.openLogin(),
-              opener.openedURL?.absoluteString == "https://memoryflow.tanxhub.com/#/login?callback=desktop" else {
+              opener.openedURL?.absoluteString == "https://memoryflow.tanxhub.com/#/login?callback=desktop&client=mac-island" else {
             throw DesktopLoginCallbackError.invalidCallback
         }
-        let callback = URL(string: "memoryflow://callback?token=access-1&refreshToken=refresh-1&expiresIn=3600")!
+        let callback = URL(string: "memoryflow-island://callback?token=access-1&refreshToken=refresh-1&expiresIn=3600")!
         let user = try await coordinator.handleCallback(callback)
         guard try store.load()?.accessToken == "access-1",
               transport.lastAuthorization == "Bearer access-1",

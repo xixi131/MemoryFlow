@@ -43,17 +43,15 @@ enum IslandWindowSizingEngine {
         from source: IslandWindowSizingResult,
         to target: IslandWindowSizingResult,
         progress: CGFloat,
-        attachmentMetrics: TopAttachmentMetrics
+        attachmentMetrics: TopAttachmentMetrics,
+        visibleSizeOverride: CGSize? = nil
     ) -> IslandWindowSizingResult {
         let fraction = min(max(progress, 0), 1)
-        let visibleSize = interpolated(source.visibleSize, target.visibleSize, fraction)
+        let visibleSize = visibleSizeOverride ?? interpolated(source.visibleSize, target.visibleSize, fraction)
         let shadowOutsets = interpolated(source.shadowOutsets, target.shadowOutsets, fraction)
         // Align the size, then derive origin from the immutable attachment point. Rounding
         // both origin and width independently moves odd-pixel samples off center by half a pixel.
-        let alignedVisibleSize = CGSize(
-            width: pixelAligned(visibleSize.width, scale: attachmentMetrics.pixelScale),
-            height: pixelAligned(visibleSize.height, scale: attachmentMetrics.pixelScale)
-        )
+        let alignedVisibleSize = pixelAligned(visibleSize, scale: attachmentMetrics.pixelScale)
         let visibleFrame = CGRect(
             x: attachmentMetrics.centerX - (alignedVisibleSize.width / 2),
             y: attachmentMetrics.topBandFrame.maxY - alignedVisibleSize.height,
@@ -117,6 +115,7 @@ enum IslandWindowSizingEngine {
                 horizontalScale: interpolated(source.diagnostics.horizontalScale, target.diagnostics.horizontalScale, fraction),
                 requestedBaseBodyWidth: target.diagnostics.requestedBaseBodyWidth,
                 requestedMaximumVisibleWidth: target.diagnostics.requestedMaximumVisibleWidth,
+                requestedFixedVisibleWidth: target.diagnostics.requestedFixedVisibleWidth,
                 contentWidthRequirement: target.diagnostics.contentWidthRequirement,
                 visibleSize: visibleFrame.size,
                 shadowSize: shadowFrame.size,
@@ -148,7 +147,10 @@ enum IslandWindowSizingEngine {
         return IslandWidthConstraints(
             baseBodyWidth: request.widthConstraints.baseBodyWidth,
             maximumVisibleWidth: effectiveMaximumVisibleWidth,
-            contentWidthRequirement: request.widthConstraints.contentWidthRequirement
+            contentWidthRequirement: request.widthConstraints.contentWidthRequirement,
+            fixedVisibleWidth: request.widthConstraints.fixedVisibleWidth.map {
+                min($0, effectiveMaximumVisibleWidth)
+            }
         )
     }
 
@@ -158,37 +160,32 @@ enum IslandWindowSizingEngine {
         resolvedWidthConstraints: IslandWidthConstraints
     ) -> IslandWindowSizingResult {
         let attachmentMetrics = request.attachmentMetrics
-        let shadowSize = snapshot.shadowFrame.size
-        let displayMinX = attachmentMetrics.centerX - (attachmentMetrics.availableTopWidth / 2)
-        let displayMaxX = displayMinX + attachmentMetrics.availableTopWidth
-        let centeredShadowOriginX = attachmentMetrics.centerX - (shadowSize.width / 2)
-        let shadowOriginX: CGFloat
-
-        if shadowSize.width <= attachmentMetrics.availableTopWidth {
-            shadowOriginX = clamped(
-                centeredShadowOriginX,
-                min: displayMinX,
-                max: displayMaxX - shadowSize.width
-            )
-        } else {
-            shadowOriginX = centeredShadowOriginX
-        }
-
-        let shadowOriginY = attachmentMetrics.topBandFrame.maxY - shadowSize.height
+        let visibleSize = pixelAligned(snapshot.visibleFrame.size, scale: attachmentMetrics.pixelScale)
+        let visibleFrame = CGRect(
+            x: attachmentMetrics.centerX - (visibleSize.width / 2),
+            y: attachmentMetrics.topBandFrame.maxY - visibleSize.height,
+            width: visibleSize.width,
+            height: visibleSize.height
+        )
         let shadowFrame = pixelAligned(
-            CGRect(origin: CGPoint(x: shadowOriginX, y: shadowOriginY), size: shadowSize),
+            CGRect(
+                x: visibleFrame.minX - snapshot.shadowOutsets.horizontal,
+                y: visibleFrame.minY - snapshot.shadowOutsets.bottom,
+                width: visibleFrame.width + (snapshot.shadowOutsets.horizontal * 2),
+                height: visibleFrame.height + snapshot.shadowOutsets.bottom
+            ),
             scale: attachmentMetrics.pixelScale
         )
-        let visibleFrame = pixelAligned(
-            snapshot.visibleFrame.offsetBy(dx: shadowFrame.minX, dy: shadowFrame.minY),
-            scale: attachmentMetrics.pixelScale
+        let visibleOffset = CGPoint(
+            x: visibleFrame.minX - snapshot.visibleFrame.minX,
+            y: visibleFrame.minY - snapshot.visibleFrame.minY
         )
         let contentFrame = pixelAligned(
-            snapshot.contentFrame.offsetBy(dx: shadowFrame.minX, dy: shadowFrame.minY),
+            snapshot.contentFrame.offsetBy(dx: visibleOffset.x, dy: visibleOffset.y),
             scale: attachmentMetrics.pixelScale
         )
         let hitTestFrame = pixelAligned(
-            snapshot.hitTestFrame.offsetBy(dx: shadowFrame.minX, dy: shadowFrame.minY),
+            snapshot.hitTestFrame.offsetBy(dx: visibleOffset.x, dy: visibleOffset.y),
             scale: attachmentMetrics.pixelScale
         )
 
@@ -203,6 +200,7 @@ enum IslandWindowSizingEngine {
                 horizontalScale: attachmentMetrics.horizontalVisualScale,
                 requestedBaseBodyWidth: resolvedWidthConstraints.baseBodyWidth,
                 requestedMaximumVisibleWidth: resolvedWidthConstraints.maximumVisibleWidth,
+                requestedFixedVisibleWidth: resolvedWidthConstraints.fixedVisibleWidth,
                 contentWidthRequirement: resolvedWidthConstraints.contentWidthRequirement,
                 visibleSize: visibleFrame.size,
                 shadowSize: shadowFrame.size,
@@ -210,10 +208,6 @@ enum IslandWindowSizingEngine {
                 hitTestFrame: hitTestFrame
             )
         )
-    }
-
-    private static func clamped(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
-        Swift.min(Swift.max(value, minimum), maximum)
     }
 
     private static func pixelAligned(_ rect: CGRect, scale: CGFloat) -> CGRect {
@@ -228,6 +222,13 @@ enum IslandWindowSizingEngine {
 
     private static func pixelAligned(_ value: CGFloat, scale: CGFloat) -> CGFloat {
         (value * scale).rounded() / scale
+    }
+
+    private static func pixelAligned(_ size: CGSize, scale: CGFloat) -> CGSize {
+        CGSize(
+            width: pixelAligned(size.width, scale: scale),
+            height: pixelAligned(size.height, scale: scale)
+        )
     }
 
     private static func anchoredFrame(

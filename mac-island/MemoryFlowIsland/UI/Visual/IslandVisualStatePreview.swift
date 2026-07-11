@@ -11,6 +11,7 @@ struct IslandVisualStatePreview: View {
     let visualScale: CGFloat
     let horizontalScale: CGFloat
     let widthConstraints: IslandWidthConstraints
+    let expandedContentTopInset: CGFloat
     let previewContent: IslandPreviewContent
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
@@ -144,6 +145,7 @@ struct IslandVisualStatePreview: View {
             content: previewContent,
             state: state,
             snapshot: snapshot,
+            expandedContentTopInset: expandedContentTopInset,
             isActivityContentVisible: true,
             isCompactContentVisible: true,
             isExpandedAppContentVisible: true,
@@ -299,10 +301,26 @@ enum IslandCompactContentLayout {
     }
 }
 
+private struct IslandSquircleShape: Shape {
+    let radius: CGFloat
+    let smoothness: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let path = IslandPathFactory.squircleBodyPath(
+            width: rect.width,
+            height: rect.height,
+            radius: radius,
+            smoothness: smoothness
+        )
+        return Path(path)
+    }
+}
+
 private struct IslandPreviewContentOverlay: View {
     let content: IslandPreviewContent
     let state: IslandVisualState
     let snapshot: IslandShapeLayoutSnapshot
+    let expandedContentTopInset: CGFloat
     let isActivityContentVisible: Bool
     let isCompactContentVisible: Bool
     let isExpandedAppContentVisible: Bool
@@ -321,10 +339,6 @@ private struct IslandPreviewContentOverlay: View {
     @State private var playbackOverride: Bool?
     @State private var isFavorite = false
 
-    private var visualScale: CGFloat {
-        snapshot.metrics.scale
-    }
-
     private var compactForegroundColor: Color {
         IslandDebugAppearance.usesLightNonExpandedShell && state.isExpanded == false
             ? .black
@@ -337,12 +351,18 @@ private struct IslandPreviewContentOverlay: View {
             : tintColor
     }
 
-    private var expandedSafePadding: CGFloat {
-        IslandVisualTokens.compact.height
+    private var expandedHorizontalInset: CGFloat {
+        IslandVisualTokens.expandedContentLayout.horizontalInset
     }
 
-    private var expandedHorizontalPadding: CGFloat {
-        expandedSafePadding + 12
+    private var expandedBottomInset: CGFloat {
+        IslandVisualTokens.expandedContentLayout.bottomInset
+    }
+
+    private var expandedInnerCornerRadius: CGFloat {
+        IslandVisualTokens.expandedContentLayout.innerCornerRadius(
+            outerCornerRadius: snapshot.metrics.radius
+        )
     }
 
     private var visibleContentFrame: CGRect {
@@ -351,6 +371,16 @@ private struct IslandPreviewContentOverlay: View {
             y: max(0, snapshot.visibleFrame.minY - snapshot.shadowOutsets.bottom),
             width: snapshot.visibleFrame.width,
             height: snapshot.visibleFrame.height
+        )
+    }
+
+    private var expandedBodyFrame: CGRect {
+        let bodyBounds = snapshot.bodyPath.boundingBoxOfPath
+        return CGRect(
+            x: bodyBounds.minX,
+            y: max(0, bodyBounds.minY - snapshot.shadowOutsets.bottom),
+            width: bodyBounds.width,
+            height: bodyBounds.height
         )
     }
 
@@ -379,10 +409,10 @@ private struct IslandPreviewContentOverlay: View {
             } else if state.isExpanded {
                 expandedContent
                     .frame(
-                        width: visibleContentFrame.width,
-                        height: visibleContentFrame.height
+                        width: expandedBodyFrame.width,
+                        height: expandedBodyFrame.height
                     )
-                    .offset(x: visibleContentFrame.minX, y: visibleContentFrame.minY)
+                    .offset(x: expandedBodyFrame.minX, y: expandedBodyFrame.minY)
             }
         }
         .frame(
@@ -535,21 +565,37 @@ private struct IslandPreviewContentOverlay: View {
     @ViewBuilder
     private var expandedContent: some View {
         if state == .expandedMusic {
-            expandedMusicContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.vertical, expandedSafePadding)
-                .padding(.horizontal, expandedHorizontalPadding)
+            expandedContentContainer {
+                expandedMusicContent
+            }
                 .opacity(isExpandedMusicContentVisible ? 1 : 0)
                 .blur(radius: isExpandedMusicContentVisible ? 0 : IslandVisualTokens.expandedMusicContentEnter.initialBlurRadius)
                 .allowsHitTesting(isExpandedMusicContentVisible)
         } else {
-            expandedAppContent
-                .padding(.horizontal, 34 * visualScale)
-                .padding(.top, 42 * visualScale)
+            expandedContentContainer {
+                expandedAppContent
+            }
                 .opacity(isExpandedAppContentVisible ? 1 : 0)
                 .blur(radius: isExpandedAppContentVisible ? 0 : IslandVisualTokens.expandedAppContentEnter.initialBlurRadius)
                 .allowsHitTesting(isExpandedAppContentVisible)
         }
+    }
+
+    private func expandedContentContainer<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipShape(
+            IslandSquircleShape(
+                radius: expandedInnerCornerRadius,
+                smoothness: snapshot.metrics.smoothness
+            )
+        )
+        .padding(.top, max(expandedContentTopInset, 0))
+        .padding(.leading, expandedHorizontalInset)
+        .padding(.bottom, expandedBottomInset)
+        .padding(.trailing, expandedHorizontalInset)
     }
 
     private var expandedMusicContent: some View {
@@ -1029,25 +1075,10 @@ private struct IslandExpandedReviewContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("REVIEW QUEUE")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(tint.opacity(0.9))
-                    Text("Today's review")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                Spacer(minLength: 8)
-                Text("\(max(review.pendingCount, 0)) pending")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.62))
-            }
-
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                reviewCounter(value: max(review.pendingCount, 0), label: "Pending")
-                reviewCounter(value: max(review.completedTodayCount, 0), label: "Completed today")
+                reviewCounter(value: max(review.pendingCount, 0), label: "待复习")
+                reviewCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
             }
 
             LazyVGrid(
@@ -1067,7 +1098,7 @@ private struct IslandExpandedReviewContent: View {
             }
 
             if review.subjectTitles.count > IslandExpandedReviewContentLayout.maximumVisibleSubjects {
-                Text("+\(review.subjectTitles.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects) more subjects")
+                Text("另有 \(review.subjectTitles.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects) 个科目")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.54))
                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -1078,6 +1109,7 @@ private struct IslandExpandedReviewContent: View {
                     )
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear(perform: updateCardEntrance)
         .onChange(of: contentPhase) { _ in updateCardEntrance() }
         .accessibilityElement(children: .contain)
@@ -1087,18 +1119,15 @@ private struct IslandExpandedReviewContent: View {
     private func reviewCounter(value: Int, label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(value)")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Text(label)
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.56))
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.68))
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.10)))
     }
 
     private func subjectCard(_ slot: IslandExpandedReviewSubjectSlot) -> some View {
@@ -1164,7 +1193,7 @@ enum IslandExpandedReviewContentLayout {
             IslandExpandedReviewSubjectSlot(id: "subject-\(index)", title: title, isPlaceholder: false)
         }
         let placeholders = (realSlots.count..<maximumVisibleSubjects).map { index in
-            IslandExpandedReviewSubjectSlot(id: "placeholder-\(index)", title: "Open subject slot", isPlaceholder: true)
+            IslandExpandedReviewSubjectSlot(id: "placeholder-\(index)", title: "暂无科目", isPlaceholder: true)
         }
         return realSlots + placeholders
     }
@@ -1257,23 +1286,23 @@ private struct IslandExpandedTodoContent: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("TODO FLOW")
+                    Text("待办清单")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(tint.opacity(0.9))
-                    Text("Today's plan")
+                    Text("今日计划")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
                 Spacer(minLength: 8)
-                Text("\(max(effectiveTodo.pendingCount, 0)) pending")
+                Text("待完成 \(max(effectiveTodo.pendingCount, 0)) 项")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.62))
             }
 
             HStack(spacing: 7) {
-                todoCounter(value: max(effectiveTodo.pendingCount, 0), label: "Pending")
-                todoCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "Due today")
-                todoCounter(value: max(effectiveTodo.overdueCount, 0), label: "Overdue", isUrgent: effectiveTodo.overdueCount > 0)
+                todoCounter(value: max(effectiveTodo.pendingCount, 0), label: "待完成")
+                todoCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "今日到期")
+                todoCounter(value: max(effectiveTodo.overdueCount, 0), label: "已逾期", isUrgent: effectiveTodo.overdueCount > 0)
             }
             .opacity(summaryIsVisible ? 1 : 0)
             .offset(y: summaryIsVisible ? 0 : 4)
@@ -1301,6 +1330,7 @@ private struct IslandExpandedTodoContent: View {
             .frame(height: IslandExpandedTodoContentLayout.taskListHeight, alignment: .top)
             .animation(.easeOut(duration: 0.18), value: taskSlots)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear(perform: updateEntrance)
         .onChange(of: contentPhase) { _ in updateEntrance() }
         .onChange(of: todo) { nextTodo in
@@ -1320,10 +1350,10 @@ private struct IslandExpandedTodoContent: View {
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(tint.opacity(0.84))
-            Text("No tasks in this view")
+            Text("暂无待办")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.66))
-            Text("Your next task will appear here")
+            Text("新的待办会显示在这里")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.42))
         }
@@ -1557,9 +1587,9 @@ struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
 
         var title: String {
             switch self {
-            case .high: return "HIGH"
-            case .medium: return "MED"
-            case .normal: return "NORMAL"
+            case .high: return "高"
+            case .medium: return "中"
+            case .normal: return "普通"
             }
         }
 
@@ -1596,7 +1626,7 @@ enum IslandExpandedTodoContentLayout {
             IslandExpandedTodoTaskSlot(
                 id: task.id,
                 title: task.title,
-                dueText: task.isCompleted ? "Completed" : (task.isOverdue ? "Overdue" : (task.isDueToday ? "Due today" : "Scheduled")),
+                dueText: task.isCompleted ? "已完成" : (task.isOverdue ? "已逾期" : (task.isDueToday ? "今日到期" : "已安排")),
                 priority: task.isOverdue ? .high : (task.isDueToday ? .medium : .normal),
                 isOverdue: task.isOverdue,
                 isCompleted: task.isCompleted

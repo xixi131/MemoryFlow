@@ -27,6 +27,16 @@ struct IslandHoverBehaviorTokens: Equatable {
     let collapsedHeight: CGFloat
 }
 
+struct IslandExpandedContentLayoutTokens: Equatable {
+    let horizontalInset: CGFloat
+    let bottomInset: CGFloat
+    let cornerInset: CGFloat
+
+    func innerCornerRadius(outerCornerRadius: CGFloat) -> CGFloat {
+        max(outerCornerRadius - cornerInset, 0)
+    }
+}
+
 struct IslandActivityContentChoreographyTokens: Equatable {
     let delay: TimeInterval
     let duration: TimeInterval
@@ -107,7 +117,7 @@ struct IslandShadowBehaviorTokens: Equatable {
 
     func outsets(for state: IslandVisualState, visualScale: CGFloat) -> IslandShadowOutsets {
         switch state {
-        case .hoverCollapsed:
+        case .hoverCollapsed, .activityHoverCollapsed:
             return hoverBuffer.scaled(by: visualScale)
         case .expandedMusic, .expandedApp:
             return expandedBuffer.scaled(by: visualScale)
@@ -118,7 +128,7 @@ struct IslandShadowBehaviorTokens: Equatable {
 
     func appearance(for state: IslandVisualState, visualScale: CGFloat) -> IslandShadowAppearanceTokens {
         switch state {
-        case .hoverCollapsed:
+        case .hoverCollapsed, .activityHoverCollapsed:
             return hoverAppearance.scaled(by: visualScale)
         case .expandedMusic, .expandedApp:
             return expandedAppearance.scaled(by: visualScale)
@@ -161,8 +171,8 @@ enum IslandVisualTokens {
     // Artwork is intentionally taller than wide in both layouts to preserve the
     // source artwork's aspect-fill crop rather than stretching it.
     static let activityMusicArtwork = IslandMusicArtworkPresentation(
-        width: 24,
-        height: 27,
+        width: 20,
+        height: 20,
         radius: 6.4,
         smoothness: 1.92
     )
@@ -176,6 +186,12 @@ enum IslandVisualTokens {
         exitDuration: 0.15,
         exitBlurRadius: 5,
         compactContentDelay: 0
+    )
+    // The inner surface follows: outer corner radius = inner corner radius + edge inset.
+    static let expandedContentLayout = IslandExpandedContentLayoutTokens(
+        horizontalInset: 24,
+        bottomInset: 24,
+        cornerInset: 10
     )
 
     // 普通收起态：对应最接近 Mac 刘海的状态。
@@ -235,27 +251,27 @@ enum IslandVisualTokens {
 
     static let hover = IslandHoverBehaviorTokens(
         // Hover remains intentionally smaller than the activity shell. Keep width
-        // proportional to each compact content branch while using the fixed 37pt
-        // shell height specified by the Windows-parity hover plan.
-        collapsedWidthScale: 1.025,
-        collapsedHeight: 37
+        // proportional to each compact content branch while growing the full
+        // shell in both axes.
+        collapsedWidthScale: 1.04,
+        collapsedHeight: 38
     )
 
     static let shadow = IslandShadowBehaviorTokens(
         visibleInHoverCollapsed: true,
         visibleInExpanded: true,
         hoverBuffer: IslandShadowBufferTokens(
-            horizontal: 12,
-            bottom: 17
+            horizontal: 48,
+            bottom: 64
         ),
         expandedBuffer: IslandShadowBufferTokens(
             horizontal: 64,
             bottom: 136
         ),
         hoverAppearance: IslandShadowAppearanceTokens(
-            opacity: 0.14,
-            radius: 12,
-            offsetY: 5
+            opacity: 0.13,
+            radius: 22,
+            offsetY: 6
         ),
         expandedAppearance: IslandShadowAppearanceTokens(
             opacity: 0.22,

@@ -1,9 +1,12 @@
 import SwiftUI
 
 enum AppleSpringMotion {
+    static let response = 0.35
+    static let dampingFraction = 0.70
+
     static let animation = Animation.spring(
-        response: 0.35,
-        dampingFraction: 0.70,
+        response: response,
+        dampingFraction: dampingFraction,
         blendDuration: 0
     )
 }

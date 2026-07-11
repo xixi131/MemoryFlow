@@ -4,6 +4,7 @@ import SwiftUI
 struct IslandPointerInput {
     let identifier: Int
     let location: CGPoint
+    let screenLocation: CGPoint
     let isButtonOrigin: Bool
 }
 
@@ -35,7 +36,11 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     override func mouseDown(with event: NSEvent) {
         nextPointerIdentifier += 1
         activePointerIdentifier = nextPointerIdentifier
-        onPointerDown?(pointerInput(for: event, identifier: nextPointerIdentifier))
+        let input = pointerInput(for: event, identifier: nextPointerIdentifier)
+        if input.isButtonOrigin == false {
+            consumesNextPointerTap = false
+        }
+        onPointerDown?(input)
         super.mouseDown(with: event)
     }
 
@@ -61,8 +66,10 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
     }
 
     override func mouseExited(with event: NSEvent) {
-        onPointerCancelled?(activePointerIdentifier)
-        activePointerIdentifier = nil
+        if NSEvent.pressedMouseButtons & 1 == 0 {
+            onPointerCancelled?(activePointerIdentifier)
+            activePointerIdentifier = nil
+        }
         super.mouseExited(with: event)
     }
 
@@ -93,9 +100,12 @@ final class IslandInteractionHostingView: NSHostingView<IslandRootView> {
 
     private func pointerInput(for event: NSEvent, identifier: Int) -> IslandPointerInput {
         let location = convert(event.locationInWindow, from: nil)
+        let screenLocation = event.window?.convertPoint(toScreen: event.locationInWindow)
+            ?? NSEvent.mouseLocation
         return IslandPointerInput(
             identifier: identifier,
             location: location,
+            screenLocation: screenLocation,
             isButtonOrigin: isButton(at: location)
         )
     }
