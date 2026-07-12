@@ -607,6 +607,28 @@ extension IslandDomainState {
         return state
     }
 
+    static var mockExpandedScrollableReview: IslandDomainState {
+        var state = expandedAppReview
+        state.mockSources.review = IslandMockReviewActivity(
+            pendingCount: 18,
+            completedTodayCount: 7,
+            nextSubjectTitle: "数据结构与算法",
+            subjectTitles: [
+                "数据结构与算法",
+                "Agent 开发",
+                "操作系统",
+                "计算机网络",
+                "数据库系统",
+                "软件工程",
+                "机器学习",
+                "高等数学",
+                "编译原理",
+                "英语阅读"
+            ]
+        )
+        return state
+    }
+
     static var mockExpandedTodo: IslandDomainState {
         var state = expandedAppReview
         state.appDisplayMode = .todo

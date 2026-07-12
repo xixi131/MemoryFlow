@@ -907,21 +907,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func contentEnterStart(for motion: IslandActiveMotion) -> TimeInterval {
-        switch motion.plan.transitionKind {
-        case .compactToActivity, .compactToExpanded, .reminderOpen, .musicTakeover:
-            return motion.plan.content.enter.delay
-        case .activityToCompact, .expandedToCompact, .reminderRecover:
-            return IslandMotionTokens.activityCollapseCompactContentDelay
-        case .activityToExpanded, .expandedToActivity:
-            return max(
-                motion.duration - motion.plan.content.enter.duration,
-                motion.plan.content.exit.duration
-            )
-        case .modeSwitch:
-            return motion.plan.content.enter.delay
-        default:
-            return motion.plan.content.exit.duration + motion.plan.content.enter.delay
-        }
+        motion.plan.contentChoreography.enterStart(motionDuration: motion.duration)
     }
 
     private func interpolateContent(
@@ -1524,6 +1510,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handleScrollWheel(_ event: NSEvent) {
         guard usesPhase5PreviewInteractionRouting else { return }
+        let domainState = phase5PreviewStateContainer.domainState
+        guard domainState.presentationState != .expanded ||
+                domainState.primaryMode != .app ||
+                domainState.appDisplayMode != .review else {
+            trackpadWheelAdapter.reset()
+            return
+        }
         guard let intent = trackpadWheelAdapter.registerEvent(
             deltaX: Double(event.scrollingDeltaX),
             deltaY: Double(event.scrollingDeltaY),

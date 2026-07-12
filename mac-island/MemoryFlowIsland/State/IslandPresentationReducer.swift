@@ -430,7 +430,7 @@ enum IslandPresentationReducer {
         // A forced compact presentation wins even when the expanded source still
         // has activity data. Otherwise retain the source mode for its compact to
         // activity recovery animation.
-        let shouldRecoverActivity = state.forceCompactMode == false && hasRecoverableMockActivitySource(state)
+        let shouldRecoverActivity = state.forceCompactMode == false && hasRecoverableActivitySource(state)
 
         let stageActivityRecovery = shouldRecoverActivity
         return transition(
@@ -445,16 +445,16 @@ enum IslandPresentationReducer {
         }
     }
 
-    private static func hasRecoverableMockActivitySource(_ state: IslandDomainState) -> Bool {
+    private static func hasRecoverableActivitySource(_ state: IslandDomainState) -> Bool {
         switch state.primaryMode {
         case .app:
             guard state.authState == .loggedIn else { return false }
 
             switch state.appDisplayMode {
             case .review:
-                return state.mockSources.review != nil
+                return state.reviewSnapshot != nil || state.mockSources.review != nil
             case .todo:
-                return state.mockSources.todo != nil
+                return state.todoSnapshot != nil || state.mockSources.todo != nil
             }
         case .music:
             return state.mockSources.music != nil
@@ -478,7 +478,7 @@ enum IslandPresentationReducer {
         return transition(state, reason: .noChange) {
             switch identifier {
             case "expandedCollapseRecovery":
-                if $0.forceCompactMode == false && hasRecoverableMockActivitySource($0) {
+                if $0.forceCompactMode == false && hasRecoverableActivitySource($0) {
                     $0.presentationState = .activity
                 }
                 $0.presentationLockState.transitionID = nil

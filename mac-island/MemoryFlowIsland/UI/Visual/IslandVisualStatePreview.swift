@@ -6,6 +6,10 @@ enum IslandDebugAppearance {
     static let usesLightNonExpandedShell = false
 }
 
+private enum IslandTodoVisualStyle {
+    static let accent = Color(red: 1, green: 149 / 255, blue: 0)
+}
+
 struct IslandVisualStatePreview: View {
     let state: IslandVisualState
     let visualScale: CGFloat
@@ -435,8 +439,8 @@ private struct IslandPreviewContentOverlay: View {
             greetingCompactContent
                 .allowsHitTesting(false)
         default:
-            loggedInIdleCompactContent
-                .allowsHitTesting(false)
+            Color.clear
+                .accessibilityHidden(true)
         }
     }
 
@@ -456,20 +460,6 @@ private struct IslandPreviewContentOverlay: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("island-login-command")
         .accessibilityLabel("Login to MemoryFlow")
-    }
-
-    private var loggedInIdleCompactContent: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "circle.grid.2x2.fill")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(compactAccentColor.opacity(0.94))
-            Text("MemoryFlow")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(compactForegroundColor.opacity(0.78))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityLabel("Logged in idle")
     }
 
     private var greetingCompactContent: some View {
@@ -536,7 +526,7 @@ private struct IslandPreviewContentOverlay: View {
         } else {
             Image(systemName: content.todo != nil ? "checklist" : "books.vertical.fill")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(compactAccentColor.opacity(0.96))
+                .foregroundStyle(content.todo != nil ? IslandTodoVisualStyle.accent : compactAccentColor.opacity(0.96))
                 .frame(
                     width: IslandActivityContentWidthProfile.iconSize,
                     height: IslandActivityContentWidthProfile.iconSize
@@ -582,14 +572,14 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private func expandedContentContainer<Content: View>(
-        @ViewBuilder content: () -> Content
+        @ViewBuilder contentBuilder: () -> Content
     ) -> some View {
-        content()
+        contentBuilder()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(
-            IslandSquircleShape(
-                radius: expandedInnerCornerRadius,
-                smoothness: snapshot.metrics.smoothness
+            IslandExpandedContentClipShape(
+                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo ? 0 : expandedInnerCornerRadius,
+                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo ? 0 : expandedInnerCornerRadius
             )
         )
         .padding(.top, max(expandedContentTopInset, 0))
@@ -1064,56 +1054,159 @@ private struct MusicTrackMetadata: View {
     }
 }
 
+private struct IslandReviewScrollOffsetReader: NSViewRepresentable {
+    @Binding var offset: CGFloat
+
+    func makeNSView(context: Context) -> IslandReviewScrollOffsetProbeView {
+        let view = IslandReviewScrollOffsetProbeView()
+        view.onOffsetChange = { nextOffset in
+            offset = nextOffset
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: IslandReviewScrollOffsetProbeView, context: Context) {
+        nsView.onOffsetChange = { nextOffset in
+            offset = nextOffset
+        }
+        nsView.attachIfNeeded()
+    }
+}
+
+private final class IslandReviewScrollOffsetProbeView: NSView {
+    var onOffsetChange: ((CGFloat) -> Void)?
+    private weak var observedClipView: NSClipView?
+    private var boundsObserver: NSObjectProtocol?
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        attachIfNeeded()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        attachIfNeeded()
+    }
+
+    func attachIfNeeded() {
+        guard let clipView = enclosingScrollView?.contentView else {
+            DispatchQueue.main.async { [weak self] in self?.attachIfNeeded() }
+            return
+        }
+        guard observedClipView !== clipView else {
+            publishOffset(from: clipView)
+            return
+        }
+
+        if let boundsObserver {
+            NotificationCenter.default.removeObserver(boundsObserver)
+        }
+        observedClipView = clipView
+        clipView.postsBoundsChangedNotifications = true
+        boundsObserver = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification,
+            object: clipView,
+            queue: .main
+        ) { [weak self, weak clipView] _ in
+            guard let self, let clipView else { return }
+            self.publishOffset(from: clipView)
+        }
+        publishOffset(from: clipView)
+    }
+
+    deinit {
+        if let boundsObserver {
+            NotificationCenter.default.removeObserver(boundsObserver)
+        }
+    }
+
+    private func publishOffset(from clipView: NSClipView) {
+        onOffsetChange?(max(clipView.bounds.minY, 0))
+    }
+}
+
 private struct IslandExpandedReviewContent: View {
     let review: IslandMockReviewActivity
     let tint: Color
     let contentPhase: IslandContentPhase
     @State private var cardsAreVisible = false
+    @State private var scrollOffset: CGFloat = 0
 
     private var slots: [IslandExpandedReviewSubjectSlot] {
         IslandExpandedReviewContentLayout.subjectSlots(for: review)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                reviewCounter(value: max(review.pendingCount, 0), label: "待复习")
-                reviewCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
-            }
+        GeometryReader { _ in
+            ZStack(alignment: .top) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        reviewCounterRow
+                            .scaleEffect(1 - (collapseProgress * 0.18), anchor: .topLeading)
+                            .opacity(1 - (collapseProgress * 0.5))
+                            .background(
+                                IslandReviewScrollOffsetReader(offset: $scrollOffset)
+                            )
 
-            LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
-                spacing: 8
-            ) {
-                ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                    subjectCard(slot)
-                        .opacity(cardsAreVisible ? 1 : 0)
-                        .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
-                        .animation(
-                            IslandExpandedReviewContentLayout.cardAnimation
-                                .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
-                            value: cardsAreVisible
-                        )
+                        LazyVGrid(
+                            columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                            spacing: 8
+                        ) {
+                            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                                subjectCard(slot)
+                                    .opacity(cardsAreVisible ? 1 : 0)
+                                    .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
+                                    .animation(
+                                        IslandExpandedReviewContentLayout.cardAnimation
+                                            .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
+                                        value: cardsAreVisible
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.bottom, 8)
                 }
-            }
 
-            if review.subjectTitles.count > IslandExpandedReviewContentLayout.maximumVisibleSubjects {
-                Text("另有 \(review.subjectTitles.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects) 个科目")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.54))
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .opacity(cardsAreVisible ? 1 : 0)
-                    .animation(
-                        .easeOut(duration: 0.16).delay(IslandExpandedReviewContentLayout.footerDelay),
-                        value: cardsAreVisible
-                    )
+                if collapseProgress > 0.01 {
+                    ZStack(alignment: .top) {
+                        topGlassFade
+                        compactHeader
+                    }
+                        .opacity(collapseProgress)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .zIndex(2)
+                }
+
+                bottomGlassFade
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .zIndex(1)
+
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear(perform: updateCardEntrance)
         .onChange(of: contentPhase) { _ in updateCardEntrance() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Expanded review queue")
+    }
+
+    private var collapseProgress: CGFloat {
+        min(max(scrollOffset / IslandExpandedReviewContentLayout.headerCollapseDistance, 0), 1)
+    }
+
+    private var reviewCounterRow: some View {
+        HStack(spacing: 8) {
+            reviewCounter(value: max(review.pendingCount, 0), label: "待复习")
+            reviewCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
+        }
+    }
+
+    private var compactHeader: some View {
+        HStack(spacing: 8) {
+            compactCounter(value: max(review.pendingCount, 0), label: "待复习")
+            compactCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
+        }
+        .frame(height: IslandExpandedReviewContentLayout.compactHeaderHeight)
+        .padding(.horizontal, 2)
     }
 
     private func reviewCounter(value: Int, label: String) -> some View {
@@ -1126,6 +1219,18 @@ private struct IslandExpandedReviewContent: View {
                 .foregroundStyle(.white.opacity(0.68))
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func compactCounter(value: Int, label: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text("\(value)")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.68))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1156,6 +1261,50 @@ private struct IslandExpandedReviewContent: View {
         .accessibilityLabel(slot.isPlaceholder ? "Empty review subject slot" : "Review subject \(slot.title)")
     }
 
+    private var topGlassFade: some View {
+        glassFade(height: IslandExpandedReviewContentLayout.topFadeHeight)
+    }
+
+    private func glassFade(height: CGFloat) -> some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.18)
+                .mask(
+                    IslandMaterialFeatherMask(
+                        verticalStops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.82), location: 0.14),
+                            .init(color: .black.opacity(0.68), location: 0.42),
+                            .init(color: .black.opacity(0.34), location: 0.68),
+                            .init(color: .black.opacity(0.10), location: 0.88),
+                            .init(color: .clear, location: 1)
+                        ]
+                    )
+                )
+
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.98), location: 0),
+                    .init(color: .black.opacity(0.94), location: 0.34),
+                    .init(color: .black.opacity(0.78), location: 0.55),
+                    .init(color: .black.opacity(0.46), location: 0.72),
+                    .init(color: .black.opacity(0.17), location: 0.88),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .frame(height: height)
+        .allowsHitTesting(false)
+    }
+
+    private var bottomGlassFade: some View {
+        glassFade(height: IslandExpandedReviewContentLayout.bottomGlassFadeHeight)
+            .rotationEffect(.degrees(180))
+    }
+
     private func updateCardEntrance() {
         guard IslandExpandedReviewContentLayout.shouldRevealCards(in: contentPhase) else {
             cardsAreVisible = false
@@ -1170,6 +1319,67 @@ private struct IslandExpandedReviewContent: View {
     }
 }
 
+private struct IslandMaterialFeatherMask: View {
+    let verticalStops: [Gradient.Stop]
+
+    var body: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black.opacity(0.72), location: 0.07),
+                .init(color: .black, location: 0.16),
+                .init(color: .black, location: 0.84),
+                .init(color: .black.opacity(0.72), location: 0.93),
+                .init(color: .clear, location: 1)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .mask(
+            LinearGradient(
+                stops: verticalStops,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+}
+
+private struct IslandExpandedContentClipShape: Shape {
+    let topRadius: CGFloat
+    let bottomRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let top = min(max(topRadius, 0), min(rect.width, rect.height) / 2)
+        let bottom = min(max(bottomRadius, 0), min(rect.width, rect.height) / 2)
+        var path = Path()
+
+        path.move(to: CGPoint(x: rect.minX + top, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + top),
+            control: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottom))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - bottom, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + bottom, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - bottom),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + top))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + top, y: rect.minY),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct IslandExpandedReviewSubjectSlot: Equatable, Identifiable {
     let id: String
     let title: String
@@ -1177,23 +1387,27 @@ struct IslandExpandedReviewSubjectSlot: Equatable, Identifiable {
 }
 
 enum IslandExpandedReviewContentLayout {
-    static let maximumVisibleSubjects = 4
+    static let minimumGridSlots = 8
     static let childDelay: TimeInterval = 0.10
     static let childStagger: TimeInterval = 0.05
     static let initialCardScale: CGFloat = 0.9
     static let cardAnimation = Animation.interpolatingSpring(stiffness: 300, damping: 20)
-
-    static var footerDelay: TimeInterval {
-        childDelay + Double(maximumVisibleSubjects) * childStagger
-    }
+    static let headerCollapseDistance: CGFloat = 54
+    static let compactHeaderHeight: CGFloat = 38
+    static let topFadeHeight: CGFloat = 90
+    static let bottomGlassFadeHeight: CGFloat = 20
 
     static func subjectSlots(for review: IslandMockReviewActivity) -> [IslandExpandedReviewSubjectSlot] {
-        let visibleSubjects = Array(review.subjectTitles.prefix(maximumVisibleSubjects))
-        let realSlots = visibleSubjects.enumerated().map { index, title in
+        let realSlots = review.subjectTitles.enumerated().map { index, title in
             IslandExpandedReviewSubjectSlot(id: "subject-\(index)", title: title, isPlaceholder: false)
         }
-        let placeholders = (realSlots.count..<maximumVisibleSubjects).map { index in
-            IslandExpandedReviewSubjectSlot(id: "placeholder-\(index)", title: "暂无科目", isPlaceholder: true)
+        let placeholderCount = max(minimumGridSlots - realSlots.count, 0)
+        let placeholders = (0..<placeholderCount).map { offset in
+            IslandExpandedReviewSubjectSlot(
+                id: "placeholder-\(realSlots.count + offset)",
+                title: "暂无科目",
+                isPlaceholder: true
+            )
         }
         return realSlots + placeholders
     }
@@ -1236,9 +1450,9 @@ enum IslandExpandedReviewContentProbe {
                 scenario: scenario,
                 realCardCount: slots.filter { $0.isPlaceholder == false }.count,
                 placeholderCount: slots.filter(\.isPlaceholder).count,
-                extraSubjectCount: max(subjects.count - IslandExpandedReviewContentLayout.maximumVisibleSubjects, 0),
+                extraSubjectCount: max(subjects.count - IslandExpandedReviewContentLayout.minimumGridSlots, 0),
                 firstCardDelay: IslandExpandedReviewContentLayout.cardDelay(for: 0),
-                lastCardDelay: IslandExpandedReviewContentLayout.cardDelay(for: IslandExpandedReviewContentLayout.maximumVisibleSubjects - 1),
+                lastCardDelay: IslandExpandedReviewContentLayout.cardDelay(for: max(slots.count - 1, 0)),
                 startsInsideContentPhase: IslandExpandedReviewContentLayout.shouldRevealCards(in: .entering)
                     && IslandExpandedReviewContentLayout.shouldRevealCards(in: .visible)
                     && IslandExpandedReviewContentLayout.shouldRevealCards(in: .waitingForShell) == false
@@ -1249,10 +1463,11 @@ enum IslandExpandedReviewContentProbe {
     static func validate() throws {
         let rows = rows()
         guard rows.map(\.scenario) == ["zero", "partial", "four", "more"],
-              rows.map(\.realCardCount) == [0, 2, 4, 4],
-              rows.map(\.placeholderCount) == [4, 2, 0, 0],
-              rows.map(\.extraSubjectCount) == [0, 0, 0, 2],
-              rows.allSatisfy({ $0.firstCardDelay == 0.10 && $0.lastCardDelay == 0.25 }),
+              rows.map(\.realCardCount) == [0, 2, 4, 6],
+              rows.map(\.placeholderCount) == [8, 6, 4, 2],
+              rows.map(\.extraSubjectCount) == [0, 0, 0, 0],
+              rows.map(\.lastCardDelay) == [0.45, 0.45, 0.45, 0.45],
+              rows.allSatisfy({ $0.firstCardDelay == 0.10 }),
               rows.allSatisfy(\.startsInsideContentPhase),
               IslandExpandedReviewContentLayout.initialCardScale == 0.9 else {
             throw IslandExpandedReviewContentProbeError.invalidLayout(rows)
@@ -1273,6 +1488,7 @@ private struct IslandExpandedTodoContent: View {
     @State private var summaryIsVisible = false
     @State private var rowsAreVisible = false
     @State private var localToggleState: IslandLocalTodoToggleState?
+    @State private var scrollOffset: CGFloat = 0
 
     private var taskSlots: [IslandExpandedTodoTaskSlot] {
         IslandExpandedTodoContentLayout.taskSlots(for: effectiveTodo)
@@ -1283,54 +1499,58 @@ private struct IslandExpandedTodoContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("待办清单")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(tint.opacity(0.9))
-                    Text("今日计划")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                Spacer(minLength: 8)
-                Text("待完成 \(max(effectiveTodo.pendingCount, 0)) 项")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.62))
-            }
+        GeometryReader { _ in
+            ZStack(alignment: .top) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        todoCounterRow
+                            .scaleEffect(1 - (collapseProgress * 0.18), anchor: .topLeading)
+                            .opacity((1 - (collapseProgress * 0.5)) * (summaryIsVisible ? 1 : 0))
+                            .offset(y: summaryIsVisible ? 0 : 4)
+                            .animation(IslandExpandedTodoContentLayout.summaryAnimation, value: summaryIsVisible)
+                            .background(
+                                IslandReviewScrollOffsetReader(offset: $scrollOffset)
+                            )
 
-            HStack(spacing: 7) {
-                todoCounter(value: max(effectiveTodo.pendingCount, 0), label: "待完成")
-                todoCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "今日到期")
-                todoCounter(value: max(effectiveTodo.overdueCount, 0), label: "已逾期", isUrgent: effectiveTodo.overdueCount > 0)
-            }
-            .opacity(summaryIsVisible ? 1 : 0)
-            .offset(y: summaryIsVisible ? 0 : 4)
-            .animation(IslandExpandedTodoContentLayout.summaryAnimation, value: summaryIsVisible)
-
-            Group {
-                if taskSlots.isEmpty {
-                    emptyState
-                } else {
-                    VStack(spacing: IslandExpandedTodoContentLayout.rowSpacing) {
-                        ForEach(Array(taskSlots.enumerated()), id: \.element.id) { index, task in
-                            taskRow(task)
-                                .opacity(rowsAreVisible ? 1 : 0)
-                                .offset(y: rowsAreVisible ? 0 : 5)
-                                .animation(
-                                    IslandExpandedTodoContentLayout.rowAnimation
-                                        .delay(IslandExpandedTodoContentLayout.rowDelay(for: index)),
-                                    value: rowsAreVisible
-                                )
+                        Group {
+                            if taskSlots.isEmpty {
+                                emptyState
+                            } else {
+                                VStack(spacing: IslandExpandedTodoContentLayout.rowSpacing) {
+                                    ForEach(Array(taskSlots.enumerated()), id: \.element.id) { index, task in
+                                        taskRow(task)
+                                            .opacity(rowsAreVisible ? 1 : 0)
+                                            .offset(y: rowsAreVisible ? 0 : 5)
+                                            .animation(
+                                                IslandExpandedTodoContentLayout.rowAnimation
+                                                    .delay(IslandExpandedTodoContentLayout.rowDelay(for: index)),
+                                                value: rowsAreVisible
+                                            )
+                                    }
+                                }
+                                .transition(.opacity)
+                            }
                         }
+                        .animation(.easeOut(duration: 0.18), value: taskSlots)
                     }
-                    .transition(.opacity)
+                    .padding(.bottom, 8)
                 }
+
+                if collapseProgress > 0.01 {
+                    ZStack(alignment: .top) {
+                        topGlassFade
+                        compactHeader
+                    }
+                        .opacity(collapseProgress)
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .zIndex(2)
+                }
+
+                bottomGlassFade
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .zIndex(1)
             }
-            .frame(height: IslandExpandedTodoContentLayout.taskListHeight, alignment: .top)
-            .animation(.easeOut(duration: 0.18), value: taskSlots)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear(perform: updateEntrance)
         .onChange(of: contentPhase) { _ in updateEntrance() }
         .onChange(of: todo) { nextTodo in
@@ -1345,6 +1565,99 @@ private struct IslandExpandedTodoContent: View {
         .accessibilityLabel("Expanded todo list")
     }
 
+    private var collapseProgress: CGFloat {
+        min(max(scrollOffset / IslandExpandedTodoContentLayout.headerCollapseDistance, 0), 1)
+    }
+
+    private var todoCounterRow: some View {
+        HStack(spacing: 8) {
+            todoCounter(value: max(effectiveTodo.pendingCount, 0), label: "待完成", usesAccent: true)
+            todoCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "今日到期")
+            todoCounter(
+                value: max(effectiveTodo.overdueCount, 0),
+                label: "已逾期",
+                isUrgent: effectiveTodo.overdueCount > 0
+            )
+        }
+    }
+
+    private var compactHeader: some View {
+        HStack(spacing: 8) {
+            compactCounter(value: max(effectiveTodo.pendingCount, 0), label: "待完成", usesAccent: true)
+            compactCounter(value: max(effectiveTodo.dueTodayCount, 0), label: "今日到期")
+            compactCounter(
+                value: max(effectiveTodo.overdueCount, 0),
+                label: "已逾期",
+                isUrgent: effectiveTodo.overdueCount > 0
+            )
+        }
+        .frame(height: IslandExpandedTodoContentLayout.compactHeaderHeight)
+        .padding(.horizontal, 2)
+    }
+
+    private func compactCounter(
+        value: Int,
+        label: String,
+        isUrgent: Bool = false,
+        usesAccent: Bool = false
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text("\(value)")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(isUrgent ? Color.red.opacity(0.92) : .white)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(usesAccent ? IslandTodoVisualStyle.accent : .white.opacity(0.68))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var topGlassFade: some View {
+        glassFade(height: IslandExpandedTodoContentLayout.topFadeHeight)
+    }
+
+    private func glassFade(height: CGFloat) -> some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.18)
+                .mask(
+                    IslandMaterialFeatherMask(
+                        verticalStops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.82), location: 0.14),
+                            .init(color: .black.opacity(0.68), location: 0.42),
+                            .init(color: .black.opacity(0.34), location: 0.68),
+                            .init(color: .black.opacity(0.10), location: 0.88),
+                            .init(color: .clear, location: 1)
+                        ]
+                    )
+                )
+
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(0.98), location: 0),
+                    .init(color: .black.opacity(0.94), location: 0.34),
+                    .init(color: .black.opacity(0.78), location: 0.55),
+                    .init(color: .black.opacity(0.46), location: 0.72),
+                    .init(color: .black.opacity(0.17), location: 0.88),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .frame(height: height)
+        .allowsHitTesting(false)
+    }
+
+    private var bottomGlassFade: some View {
+        glassFade(height: IslandExpandedTodoContentLayout.bottomGlassFadeHeight)
+            .rotationEffect(.degrees(180))
+    }
+
     private var emptyState: some View {
         VStack(spacing: 5) {
             Image(systemName: "checkmark.circle")
@@ -1357,28 +1670,31 @@ private struct IslandExpandedTodoContent: View {
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.42))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 26)
         .opacity(rowsAreVisible ? 1 : 0)
         .offset(y: rowsAreVisible ? 0 : 5)
         .animation(IslandExpandedTodoContentLayout.rowAnimation, value: rowsAreVisible)
         .accessibilityIdentifier("island-todo-empty-state")
     }
 
-    private func todoCounter(value: Int, label: String, isUrgent: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+    private func todoCounter(
+        value: Int,
+        label: String,
+        isUrgent: Bool = false,
+        usesAccent: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text("\(value)")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(isUrgent ? Color.red.opacity(0.92) : .white)
             Text(label)
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.56))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(usesAccent ? IslandTodoVisualStyle.accent : .white.opacity(0.68))
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.78)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 3)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.10)))
     }
 
     private func taskRow(_ task: IslandExpandedTodoTaskSlot) -> some View {
@@ -1388,7 +1704,7 @@ private struct IslandExpandedTodoContent: View {
                 toggleTask(id: task.id)
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(task.isCompleted ? tint.opacity(0.9) : .white.opacity(0.42))
                     .scaleEffect(task.isCompleted ? 1.08 : 1)
                     .animation(IslandExpandedTodoContentLayout.toggleAnimation, value: task.isCompleted)
@@ -1400,13 +1716,13 @@ private struct IslandExpandedTodoContent: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(task.title)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(task.isCompleted ? .white.opacity(0.42) : .white.opacity(0.9))
                     .strikethrough(task.isCompleted, color: .white.opacity(0.35))
                     .lineLimit(1)
                     .minimumScaleFactor(0.64)
                 Text(task.dueText)
-                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(task.isOverdue ? Color.red.opacity(0.92) : .white.opacity(0.48))
                     .lineLimit(1)
             }
@@ -1414,20 +1730,12 @@ private struct IslandExpandedTodoContent: View {
             Spacer(minLength: 4)
 
             Text(task.priority.title)
-                .font(.system(size: 8, weight: .bold, design: .rounded))
+                .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(task.priority.color)
                 .lineLimit(1)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(task.priority.color.opacity(0.14)))
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 2)
         .frame(height: IslandExpandedTodoContentLayout.rowHeight)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(task.isCompleted ? 0.045 : 0.09)))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(task.isOverdue ? Color.red.opacity(0.34) : .white.opacity(0.10), lineWidth: 1)
-        )
         .opacity(task.isCompleted ? 0.64 : 1)
         .animation(IslandExpandedTodoContentLayout.toggleAnimation, value: task.isCompleted)
         .accessibilityIdentifier("island-todo-task-\(task.id)")
@@ -1446,10 +1754,7 @@ private struct IslandExpandedTodoContent: View {
         DispatchQueue.main.async {
             guard IslandExpandedTodoContentLayout.shouldRevealContent(in: contentPhase) else { return }
             summaryIsVisible = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + IslandExpandedTodoContentLayout.rowsDelay) {
-                guard IslandExpandedTodoContentLayout.shouldRevealContent(in: contentPhase) else { return }
-                rowsAreVisible = true
-            }
+            rowsAreVisible = true
         }
     }
 
@@ -1612,13 +1917,18 @@ struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
 
 enum IslandExpandedTodoContentLayout {
     static let maximumVisibleTasks = 6
-    static let rowHeight: CGFloat = 22
-    static let rowSpacing: CGFloat = 2
-    static let taskListHeight: CGFloat = 142
-    static let rowsDelay: TimeInterval = 0.08
-    static let rowStagger: TimeInterval = 0.035
+    static let rowHeight: CGFloat = 38
+    static let rowSpacing: CGFloat = 7
+    static let usesRowBackground = false
+    static let usesRowBorder = false
+    static let headerCollapseDistance = IslandExpandedReviewContentLayout.headerCollapseDistance
+    static let compactHeaderHeight = IslandExpandedReviewContentLayout.compactHeaderHeight
+    static let topFadeHeight = IslandExpandedReviewContentLayout.topFadeHeight
+    static let bottomGlassFadeHeight = IslandExpandedReviewContentLayout.bottomGlassFadeHeight
+    static let rowsDelay = IslandExpandedReviewContentLayout.childDelay
+    static let rowStagger = IslandExpandedReviewContentLayout.childStagger
     static let summaryAnimation = Animation.easeOut(duration: 0.16)
-    static let rowAnimation = Animation.easeOut(duration: 0.18)
+    static let rowAnimation = IslandExpandedReviewContentLayout.cardAnimation
     static let toggleAnimation = Animation.spring(response: 0.26, dampingFraction: 0.78)
 
     static func taskSlots(for todo: IslandMockTodoActivity) -> [IslandExpandedTodoTaskSlot] {
@@ -1649,7 +1959,9 @@ struct IslandExpandedTodoContentProbeRow: Equatable {
     let overdueTaskCount: Int
     let completedTaskCount: Int
     let supportsLongTitle: Bool
-    let fixedTaskListHeight: CGFloat
+    let rowHeight: CGFloat
+    let usesRowBackground: Bool
+    let usesRowBorder: Bool
     let startsInsideContentPhase: Bool
 }
 
@@ -1689,7 +2001,9 @@ enum IslandExpandedTodoContentProbe {
                 overdueTaskCount: slots.filter(\.isOverdue).count,
                 completedTaskCount: slots.filter(\.isCompleted).count,
                 supportsLongTitle: slots.allSatisfy { $0.title.isEmpty == false },
-                fixedTaskListHeight: IslandExpandedTodoContentLayout.taskListHeight,
+                rowHeight: IslandExpandedTodoContentLayout.rowHeight,
+                usesRowBackground: IslandExpandedTodoContentLayout.usesRowBackground,
+                usesRowBorder: IslandExpandedTodoContentLayout.usesRowBorder,
                 startsInsideContentPhase: IslandExpandedTodoContentLayout.shouldRevealContent(in: .entering)
                     && IslandExpandedTodoContentLayout.shouldRevealContent(in: .visible)
                     && IslandExpandedTodoContentLayout.shouldRevealContent(in: .waitingForShell) == false
@@ -1704,8 +2018,11 @@ enum IslandExpandedTodoContentProbe {
               rows.map(\.overdueTaskCount) == [0, 0, 1, 0, 1],
               rows.map(\.completedTaskCount) == [0, 1, 0, 0, 1],
               rows.allSatisfy(\.supportsLongTitle),
-              rows.allSatisfy({ $0.fixedTaskListHeight == 142 }),
+              rows.allSatisfy({ $0.rowHeight == 38 }),
+              rows.allSatisfy({ $0.usesRowBackground == false && $0.usesRowBorder == false }),
               rows.allSatisfy(\.startsInsideContentPhase),
+              IslandExpandedTodoContentLayout.rowsDelay == IslandExpandedReviewContentLayout.childDelay,
+              IslandExpandedTodoContentLayout.rowStagger == IslandExpandedReviewContentLayout.childStagger,
               IslandExpandedTodoContentLayout.maximumVisibleTasks == 6 else {
             throw IslandExpandedTodoContentProbeError.invalidLayout(rows)
         }

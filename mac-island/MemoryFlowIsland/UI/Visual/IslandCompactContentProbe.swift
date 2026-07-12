@@ -28,6 +28,8 @@ enum IslandCompactContentProbe {
 
     static func validate() throws {
         let rows = rows()
+        let loggedIn = IslandDerivedState.derive(from: .loggedInReviewCompact)
+        let todoCompact = IslandDerivedState.derive(from: .loggedInTodoCompact)
         let expectedPhases = [
             "logged-out", "idle", "greeting-enter", "greeting-visible", "greeting-exit"
         ]
@@ -57,6 +59,12 @@ enum IslandCompactContentProbe {
               rows[3].contentKind == .greetingCompact,
               rows[4].contentKind == .reviewCompact else {
             throw IslandCompactContentProbeError.invalidContentCycle(rows.map(\.contentKind))
+        }
+
+        guard todoCompact.visualState == .compactCollapsed,
+              todoCompact.previewContent.kind == .todoCompact,
+              todoCompact.collapsedWidth == loggedIn.collapsedWidth else {
+            throw IslandCompactContentProbeError.todoCompactDidNotReuseStandardWidth
         }
     }
 
@@ -91,4 +99,5 @@ enum IslandCompactContentProbeError: Error {
     case invalidCycle([String])
     case invalidCompactContract([IslandCompactContentProbeRow])
     case invalidContentCycle([IslandPreviewContent.Kind])
+    case todoCompactDidNotReuseStandardWidth
 }

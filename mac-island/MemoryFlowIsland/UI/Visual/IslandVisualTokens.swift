@@ -144,7 +144,6 @@ enum IslandVisualTokens {
     static let compactSignedOutWidth: CGFloat = 180
     static let compactGreetingMinWidth: CGFloat = 220
     static let compactGreetingMaxWidth: CGFloat = 300
-    static let compactTodoNoActivityWidth: CGFloat = 230
     // Kept in the Visual module because the production target compiles its
     // content layer independently from the motion-plan support sources.
     static let activityContentEnter = IslandActivityContentChoreographyTokens(

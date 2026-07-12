@@ -33,6 +33,22 @@ struct IslandContentChoreographyPlan: Equatable {
     let enter: IslandContentMotionToken
     let exit: IslandContentMotionToken
 
+    func enterStart(motionDuration: TimeInterval) -> TimeInterval {
+        switch transitionKind {
+        case .compactToActivity, .compactToExpanded, .activityToExpanded, .reminderOpen, .musicTakeover, .modeSwitch:
+            return enter.delay
+        case .activityToCompact, .expandedToCompact, .reminderRecover:
+            return IslandMotionTokens.activityCollapseCompactContentDelay
+        case .expandedToActivity:
+            return max(
+                motionDuration - enter.duration,
+                exit.duration
+            )
+        default:
+            return exit.duration + enter.delay
+        }
+    }
+
     func presentation(for phase: IslandContentPhase) -> IslandContentPresentation {
         switch phase {
         case .hidden, .waitingForShell:
@@ -75,6 +91,9 @@ struct IslandContentChoreographyPlan: Equatable {
         switch (previous, next) {
         case (.compactCollapsed, .activityCollapsed), (.hoverCollapsed, .activityCollapsed):
             kind = .compactToActivity
+        case (.compactCollapsed, .expandedApp), (.compactCollapsed, .expandedMusic),
+             (.hoverCollapsed, .expandedApp), (.hoverCollapsed, .expandedMusic):
+            kind = .compactToExpanded
         case (.activityCollapsed, .expandedApp), (.activityCollapsed, .expandedMusic):
             kind = .activityToExpanded
         case (.expandedApp, .activityCollapsed), (.expandedMusic, .activityCollapsed):

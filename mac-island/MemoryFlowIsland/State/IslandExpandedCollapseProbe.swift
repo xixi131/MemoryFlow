@@ -8,6 +8,7 @@ struct IslandExpandedCollapseProbeRow: Equatable {
     let firstReason: IslandPresentationTransitionReason
     let recoversOriginalActivity: Bool
     let trackpadCooldownActive: Bool
+    let usesSharedRecoveryTransition: Bool
 }
 
 enum IslandExpandedCollapseProbe {
@@ -15,6 +16,8 @@ enum IslandExpandedCollapseProbe {
         let sources: [(String, IslandDomainState)] = [
             ("review", .mockExpandedReview),
             ("todo", .mockExpandedTodo),
+            ("live-review", liveExpandedReviewState()),
+            ("live-todo", liveExpandedTodoState()),
             ("music", .mockExpandedMusic)
         ]
         let inputs: [(String, IslandInteractionIntent)] = [
@@ -32,11 +35,12 @@ enum IslandExpandedCollapseProbe {
 
     static func validate() throws {
         let rows = rows()
-        guard rows.count == 9,
+        guard rows.count == 15,
               rows.allSatisfy({
                   $0.firstVisualState == .compactCollapsed &&
                       $0.finalVisualState == .activityCollapsed &&
-                      $0.recoversOriginalActivity
+                      $0.recoversOriginalActivity &&
+                      $0.usesSharedRecoveryTransition
               }) else {
             throw IslandExpandedCollapseProbeError.activityRecoveryFailed(rows)
         }
@@ -55,6 +59,8 @@ enum IslandExpandedCollapseProbe {
         let forceCompactRows = [
             forcedCompactRow(source: "review", state: .mockExpandedReview),
             forcedCompactRow(source: "todo", state: .mockExpandedTodo),
+            forcedCompactRow(source: "live-review", state: liveExpandedReviewState()),
+            forcedCompactRow(source: "live-todo", state: liveExpandedTodoState()),
             forcedCompactRow(source: "music", state: .mockExpandedMusic)
         ]
         guard forceCompactRows.allSatisfy({ $0.presentationState == .collapsed && $0.forceCompactMode }),
@@ -85,7 +91,8 @@ enum IslandExpandedCollapseProbe {
             recoversOriginalActivity: completed.state.primaryMode == initialState.primaryMode &&
                 completed.state.appDisplayMode == initialState.appDisplayMode &&
                 completed.state.forceCompactMode == false,
-            trackpadCooldownActive: completed.state.gestureState == .cooldown
+            trackpadCooldownActive: completed.state.gestureState == .cooldown,
+            usesSharedRecoveryTransition: first.state.presentationLockState.transitionID == "expandedCollapseRecovery"
         )
     }
 
@@ -97,6 +104,43 @@ enum IslandExpandedCollapseProbe {
             current: first.state,
             intent: .transitionComplete("expandedCollapseRecovery")
         ).state
+    }
+
+    private static func liveExpandedReviewState() -> IslandDomainState {
+        var state = IslandDomainState.expandedAppReview
+        state.mockSources.review = nil
+        state.reviewSnapshot = ReviewSnapshot(
+            dto: WidgetSummaryDTO(
+                totalPendingReviews: 3,
+                totalCompletedToday: 1,
+                reminderTime: nil,
+                subjects: []
+            )
+        )
+        return state
+    }
+
+    private static func liveExpandedTodoState() -> IslandDomainState {
+        var state = IslandDomainState.expandedAppReview
+        state.appDisplayMode = .todo
+        state.mockSources.review = nil
+        state.mockSources.todo = nil
+        state.todoSnapshot = TodoSnapshot(
+            stats: TodoStatsDTO(pendingTasks: 2, dueToday: 1, overdueTasks: 0),
+            tasks: [
+                TodoTaskDTO(
+                    id: 1,
+                    title: "Live todo",
+                    status: "todo",
+                    priority: "normal",
+                    dueDate: nil,
+                    dueTime: nil,
+                    overdue: false,
+                    dueToday: true
+                )
+            ]
+        )
+        return state
     }
 }
 

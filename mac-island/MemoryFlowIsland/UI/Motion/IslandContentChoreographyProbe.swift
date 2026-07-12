@@ -15,6 +15,7 @@ enum IslandContentChoreographyProbe {
     static func sampledRows() -> [IslandContentChoreographyProbeRow] {
         [
             ("compact-activity", IslandVisualState.compactCollapsed, IslandVisualState.activityCollapsed),
+            ("compact-expanded", .compactCollapsed, .expandedApp),
             ("activity-expanded", .activityCollapsed, .expandedApp),
             ("expanded-activity", .expandedApp, .activityCollapsed),
             ("mode-retarget", .activityCollapsed, .activityCollapsed)
@@ -26,12 +27,18 @@ enum IslandContentChoreographyProbe {
     static func validate() throws {
         let rows = sampledRows()
         let transitions = Set(rows.map(\.transition))
-        guard transitions == ["compact-activity", "activity-expanded", "expanded-activity", "mode-retarget"],
+        guard transitions == ["compact-activity", "compact-expanded", "activity-expanded", "expanded-activity", "mode-retarget"],
               rows.allSatisfy({ $0.phase != .visible || $0.allowsHitTesting }),
               rows.allSatisfy({ $0.phase == .visible || $0.allowsHitTesting == false }),
               rows.filter({ $0.phase == .waitingForShell }).allSatisfy({ $0.opacity == 0 && $0.blurRadius == 5 }),
               rows.filter({ $0.phase == .entering }).allSatisfy({ $0.opacity == 1 && $0.allowsHitTesting == false }) else {
             throw IslandContentChoreographyProbeError.invalidPresentation(rows)
+        }
+
+        let compactExpandedEnter = rows.first { $0.transition == "compact-expanded" && $0.phase == .entering }
+        let activityExpandedEnter = rows.first { $0.transition == "activity-expanded" && $0.phase == .entering }
+        guard compactExpandedEnter?.timestamp == activityExpandedEnter?.timestamp else {
+            throw IslandContentChoreographyProbeError.expandedContentTimingMismatch(rows)
         }
 
         var gate = IslandContentTransitionGate()
@@ -46,7 +53,7 @@ enum IslandContentChoreographyProbe {
         name: String,
         plan: IslandContentChoreographyPlan
     ) -> [IslandContentChoreographyProbeRow] {
-        let waitEnd = plan.exit.duration + max(plan.shellDuration - plan.exit.duration, 0) + plan.enter.delay
+        let waitEnd = plan.enterStart(motionDuration: plan.shellDuration)
         return [
             row(name, .exiting, 0, plan: plan),
             row(name, .waitingForShell, plan.exit.duration, plan: plan),
@@ -78,4 +85,5 @@ enum IslandContentChoreographyProbe {
 enum IslandContentChoreographyProbeError: Error {
     case invalidPresentation([IslandContentChoreographyProbeRow])
     case staleRetargetWasAccepted
+    case expandedContentTimingMismatch([IslandContentChoreographyProbeRow])
 }

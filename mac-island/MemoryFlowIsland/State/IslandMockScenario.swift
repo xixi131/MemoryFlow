@@ -57,6 +57,12 @@ struct IslandMockScenario: Equatable, Identifiable {
             expectedDerivedVisualState: .expandedApp
         ),
         IslandMockScenario(
+            id: "expanded-review-scroll",
+            menuTitle: "Scrollable Review",
+            initialState: .mockExpandedScrollableReview,
+            expectedDerivedVisualState: .expandedApp
+        ),
+        IslandMockScenario(
             id: "expanded-todo",
             menuTitle: "Expanded Todo",
             initialState: .mockExpandedTodo,

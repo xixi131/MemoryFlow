@@ -144,12 +144,6 @@ struct IslandDerivedState: Equatable {
             )
         }
 
-        if state.primaryMode == .app,
-           state.authState == .loggedIn,
-           state.appDisplayMode == .todo {
-            return IslandVisualTokens.compactTodoNoActivityWidth
-        }
-
         return state.authState == .loggedIn
             ? IslandVisualTokens.compact.previewWidth - 40
             : IslandVisualTokens.compactSignedOutWidth
