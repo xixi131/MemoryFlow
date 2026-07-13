@@ -128,3 +128,11 @@
 ### 2026-07-13 - Phase 7 Settings and menu cleanup
 - Added persistent localized Advanced Features settings with conditional account controls and removed the obsolete production Phase 5 Interactions menu wiring while preserving probe fixtures and unrelated commands.
 - The native settings/menu probe, full Swift source typecheck, and unsigned Debug build passed; Windows and Electron files were unchanged and no native validation process remained running.
+
+### 2026-07-13 - Advanced capability lifecycle
+- Made Advanced Features the SceneCoordinator-owned gate for authentication and protected review, todo, and reminder work while leaving music and updates available in basic mode.
+- Deterministic lifecycle evidence and the integrated Debug build passed; disabling preserves the saved session and active music, clears protected state, and stops protected work without duplicate timers.
+
+### 2026-07-13 - Signed Sparkle updater core
+- Added Sparkle 2.9.4 with a custom user driver, typed login-independent coordinator states, HTTPS/public-key configuration, callback guards, and public-only signed appcast fixtures.
+- Signed current/newer, malformed, non-HTTPS, invalid-signature, duplicate, stale-session, and regressive-progress probes passed with the integrated native build and full Swift source typecheck.

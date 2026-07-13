@@ -33,6 +33,7 @@ protocol IslandWindowControlling: AnyObject {
     func hide()
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
     func applyLoggedOutState()
+    func applyBasicCapabilityState()
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
 }
@@ -48,7 +49,10 @@ final class SceneCoordinator {
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBarController: MenuBarControlling
     private let languageSettings: AppLanguageSettings
+    private let advancedFeaturesSettings: AdvancedFeaturesSettings
     private let settingsAccountState: SettingsAccountState
+    private var advancedFeaturesObserver: NSObjectProtocol?
+    private var capabilityGeneration = 0
     let authCoordinator: AuthCoordinating
     let desktopLoginCoordinator: DesktopLoginCoordinating
     let reviewRepository: ReviewRepositoryProtocol
@@ -70,6 +74,7 @@ final class SceneCoordinator {
         )
         self.windowController = windowController
         self.languageSettings = languageSettings
+        self.advancedFeaturesSettings = advancedFeaturesSettings
         self.settingsAccountState = settingsAccountState
         let reviewRepository = ReviewRepository(apiClient: apiClient)
         self.reviewRepository = reviewRepository
@@ -105,7 +110,8 @@ final class SceneCoordinator {
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
-            onAuthStateChanged: { [weak windowController, weak settingsAccountState] state in
+            onAuthStateChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings] state in
+                guard advancedFeaturesSettings?.isEnabled == true else { return }
                 if state == .loggedOut {
                     settingsAccountState?.apply(nil)
                     reviewPollingController.stop()
@@ -113,7 +119,8 @@ final class SceneCoordinator {
                     windowController?.applyLoggedOutState()
                 }
             },
-            onUserChanged: { [weak windowController, weak settingsAccountState] user in
+            onUserChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings] user in
+                guard advancedFeaturesSettings?.isEnabled == true else { return }
                 settingsAccountState?.apply(user)
                 if let user {
                     windowController?.applyAuthenticatedUser(user)
@@ -151,10 +158,12 @@ final class SceneCoordinator {
             }
         )
         self.preferencesWindowController = preferencesWindowController
-        windowController.onLoginRequested = { [weak desktopLoginCoordinator] in
+        windowController.onLoginRequested = { [weak desktopLoginCoordinator, weak advancedFeaturesSettings] in
+            guard advancedFeaturesSettings?.isEnabled == true else { return }
             _ = desktopLoginCoordinator?.openLogin()
         }
-        windowController.onTodoCompletionRequested = { [weak todoMutationController] taskID in
+        windowController.onTodoCompletionRequested = { [weak todoMutationController, weak advancedFeaturesSettings] taskID in
+            guard advancedFeaturesSettings?.isEnabled == true else { return }
             todoMutationController?.complete(taskID: taskID)
         }
         self.menuBarController = StatusBarController(
@@ -179,6 +188,7 @@ final class SceneCoordinator {
         self.windowController = windowController
         self.preferencesWindowController = preferencesWindowController
         self.languageSettings = languageSettings
+        self.advancedFeaturesSettings = AdvancedFeaturesSettings(store: InMemoryAdvancedFeaturesStore(isEnabled: true))
         self.settingsAccountState = SettingsAccountState()
         let resolvedAuthCoordinator: AuthCoordinating
         let resolvedSessionStore: AuthSessionStoring
@@ -240,11 +250,25 @@ final class SceneCoordinator {
         Task { [weak authCoordinator] in
             _ = try? await authCoordinator?.restoreAndVerifySession()
         }
+        advancedFeaturesObserver = NotificationCenter.default.addObserver(
+            forName: AdvancedFeaturesSettings.didChangeNotification,
+            object: advancedFeaturesSettings,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.applyCapabilityPolicy() }
+        }
+        applyCapabilityPolicy()
     }
 
     func stop() {
         reviewPollingController.stop()
         todoPollingController.stop()
+        todoMutationController.cancelAll()
+        capabilityGeneration += 1
+        if let advancedFeaturesObserver {
+            NotificationCenter.default.removeObserver(advancedFeaturesObserver)
+            self.advancedFeaturesObserver = nil
+        }
         windowController.hide()
         menuBarController.uninstall()
     }
@@ -252,14 +276,37 @@ final class SceneCoordinator {
     func handleIncomingURL(_ url: URL) {
         Task { [weak self] in
             guard let self else { return }
+            guard advancedFeaturesSettings.isEnabled else { return }
             do {
                 let user = try await desktopLoginCoordinator.handleCallback(url)
-                await MainActor.run { windowController.applyAuthenticatedUser(user) }
+                await MainActor.run { self.windowController.applyAuthenticatedUser(user) }
             } catch DesktopLoginCallbackError.duplicate {
                 return
             } catch {
-                await MainActor.run { windowController.applyLoggedOutState() }
+                await MainActor.run { self.windowController.applyLoggedOutState() }
             }
+        }
+    }
+
+    private func applyCapabilityPolicy() {
+        capabilityGeneration += 1
+        let generation = capabilityGeneration
+        let policy = AdvancedCapabilityPolicy(advancedFeaturesEnabled: advancedFeaturesSettings.isEnabled)
+
+        guard policy.allowsProtectedStudyData else {
+            reviewPollingController.stop()
+            todoPollingController.stop()
+            todoMutationController.cancelAll()
+            settingsAccountState.apply(nil)
+            windowController.applyBasicCapabilityState()
+            return
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            _ = try? await authCoordinator.restoreAndVerifySession()
+            guard generation == capabilityGeneration,
+                  advancedFeaturesSettings.isEnabled else { return }
         }
     }
 }

@@ -1266,6 +1266,31 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     @MainActor
+    func applyBasicCapabilityState() {
+        var state = phase5PreviewStateContainer.domainState
+        let preservesMusicPresentation = state.primaryMode == .music
+        state.authState = .loggedOut
+        state.reviewSnapshot = nil
+        state.todoSnapshot = nil
+        state.mockSources.review = nil
+        state.mockSources.todo = nil
+        state.isGreetingActive = false
+        state.greetingText = nil
+        if preservesMusicPresentation == false {
+            state.primaryMode = .app
+            state.appDisplayMode = .review
+            state.presentationState = .collapsed
+            state.forceCompactMode = true
+            state.isHovered = false
+        }
+        applyPhase5PreviewUpdate(
+            phase5PreviewStateContainer.replaceDomainState(state),
+            using: nil,
+            allowLockScheduling: true
+        )
+    }
+
+    @MainActor
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot) {
         var state = phase5PreviewStateContainer.domainState
         guard state.authState == .loggedIn else { return }

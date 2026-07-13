@@ -24,10 +24,34 @@ enum SettingsAndMenuProbe {
         guard firstLaunch.isEnabled == false else {
             throw SettingsAndMenuProbeError.failed("Advanced Features did not default to disabled")
         }
+        var changeNotifications = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: AdvancedFeaturesSettings.didChangeNotification,
+            object: firstLaunch,
+            queue: nil
+        ) { _ in changeNotifications += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
         firstLaunch.setEnabled(true)
+        firstLaunch.setEnabled(true)
+        guard changeNotifications == 1 else {
+            throw SettingsAndMenuProbeError.failed("Advanced Features emitted duplicate lifecycle changes")
+        }
         let relaunched = AdvancedFeaturesSettings(store: UserDefaultsAdvancedFeaturesStore(defaults: defaults))
         guard relaunched.isEnabled else {
             throw SettingsAndMenuProbeError.failed("Advanced Features did not persist across relaunch")
+        }
+
+        let disabledPolicy = AdvancedCapabilityPolicy(advancedFeaturesEnabled: false)
+        let enabledPolicy = AdvancedCapabilityPolicy(advancedFeaturesEnabled: true)
+        guard disabledPolicy.allowsAuthentication == false,
+              disabledPolicy.allowsProtectedStudyData == false,
+              disabledPolicy.allowsMusic,
+              disabledPolicy.allowsUpdates,
+              enabledPolicy.allowsAuthentication,
+              enabledPolicy.allowsProtectedStudyData,
+              enabledPolicy.allowsMusic,
+              enabledPolicy.allowsUpdates else {
+            throw SettingsAndMenuProbeError.failed("Basic and Advanced capability boundaries are incorrect")
         }
 
         let user = AuthenticatedUser(
@@ -65,7 +89,7 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Status menu removal changed an unrelated command: \(titles)")
         }
 
-        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
     }
 }
 

@@ -25,7 +25,7 @@
       "Relaunch through disabled, enabled-logged-out, and enabled-logged-in configurations and record deterministic lifecycle evidence."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-login-required-square",

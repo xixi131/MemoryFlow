@@ -54,6 +54,17 @@ protocol AdvancedFeaturesPersisting: AnyObject {
     func saveAdvancedFeaturesEnabled(_ isEnabled: Bool)
 }
 
+final class InMemoryAdvancedFeaturesStore: AdvancedFeaturesPersisting {
+    private var isEnabled: Bool
+
+    init(isEnabled: Bool = false) {
+        self.isEnabled = isEnabled
+    }
+
+    func loadAdvancedFeaturesEnabled() -> Bool { isEnabled }
+    func saveAdvancedFeaturesEnabled(_ isEnabled: Bool) { self.isEnabled = isEnabled }
+}
+
 final class UserDefaultsAdvancedFeaturesStore: AdvancedFeaturesPersisting {
     static let key = "com.memoryflow.island.settings.advancedFeaturesEnabled"
 
@@ -73,6 +84,8 @@ final class UserDefaultsAdvancedFeaturesStore: AdvancedFeaturesPersisting {
 }
 
 final class AdvancedFeaturesSettings: ObservableObject {
+    static let didChangeNotification = Notification.Name("com.memoryflow.island.settings.advancedFeaturesDidChange")
+
     @Published private(set) var isEnabled: Bool
     private let store: AdvancedFeaturesPersisting
 
@@ -85,7 +98,17 @@ final class AdvancedFeaturesSettings: ObservableObject {
         guard self.isEnabled != isEnabled else { return }
         self.isEnabled = isEnabled
         store.saveAdvancedFeaturesEnabled(isEnabled)
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: self)
     }
+}
+
+struct AdvancedCapabilityPolicy: Equatable {
+    let advancedFeaturesEnabled: Bool
+
+    var allowsAuthentication: Bool { advancedFeaturesEnabled }
+    var allowsProtectedStudyData: Bool { advancedFeaturesEnabled }
+    var allowsMusic: Bool { true }
+    var allowsUpdates: Bool { true }
 }
 
 final class SettingsAccountState: ObservableObject {
