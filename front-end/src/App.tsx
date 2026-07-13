@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { Login } from './pages/Login';
@@ -25,8 +25,6 @@ import userApis from './api/userApis';
 import { resolveApiAssetUrl } from './utils/resolveApiAssetUrl';
 import { message } from './components/Message';
 import TyporaEditor from './components/TyporaEditor';
-import HomePage from './pages/HomePage';
-import DocsPage from './pages/DocsPage';
 import TodoPage from './pages/TodoPage';
 
 import DynamicIslandWidget from './components/DynamicIslandWidget';
@@ -37,6 +35,15 @@ import { useSettingsStore } from './store/useSettingsStore';
 import { useSubjectStore } from './store/useSubjectStore';
 
 import { BackgroundGlow } from './components/BackgroundGlow';
+
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DocsPage = lazy(() => import('./pages/DocsPage'));
+
+const MarketingPageFallback: React.FC = () => (
+    <div className="mf-shell mf-grid flex min-h-screen items-center justify-center px-6">
+        <div className="mf-glass rounded-[28px] px-6 py-4 text-sm font-medium text-slate-200">Loading...</div>
+    </div>
+);
 
 // --- Page Components ---
 const ArticleInlineEditor: React.FC<{
@@ -116,7 +123,7 @@ const ArticleInlineEditor: React.FC<{
                             : 'text-slate-400'
                     }
                 >
-                    {status === 'saving'
+                                        {status === 'saving'
                         ? '自动保存中...'
                         : status === 'saved'
                         ? '已保存'
@@ -141,21 +148,18 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
     return (
         <>
             <section className="flex flex-col gap-4 px-2">
-                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-1">
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug pb-[0.18em]">
-                        {/* Use greeting if available, else default */}
-                        {summary ? (
-                            <span dangerouslySetInnerHTML={{ __html: summary.greeting.replace('你好，', '你好，<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-primary dark:from-blue-200 dark:to-primary">').replace('同学', '同学</span>') }}></span>
-                        ) : (
-                            <>你好，<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-primary dark:from-blue-200 dark:to-primary">同学</span></>
-                        )}
+                        {summary?.greeting || '你好，同学'}
                     </h1>
-                    <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">Keep the flow going. 保持专注，未来可期。</p>
+                    <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">
+                        Keep the flow going. 保持专注，未来可期。
+                    </p>
                 </div>
                 <div className="flex flex-wrap gap-4 mt-2">
                     {[
-                        { icon: 'priority_high', label: `待复习: ${summary ? summary.pendingReviewCount : '-'}`, color: 'text-accent-coral', bg: 'bg-accent-coral/20' },
-                        { icon: 'check_circle', label: `已完成: ${summary ? summary.completedReviewCount : '-'}`, color: 'text-accent-green', bg: 'bg-accent-green/20' },
+                        { icon: 'priority_high', label: `待复习 ${summary ? summary.pendingReviewCount : '-'}`, color: 'text-accent-coral', bg: 'bg-accent-coral/20' },
+                        { icon: 'check_circle', label: `已完成 ${summary ? summary.completedReviewCount : '-'}`, color: 'text-accent-green', bg: 'bg-accent-green/20' },
                         // Removed Focus Time as requested
                     ].map((chip, idx) => (
                         <div key={idx} className="flex items-center gap-3 pl-3 pr-5 py-2 rounded-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-inner-light transition-colors">
@@ -226,7 +230,7 @@ const Dashboard: React.FC<{ setView: (v: string) => void; onOpenAddGoal: () => v
                         </div>
 
                     <span className="text-lg font-bold text-slate-500 dark:text-text-secondary group-hover:text-primary dark:group-hover:text-white transition-colors">新建目标</span>
-                    <span className="text-sm text-slate-400 dark:text-text-secondary/60 mt-1">开启新的学习旅程</span>
+                    <span className="mt-1 text-sm text-slate-400 dark:text-text-secondary/60">开启新的学习旅程</span>
                 </button>
             </div>
         </section>
@@ -261,7 +265,7 @@ const GoalDetail: React.FC<{
     <div className="flex flex-col gap-10 w-full">
         {/* Breadcrumb */}
         <div className="flex flex-wrap items-center gap-2 text-sm font-medium px-2 min-w-0">
-            <button className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors" onClick={() => setView('dashboard')}>首页</button>
+            <button className="text-slate-500 dark:text-text-secondary hover:text-primary dark:hover:text-white transition-colors" onClick={() => setView('dashboard')}>棣栭〉</button>
             <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
             <span className="text-slate-900 dark:text-white">Goals</span>
              <span className="text-slate-300 dark:text-text-secondary/40 material-symbols-outlined text-base">chevron_right</span>
@@ -304,7 +308,7 @@ const GoalDetail: React.FC<{
             <div className="flex items-center justify-between px-2">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">library_books</span>
-                    科目 Subjects
+                    绉戠洰 Subjects
                 </h2>
             </div>
             {subjects.length === 0 ? (
@@ -321,15 +325,16 @@ const GoalDetail: React.FC<{
                                 <span className="material-symbols-outlined text-2xl">{subject.icon || theme.icon}</span>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{subject.title}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold ${theme.colorClass} uppercase tracking-wider`}>
-                                        {subject.status === 'Due Today' ? 'Review Today' : `${subject.completedTasks || 0} / ${subject.totalTasks || 0} Tasks`}
-                                    </span>
-                                </div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{subject.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-text-secondary">任务进度 {subject.completedTasks}/{subject.totalTasks}</p>
                             </div>
                         </div>
                         
+
+
+
+
+
                         <div className="flex items-center flex-1 justify-end">
                             {/* Progress Bar */}
                             <div className="hidden sm:flex flex-col gap-1 w-32 md:w-48 mr-32 transition-all duration-300 group-hover:opacity-80">
@@ -912,22 +917,22 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     // but the logic "showReviewCompleted = !showReviewReminder && reviewedTodayPoints.length > 0" handles priority.
                     // However, we need to ensure reviewedTodayPoints includes points that were reviewed today EVEN IF they are not pending.
                     // The issue "even if checked, Reviewed still shows" -> Wait, user says "Reviewed still shows" -> that's correct behavior for "Reviewed" state.
-                    // User says: "即使已经勾选了复习，在今天这个复习时间中Reviewed还是一直显示着"
+                    // User says: "鍗充娇宸茬粡鍕鹃€変簡澶嶄範锛屽湪浠婂ぉ杩欎釜澶嶄範鏃堕棿涓璕eviewed杩樻槸涓€鐩存樉绀虹潃"
                     // If user means "It should disappear", that's one thing.
                     // If user means "It shows 'Reviewed' correctly", that's good.
-                    // User phrasing: "Review和Reviewed... 即使已经勾选了复习... Reviewed还是一直显示着"
+                    // User phrasing: "Review鍜孯eviewed... 鍗充娇宸茬粡鍕鹃€変簡澶嶄範... Reviewed杩樻槸涓€鐩存樉绀虹潃"
                     // It seems the user implies this is a PROBLEM. Maybe they want it to disappear after some time?
                     // Or maybe they mean "The 'Review' (red) badge still shows"? 
-                    // No, "Reviewed还是一直显示着" means the GREY badge.
+                    // No, "Reviewed杩樻槸涓€鐩存樉绀虹潃" means the GREY badge.
                     // Usually "Reviewed" badge is good feedback. 
                     // UNLESS the user wants it to vanish? 
-                    // Let's re-read: "Review提示要和今日聚焦的状态同步... 即使已经勾选了复习... Reviewed还是一直显示着"
+                    // Let's re-read: "Review鎻愮ず瑕佸拰浠婃棩鑱氱劍鐨勭姸鎬佸悓姝?.. 鍗充娇宸茬粡鍕鹃€変簡澶嶄範... Reviewed杩樻槸涓€鐩存樉绀虹潃"
                     // Maybe the user thinks "Reviewed" badge is clutter?
                     // But if it disappears, how do they UNDO it?
-                    // "点击了某个待复习的点... Review的状态就也要变为已经复习... 同样的点击了这个Review也同步要修改这个今日聚焦的状态"
+                    // "鐐瑰嚮浜嗘煇涓緟澶嶄範鐨勭偣... Review鐨勭姸鎬佸氨涔熻鍙樹负宸茬粡澶嶄範... 鍚屾牱鐨勭偣鍑讳簡杩欎釜Review涔熷悓姝ヨ淇敼杩欎釜浠婃棩鑱氱劍鐨勭姸鎬?
                     // So the GREY badge is the toggle for UNDO. It MUST exist.
                     // Perhaps the user means "The RED badge still shows"? 
-                    // "Review 和 Reviewed ... Reviewed 还是一直显示着" -> This sounds like they see the grey one.
+                    // "Review 鍜?Reviewed ... Reviewed 杩樻槸涓€鐩存樉绀虹潃" -> This sounds like they see the grey one.
                     // If the grey one is always there for ANY learned chapter, that's noise.
                     // It should ONLY show if there was a review task TODAY that was completed.
                     // My logic: `reviewedTodayPoints = ... p.lastReviewAt.startsWith(todayStr)`
@@ -935,7 +940,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     // So if I reviewed it yesterday, today it won't show "Reviewed", it will show nothing (until next review date).
                     // This seems correct.
                     // Maybe the user is reporting a bug where it doesn't update?
-                    // "改成进入页面就显示，不需要手动展开就可以显示" -> This was the main request.
+                    // "鏀规垚杩涘叆椤甸潰灏辨樉绀猴紝涓嶉渶瑕佹墜鍔ㄥ睍寮€灏卞彲浠ユ樉绀? -> This was the main request.
                     // I will focus on fixing the "Entering page shows badges immediately" issue first (Backend change).
                     
                     const reviewedTodayPoints = chapter.children?.filter((p: any) => p.isLearned && p.lastReviewAt && p.lastReviewAt.startsWith(todayStr)) || [];
@@ -968,7 +973,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                 : 'bg-slate-100 text-slate-400 border border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5 grayscale opacity-70'
                                             }`}
                                             onClick={(e) => handleChapterReview(String(chapter.id), pendingPoints, reviewedTodayPoints, e)}
-                                            title={showReviewReminder ? "今日待复习 (Click to Complete)" : "今日复习已完成 (Click to Undo)"}
+                                            title={showReviewReminder ? '今日待复习 (Click to Complete)' : '今日复习已完成 (Click to Undo)'}
                                         >
                                             <span className="material-symbols-outlined text-[16px]">
                                                 {showReviewReminder ? 'notifications_active' : 'check_circle'}
@@ -1264,7 +1269,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
             await updateSettings({ [key]: value });
         } catch (error) {
             console.error("Failed to update setting", key, error);
-            message.error("设置更新失败");
+            message.error('设置更新失败');
         }
     };
 
@@ -1290,7 +1295,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                             <div className={`relative flex flex-col h-full bg-[#0F172A] border-2 ${settings.theme === 'dark' ? 'border-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl p-4 transition-all hover:scale-[1.01] overflow-hidden`}>
                                 <div className="flex justify-between items-center px-2 py-4">
                                     <div>
-                                        <p className="text-white text-lg font-bold">深邃蓝</p>
+                                        <p className="text-white text-lg font-bold">深邃夜幕</p>
                                         <p className="text-slate-400 text-sm">沉浸式夜间学习</p>
                                     </div>
                                     <div className={`size-6 rounded-full ${settings.theme === 'dark' ? 'bg-primary' : 'bg-slate-800'} flex items-center justify-center transition-colors`}>
@@ -1306,7 +1311,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                             <div className={`relative flex flex-col h-full bg-slate-50 border-2 ${settings.theme === 'light' ? 'border-primary' : 'border-slate-200 dark:border-white/10'} rounded-3xl p-4 transition-all hover:scale-[1.01] overflow-hidden`}>
                                 <div className="flex justify-between items-center px-2 py-4">
                                     <div>
-                                        <p className="text-slate-900 text-lg font-bold">明亮白</p>
+                                        <p className="text-slate-900 text-lg font-bold">明亮白昼</p>
                                         <p className="text-slate-500 text-sm">高对比度日间模式</p>
                                     </div>
                                     <div className={`size-6 rounded-full ${settings.theme === 'light' ? 'bg-primary' : 'bg-slate-200'} flex items-center justify-center transition-colors`}>
@@ -1341,7 +1346,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                 />
                                 <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-text-secondary pointer-events-none group-hover:text-primary transition-colors">flag</span>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-text-secondary pl-1">推荐: 20-50词/天</p>
+                            <p className="text-xs text-slate-500 dark:text-text-secondary pl-1">推荐: 20-50 词/天</p>
                         </div>
 
                         {/* Time */}
@@ -1467,9 +1472,9 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                     const diff = new Date().getTime() - new Date(settings.lastSyncAt).getTime();
                                     const mins = Math.floor(diff / 60000);
                                     if (mins < 1) return '刚刚已同步';
-                                    if (mins < 60) return `已同步 (${mins}分钟前)`;
+                                    if (mins < 60) return `已同步（${mins} 分钟前）`;
                                     const hours = Math.floor(mins / 60);
-                                    if (hours < 24) return `已同步 (${hours}小时前)`;
+                                    if (hours < 24) return `已同步（${hours} 小时前）`;
                                     return `上次同步: ${new Date(settings.lastSyncAt).toLocaleDateString()}`;
                                 })() : '尚未同步'}
                              </p>
@@ -1478,11 +1483,11 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                      <div className="flex gap-3">
                         <button className="px-6 py-3 rounded-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-900 dark:text-white text-sm font-bold transition-all flex items-center gap-2">
                              <span className="material-symbols-outlined text-[18px]">download</span>
-                             导出数据
+                                导出数据
                         </button>
                          <button className="px-6 py-3 rounded-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 hover:border-red-500/50 hover:text-red-400 text-slate-500 dark:text-text-secondary text-sm font-bold transition-all flex items-center gap-2">
                              <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-                             清除缓存
+                                清除缓存
                         </button>
                     </div>
                 </div>
@@ -1558,10 +1563,10 @@ const Calendar: React.FC = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-baseline gap-3">
-                            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-[-0.03em]">{year}年 <span className="text-slate-400 dark:text-gray-500 font-light">{month}月</span></h1>
-                            <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider border border-primary/20">Learning Mode</span>
-                        </div>
+                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug pb-[0.18em]">学习日历</h1>
+                        <p className="text-slate-500 dark:text-text-secondary text-lg font-medium">回顾每天的学习轨迹与完成情况。</p>
+                    </div>
+                    <div className="flex flex-col items-start md:items-end gap-1">
                         <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal flex items-center gap-2 mt-1">
                             <span className="material-symbols-outlined text-[18px] text-accent-green">check_circle</span>
                             本月已完成 {totalPoints} 个学习单元，保持良好势头！
@@ -1727,7 +1732,7 @@ const Calendar: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3 bg-slate-100 dark:bg-[#0d1117]/50 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5">
                         <div className="size-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(58,127,241,0.8)]"></div>
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">今日 (Today)</span>
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">今天 (Today)</span>
                     </div>
                     <div className="flex items-center gap-3 bg-slate-100 dark:bg-[#0d1117]/50 px-4 py-2 rounded-full border border-slate-200 dark:border-white/5">
                         <div className="size-2.5 rounded-full bg-accent-coral shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
@@ -1949,7 +1954,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                      {/* 1. Context Card (Selected Course Data) */}
                     <div className="glass-panel px-5 py-3 rounded-full flex items-center gap-4 mb-10 shadow-lg animate-modal">
                         <div className={`size-8 rounded-full bg-gradient-to-br ${courses.find(c => c.name === selectedTarget) ? getColorClasses(courses.find(c => c.name === selectedTarget)!.colorTheme).wizardGradient : 'from-blue-400 to-blue-600'} flex items-center justify-center shadow-lg text-white`}>
-                            {/* 显示选定课程的图标，默认为 school */}
+                            {/* 鏄剧ず閫夊畾璇剧▼鐨勫浘鏍囷紝榛樿涓?school */}
                             <span className="material-symbols-outlined text-sm font-bold">
                                 {courses.find(c => c.name === selectedTarget)?.icon || 'school'}
                             </span>
@@ -1957,7 +1962,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2">
                             <span className="text-slate-900 dark:text-white font-bold text-sm tracking-wide">{selectedTarget}</span>
                             <span className="hidden sm:block text-slate-400 dark:text-slate-500 text-xs">•</span>
-                            {/* 显示选定课程的总词汇量 */}
+                            {/* 鏄剧ず閫夊畾璇剧▼鐨勬€昏瘝姹囬噺 */}
                             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">
                                 {courses.find(c => c.name === selectedTarget)?.wordCount?.toLocaleString() || '3,500'} Words Total
                             </span>
@@ -1990,7 +1995,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                                 value={pace} 
                                 onChange={(e) => {
                                     setPace(Number(e.target.value));
-                                    // 自动建议：当用户手动调整较高时，自动提示是否切换到Cram模式
+                                    // 鑷姩寤鸿锛氬綋鐢ㄦ埛鎵嬪姩璋冩暣杈冮珮鏃讹紝鑷姩鎻愮ず鏄惁鍒囨崲鍒癈ram妯″紡
                                     if (Number(e.target.value) >= 70 && intensity !== 'Cram') {
                                         setIntensity('Cram');
                                     } else if (Number(e.target.value) < 50 && intensity === 'Cram') {
@@ -2145,7 +2150,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                                     </div>
                                     <div className="mt-auto">
                                         <h3 className={`text-2xl font-bold text-slate-900 dark:text-white mb-1 ${colors.hoverText} transition-colors`}>{course.name}</h3>
-                                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{(course as any).totalWords || (course as any).wordCount} Words • {course.description ? course.description.split('-')[0].trim() : 'General'}</p>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">{(course as any).totalWords || (course as any).wordCount} Words 鈥?{course.description ? course.description.split('-')[0].trim() : 'General'}</p>
                                         <button className={`w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 ${colors.btnHover} text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 ${colors.btnBorder} transition-all duration-300 flex items-center justify-center gap-2`}>
                                             Start Course
                                             <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -2155,94 +2160,6 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                             </div>
                         );
                     })}
-                    {/* Old static cards hidden or removed */}
-                    <div className="hidden">
-                    {/* Card 1: IELTS - partially replaced */}
-                    <div onClick={() => handleSelectTarget('IELTS Core Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        {/* Hover Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-[#256af4]/20 flex items-center justify-center text-[#256af4] group-hover:bg-[#256af4] group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">school</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Academic</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-[#256af4] transition-colors">IELTS Core Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">4,000 Words • Essential</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-[#256af4] dark:hover:bg-[#256af4] text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-[#256af4] transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 2: TOEFL */}
-                    <div onClick={() => handleSelectTarget('TOEFL iBT Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">public</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Global</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">TOEFL iBT Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">5,000 Words • Advanced</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-indigo-600 dark:hover:border-indigo-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 3: GRE */}
-                    <div onClick={() => handleSelectTarget('GRE High-Frequency Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-500 dark:text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">menu_book</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Hard</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-rose-500 dark:group-hover:text-rose-400 transition-colors">GRE High-Frequency Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">High Difficulty • Verbal</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-rose-600 dark:hover:bg-rose-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-rose-600 dark:hover:border-rose-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 4: CET-4/6 */}
-                    <div onClick={() => handleSelectTarget('CET-4 Vocabulary')} className="group relative p-6 rounded-[2rem] overflow-hidden flex flex-col gap-6 transition-all duration-300 hover:shadow-[0_0_40px_rgba(37,106,244,0.3)] hover:border-[#256af4]/60 hover:-translate-y-2 cursor-pointer bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-white/10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#256af4]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2rem]"></div>
-                        <div className="relative z-10 flex flex-col h-full">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="size-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
-                                    <span className="material-symbols-outlined text-2xl">workspace_premium</span>
-                                </div>
-                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10">Exam Prep</span>
-                            </div>
-                            <div className="mt-auto">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">CET-4 Vocabulary</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">College English Test</p>
-                                <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-emerald-600 dark:hover:bg-emerald-600 text-slate-900 dark:text-white hover:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:border-emerald-600 dark:hover:border-emerald-600 transition-all duration-300 flex items-center justify-center gap-2">
-                                    Start Course
-                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    </div> {/* Close hidden div */}
                 </div>
             </div>
         </div>
@@ -2328,13 +2245,13 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
             const res: any = await userApis.uploadAvatar(file);
             if (res.url) {
                  setAvatarUrl(resolveApiAssetUrl(res.url));
-                 message.success('头像上传成功');
+                  message.success('头像上传成功');
             } else {
-                 message.error('上传失败');
+                  message.error('上传失败');
             }
         } catch (error) {
             console.error(error);
-            message.error('上传出错');
+              message.error('上传出错');
         }
     };
 
@@ -2348,11 +2265,11 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
                 message.success(`验证码已发送至 ${user.email}`);
                 setCountdown(60);
             } else {
-                message.error(res.message || "发送失败");
+                message.error(res.message || '发送失败');
             }
         } catch (e) {
             console.error(e);
-            message.error("发送失败，请稍后重试");
+            message.error('发送失败，请稍后重试');
         } finally {
             setSendingCode(false);
         }
@@ -2360,7 +2277,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
 
     const handleChangeEmail = async () => {
         if (!emailCode || !newEmail) {
-            return message.warning("请填写完整信息");
+            return message.warning('请填写完整信息');
         }
         try {
             const res = await authService.changeEmail({ code: emailCode, newEmail });
@@ -2571,7 +2488,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                     </a>
                      <button onClick={() => { logout(); setView('login'); }} className="w-full py-3 rounded-xl border border-red-500/20 text-red-500 font-bold hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
                         <span className="material-symbols-outlined">logout</span>
-                        退出登录
+                                退出登录
                     </button>
                  </div>
             </div>
@@ -2623,6 +2540,7 @@ const App: React.FC = () => {
     };
 
     const { view, goalId: selectedGoalId, subjectId: selectedSubjectId } = getViewFromPath(location.pathname);
+    const publicMarketingView = view === 'homepage' || view === 'docs';
 
     // State
     const { addGoal, deleteGoal, addSubject, deleteSubject } = useGoalStore();
@@ -2669,7 +2587,7 @@ const App: React.FC = () => {
              if (view === 'admin') {
                  // If user data is loaded and not admin, redirect
                  if (user && user.role !== 'ADMIN' && user.email !== 'admin@gmail.com') {
-                     message.error("无权访问管理后台");
+                     message.error('无权访问管理后台');
                      navigate('/');
                  }
              } else {
@@ -2688,7 +2606,7 @@ const App: React.FC = () => {
     // useEffect(() => {
     //     if (view === 'admin' && user) {
     //          if (user.role !== 'ADMIN') {
-    //              message.error("无权访问管理后台");
+    //              message.error("鏃犳潈璁块棶绠＄悊鍚庡彴");
     //              navigate('/');
     //          }
     //     }
@@ -2706,7 +2624,7 @@ const App: React.FC = () => {
             }
 
             navigate('/login');
-            message.error("会话已过期，请重新登录");
+            message.error('会话已过期，请重新登录');
         };
 
         window.addEventListener('auth:logout', handleAuthLogout);
@@ -2845,10 +2763,16 @@ const App: React.FC = () => {
 
     return (
         <div 
-            className={view === 'widget' ? 'bg-transparent h-fit flex justify-center items-start pt-0 pointer-events-none' : 'bg-slate-50 dark:bg-background-dark text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-hidden z-0'}
+            className={
+                view === 'widget'
+                    ? 'bg-transparent h-fit flex justify-center items-start pt-0 pointer-events-none'
+                    : publicMarketingView
+                    ? 'bg-transparent text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-x-hidden z-0'
+                    : 'bg-slate-50 dark:bg-background-dark text-slate-900 dark:text-white min-h-screen selection:bg-primary selection:text-white transition-colors duration-500 relative overflow-hidden z-0'
+            }
             style={view === 'widget' ? { background: 'transparent', backgroundColor: 'transparent' } : {}}
         >
-            {view !== 'widget' && <BackgroundGlow />}
+            {!publicMarketingView && view !== 'widget' && <BackgroundGlow />}
             <MessageContainer />
             {view === 'widget' ? (
                 <DynamicIslandWidget />
@@ -2861,9 +2785,13 @@ const App: React.FC = () => {
             ) : view === 'security-check' ? (
                 <SecurityCheck />
             ) : view === 'homepage' ? (
-                <HomePage />
+                <Suspense fallback={<MarketingPageFallback />}>
+                    <HomePage />
+                </Suspense>
             ) : view === 'docs' ? (
-                <DocsPage />
+                <Suspense fallback={<MarketingPageFallback />}>
+                    <DocsPage />
+                </Suspense>
             ) : view === 'admin' ? (
                 <AdminDashboard />
             ) : (
@@ -2922,3 +2850,15 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+

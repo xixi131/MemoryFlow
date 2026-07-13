@@ -1,301 +1,379 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowLeft, ArrowRight, ArrowUp, BookText, ExternalLink } from 'lucide-react';
+import { BrandMark } from '../components/web/BrandMark';
+import {
+  getDocSectionById,
+  PRODUCT_DOC_OVERVIEW,
+  PRODUCT_DOC_SECTIONS,
+  slugify,
+} from '../content/productDocs';
 
-interface DocSection {
-    id: string;
-    title: string;
-    content: string;
-}
+const DOC_UI = {
+  navTitle: '\u6587\u6863\u5bfc\u822a',
+  pageTitle: '\u672c\u9875\u76ee\u5f55',
+  backHome: '\u8fd4\u56de\u9996\u9875',
+  openWorkspace: '\u8fdb\u5165\u5de5\u4f5c\u53f0',
+  previous: '\u4e0a\u4e00\u8282',
+  next: '\u4e0b\u4e00\u8282',
+  noOutline: '\u672c\u8282\u6ca1\u6709\u66f4\u7ec6\u7684\u5c42\u7ea7\u6807\u9898\u3002',
+  note: '\u5f53\u524d\u6587\u6863\u8bf4\u660e\u8986\u76d6\u4ea7\u54c1\u5b9a\u4f4d\u3001\u6838\u5fc3\u529f\u80fd\u3001\u5b89\u88c5\u83b7\u53d6\u4e0e\u5e38\u89c1\u95ee\u9898\u3002',
+  chapterCount: (count: number) => `\u5171 ${count} \u4e2a\u7ae0\u8282`,
+  sectionCount: (current: number, total: number) => `Section ${current}/${total}`,
+};
 
-const docsData: DocSection[] = [
-    {
-        id: 'intro',
-        title: '1. 产品简介',
-        content: `
-## 1. 简介 (Introduction)
+const extractTextContent = (children: React.ReactNode): string => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return String(children);
+  }
 
-MemoryFlow 结合了**间隔重复系统 (SRS)** 与**桌面灵动岛 (Dynamic Island)** 交互设计，解决传统学习遗忘知识，无法系统学习的痛点。
+  if (Array.isArray(children)) {
+    return children.map((child) => extractTextContent(child)).join(' ');
+  }
 
-在学习的道路上，最让人沮丧的不是“学不会”，而是**“明明学过，却不记得了”**。我们都有过这样的时刻：想复习，却面对厚厚的笔记无从下手；不知道哪些知识点正在遗忘边缘，也不知道哪些其实已经掌握。最终，复习变成了盲目的重复，效率极低。
+  if (React.isValidElement(children)) {
+    return extractTextContent((children as React.ReactElement<{ children?: React.ReactNode }>).props.children);
+  }
 
-**MemoryFlow (记忆流)** 正是为此而生。它不是简单的笔记工具，而是你的**智能记忆管家**。它接管了“该复习什么”的决策过程——利用艾宾浩斯遗忘曲线算法，精确计算每一个知识点的最佳复习时间。
-
-你只管学，剩下的交给我们。MemoryFlow 会在最恰当的时刻，通过桌面灵动岛轻声提醒。**告别无序的焦虑，构建系统化的知识堡垒，让每一次复习都精准有效。**
-
-### 设计理念 (Design Philosophy)
-*   **Zero-Friction Review (无感复习)**：将复习任务碎片化嵌入桌面常驻组件，降低认知启动门槛。
-*   **Unified Experience (统一体验)**：在同一界面无缝切换“专注学习”与“休闲娱乐”状态。
-*   **Data-Driven (数据驱动)**：基于艾宾浩斯遗忘曲线算法，动态计算最佳复习时间点。
-`
-    },
-    {
-        id: 'features',
-        title: '2. 核心功能',
-        content: `
-## 2. 功能概览 (Features)
-
-### 2.1 桌面灵动岛 (Desktop Dynamic Island)
-
-常驻桌面的核心交互组件，采用极简主义设计，支持双模式自动切换。
-
-*   **应用模式 (App Mode)**：
-    
-    * **实时概览**：展示今日待复习项 (Pending Reviews) 与今日已完成项 (Completed Today)。
-    
-    * **交互逻辑**：支持鼠标手势点击自动展开 (Hover Expansion)  切换紧凑/完整视图。
-    
-      ![灵动岛应用模式](/灵动岛应用模式图片.png)
-    
-      ![灵动岛应用模式动画](/灵动岛应用模式动画.gif)
-    
-*   **音乐模式 (Music Mode)**：
-    
-    * **自动激活**：检测到系统媒体播放时自动接管显示。
-    
-    * **元数据同步**：实时获取专辑封面、曲名、艺术家信息。
-    
-    * **动态波纹**：内置音频可视化组件 (Waveform)，随音乐律动。
-    
-    * **双向控制**：支持通过 Widget 直接控制系统媒体（播放/暂停/切歌）。
-    
-      ![音乐模式](/灵动岛音乐模式图片.png)
-    
-      ![灵动岛音乐模式动画](/灵动岛音乐模式动画.gif)
-
-### 2.2 沉浸式音乐控制 (Immersive Music Control)
-
-基于 Windows 系统底层协议实现的媒体接管方案。
-
-*   **技术原理**：集成 \`Windows System Media Transport Controls (SMTC)\` 协议，通过 Electron Worker 线程实现非阻塞式监听。
-*   **平台兼容**：原生支持 Spotify、Apple Music、QQ音乐等主流遵循 SMTC 标准的播放器。
-*   **视觉增强**：自动提取专辑封面主色调 (Dominant Color Extraction)，实时渲染动态阴影与背景模糊效果。
-
-#### 兼容性说明 (Compatibility Note) - 网易云音乐用户必读
-由于网易云音乐 (NetEase Cloud Music) 官方客户端尚未原生支持 SMTC 协议，MemoryFlow 默认无法获取其**实时进度条同步**与**高分辨率封面**。
-*   **解决方案**：为获得完美体验，建议安装社区插件 \`BetterNCM\` 并启用 SMTC 桥接模块。
-*   **操作指南**：请参考技术博客 [让网易云支持 SMTC - 一叶舟记](https://blog.lonzov.top/posts/betterncm/) 完成配置。配置完成后，MemoryFlow 即可实现毫秒级进度同步与无损封面显示。
-
-![灵动岛音乐模式音乐控制动画](/灵动岛音乐模式音乐控制动画.gif)
-
-### 2.3 AI 驱动的知识架构 (AI-Powered Knowledge Architecture)
-
-利用 LLM (大型语言模型) 的推理能力，将非结构化知识一键转化为系统化的学习路径。
-
-*   **一键指令生成 (One-Click Prompting)**：
-    *   用户只需点击 **"AI 辅助生成"**，系统自动将复杂的结构化数据规范（JSON Schema）封装为优化的提示词 (Prompt) 并复制到剪贴板。
-*   **结构化解析引擎 (Structured Parsing Engine)**：
-    *   直接将 AI 生成的回复粘贴回系统，MemoryFlow 会自动进行语法树解析。
-    *   **自动分点规划**：自动将庞大的知识体系拆解为 \`Chapter\` (章节) 和 \`Key Point\` (知识点)，并自动规划学习进度条。
-*   **系统化学习 (Systematic Learning)**：
-    *   不仅是生成内容，更是生成**学习路径**。从宏观的科目大纲到微观的记忆卡片，AI 辅助构建完整的知识图谱，确保学习过程循序渐进，无遗漏。
-
-![AI 驱动的知识架构动画](/AI 驱动的知识架构动画.gif)
-
-### 2.4 英语单词掌握引擎 (Language Mastery Engine)
-
-专为语言学习者打造的深度记忆模块，融合权威词库与智能算法。
-
-*   **标准化词库集成 (Standardized Lexicon Integration)**：
-    *   内置 **CET-4/6 (四六级)**、**Postgraduate (考研)**、**TOEFL (托福)**、**IELTS (雅思)** 等权威标准化词库。
-    *   数据源经多重清洗，包含精准的释义、IPA 音标、原声发音及经典例句。
-*   **时空记忆回溯 (Temporal Memory Trace)**：
-    *   **时间轴查询**：支持通过日历视图（Calendar View）回溯任意日期的学习轨迹，精准定位“那一天背过的单词”。
-    *   **情境重现**：不仅仅是单词列表，系统能还原当时学习的上下文状态，帮助构建情境记忆。
-*   **算法级无感推送 (Algorithmic Frictionless Push)**：
-    *   **动态调度**：基于改进版艾宾浩斯遗忘曲线 (Ebbinghaus Forgetting Curve)，算法精确计算每个单词的“记忆半衰期”。
-    *   **无感介入**：无需用户手动安排复习计划。当单词即将滑入遗忘区时，系统会自动将其无缝注入到今日的复习队列中，实现“在遗忘发生前一秒将其挽回”。
-
-![英语模块背单词动画](/英语模块背单词动画.gif)
-
-![英语模块日历回溯动画](/英语模块日历回溯动画.gif)
-
-### 2.5 极致 UI 工程 (UI Engineering)
-
-*   **Squircle 渲染**：弃用标准圆角，采用数学优化的超椭圆 (Super-ellipse) 路径，实现 iOS 级平滑边角。
-*   **流体动画**：基于 Framer Motion 实现布局形变 (Layout Morphing)，确保组件尺寸变化时的物理真实感。
-`
-    },
-    {
-        id: 'install',
-        title: '3. 获取与安装',
-        content: `
-## 3. 获取与安装 (Access & Installation)
-
-鉴于服务器资源限制与测试阶段的稳定性考量，MemoryFlow 目前采用**邀请制 (Invite-only)** 分发。
-
-### 3.1 先决条件 (Prerequisites)
-*   **操作系统**：Windows 10 (Build 19041+) 或 Windows 11。
-*   **运行环境**：无需预装 Node.js 或 Java，安装包已内置所有依赖。
-
-### 3.2 注册流程 (Registration)
-1.  联系管理员获取**专属邀请链接 (Invitation Link)**。
-2.  访问注册页面，完成账户创建并通过 Cloudflare 安全验证。
-3.  *注意：未授权的注册请求将被系统自动拦截。*
-
-### 3.3 客户端下载 (Client Download)
-1.  登录 [MemoryFlow 管理后台](http://localhost:3000)。
-2.  导航至 **profile（用户）**。
-3.  点击 **Download for Windows** 获取最新版 \`.exe\` 安装程序。
-`
-    },
-    {
-        id: 'faq',
-        title: '4. 常见问题',
-        content: `
-## 4. 常见问题 (FAQ)
-
-**Q: 为什么我无法注册？**
-A: 目前仅开放邀请注册，请联系管理员获取邀请码。
-
-**Q: 是否支持 Mac 或 Linux？**
-A: 目前仅支持 Windows 平台，Mac 和 Linux 版本正在计划中。
-
-**Q: 数据是否会同步？**
-A: 是的，所有学习数据都会实时同步到云端。
-`
-    }
-];
+  return '';
+};
 
 export const DocsPage: React.FC = () => {
-    const [currentDocId, setCurrentDocId] = useState<string>(docsData[0].id);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const reducedMotion = useReducedMotion();
+  const [currentDocId, setCurrentDocId] = useState<string>(PRODUCT_DOC_SECTIONS[0]?.id ?? 'section-1');
+  const [activeHeadingId, setActiveHeadingId] = useState<string>('');
+  const [pendingHeadingId, setPendingHeadingId] = useState<string | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
-    // Find current doc index
-    const currentIndex = docsData.findIndex(doc => doc.id === currentDocId);
-    const currentDoc = docsData[currentIndex];
+  const currentSection = getDocSectionById(currentDocId);
+  const currentIndex = PRODUCT_DOC_SECTIONS.findIndex((section) => section.id === currentSection.id);
+  const previousSection = currentIndex > 0 ? PRODUCT_DOC_SECTIONS[currentIndex - 1] : null;
+  const nextSection = currentIndex < PRODUCT_DOC_SECTIONS.length - 1 ? PRODUCT_DOC_SECTIONS[currentIndex + 1] : null;
+  const outlineIds = useMemo(() => currentSection.outline.map((item) => item.id), [currentSection.outline]);
 
-    // Previous and Next docs
-    const prevDoc = currentIndex > 0 ? docsData[currentIndex - 1] : null;
-    const nextDoc = currentIndex < docsData.length - 1 ? docsData[currentIndex + 1] : null;
+  const handleDocChange = (id: string) => {
+    setCurrentDocId(id);
+    window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+  };
 
-    const handleDocChange = (id: string) => {
-        setCurrentDocId(id);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+  const scrollToHeading = (id: string) => {
+    const element = document.getElementById(id);
+    if (!element) {
+      return;
+    }
+
+    const top = element.getBoundingClientRect().top + window.scrollY - 112;
+    window.scrollTo({ top, behavior: reducedMotion ? 'auto' : 'smooth' });
+  };
+
+  const handleOutlineSelect = (sectionId: string, headingId: string) => {
+    setActiveHeadingId(headingId);
+
+    if (sectionId !== currentDocId) {
+      setPendingHeadingId(headingId);
+      setCurrentDocId(sectionId);
+      window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+      return;
+    }
+
+    scrollToHeading(headingId);
+  };
+
+  const handleBackToTop = () => {
+    window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+  };
+
+  useEffect(() => {
+    if (!pendingHeadingId) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      scrollToHeading(pendingHeadingId);
+      setPendingHeadingId(null);
+    }, reducedMotion ? 0 : 80);
+
+    return () => window.clearTimeout(timer);
+  }, [currentDocId, pendingHeadingId, reducedMotion]);
+
+  useEffect(() => {
+    setActiveHeadingId(currentSection.outline[0]?.id ?? '');
+  }, [currentSection.id, currentSection.outline]);
+
+  useEffect(() => {
+    const updateState = () => {
+      setShowBackToTop(window.scrollY > 420);
+
+      if (outlineIds.length === 0) {
+        setActiveHeadingId('');
+        return;
+      }
+
+      let nextActive = outlineIds[0];
+      outlineIds.forEach((id) => {
+        const element = document.getElementById(id);
+        if (!element) {
+          return;
+        }
+
+        if (element.getBoundingClientRect().top <= 160) {
+          nextActive = id;
+        }
+      });
+
+      setActiveHeadingId(nextActive);
     };
 
-    return (
-        <div className="flex min-h-screen bg-white dark:bg-slate-900 pt-16">
-            {/* Header */}
-            <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-50 flex items-center px-4 md:px-8 justify-between">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
-                         <img 
-                            src="/logo-memoryflow.png" 
-                            alt="MemoryFlow Logo" 
-                            className="h-8 w-auto object-contain"
-                         />
-                         <span className="text-xl font-bold tracking-tight">MemoryFlow Docs</span>
-                    </button>
-                </div>
-                <div className="flex items-center gap-4">
-                     <button onClick={() => navigate('/')} className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                        Back to Home
-                     </button>
-                </div>
-            </header>
+    updateState();
+    window.addEventListener('scroll', updateState, { passive: true });
+    return () => window.removeEventListener('scroll', updateState);
+  }, [outlineIds]);
 
-            {/* Sidebar */}
-            <aside className="w-64 fixed top-16 bottom-0 overflow-y-auto border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hidden md:block">
-                <nav className="p-4 space-y-1">
-                    {docsData.map((doc) => (
-                        <button
-                            key={doc.id}
-                            onClick={() => handleDocChange(doc.id)}
-                            className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors border-l-4 ${
-                                currentDocId === doc.id
-                                    ? 'bg-blue-50 text-blue-600 border-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                                    : 'text-slate-600 hover:bg-slate-100 border-transparent dark:text-slate-400 dark:hover:bg-slate-800'
-                            }`}
-                        >
-                            {doc.title}
-                        </button>
-                    ))}
-                </nav>
-            </aside>
+  useEffect(() => {
+    if (!activeHeadingId) {
+      return;
+    }
 
-            {/* Main Content */}
-            <main className="flex-1 md:ml-64 px-4 md:px-12 py-8 max-w-5xl mx-auto w-full">
-                <article className="prose prose-slate prose-lg dark:prose-invert max-w-none">
-                     <ReactMarkdown
-                        components={{
-                            img: ({node, ...props}) => (
-                                <span className="block my-4">
-                                    <img 
-                                        {...props} 
-                                        className="rounded-lg shadow-lg max-w-full border border-slate-200 dark:border-slate-700" 
-                                        alt={props.alt || ''}
-                                    />
-                                </span>
-                            ),
-                            h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-200 dark:border-slate-700" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-10 mb-4" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-200 mt-8 mb-3" {...props} />,
-                            p: ({node, ...props}) => <p className="text-slate-600 dark:text-slate-300 leading-7 mb-4" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc list-outside ml-6 text-slate-600 dark:text-slate-300 mb-4" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-2 pl-1" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic bg-blue-50 dark:bg-blue-900/20 py-2 pr-4 rounded my-4 text-slate-700 dark:text-slate-300" {...props} />,
-                            a: ({node, ...props}) => (
-                                <a 
-                                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium hover:underline transition-colors" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    {...props}
-                                >
-                                    {props.children}
-                                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                                </a>
-                            ),
-                            code: ({node, className, children, ...props}) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return !className ? (
-                                    <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-pink-600 dark:text-pink-400" {...props}>
-                                        {children}
-                                    </code>
-                                ) : (
-                                    <pre className="bg-slate-900 text-slate-50 p-4 rounded-lg overflow-x-auto mb-4">
-                                        <code className={className} {...props}>
-                                            {children}
-                                        </code>
-                                    </pre>
-                                )
-                            }
-                        }}
-                     >
-                        {currentDoc.content}
-                     </ReactMarkdown>
-                </article>
+    const anchors = document.querySelectorAll<HTMLElement>(`[data-doc-anchor="${activeHeadingId}"]`);
+    anchors.forEach((anchor) => {
+      anchor.scrollIntoView({ block: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
+    });
+  }, [activeHeadingId, reducedMotion]);
 
-                {/* Footer Navigation */}
-                <div className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between gap-4">
-                    {prevDoc ? (
-                        <button
-                            onClick={() => handleDocChange(prevDoc.id)}
-                            className="group flex flex-col p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all text-left w-full sm:w-1/2 bg-white dark:bg-slate-800"
-                        >
-                            <span className="text-sm text-slate-500 dark:text-slate-400 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400">← Previous</span>
-                            <span className="text-lg font-semibold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300">{prevDoc.title}</span>
-                        </button>
-                    ) : (
-                        <div className="hidden sm:block w-1/2" />
-                    )}
+  return (
+    <div className="mf-shell mf-grid min-h-screen overflow-x-hidden">
+      <div className="mf-mesh" aria-hidden="true" />
 
-                    {nextDoc ? (
-                        <button
-                            onClick={() => handleDocChange(nextDoc.id)}
-                            className="group flex flex-col items-end p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all text-right w-full sm:w-1/2 bg-white dark:bg-slate-800"
-                        >
-                            <span className="text-sm text-slate-500 dark:text-slate-400 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400">Next →</span>
-                            <span className="text-lg font-semibold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300">{nextDoc.title}</span>
-                        </button>
-                    ) : (
-                        <div className="hidden sm:block w-1/2" />
-                    )}
-                </div>
-            </main>
+      <header className="fixed inset-x-0 top-0 z-50 px-4 py-4 md:px-6">
+        <div className="mf-glass mx-auto flex max-w-[1600px] items-center justify-between rounded-2xl px-4 py-3 md:px-6">
+          <BrandMark subtitle="Product Docs" />
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white md:inline-flex"
+            >
+              {DOC_UI.backHome}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/home')}
+              className="mf-button-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all md:px-5"
+            >
+              {DOC_UI.openWorkspace}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-    );
+      </header>
+
+      <div className="hidden lg:block">
+        <aside className="fixed bottom-6 left-[max(1rem,calc(50%-800px+1rem))] top-24 z-30 w-[272px] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(7,11,23,0.55)] backdrop-blur-xl xl:w-[288px]">
+          <div className="h-full overflow-y-auto px-4 py-5">
+            <div className="px-3 pb-5">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Documentation</p>
+              <h2 className="mt-3 text-lg font-semibold text-white">{DOC_UI.navTitle}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{DOC_UI.chapterCount(PRODUCT_DOC_SECTIONS.length)}</p>
+            </div>
+
+            <nav className="space-y-1 pb-8">
+              {PRODUCT_DOC_SECTIONS.map((section) => {
+                const active = currentDocId === section.id;
+                return (
+                  <div key={section.id} className="px-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDocChange(section.id)}
+                      className={[
+                        'w-full rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition-colors',
+                        active
+                          ? 'bg-cyan-300/10 text-white'
+                          : 'text-slate-400 hover:bg-white/5 hover:text-white',
+                      ].join(' ')}
+                    >
+                      {section.rawTitle}
+                    </button>
+
+                    {active && section.outline.length > 0 ? (
+                      <div className="mt-2 ml-3 border-l border-white/10 pl-3">
+                        {section.outline.map((item) => {
+                          const outlineActive = activeHeadingId === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              data-doc-anchor={item.id}
+                              onClick={() => handleOutlineSelect(section.id, item.id)}
+                              className={[
+                                'block w-full rounded-xl px-3 py-2 text-left text-sm leading-6 transition-colors',
+                                outlineActive
+                                  ? 'bg-white/6 text-cyan-100'
+                                  : 'text-slate-500 hover:bg-white/5 hover:text-cyan-100',
+                              ].join(' ')}
+                            >
+                              {item.title}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+      </div>
+
+
+      <main className="relative z-10 mx-auto w-full max-w-[1600px] px-4 pb-20 pt-24 md:px-6 lg:pl-[316px] xl:pl-[324px] 2xl:pl-[336px]">
+        <section className="mx-auto max-w-4xl min-w-0">
+          <div className="overflow-x-auto border-b border-white/8 pb-4 lg:hidden">
+            <div className="flex min-w-max gap-2">
+              {PRODUCT_DOC_SECTIONS.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => handleDocChange(section.id)}
+                  className={[
+                    'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    currentDocId === section.id
+                      ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white',
+                  ].join(' ')}
+                >
+                  {section.rawTitle}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-b border-white/8 pb-8 pt-2 lg:pt-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">
+              <BookText className="h-3.5 w-3.5" />
+              {DOC_UI.sectionCount(currentIndex + 1, PRODUCT_DOC_SECTIONS.length)}
+            </div>
+            <h1 className="mt-5 text-4xl font-semibold tracking-[-0.07em] text-white md:text-5xl">{currentSection.rawTitle}</h1>
+            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-300">{currentSection.summary}</p>
+            <div className="mt-6 rounded-xl border border-white/8 bg-white/[0.03] px-5 py-4 text-sm leading-7 text-slate-400">
+              {DOC_UI.note}
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.article
+              key={currentSection.id}
+              initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? { opacity: 1 } : { opacity: 0, y: -12 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="mf-doc-prose max-w-none py-8"
+            >
+              <ReactMarkdown
+                components={{
+                  h1: ({ children, ...props }) => {
+                    const id = slugify(extractTextContent(children));
+                    return (
+                      <h1 id={id} {...props}>
+                        {children}
+                      </h1>
+                    );
+                  },
+                  h2: ({ children, ...props }) => {
+                    const id = slugify(extractTextContent(children));
+                    return (
+                      <h2 id={id} {...props}>
+                        {children}
+                      </h2>
+                    );
+                  },
+                  h3: ({ children, ...props }) => {
+                    const id = slugify(extractTextContent(children));
+                    return (
+                      <h3 id={id} {...props}>
+                        {children}
+                      </h3>
+                    );
+                  },
+                  img: ({ alt, ...props }) => (
+                    <figure>
+                      <img {...props} alt={alt ?? ''} loading="lazy" decoding="async" />
+                      {alt ? <figcaption>{alt}</figcaption> : null}
+                    </figure>
+                  ),
+                  a: ({ href, children, ...props }) => {
+                    const external = typeof href === 'string' && /^https?:\/\//.test(href);
+                    return (
+                      <a
+                        href={href}
+                        {...props}
+                        target={external ? '_blank' : undefined}
+                        rel={external ? 'noopener noreferrer' : undefined}
+                        className="inline-flex items-center gap-1"
+                      >
+                        {children}
+                        {external ? <ExternalLink className="h-3.5 w-3.5" /> : null}
+                      </a>
+                    );
+                  },
+                }}
+              >
+                {currentSection.content}
+              </ReactMarkdown>
+            </motion.article>
+          </AnimatePresence>
+
+          <div className="mt-4 grid gap-4 border-t border-white/8 pt-8 md:grid-cols-2">
+            {previousSection ? (
+              <button
+                type="button"
+                onClick={() => handleDocChange(previousSection.id)}
+                className="rounded-xl border border-white/8 bg-white/[0.03] p-5 text-left transition-colors hover:bg-white/[0.05]"
+              >
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <ArrowLeft className="h-4 w-4" />
+                  {DOC_UI.previous}
+                </span>
+                <span className="mt-3 block text-lg font-semibold text-white">{previousSection.rawTitle}</span>
+              </button>
+            ) : (
+              <div className="hidden md:block" />
+            )}
+
+            {nextSection ? (
+              <button
+                type="button"
+                onClick={() => handleDocChange(nextSection.id)}
+                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5 text-left transition-colors hover:bg-white/[0.05] md:text-right"
+              >
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 md:ml-auto">
+                  {DOC_UI.next}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+                <span className="mt-3 block text-lg font-semibold text-white">{nextSection.rawTitle}</span>
+              </button>
+            ) : null}
+          </div>
+        </section>
+      </main>
+
+      <motion.button
+        type="button"
+        onClick={handleBackToTop}
+        initial={false}
+        animate={{ opacity: showBackToTop ? 1 : 0, y: showBackToTop ? 0 : 14 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        className="mf-glass fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full text-slate-200 transition-colors hover:text-white"
+        style={{ pointerEvents: showBackToTop ? 'auto' : 'none' }}
+        aria-label="Back to top"
+      >
+        <ArrowUp className="h-5 w-5" />
+      </motion.button>
+    </div>
+  );
 };
 
 export default DocsPage;

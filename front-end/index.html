@@ -91,19 +91,19 @@
         0% { opacity: 0; transform: scale(0.95) translateY(10px); }
         100% { opacity: 1; transform: scale(1) translateY(0); }
       }
-      /* 灵动岛弹性收缩动画：先缩小到比目标更小，再回弹 */
+      /* 鐏靛姩宀涘脊鎬ф敹缂╁姩鐢伙細鍏堢缉灏忓埌姣旂洰鏍囨洿灏忥紝鍐嶅洖寮?*/
       @keyframes squish-in {
         0% { transform: scale(1); }
-        60% { transform: scale(0.85); } /* 收缩得更明显一点 */
-        80% { transform: scale(1.02); } /* 轻微反弹 */
+        60% { transform: scale(0.85); } /* 鏀剁缉寰楁洿鏄庢樉涓€鐐?*/
+        80% { transform: scale(1.02); } /* 杞诲井鍙嶅脊 */
         100% { transform: scale(1); }
       }
-      /* 灵动岛弹性展开动画：展开过程 -> 变大(Overshoot) -> 变小(Undershoot) -> 恢复 */
+      /* 鐏靛姩宀涘脊鎬у睍寮€鍔ㄧ敾锛氬睍寮€杩囩▼ -> 鍙樺ぇ(Overshoot) -> 鍙樺皬(Undershoot) -> 鎭㈠ */
       @keyframes squish-out {
         0% { transform: scale(1); }
-        50% { transform: scale(1.05); } /* 变大 */
-        75% { transform: scale(0.96); } /* 变小 */
-        100% { transform: scale(1); }   /* 恢复 */
+        50% { transform: scale(1.05); } /* 鍙樺ぇ */
+        75% { transform: scale(0.96); } /* 鍙樺皬 */
+        100% { transform: scale(1); }   /* 鎭㈠ */
       }
       .animate-squish-in {
         animation: squish-in 1s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -122,10 +122,11 @@
       }
     </style>
 
-<link rel="stylesheet" href="/index.css">
+
 </head>
   <body class="">
     <div id="root"></div>
   <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>
+
