@@ -43,5 +43,9 @@
 	<string>MemoryFlow Island needs access to Apple Music playback so the island can show the current song and control playback.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>$(MEMORYFLOW_UPDATE_FEED_URL)</string>
+	<key>SUPublicEDKey</key>
+	<string>$(MEMORYFLOW_UPDATE_PUBLIC_ED_KEY)</string>
 </dict>
 </plist>

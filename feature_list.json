@@ -53,7 +53,7 @@
       "Run coordinator probes, the native build, and the full Swift source typecheck."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-update-check-policy",

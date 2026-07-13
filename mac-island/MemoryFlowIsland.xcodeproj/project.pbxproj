@@ -87,6 +87,13 @@
 		F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101120000000000000001 /* TodoLiveSyncProbe.swift */; };
 		F00102130000000000000001 /* TodoMutationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101130000000000000001 /* TodoMutationController.swift */; };
 		F00102140000000000000001 /* TodoMutationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101140000000000000001 /* TodoMutationProbe.swift */; };
+		FA1201010000000000000001 /* UpdateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202010000000000000001 /* UpdateModels.swift */; };
+		FA1201020000000000000001 /* UpdateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202020000000000000001 /* UpdateCoordinator.swift */; };
+		FA1201030000000000000001 /* SignedAppcastVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202030000000000000001 /* SignedAppcastVerifier.swift */; };
+		FA1201040000000000000001 /* SparkleUpdateAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202040000000000000001 /* SparkleUpdateAdapter.swift */; };
+		FA1201050000000000000001 /* UpdateCoordinatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202050000000000000001 /* UpdateCoordinatorProbe.swift */; };
+		FA1201070000000000000001 /* UpdateProbeMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202070000000000000001 /* UpdateProbeMain.swift */; };
+		FA1201060000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FA1203010000000000000001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -172,6 +179,12 @@
 		F00101120000000000000001 /* TodoLiveSyncProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoLiveSyncProbe.swift; sourceTree = "<group>"; };
 		F00101130000000000000001 /* TodoMutationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationController.swift; sourceTree = "<group>"; };
 		F00101140000000000000001 /* TodoMutationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationProbe.swift; sourceTree = "<group>"; };
+		FA1202010000000000000001 /* UpdateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateModels.swift; sourceTree = "<group>"; };
+		FA1202020000000000000001 /* UpdateCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCoordinator.swift; sourceTree = "<group>"; };
+		FA1202030000000000000001 /* SignedAppcastVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignedAppcastVerifier.swift; sourceTree = "<group>"; };
+		FA1202040000000000000001 /* SparkleUpdateAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdateAdapter.swift; sourceTree = "<group>"; };
+		FA1202050000000000000001 /* UpdateCoordinatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCoordinatorProbe.swift; sourceTree = "<group>"; };
+		FA1202070000000000000001 /* UpdateProbeMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateProbeMain.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -179,6 +192,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA1201060000000000000001 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -224,6 +238,7 @@
 				F00100030000000000000001 /* Auth */,
 				F00100040000000000000001 /* Review */,
 				F00100050000000000000001 /* Todo */,
+				FA1200010000000000000001 /* Update */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -274,6 +289,19 @@
 				F00101140000000000000001 /* TodoMutationProbe.swift */,
 			);
 			path = Todo;
+			sourceTree = "<group>";
+		};
+		FA1200010000000000000001 /* Update */ = {
+			isa = PBXGroup;
+			children = (
+				FA1202010000000000000001 /* UpdateModels.swift */,
+				FA1202020000000000000001 /* UpdateCoordinator.swift */,
+				FA1202030000000000000001 /* SignedAppcastVerifier.swift */,
+				FA1202040000000000000001 /* SparkleUpdateAdapter.swift */,
+				FA1202050000000000000001 /* UpdateCoordinatorProbe.swift */,
+				FA1202070000000000000001 /* UpdateProbeMain.swift */,
+			);
+			path = Update;
 			sourceTree = "<group>";
 		};
 		B00100060000000000000001 /* App */ = {
@@ -427,6 +455,9 @@
 			name = MemoryFlowIsland;
 			productName = MemoryFlowIsland;
 			productReference = B00100010000000000000001 /* MemoryFlowIsland.app */;
+			packageProductDependencies = (
+				FA1203010000000000000001 /* Sparkle */,
+			);
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -454,6 +485,9 @@
 			);
 			mainGroup = B00100030000000000000001;
 			productRefGroup = B00100050000000000000001 /* Products */;
+			packageReferences = (
+				FA1204010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -557,6 +591,12 @@
 				F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */,
 				F00102130000000000000001 /* TodoMutationController.swift in Sources */,
 				F00102140000000000000001 /* TodoMutationProbe.swift in Sources */,
+				FA1201010000000000000001 /* UpdateModels.swift in Sources */,
+				FA1201020000000000000001 /* UpdateCoordinator.swift in Sources */,
+				FA1201030000000000000001 /* SignedAppcastVerifier.swift in Sources */,
+				FA1201040000000000000001 /* SparkleUpdateAdapter.swift in Sources */,
+				FA1201050000000000000001 /* UpdateCoordinatorProbe.swift in Sources */,
+				FA1201070000000000000001 /* UpdateProbeMain.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -608,6 +648,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
+				MEMORYFLOW_UPDATE_FEED_URL = "https://updates.memoryflow.example/appcast.xml";
+				MEMORYFLOW_UPDATE_PUBLIC_ED_KEY = "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=";
 				PRODUCT_BUNDLE_IDENTIFIER = com.memoryflow.island;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -631,6 +673,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
+				MEMORYFLOW_UPDATE_FEED_URL = "https://updates.memoryflow.example/appcast.xml";
+				MEMORYFLOW_UPDATE_PUBLIC_ED_KEY = "ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=";
 				PRODUCT_BUNDLE_IDENTIFIER = com.memoryflow.island;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -660,6 +704,22 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FA1204010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = { kind = upToNextMajorVersion; minimumVersion = 2.6.4; };
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FA1203010000000000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA1204010000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B001000F0000000000000001 /* Project object */;
 }
