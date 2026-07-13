@@ -8,7 +8,7 @@ require "time"
 required = %w[
   APPCAST_PATH ARCHIVE_NAME ARCHIVE_URL ARCHIVE_LENGTH ARCHIVE_SIGNATURE
   BUILD_VERSION MARKETING_VERSION MINIMUM_MACOS PHASED_ROLLOUT_INTERVAL
-  PUBLICATION_DATE RELEASE_NOTES_URL RELEASE_PAGE_URL REPOSITORY
+  PUBLICATION_DATE RELEASE_NOTES_PATH RELEASE_PAGE_URL REPOSITORY
 ]
 
 missing = required.select { |name| ENV[name].to_s.empty? }
@@ -37,7 +37,7 @@ item.add_element("sparkle:version").text = ENV.fetch("BUILD_VERSION")
 item.add_element("sparkle:shortVersionString").text = ENV.fetch("MARKETING_VERSION")
 item.add_element("sparkle:minimumSystemVersion").text = ENV.fetch("MINIMUM_MACOS")
 item.add_element("sparkle:phasedRolloutInterval").text = ENV.fetch("PHASED_ROLLOUT_INTERVAL")
-item.add_element("sparkle:releaseNotesLink").text = ENV.fetch("RELEASE_NOTES_URL")
+item.add_element("description").add(REXML::CData.new(File.read(ENV.fetch("RELEASE_NOTES_PATH"))))
 item.add_element(
   "enclosure",
   {

@@ -180,7 +180,8 @@ else
     print -- "Unsigned open-source release. On first launch, use right-click Open or approve the app in Privacy and Security."
     print -- ""
     print -- "## Changes"
-    git -C "$PROJECT_ROOT" log --no-merges --pretty='- %s' -20
+    print -- ""
+    print -- "- Bug fixes and stability improvements."
   } > "$RELEASE_NOTES_MD"
 fi
 ruby -rcgi -e 'body = CGI.escapeHTML(File.read(ARGV[0])); File.write(ARGV[1], "<pre>#{body}</pre>\n")' \
@@ -188,7 +189,6 @@ ruby -rcgi -e 'body = CGI.escapeHTML(File.read(ARGV[0])); File.write(ARGV[1], "<
 
 ARCHIVE_URL="https://github.com/${REPOSITORY}/releases/download/${TAG}/${ARCHIVE_NAME}"
 RELEASE_PAGE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG}"
-RELEASE_NOTES_URL="https://github.com/${REPOSITORY}/releases/download/${TAG}/release-notes.html"
 APPCAST_PATH="$OUTPUT_DIR/appcast.xml"
 APPCAST_PATH="$APPCAST_PATH" \
 ARCHIVE_NAME="$ARCHIVE_NAME" \
@@ -201,7 +201,7 @@ MARKETING_VERSION="$MARKETING_VERSION" \
 MINIMUM_MACOS="$MINIMUM_MACOS" \
 PHASED_ROLLOUT_INTERVAL="$PHASED_ROLLOUT_INTERVAL" \
 PUBLICATION_DATE="$(date -R)" \
-RELEASE_NOTES_URL="$RELEASE_NOTES_URL" \
+RELEASE_NOTES_PATH="$OUTPUT_DIR/release-notes.html" \
 RELEASE_PAGE_URL="$RELEASE_PAGE_URL" \
 REPOSITORY="$REPOSITORY" \
 METADATA_PATH="$OUTPUT_DIR/release-metadata.json" \

@@ -21,7 +21,7 @@ Use the same command that GitHub Actions invokes. Keep the private key and outpu
   --output-dir /tmp/memoryflow-phase7-release
 ```
 
-The command rejects non-`vX.Y.Z` tags, non-increasing marketing or build versions, missing key material, failed builds, invalid signatures, malformed archives, and incorrect GitHub URLs. It produces the app archive, SHA-256 checksum, release metadata, release notes, and signed `appcast.xml`.
+The command rejects non-`vX.Y.Z` tags, non-increasing marketing or build versions, missing key material, failed builds, invalid signatures, malformed archives, and incorrect GitHub URLs. It produces the app archive, SHA-256 checksum, release metadata, release notes, and signed `appcast.xml`. The checksum and metadata remain CI validation outputs rather than public release assets.
 
 ## GitHub Actions release
 
@@ -31,7 +31,9 @@ The `MemoryFlow Island Release` workflow supports:
 - a manual draft candidate, which is the default for `workflow_dispatch`;
 - a manual prerelease candidate for end-to-end update testing.
 
-The workflow resolves the latest stable release metadata and enforces increasing versions before creating a release. It uploads the immutable ZIP, checksum, metadata, and release notes first. The signed appcast is uploaded only after those assets succeed. Existing release tags are never overwritten.
+Manual runs require a concise user-facing release summary. The workflow does not publish raw commit history. It resolves the previous version and build from the latest stable signed appcast, enforces increasing versions, uploads the immutable app ZIP, and publishes the signed appcast last. Existing release tags are never overwritten.
+
+Only the app ZIP and `appcast.xml` are uploaded by the workflow. GitHub automatically adds source-code ZIP and tarball links, so a public release normally shows four assets. Sparkle release notes are embedded in the signed appcast instead of being uploaded as another file.
 
 The app feed is `https://github.com/xixi131/MemoryFlow/releases/latest/download/appcast.xml`, and each enclosure uses a tag-specific `https://github.com/xixi131/MemoryFlow/releases/download/...` URL. Manual draft assets are not visible to normal clients until the draft is published.
 
