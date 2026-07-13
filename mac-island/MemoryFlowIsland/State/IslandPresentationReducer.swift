@@ -38,6 +38,8 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case tapExpandedToMusic
     case tapCollapsedToCompact
     case tapCollapsedToActivity
+    case loginRequiredPresented
+    case loginRequiredDismissed
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
     case presentationRetargeted
@@ -78,6 +80,26 @@ enum IslandPresentationReducer {
         intent: IslandInteractionIntent
     ) -> IslandPresentationReducerResult {
         switch intent {
+        case .loginRequiredRequested:
+            guard state.authState == .loggedOut,
+                  state.primaryMode == .app else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            guard state.isLoginRequiredPresented == false else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .loginRequiredPresented) {
+                $0.isLoginRequiredPresented = true
+                $0.isHovered = false
+            }
+        case .loginRequiredDismissed:
+            guard state.isLoginRequiredPresented else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .loginRequiredDismissed) {
+                $0.isLoginRequiredPresented = false
+                $0.isHovered = false
+            }
         case let .transitionComplete(identifier):
             return completeTransition(state, identifier: identifier)
         case let .retargetPresentation(target):
@@ -123,7 +145,12 @@ enum IslandPresentationReducer {
         }
 
         switch intent {
+        case .loginRequiredRequested, .loginRequiredDismissed:
+            return unchanged(state, reason: .noChange)
         case .outsideCollapse:
+            if state.isLoginRequiredPresented {
+                return reduce(current: state, intent: .loginRequiredDismissed)
+            }
             return collapseExpanded(
                 state,
                 compactReason: .outsideCollapsedToCompact,
@@ -142,6 +169,9 @@ enum IslandPresentationReducer {
                 $0.isHovered = false
             }
         case .tap:
+            if state.isLoginRequiredPresented {
+                return unchanged(state, reason: .noChange)
+            }
             switch state.presentationState {
             case .expanded:
                 return collapseExpanded(
@@ -520,7 +550,7 @@ enum IslandPresentationReducer {
 
     private static func shouldRespectModeSwitchLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate, .loginRequiredRequested, .loginRequiredDismissed:
             return true
         case .hoverEnter,
              .hoverLeave,
@@ -541,7 +571,7 @@ enum IslandPresentationReducer {
 
     private static func shouldRespectForceCompactLock(_ intent: IslandInteractionIntent) -> Bool {
         switch intent {
-        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate:
+        case .tap, .outsideCollapse, .pointerSwipe, .trackpadSwipe, .horizontalMusicCommand, .modeSwitchToggle, .modeSwitchMutate, .loginRequiredRequested, .loginRequiredDismissed:
             return true
         case .hoverEnter,
              .hoverLeave,
@@ -567,6 +597,8 @@ enum IslandPresentationReducer {
         case .hoverEnter,
              .hoverLeave,
              .tap,
+             .loginRequiredRequested,
+             .loginRequiredDismissed,
              .outsideCollapse,
              .pointerSwipe,
              .mockPlaybackStarted,

@@ -136,3 +136,7 @@
 ### 2026-07-13 - Signed Sparkle updater core
 - Added Sparkle 2.9.4 with a custom user driver, typed login-independent coordinator states, HTTPS/public-key configuration, callback guards, and public-only signed appcast fixtures.
 - Signed current/newer, malformed, non-HTTPS, invalid-signature, duplicate, stale-session, and regressive-progress probes passed with the integrated native build and full Swift source typecheck.
+
+### 2026-07-13 - Login-required square
+- Removed compact login UI and added a pure advanced-only login-required presentation with the exact four-character `需要登录` message in a notch-safe square.
+- Deterministic wide/narrow geometry, repeat/outside/login/music routes, reverse spring, Reduce Motion, integrated Debug build, and full Swift source typecheck passed.

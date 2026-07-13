@@ -60,6 +60,7 @@ private extension IslandPreviewContent.Kind {
         case .reviewCompact, .todoCompact:
             return true
         case .signedOutCompact,
+             .loginRequired,
              .reviewActivity,
              .todoActivity,
              .musicActivity,
@@ -79,6 +80,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         didSet { renderModel.onLoginRequested = onLoginRequested }
     }
     var onTodoCompletionRequested: ((Int64) -> Void)?
+    private var advancedFeaturesEnabled = false
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
     private let displayObserver: DisplayObserver
@@ -1082,6 +1084,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         for layoutInput: IslandPreviewLayoutInput,
         attachmentMetrics: TopAttachmentMetrics
     ) -> IslandWidthConstraints {
+        if layoutInput.visualState == .loginRequired {
+            return IslandLoginRequiredLayout.constraints(for: attachmentMetrics)
+        }
         if usesPhase5PreviewInteractionRouting {
             let notchAlignedBodyWidth = notchAlignedCompactBodyWidth(
                 for: layoutInput,
@@ -1228,7 +1233,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handleTapInteraction() {
         if phase5PreviewStateContainer.domainState.authState == .loggedOut {
-            onLoginRequested?()
+            guard advancedFeaturesEnabled else { return }
+            dispatchPhase5Intent(.loginRequiredRequested)
             return
         }
         if usesPhase5PreviewInteractionRouting {
@@ -1288,6 +1294,15 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             using: nil,
             allowLockScheduling: true
         )
+    }
+
+    @MainActor
+    func setAdvancedFeaturesEnabled(_ isEnabled: Bool) {
+        advancedFeaturesEnabled = isEnabled
+        if isEnabled == false,
+           phase5PreviewStateContainer.domainState.isLoginRequiredPresented {
+            dispatchPhase5Intent(.loginRequiredDismissed)
+        }
     }
 
     @MainActor

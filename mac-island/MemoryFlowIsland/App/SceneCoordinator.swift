@@ -34,6 +34,7 @@ protocol IslandWindowControlling: AnyObject {
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
     func applyLoggedOutState()
     func applyBasicCapabilityState()
+    func setAdvancedFeaturesEnabled(_ isEnabled: Bool)
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
 }
@@ -292,6 +293,7 @@ final class SceneCoordinator {
         capabilityGeneration += 1
         let generation = capabilityGeneration
         let policy = AdvancedCapabilityPolicy(advancedFeaturesEnabled: advancedFeaturesSettings.isEnabled)
+        windowController.setAdvancedFeaturesEnabled(policy.allowsAuthentication)
 
         guard policy.allowsProtectedStudyData else {
             reviewPollingController.stop()

@@ -433,8 +433,8 @@ private struct IslandPreviewContentOverlay: View {
     private var compactContent: some View {
         switch content.kind {
         case .signedOutCompact:
-            mockLoginCompactContent
-                .allowsHitTesting(true)
+            Color.clear
+                .accessibilityHidden(true)
         case .greetingCompact where greetingExpired == false:
             greetingCompactContent
                 .allowsHitTesting(false)
@@ -442,24 +442,6 @@ private struct IslandPreviewContentOverlay: View {
             Color.clear
                 .accessibilityHidden(true)
         }
-    }
-
-    private var mockLoginCompactContent: some View {
-        Button(action: runMockLoginCommand) {
-            HStack(spacing: 8) {
-                Image(systemName: "circle.grid.2x2.fill")
-                    .font(.system(size: 13, weight: .bold))
-                Text(content.title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(compactForegroundColor.opacity(0.92))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("island-login-command")
-        .accessibilityLabel("Login to MemoryFlow")
     }
 
     private var greetingCompactContent: some View {
@@ -619,7 +601,14 @@ private struct IslandPreviewContentOverlay: View {
 
     @ViewBuilder
     private var expandedAppContent: some View {
-        if content.kind == .expandedReview, let review = content.review {
+        if content.kind == .loginRequired {
+            Text("需要登录")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .accessibilityLabel("需要登录")
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        } else if content.kind == .expandedReview, let review = content.review {
             IslandExpandedReviewContent(
                 review: review,
                 tint: tintColor,

@@ -39,7 +39,7 @@
       "Verify square geometry, notch clearance, repeated taps, outside collapse, logged-in behavior, music takeover and return, narrow layouts, and deterministic visual frames."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-updater-core",

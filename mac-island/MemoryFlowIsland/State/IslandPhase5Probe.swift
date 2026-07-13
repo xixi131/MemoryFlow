@@ -897,6 +897,10 @@ enum IslandPhase5Probe {
             return "hoverLeave"
         case .tap:
             return "tap"
+        case .loginRequiredRequested:
+            return "loginRequiredRequested"
+        case .loginRequiredDismissed:
+            return "loginRequiredDismissed"
         case .outsideCollapse:
             return "outsideCollapse"
         case let .pointerSwipe(direction):

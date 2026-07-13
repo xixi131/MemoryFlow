@@ -46,14 +46,17 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case (.activityHoverCollapsed, .activityCollapsed): return .hoverLeave
         case (.compactCollapsed, .activityCollapsed), (.hoverCollapsed, .activityCollapsed): return .compactToActivity
         case (.compactCollapsed, .expandedMusic), (.compactCollapsed, .expandedApp),
-             (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp): return .compactToExpanded
+             (.compactCollapsed, .loginRequired),
+             (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp),
+             (.hoverCollapsed, .loginRequired): return .compactToExpanded
         case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed),
              (.activityHoverCollapsed, .compactCollapsed), (.activityHoverCollapsed, .hoverCollapsed): return .activityToCompact
         case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp),
              (.activityHoverCollapsed, .expandedMusic), (.activityHoverCollapsed, .expandedApp): return .activityToExpanded
         case (.expandedMusic, .activityCollapsed), (.expandedApp, .activityCollapsed),
              (.expandedMusic, .activityHoverCollapsed), (.expandedApp, .activityHoverCollapsed): return .expandedToActivity
-        case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed): return .expandedToCompact
+        case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed),
+             (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed): return .expandedToCompact
         default: return .defaultProfile
         }
     }

@@ -150,7 +150,7 @@ extension IslandPresentationRetargetTarget {
                 forceCompactMode: false,
                 isHovered: visualState == .activityHoverCollapsed
             )
-        case .expandedApp, .expandedMusic:
+        case .expandedApp, .expandedMusic, .loginRequired:
             self.init(
                 presentationState: .expanded,
                 forceCompactMode: false,

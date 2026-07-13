@@ -168,6 +168,25 @@ struct IslandMockMusicActivity: Codable, Equatable {
     }
 }
 
+struct IslandMusicReturnState: Codable, Equatable {
+    let presentationState: IslandPresentationState
+    let forceCompactMode: Bool
+    let isHovered: Bool
+    let isLoginRequiredPresented: Bool
+
+    init(
+        presentationState: IslandPresentationState,
+        forceCompactMode: Bool,
+        isHovered: Bool,
+        isLoginRequiredPresented: Bool = false
+    ) {
+        self.presentationState = presentationState
+        self.forceCompactMode = forceCompactMode
+        self.isHovered = isHovered
+        self.isLoginRequiredPresented = isLoginRequiredPresented
+    }
+}
+
 struct IslandMockActivitySources: Codable, Equatable {
     var review: IslandMockReviewActivity?
     var todo: IslandMockTodoActivity?
@@ -196,8 +215,10 @@ struct IslandDomainState: Codable, Equatable {
     var lastReminderDueKey: String? = nil
     var isGreetingActive: Bool
     var greetingText: String?
+    var isLoginRequiredPresented: Bool = false
     var reviewSnapshot: ReviewSnapshot? = nil
     var todoSnapshot: TodoSnapshot? = nil
+    var musicReturnState: IslandMusicReturnState? = nil
     var mockSources: IslandMockActivitySources
 
     var isGestureTracking: Bool {

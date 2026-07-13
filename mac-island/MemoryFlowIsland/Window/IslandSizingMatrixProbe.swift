@@ -549,6 +549,8 @@ enum IslandShadowEvidenceProbe {
             return "expanded-music-shadow.png"
         case .expandedApp:
             return "expanded-app-shadow.png"
+        case .loginRequired:
+            return "login-required-shadow.png"
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return "\(state.rawValue)-shadow.png"
         }

@@ -108,6 +108,9 @@ struct IslandDerivedState: Equatable {
         for state: IslandDomainState,
         showAnyActivity: Bool
     ) -> IslandVisualState {
+        if state.isLoginRequiredPresented {
+            return .loginRequired
+        }
         switch state.presentationState {
         case .expanded:
             return state.primaryMode == .music ? .expandedMusic : .expandedApp
@@ -413,6 +416,7 @@ enum IslandMockScenarioMarkerText {
 struct IslandPreviewContent: Equatable {
     enum Kind: String, Equatable {
         case signedOutCompact
+        case loginRequired
         case reviewCompact
         case todoCompact
         case reviewActivity
@@ -478,13 +482,28 @@ struct IslandPreviewContent: Equatable {
             )
         }
 
+        if state.isLoginRequiredPresented {
+            return IslandPreviewContent(
+                kind: .loginRequired,
+                eyebrow: "",
+                title: "需要登录",
+                subtitle: "",
+                badge: "",
+                tone: .signedOut,
+                review: nil,
+                todo: nil,
+                music: nil,
+                contentWidthRequirement: .none
+            )
+        }
+
         if state.authState == .loggedOut {
             return IslandPreviewContent(
                 kind: .signedOutCompact,
-                eyebrow: "Signed Out",
-                title: "Login",
-                subtitle: "MemoryFlow",
-                badge: "OUT",
+                eyebrow: "",
+                title: "",
+                subtitle: "",
+                badge: "",
                 tone: .signedOut,
                 review: nil,
                 todo: nil,

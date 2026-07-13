@@ -49,6 +49,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     case hoverEnter
     case hoverLeave
     case tap
+    case loginRequiredRequested
+    case loginRequiredDismissed
     case outsideCollapse
     case pointerSwipe(IslandPointerSwipeDirection)
     case trackpadSwipe(IslandTrackpadSwipeDirection)

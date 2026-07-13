@@ -7,6 +7,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case activityHoverCollapsed
     case expandedMusic
     case expandedApp
+    case loginRequired
 
     var id: String {
         rawValue
@@ -14,7 +15,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var isExpanded: Bool {
         switch self {
-        case .expandedMusic, .expandedApp:
+        case .expandedMusic, .expandedApp, .loginRequired:
             return true
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
@@ -27,7 +28,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
         case .expandedMusic, .expandedApp:
             return IslandVisualTokens.shadow.visibleInExpanded
-        case .compactCollapsed, .activityCollapsed:
+        case .compactCollapsed, .activityCollapsed, .loginRequired:
             return false
         }
     }
@@ -40,7 +41,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .activity
         case .expandedMusic:
             return .expandedMusic
-        case .expandedApp:
+        case .expandedApp, .loginRequired:
             return .expandedApp
         }
     }
@@ -59,6 +60,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Expanded Music"
         case .expandedApp:
             return "Expanded App"
+        case .loginRequired:
+            return "Login Required"
         }
     }
 
@@ -84,7 +87,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
                 trailingContentWidth: 36,
                 horizontalPadding: 18
             )
-        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp:
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired:
             return .none
         }
     }

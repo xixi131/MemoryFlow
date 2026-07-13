@@ -6,6 +6,23 @@ struct IslandWindowSizingRequest: Equatable {
     let widthConstraints: IslandWidthConstraints
 }
 
+enum IslandLoginRequiredLayout {
+    static func constraints(for attachmentMetrics: TopAttachmentMetrics) -> IslandWidthConstraints {
+        let squareSide = IslandShapeEngine.snapshot(
+            for: .loginRequired,
+            visualScale: attachmentMetrics.visualScale,
+            horizontalScale: attachmentMetrics.horizontalVisualScale,
+            widthConstraints: .none
+        ).visibleFrame.height
+        return IslandWidthConstraints(
+            baseBodyWidth: squareSide,
+            maximumVisibleWidth: attachmentMetrics.availableTopWidth,
+            contentWidthRequirement: .none,
+            fixedVisibleWidth: min(squareSide, attachmentMetrics.availableTopWidth)
+        )
+    }
+}
+
 enum IslandWindowSizingEngine {
     static func resolve(_ request: IslandWindowSizingRequest) -> IslandWindowSizingResult {
         let resolvedConstraints = resolvedWidthConstraints(for: request)

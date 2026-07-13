@@ -92,7 +92,9 @@ struct IslandContentChoreographyPlan: Equatable {
         case (.compactCollapsed, .activityCollapsed), (.hoverCollapsed, .activityCollapsed):
             kind = .compactToActivity
         case (.compactCollapsed, .expandedApp), (.compactCollapsed, .expandedMusic),
-             (.hoverCollapsed, .expandedApp), (.hoverCollapsed, .expandedMusic):
+             (.compactCollapsed, .loginRequired),
+             (.hoverCollapsed, .expandedApp), (.hoverCollapsed, .expandedMusic),
+             (.hoverCollapsed, .loginRequired):
             kind = .compactToExpanded
         case (.activityCollapsed, .expandedApp), (.activityCollapsed, .expandedMusic):
             kind = .activityToExpanded

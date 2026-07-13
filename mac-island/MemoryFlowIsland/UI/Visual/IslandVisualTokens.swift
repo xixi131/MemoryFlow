@@ -119,7 +119,7 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverBuffer.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp:
+        case .expandedMusic, .expandedApp, .loginRequired:
             return expandedBuffer.scaled(by: visualScale)
         case .compactCollapsed, .activityCollapsed:
             return .zero
@@ -130,7 +130,7 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverAppearance.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp:
+        case .expandedMusic, .expandedApp, .loginRequired:
             return expandedAppearance.scaled(by: visualScale)
         case .compactCollapsed, .activityCollapsed:
             return IslandShadowAppearanceTokens(opacity: 0, radius: 0, offsetY: 0)
