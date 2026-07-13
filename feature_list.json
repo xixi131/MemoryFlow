@@ -121,7 +121,7 @@
       "Verify offline, HTTP, malformed feed, insufficient disk, cancelled installation, and invalid EdDSA signature recovery with explicit Settings retry and no automatic retry loop."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-github-release-acceptance",

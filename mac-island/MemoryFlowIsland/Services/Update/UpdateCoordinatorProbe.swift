@@ -65,10 +65,31 @@ enum UpdateCoordinatorProbe {
               completed.percentage == 100 else {
             throw UpdateCoordinatorProbeError.failed("download progress did not clamp to 100 percent")
         }
-        engine.emit(.downloadFinished, sessionID: active)
+        engine.emit(.verificationStarted, sessionID: active)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .verifying = coordinator.state else { throw UpdateCoordinatorProbeError.failed("verification state missing") }
+        engine.emit(.verificationSucceeded, sessionID: active)
         try await Task.sleep(for: .milliseconds(20))
         guard case .ready = coordinator.state, coordinator.installReadyUpdate() else { throw UpdateCoordinatorProbeError.failed("ready/install states missing") }
+        guard case .awaitingAuthorization = coordinator.state,
+              !coordinator.installReadyUpdate(),
+              engine.installCount == 1 else { throw UpdateCoordinatorProbeError.failed("authorization or duplicate install guard failed") }
+        engine.emit(.authorizationRequested, sessionID: active)
+        engine.emit(.installationStarted, sessionID: active)
+        try await Task.sleep(for: .milliseconds(20))
         guard case .installing = coordinator.state else { throw UpdateCoordinatorProbeError.failed("installing state missing") }
+        engine.emit(.installationFinished(relaunched: true), sessionID: active)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .installed(let installedRelease, true) = coordinator.state,
+              installedRelease.build == "101" else { throw UpdateCoordinatorProbeError.failed("installed/relaunch/version state missing") }
+        guard coordinator.checkForUpdates(), engine.lastSession != active else {
+            throw UpdateCoordinatorProbeError.failed("future check stayed blocked after installation")
+        }
+        engine.emit(.current, sessionID: engine.lastSession!)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .idle = coordinator.state else {
+            throw UpdateCoordinatorProbeError.failed("future check did not return to idle")
+        }
 
         let retryEngine = ProbeEngine()
         let retry = UpdateCoordinator(engine: retryEngine)
@@ -82,8 +103,7 @@ enum UpdateCoordinatorProbe {
         guard case .failed(.transport("setup")) = retry.state else {
             throw UpdateCoordinatorProbeError.failed("download setup failure missing")
         }
-        retry.resetFailure()
-        _ = retry.checkForUpdates()
+        guard retry.retryFailure() else { throw UpdateCoordinatorProbeError.failed("explicit retry was unavailable") }
         let retrySession = retryEngine.lastSession!
         retryEngine.emit(.available(UpdateRelease(version: "1.0.1", build: "101", downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!, contentLength: 50)), sessionID: retrySession)
         try await Task.sleep(for: .milliseconds(20))
@@ -110,8 +130,7 @@ enum UpdateCoordinatorProbe {
         failedEngine.emit(.failed(.transport("probe")), sessionID: failedEngine.lastSession!)
         try await Task.sleep(for: .milliseconds(20))
         guard case .failed(.transport("probe")) = failed.state else { throw UpdateCoordinatorProbeError.failed("failed state missing") }
-        failed.resetFailure()
-        guard case .idle = failed.state else { throw UpdateCoordinatorProbeError.failed("idle reset missing") }
+        guard failed.retryFailure(), case .checking = failed.state else { throw UpdateCoordinatorProbeError.failed("recoverable retry check missing") }
         let policyEngine = ProbeEngine()
         let policyCoordinator = UpdateCoordinator(engine: policyEngine)
         let policyStore = ProbePolicyStore()
@@ -140,7 +159,43 @@ enum UpdateCoordinatorProbe {
         policy.clearDeferralIfSuperseded(by: "102")
         guard policyStore.deferredVersion == nil else { throw UpdateCoordinatorProbeError.failed("newer-version deferral cleanup failed") }
         policy.stop()
-        return "update-coordinator-probe: PASS; signed=current,newer,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale; policy=launch,24h,wake,manual,offline-retry,4h-deferral,newer,relaunch,termination; auth=independent; states=idle,checking,available,deferred,download-requested,downloading,ready,installing,failed"
+        let installedPolicyStore = ProbePolicyStore()
+        let installedPolicy = UpdateCheckPolicy(coordinator: policyCoordinator, clock: ProbeClock(now: now), store: installedPolicyStore)
+        installedPolicy.markInstalled(build: installedRelease.build)
+        guard installedPolicyStore.installedBuild == "101",
+              !installedPolicy.shouldPresent(version: "101"),
+              installedPolicy.shouldPresent(version: "102") else {
+            throw UpdateCoordinatorProbeError.failed("installed build repeated offer or future version suppression failed")
+        }
+        let repeatedEngine = ProbeEngine()
+        let repeatedCoordinator = UpdateCoordinator(engine: repeatedEngine)
+        _ = repeatedCoordinator.checkForUpdates()
+        repeatedEngine.emit(.available(installedRelease), sessionID: repeatedEngine.lastSession!)
+        try await Task.sleep(for: .milliseconds(20))
+        guard installedPolicy.wasInstalled(build: installedRelease.build),
+              repeatedCoordinator.discardAvailableUpdate(),
+              case .idle = repeatedCoordinator.state,
+              repeatedCoordinator.checkForUpdates() else {
+            throw UpdateCoordinatorProbeError.failed("repeated offer was not discarded or future checks stayed blocked")
+        }
+        installedPolicy.stop()
+
+        try validateRecoverableFailures()
+        return "update-coordinator-probe: PASS; signed=current,newer,higher-version,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale; install=verifying,ready,authorization,duplicate-guard,installing,relaunched,version-changed,no-repeat,future-check,sparkle-delegated; recovery=offline,http,feed,disk,auth-cancel,signature,explicit-retry,no-auto-loop,launchable; policy=launch,24h,wake,manual,4h-deferral,future-version,termination"
+    }
+
+    private static func validateRecoverableFailures() throws {
+        let cases: [(Error, UpdateFailure)] = [
+            (NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet), .offline),
+            (NSError(domain: "probe", code: 1, userInfo: [NSLocalizedDescriptionKey: "HTTP 503"]), .httpStatus(503)),
+            (NSError(domain: "probe", code: 2, userInfo: [NSLocalizedDescriptionKey: "Malformed appcast XML"]), .invalidFeed("Malformed appcast XML")),
+            (NSError(domain: "probe", code: 3, userInfo: [NSLocalizedDescriptionKey: "Insufficient disk space"]), .insufficientDisk),
+            (NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError), .authorizationCancelled),
+            (NSError(domain: "probe", code: 4, userInfo: [NSLocalizedDescriptionKey: "EdDSA signature rejected"]), .signatureRejected)
+        ]
+        for (error, expected) in cases where UpdateFailureMapper.map(error) != expected {
+            throw UpdateCoordinatorProbeError.failed("failure mapping mismatch: \(error)")
+        }
     }
 }
 
@@ -149,14 +204,16 @@ private final class ProbePolicyStore: UpdatePolicyPersisting {
     var lastSuccessfulCheck: Date?
     var deferredVersion: String?
     var deferredUntil: Date?
+    var installedBuild: String?
 }
 
 private final class ProbeEngine: UpdateEngine {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)?
     var lastSession: UUID?
     var downloadCount = 0
+    var installCount = 0
     func check(sessionID: UUID) { lastSession = sessionID }
     func download(_ release: UpdateRelease, sessionID: UUID) { downloadCount += 1 }
-    func install(_ release: UpdateRelease, sessionID: UUID) { emit(.installationStarted, sessionID: sessionID) }
+    func install(_ release: UpdateRelease, sessionID: UUID) { installCount += 1 }
     func emit(_ event: UpdateEngineEvent, sessionID: UUID) { eventHandler?(sessionID, event) }
 }

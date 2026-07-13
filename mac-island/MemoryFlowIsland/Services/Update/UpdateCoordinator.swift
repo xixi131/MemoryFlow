@@ -12,6 +12,7 @@ final class UpdateCoordinator: ObservableObject {
     private var selectedRelease: UpdateRelease?
     private var handlingEvent = false
     private var pendingReceivedBytes: Int64 = 0
+    private var retryAvailable = false
 
     init(engine: UpdateEngine, clock: UpdateClock = SystemUpdateClock()) {
         self.engine = engine
@@ -50,16 +51,27 @@ final class UpdateCoordinator: ObservableObject {
     }
 
     @discardableResult
+    func discardAvailableUpdate() -> Bool {
+        guard case .available = state else { return false }
+        state = .idle
+        finishSession()
+        return true
+    }
+
+    @discardableResult
     func installReadyUpdate() -> Bool {
         guard case .ready(let release) = state, let sessionID = activeSessionID else { return false }
-        state = .installing(release)
+        state = .awaitingAuthorization(release)
         engine.install(release, sessionID: sessionID)
         return true
     }
 
-    func resetFailure() {
-        guard case .failed = state else { return }
+    @discardableResult
+    func retryFailure() -> Bool {
+        guard case .failed = state, retryAvailable else { return false }
         state = .idle
+        retryAvailable = false
+        return checkForUpdates()
     }
 
     private func handle(_ event: UpdateEngineEvent, sessionID: UUID) {
@@ -103,13 +115,29 @@ final class UpdateCoordinator: ObservableObject {
                 received: pendingReceivedBytes,
                 total: normalizedTotal(total) ?? previous.totalBytes ?? normalizedTotal(release.contentLength)
             )
-        case .downloadFinished:
+        case .verificationStarted:
             guard case .downloading(let release, _) = state else { return }
+            state = .verifying(release)
+        case .verificationSucceeded:
+            guard case .verifying(let release) = state else { return }
             state = .ready(release)
+        case .authorizationRequested:
+            guard case .awaitingAuthorization = state else { return }
+        case .authorizationCancelled:
+            guard case .awaitingAuthorization = state else { return }
+            state = .failed(.authorizationCancelled)
+            retryAvailable = true
+            finishSession()
         case .installationStarted:
-            guard case .installing = state else { return }
+            guard case .awaitingAuthorization(let release) = state else { return }
+            state = .installing(release)
+        case .installationFinished(let relaunched):
+            guard case .installing(let release) = state else { return }
+            state = .installed(release, relaunched: relaunched)
+            finishSession()
         case .failed(let failure):
             state = .failed(failure)
+            retryAvailable = true
             finishSession()
         }
     }
@@ -150,6 +178,7 @@ protocol UpdatePolicyPersisting: AnyObject {
     var lastSuccessfulCheck: Date? { get set }
     var deferredVersion: String? { get set }
     var deferredUntil: Date? { get set }
+    var installedBuild: String? { get set }
 }
 
 final class UserDefaultsUpdatePolicyStore: UpdatePolicyPersisting {
@@ -158,6 +187,7 @@ final class UserDefaultsUpdatePolicyStore: UpdatePolicyPersisting {
     var lastSuccessfulCheck: Date? { get { defaults.object(forKey: "update.lastSuccessfulCheck") as? Date } set { defaults.set(newValue, forKey: "update.lastSuccessfulCheck") } }
     var deferredVersion: String? { get { defaults.string(forKey: "update.deferredVersion") } set { defaults.set(newValue, forKey: "update.deferredVersion") } }
     var deferredUntil: Date? { get { defaults.object(forKey: "update.deferredUntil") as? Date } set { defaults.set(newValue, forKey: "update.deferredUntil") } }
+    var installedBuild: String? { get { defaults.string(forKey: "update.installedBuild") } set { defaults.set(newValue, forKey: "update.installedBuild") } }
 }
 
 @MainActor
@@ -206,9 +236,11 @@ final class UpdateCheckPolicy {
         return until
     }
     func shouldPresent(version: String) -> Bool {
+        guard store.installedBuild != version else { return false }
         guard store.deferredVersion == version, let until = store.deferredUntil else { return true }
         return clock.now >= until
     }
+    func wasInstalled(build: String) -> Bool { store.installedBuild == build }
     func suppressionUntil(version: String) -> Date? {
         guard store.deferredVersion == version,
               let until = store.deferredUntil,
@@ -216,4 +248,9 @@ final class UpdateCheckPolicy {
         return until
     }
     func clearDeferralIfSuperseded(by version: String) { if store.deferredVersion != version { store.deferredVersion = nil; store.deferredUntil = nil } }
+    func markInstalled(build: String) {
+        store.installedBuild = build
+        store.deferredVersion = nil
+        store.deferredUntil = nil
+    }
 }

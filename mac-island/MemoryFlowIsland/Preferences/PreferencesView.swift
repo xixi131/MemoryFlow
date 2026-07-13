@@ -85,7 +85,7 @@ struct PreferencesView: View {
                     Text(updateStatus)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Check for Updates") { _ = updateCoordinator.checkForUpdates() }
+                    Button(updateActionTitle) { performUpdateAction() }
                         .disabled(updateCoordinator.state == .checking)
                 }.padding(.vertical, 4)
             }
@@ -119,8 +119,34 @@ struct PreferencesView: View {
         case .idle: return "Up to date"
         case .checking: return "Checking..."
         case .available(let release): return "Version \(release.version) available"
-        case .failed: return "Check failed. Try again."
+        case .failed(let failure): return recoveryMessage(failure)
+        case .installed(let release, let relaunched): return "Installed \(release.version)\(relaunched ? " and relaunched" : "")"
         default: return "Update in progress"
+        }
+    }
+
+    private var updateActionTitle: String {
+        if case .failed = updateCoordinator.state { return "Retry" }
+        return "Check for Updates"
+    }
+
+    private func performUpdateAction() {
+        if case .failed = updateCoordinator.state {
+            _ = updateCoordinator.retryFailure()
+        } else {
+            _ = updateCoordinator.checkForUpdates()
+        }
+    }
+
+    private func recoveryMessage(_ failure: UpdateFailure) -> String {
+        switch failure {
+        case .offline: return "Offline. Retry when connected."
+        case .httpStatus(let status): return "Update server returned HTTP \(status)."
+        case .invalidConfiguration, .invalidFeed: return "The update feed is unavailable."
+        case .signatureRejected: return "Update signature verification failed."
+        case .insufficientDisk: return "Not enough disk space for the update."
+        case .authorizationCancelled: return "Installation authorization was cancelled."
+        case .transport, .engine: return "Update failed. Try again."
         }
     }
 }

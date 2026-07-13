@@ -156,3 +156,7 @@
 ### 2026-07-13 - Unsigned GitHub CI/CD release foundation
 - Added one local and CI release path for ad-hoc MemoryFlow Island builds, Sparkle ZIP packaging, SHA-256, EdDSA-signed appcasts, monotonic version guards, and ordered GitHub Release publication.
 - A v1.1.0 build 10 dry-run produced and verified a 2,685,138-byte app archive with GitHub URLs, no Team ID or notarization, valid archive/appcast signatures, and no private-key leakage.
+
+### 2026-07-13 - Unsigned Sparkle install from CI artifacts
+- Generated real ad-hoc 1.0.0 build 100 and 1.0.1 build 101 candidates through the shared release command and verified a 2,689,109-byte Sparkle download, EdDSA validation, atomic replacement, old-process termination, and same-path relaunch into build 101.
+- Recheck suppression, future checks, tampered-signature, malformed-feed, HTTP, offline, disk, cancellation, explicit retry, duplicate, stale-callback, timer, deferral, and user-approved unsigned launch paths passed; all task-started processes were stopped.

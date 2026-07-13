@@ -24,11 +24,42 @@ struct UpdateDownloadProgress: Codable, Equatable, Sendable {
 }
 
 enum UpdateFailure: Error, Equatable, Sendable {
+    case offline
+    case httpStatus(Int)
     case invalidConfiguration(String)
     case invalidFeed(String)
     case signatureRejected
+    case insufficientDisk
+    case authorizationCancelled
     case transport(String)
     case engine(String)
+}
+
+enum UpdateFailureMapper {
+    static func map(_ error: Error) -> UpdateFailure {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain,
+           [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(nsError.code) {
+            return .offline
+        }
+        if nsError.code == NSUserCancelledError {
+            return .authorizationCancelled
+        }
+        let message = nsError.localizedDescription.lowercased()
+        if message.contains("signature") || message.contains("eddsa") || message.contains("ed25519") {
+            return .signatureRejected
+        }
+        if message.contains("disk") || message.contains("no space") || message.contains("space available") {
+            return .insufficientDisk
+        }
+        if message.contains("appcast") || message.contains("malformed") || message.contains("xml") {
+            return .invalidFeed(nsError.localizedDescription)
+        }
+        if let status = (400...599).first(where: { message.contains(String($0)) }) {
+            return .httpStatus(status)
+        }
+        return .engine(nsError.localizedDescription)
+    }
 }
 
 enum UpdateState: Equatable, Sendable {
@@ -38,8 +69,11 @@ enum UpdateState: Equatable, Sendable {
     case deferred(UpdateRelease, until: Date)
     case downloadRequested(UpdateRelease)
     case downloading(UpdateRelease, progress: UpdateDownloadProgress)
+    case verifying(UpdateRelease)
     case ready(UpdateRelease)
+    case awaitingAuthorization(UpdateRelease)
     case installing(UpdateRelease)
+    case installed(UpdateRelease, relaunched: Bool)
     case failed(UpdateFailure)
 }
 
@@ -49,8 +83,12 @@ enum UpdateEngineEvent: Equatable, Sendable {
     case downloadStarted(totalBytes: Int64?)
     case downloadExpectedContentLength(Int64)
     case downloadProgress(receivedBytes: Int64, totalBytes: Int64?)
-    case downloadFinished
+    case verificationStarted
+    case verificationSucceeded
+    case authorizationRequested
+    case authorizationCancelled
     case installationStarted
+    case installationFinished(relaunched: Bool)
     case failed(UpdateFailure)
 }
 

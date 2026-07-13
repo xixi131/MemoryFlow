@@ -349,7 +349,9 @@ final class SceneCoordinator {
             case .available(let release):
                 self.updateCheckPolicy.clearDeferralIfSuperseded(by: release.build)
                 guard self.updateCheckPolicy.shouldPresent(version: release.build) else {
-                    if let until = self.updateCheckPolicy.suppressionUntil(version: release.build) {
+                    if self.updateCheckPolicy.wasInstalled(build: release.build) {
+                        _ = self.updateCoordinator.discardAvailableUpdate()
+                    } else if let until = self.updateCheckPolicy.suppressionUntil(version: release.build) {
                         _ = self.updateCoordinator.deferAvailableUpdate(until: until)
                     }
                     return
@@ -357,9 +359,21 @@ final class SceneCoordinator {
                 self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
             case .downloading(_, let progress):
                 self.windowController.applyUpdateDownloadProgress(progress)
-            case .ready, .failed:
+            case .ready:
                 self.windowController.endUpdateDownloadActivity()
-            case .idle, .checking, .deferred, .downloadRequested, .installing:
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(
+                        for: .seconds(IslandMotionTokens.activityCollapseDuration)
+                    )
+                    _ = self?.updateCoordinator.installReadyUpdate()
+                }
+            case .failed:
+                self.windowController.endUpdateDownloadActivity()
+            case .installed(let release, _):
+                self.updateCheckPolicy.markInstalled(build: release.build)
+                self.windowController.endUpdateDownloadActivity()
+            case .idle, .checking, .deferred, .downloadRequested, .verifying,
+                 .awaitingAuthorization, .installing:
                 break
             }
         }

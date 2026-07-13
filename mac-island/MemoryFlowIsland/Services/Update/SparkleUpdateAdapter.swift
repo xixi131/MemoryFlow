@@ -6,8 +6,7 @@ final class SparkleUpdateAdapter: NSObject, UpdateEngine {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)?
 
     private lazy var userDriver = SparkleUpdateUserDriver { [weak self] event in
-        guard let self, let sessionID = self.sessionID else { return }
-        self.eventHandler?(sessionID, event)
+        self?.handleUserDriverEvent(event)
     }
     private lazy var updater = SPUUpdater(
         hostBundle: .main,
@@ -38,6 +37,17 @@ final class SparkleUpdateAdapter: NSObject, UpdateEngine {
         guard sessionID == self.sessionID else { return }
         userDriver.acceptInstallation()
     }
+
+    private func handleUserDriverEvent(_ event: UpdateEngineEvent) {
+        guard let sessionID else { return }
+        eventHandler?(sessionID, event)
+        switch event {
+        case .authorizationCancelled, .installationFinished, .failed:
+            self.sessionID = nil
+        default:
+            break
+        }
+    }
 }
 
 extension SparkleUpdateAdapter: SPUUpdaterDelegate {
@@ -60,7 +70,7 @@ extension SparkleUpdateAdapter: SPUUpdaterDelegate {
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
         guard let sessionID else { return }
-        eventHandler?(sessionID, .failed(.engine(error.localizedDescription)))
+        eventHandler?(sessionID, .failed(UpdateFailureMapper.map(error)))
         self.sessionID = nil
     }
 }
@@ -81,6 +91,7 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func acceptInstallation() {
+        emit(.authorizationRequested)
         installationReply?(.install)
         installationReply = nil
     }
@@ -93,7 +104,7 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {}
     func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {}
     func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) { acknowledgement() }
-    func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) { emit(.failed(.engine(error.localizedDescription))); acknowledgement() }
+    func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) { emit(.failed(UpdateFailureMapper.map(error))); acknowledgement() }
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
         receivedBytes = 0
         expectedBytes = nil
@@ -104,10 +115,14 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
         emit(.downloadExpectedContentLength(Int64(expectedContentLength)))
     }
     func showDownloadDidReceiveData(ofLength length: UInt64) { receivedBytes += length; emit(.downloadProgress(receivedBytes: Int64(receivedBytes), totalBytes: expectedBytes.map(Int64.init))) }
-    func showDownloadDidStartExtractingUpdate() { emit(.downloadFinished) }
+    func showDownloadDidStartExtractingUpdate() { emit(.verificationStarted) }
     func showExtractionReceivedProgress(_ progress: Double) {}
-    func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) { installationReply = reply; emit(.downloadFinished) }
+    func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) { installationReply = reply; emit(.verificationSucceeded) }
     func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) { emit(.installationStarted) }
-    func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) { acknowledgement() }
-    func dismissUpdateInstallation() { updateReply = nil; installationReply = nil }
+    func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) { emit(.installationFinished(relaunched: relaunched)); acknowledgement() }
+    func dismissUpdateInstallation() {
+        if installationReply != nil { emit(.authorizationCancelled) }
+        updateReply = nil
+        installationReply = nil
+    }
 }
