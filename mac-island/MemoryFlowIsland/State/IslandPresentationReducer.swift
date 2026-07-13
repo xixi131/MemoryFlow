@@ -40,6 +40,9 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case tapCollapsedToActivity
     case loginRequiredPresented
     case loginRequiredDismissed
+    case updatePromptPresented
+    case updatePromptUpdateRequested
+    case updatePromptLaterRequested
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
     case presentationRetargeted
@@ -80,6 +83,30 @@ enum IslandPresentationReducer {
         intent: IslandInteractionIntent
     ) -> IslandPresentationReducerResult {
         switch intent {
+        case let .updatePromptAvailable(prompt):
+            guard state.updatePrompt != prompt else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .updatePromptPresented) {
+                $0.updatePrompt = prompt
+                $0.isHovered = false
+            }
+        case .updatePromptUpdateRequested:
+            guard state.updatePrompt != nil else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            return transition(state, reason: .updatePromptUpdateRequested) {
+                $0.updatePrompt = nil
+                $0.isHovered = false
+            }
+        case .updatePromptLaterRequested:
+            guard state.updatePrompt != nil else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            return transition(state, reason: .updatePromptLaterRequested) {
+                $0.updatePrompt = nil
+                $0.isHovered = false
+            }
         case .loginRequiredRequested:
             guard state.authState == .loggedOut,
                   state.primaryMode == .app else {
@@ -145,9 +172,13 @@ enum IslandPresentationReducer {
         }
 
         switch intent {
-        case .loginRequiredRequested, .loginRequiredDismissed:
+        case .loginRequiredRequested, .loginRequiredDismissed,
+             .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested:
             return unchanged(state, reason: .noChange)
         case .outsideCollapse:
+            if state.updatePrompt != nil {
+                return unchanged(state, reason: .intentIgnored)
+            }
             if state.isLoginRequiredPresented {
                 return reduce(current: state, intent: .loginRequiredDismissed)
             }
@@ -406,6 +437,9 @@ enum IslandPresentationReducer {
         case .transitionComplete,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .updatePromptAvailable,
+             .updatePromptUpdateRequested,
+             .updatePromptLaterRequested,
              .mockScenarioSelect,
              .retargetPresentation:
             return unchanged(state, reason: .noChange)
@@ -562,6 +596,9 @@ enum IslandPresentationReducer {
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .updatePromptAvailable,
+             .updatePromptUpdateRequested,
+             .updatePromptLaterRequested,
              .mockScenarioSelect,
              .retargetPresentation,
              .transitionComplete:
@@ -583,6 +620,9 @@ enum IslandPresentationReducer {
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .updatePromptAvailable,
+             .updatePromptUpdateRequested,
+             .updatePromptLaterRequested,
              .mockScenarioSelect,
              .retargetPresentation,
              .transitionComplete:
@@ -599,6 +639,9 @@ enum IslandPresentationReducer {
              .tap,
              .loginRequiredRequested,
              .loginRequiredDismissed,
+             .updatePromptAvailable,
+             .updatePromptUpdateRequested,
+             .updatePromptLaterRequested,
              .outsideCollapse,
              .pointerSwipe,
              .mockPlaybackStarted,

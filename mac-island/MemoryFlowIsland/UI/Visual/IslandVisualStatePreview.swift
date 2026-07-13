@@ -30,6 +30,8 @@ struct IslandVisualStatePreview: View {
     var onMusicControlInteraction: (() -> Void)?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
+    var onUpdateRequested: (() -> Void)?
+    var onUpdateLaterRequested: (() -> Void)?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
@@ -163,7 +165,9 @@ struct IslandVisualStatePreview: View {
             onMusicControlInteraction: onMusicControlInteraction,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
             onTodoTaskInteraction: onTodoTaskInteraction,
-            onLoginRequested: onLoginRequested
+            onLoginRequested: onLoginRequested,
+            onUpdateRequested: onUpdateRequested,
+            onUpdateLaterRequested: onUpdateLaterRequested
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -339,6 +343,8 @@ private struct IslandPreviewContentOverlay: View {
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
+    var onUpdateRequested: (() -> Void)?
+    var onUpdateLaterRequested: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
     @State private var isFavorite = false
@@ -601,7 +607,9 @@ private struct IslandPreviewContentOverlay: View {
 
     @ViewBuilder
     private var expandedAppContent: some View {
-        if content.kind == .loginRequired {
+        if content.kind == .updatePrompt {
+            updatePromptContent
+        } else if content.kind == .loginRequired {
             Text("需要登录")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
@@ -625,6 +633,63 @@ private struct IslandPreviewContentOverlay: View {
         } else {
             genericExpandedAppContent
         }
+    }
+
+    private var updatePromptContent: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 4) {
+                Text(content.eyebrow.uppercased())
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(memoryFlowHex: "#0A84FF"))
+                Text(content.title)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                Text(content.subtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: IslandUpdatePromptLayout.actionSpacing) {
+                updatePromptButton(
+                    title: "Later",
+                    accessibilityLabel: "Install update later",
+                    color: Color(memoryFlowHex: IslandUpdatePromptLayout.laterColorHex),
+                    action: { onUpdateLaterRequested?() }
+                )
+                updatePromptButton(
+                    title: "Update",
+                    accessibilityLabel: "Update MemoryFlow",
+                    color: Color(memoryFlowHex: IslandUpdatePromptLayout.updateColorHex),
+                    action: { onUpdateRequested?() }
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private func updatePromptButton(
+        title: String,
+        accessibilityLabel: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(
+                    width: IslandUpdatePromptLayout.actionWidth,
+                    height: IslandUpdatePromptLayout.actionHeight
+                )
+                .background(Capsule().fill(color))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .focusable(true)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var genericExpandedAppContent: some View {

@@ -8,6 +8,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case expandedMusic
     case expandedApp
     case loginRequired
+    case updatePrompt
 
     var id: String {
         rawValue
@@ -15,7 +16,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var isExpanded: Bool {
         switch self {
-        case .expandedMusic, .expandedApp, .loginRequired:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
             return true
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
@@ -28,7 +29,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
         case .expandedMusic, .expandedApp:
             return IslandVisualTokens.shadow.visibleInExpanded
-        case .compactCollapsed, .activityCollapsed, .loginRequired:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
             return false
         }
     }
@@ -41,7 +42,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .activity
         case .expandedMusic:
             return .expandedMusic
-        case .expandedApp, .loginRequired:
+        case .expandedApp, .loginRequired, .updatePrompt:
             return .expandedApp
         }
     }
@@ -62,6 +63,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Expanded App"
         case .loginRequired:
             return "Login Required"
+        case .updatePrompt:
+            return "Update Available"
         }
     }
 
@@ -87,7 +90,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
                 trailingContentWidth: 36,
                 horizontalPadding: 18
             )
-        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired:
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
             return .none
         }
     }

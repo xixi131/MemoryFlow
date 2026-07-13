@@ -61,6 +61,7 @@ private extension IslandPreviewContent.Kind {
             return true
         case .signedOutCompact,
              .loginRequired,
+             .updatePrompt,
              .reviewActivity,
              .todoActivity,
              .musicActivity,
@@ -80,6 +81,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         didSet { renderModel.onLoginRequested = onLoginRequested }
     }
     var onTodoCompletionRequested: ((Int64) -> Void)?
+    var onUpdateRequested: (() -> Void)?
+    var onUpdateLaterRequested: (() -> Void)?
     private var advancedFeaturesEnabled = false
     private let islandPanel: IslandPanel
     private let notchLayoutEngine: NotchLayoutEngine
@@ -299,6 +302,20 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             : { [weak self] in self?.advancePreviewState() }
         renderModel.onGreetingLifecycleCompleted = { [weak self] in
             self?.dispatchPhase5Intent(.greetingLifecycleCompleted)
+        }
+        renderModel.onUpdateRequested = { [weak self] in
+            guard let self else { return }
+            let result = self.dispatchPhase5Intent(.updatePromptUpdateRequested)
+            guard result?.reducerResult.reason == .updatePromptUpdateRequested else { return }
+            self.hostingView.consumeNextPointerTap()
+            self.onUpdateRequested?()
+        }
+        renderModel.onUpdateLaterRequested = { [weak self] in
+            guard let self else { return }
+            let result = self.dispatchPhase5Intent(.updatePromptLaterRequested)
+            guard result?.reducerResult.reason == .updatePromptLaterRequested else { return }
+            self.hostingView.consumeNextPointerTap()
+            self.onUpdateLaterRequested?()
         }
         renderModel.onMusicControlInteraction = { [weak self] in
             self?.hostingView.consumeNextPointerTap()
@@ -1084,7 +1101,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         for layoutInput: IslandPreviewLayoutInput,
         attachmentMetrics: TopAttachmentMetrics
     ) -> IslandWidthConstraints {
-        if layoutInput.visualState == .loginRequired {
+        if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt {
             return IslandLoginRequiredLayout.constraints(for: attachmentMetrics)
         }
         if usesPhase5PreviewInteractionRouting {
@@ -1303,6 +1320,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
            phase5PreviewStateContainer.domainState.isLoginRequiredPresented {
             dispatchPhase5Intent(.loginRequiredDismissed)
         }
+    }
+
+    @MainActor
+    func presentUpdatePrompt(version: String, build: String) {
+        dispatchPhase5Intent(
+            .updatePromptAvailable(IslandUpdatePrompt(version: version, build: build))
+        )
     }
 
     @MainActor

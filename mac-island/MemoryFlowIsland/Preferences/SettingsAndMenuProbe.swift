@@ -55,6 +55,7 @@ enum SettingsAndMenuProbe {
         }
 
         try validateLoginRequiredPresentation()
+        try validateUpdatePromptPresentation()
 
         let user = AuthenticatedUser(
             id: 7,
@@ -91,7 +92,7 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Status menu removal changed an unrelated command: \(titles)")
         }
 
-        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=square+notch-safe+spring+reverse+reduce-motion; message=需要登录; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=square+notch-safe+spring+reverse+reduce-motion; update-prompt=pure+square+notch-safe+capsules+colors+focus+outside-safe+music-return+reduce-motion; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
     }
 
     private static func validateLoginRequiredPresentation() throws {
@@ -161,6 +162,96 @@ enum SettingsAndMenuProbe {
                   result.visibleFrame.maxY == attachment.topBandFrame.maxY,
                   attachment.expandedContentTopInset >= attachment.notchFrame!.height else {
                 throw SettingsAndMenuProbeError.failed("Login Required square or notch anchor failed at width \(availableWidth): frame=\(result.visibleFrame), center=\(attachment.centerX), top=\(attachment.topBandFrame.maxY)")
+            }
+        }
+    }
+
+    private static func validateUpdatePromptPresentation() throws {
+        let prompt = IslandUpdatePrompt(version: "1.0.1", build: "101")
+        let login = IslandPresentationReducer.reduce(
+            current: .loggedOutCompact,
+            intent: .loginRequiredRequested
+        )
+        let opened = IslandPresentationReducer.reduce(
+            current: login.state,
+            intent: .updatePromptAvailable(prompt)
+        )
+        let repeated = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .updatePromptAvailable(prompt)
+        )
+        let outside = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .outsideCollapse
+        )
+        let later = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .updatePromptLaterRequested
+        )
+        let music = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .musicSnapshotUpdated(.mockPlaybackStart)
+        )
+        let musicReturn = IslandPresentationReducer.reduce(
+            current: music.state,
+            intent: .musicStopped
+        )
+        let promptOverMusic = IslandPresentationReducer.reduce(
+            current: .expandedMusic,
+            intent: .updatePromptAvailable(prompt)
+        )
+        let laterToMusic = IslandPresentationReducer.reduce(
+            current: promptOverMusic.state,
+            intent: .updatePromptLaterRequested
+        )
+
+        guard opened.derivedState.visualState == .updatePrompt,
+              opened.derivedState.previewContent.kind == .updatePrompt,
+              opened.derivedState.previewContent.title == "MemoryFlow 1.0.1",
+              repeated.reason == .noChange,
+              outside.reason == .intentIgnored,
+              outside.derivedState.visualState == .updatePrompt,
+              later.derivedState.visualState == .loginRequired,
+              music.derivedState.visualState == .activityCollapsed,
+              musicReturn.derivedState.visualState == .updatePrompt,
+              laterToMusic.derivedState.visualState == .expandedMusic,
+              IslandUpdatePromptLayout.updateColorHex == "#0A84FF",
+              IslandUpdatePromptLayout.laterColorHex == "#636366",
+              IslandUpdatePromptLayout.actionWidth >= 82,
+              IslandUpdatePromptLayout.actionHeight >= 34,
+              IslandUpdatePromptLayout.actionSpacing > 0,
+              IslandTransitionKind.resolve(
+                previous: IslandDerivedState.derive(from: .loggedOutCompact),
+                next: opened.derivedState,
+                reason: opened.reason
+              ) == .compactToExpanded,
+              IslandMotionTokens.reduceMotionDuration < IslandMotionTokens.profile(for: .compactToExpanded).shellKeyframes.duration else {
+            throw SettingsAndMenuProbeError.failed("Update prompt reducer, action, color, or motion contract failed")
+        }
+
+        for availableWidth in [1440.0, 360.0] {
+            let attachment = TopAttachmentMetrics(
+                kind: .notch,
+                topBandFrame: CGRect(x: 0, y: 876, width: availableWidth, height: 36),
+                notchFrame: CGRect(x: (availableWidth - 180) / 2, y: 876, width: 180, height: 36),
+                menuBarHeight: 36,
+                safeTopInset: 36,
+                pixelScale: 2,
+                availableTopWidth: availableWidth,
+                centerX: availableWidth / 2
+            )
+            let result = IslandWindowSizingEngine.resolve(
+                state: .updatePrompt,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandLoginRequiredLayout.constraints(for: attachment)
+            )
+            let actionsWidth = IslandUpdatePromptLayout.actionWidth * 2 + IslandUpdatePromptLayout.actionSpacing
+            guard result.visibleFrame.width == result.visibleFrame.height,
+                  result.visibleFrame.midX == attachment.centerX,
+                  result.visibleFrame.maxY == attachment.topBandFrame.maxY,
+                  attachment.expandedContentTopInset >= attachment.notchFrame!.height,
+                  actionsWidth < result.visibleFrame.width else {
+                throw SettingsAndMenuProbeError.failed("Update prompt square, notch, or hit regions failed at width \(availableWidth)")
             }
         }
     }

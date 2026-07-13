@@ -47,16 +47,22 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case (.compactCollapsed, .activityCollapsed), (.hoverCollapsed, .activityCollapsed): return .compactToActivity
         case (.compactCollapsed, .expandedMusic), (.compactCollapsed, .expandedApp),
              (.compactCollapsed, .loginRequired),
+             (.compactCollapsed, .updatePrompt),
              (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp),
-             (.hoverCollapsed, .loginRequired): return .compactToExpanded
+             (.hoverCollapsed, .loginRequired),
+             (.hoverCollapsed, .updatePrompt): return .compactToExpanded
         case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed),
              (.activityHoverCollapsed, .compactCollapsed), (.activityHoverCollapsed, .hoverCollapsed): return .activityToCompact
         case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp),
-             (.activityHoverCollapsed, .expandedMusic), (.activityHoverCollapsed, .expandedApp): return .activityToExpanded
+             (.activityCollapsed, .updatePrompt),
+             (.activityHoverCollapsed, .expandedMusic), (.activityHoverCollapsed, .expandedApp),
+             (.activityHoverCollapsed, .updatePrompt): return .activityToExpanded
         case (.expandedMusic, .activityCollapsed), (.expandedApp, .activityCollapsed),
              (.expandedMusic, .activityHoverCollapsed), (.expandedApp, .activityHoverCollapsed): return .expandedToActivity
+        case (.updatePrompt, .activityCollapsed), (.updatePrompt, .activityHoverCollapsed): return .expandedToActivity
         case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed),
-             (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed): return .expandedToCompact
+             (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed),
+             (.updatePrompt, .compactCollapsed), (.updatePrompt, .hoverCollapsed): return .expandedToCompact
         default: return .defaultProfile
         }
     }

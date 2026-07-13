@@ -60,6 +60,8 @@ final class IslandRenderModel: ObservableObject {
     var onMusicControlInteraction: (() -> Void)?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
+    var onUpdateRequested: (() -> Void)?
+    var onUpdateLaterRequested: (() -> Void)?
 
     init(presentation: IslandRenderPresentation) {
         self.presentation = presentation
@@ -91,7 +93,9 @@ struct IslandRootView: View {
             onGreetingLifecycleCompleted: model.onGreetingLifecycleCompleted,
             onMusicControlInteraction: model.onMusicControlInteraction,
             onTodoTaskInteraction: model.onTodoTaskInteraction,
-            onLoginRequested: model.onLoginRequested
+            onLoginRequested: model.onLoginRequested,
+            onUpdateRequested: model.onUpdateRequested,
+            onUpdateLaterRequested: model.onUpdateLaterRequested
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

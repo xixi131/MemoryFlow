@@ -146,10 +146,22 @@ final class UpdateCheckPolicy {
         guard store.lastSuccessfulCheck.map({ clock.now.timeIntervalSince($0) >= Self.cadence }) ?? true else { return }
         _ = coordinator.checkForUpdates()
     }
-    func deferVersion(_ version: String) { store.deferredVersion = version; store.deferredUntil = clock.now.addingTimeInterval(Self.deferral) }
+    @discardableResult
+    func deferVersion(_ version: String) -> Date {
+        let until = clock.now.addingTimeInterval(Self.deferral)
+        store.deferredVersion = version
+        store.deferredUntil = until
+        return until
+    }
     func shouldPresent(version: String) -> Bool {
         guard store.deferredVersion == version, let until = store.deferredUntil else { return true }
         return clock.now >= until
+    }
+    func suppressionUntil(version: String) -> Date? {
+        guard store.deferredVersion == version,
+              let until = store.deferredUntil,
+              clock.now < until else { return nil }
+        return until
     }
     func clearDeferralIfSuperseded(by version: String) { if store.deferredVersion != version { store.deferredVersion = nil; store.deferredUntil = nil } }
 }

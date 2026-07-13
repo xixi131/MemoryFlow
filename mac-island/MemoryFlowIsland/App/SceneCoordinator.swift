@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 private enum MemoryFlowRuntimeEndpoints {
     static var apiBaseURL: URL {
@@ -29,12 +30,15 @@ private enum MemoryFlowRuntimeEndpoints {
 protocol IslandWindowControlling: AnyObject {
     var onLoginRequested: (() -> Void)? { get set }
     var onTodoCompletionRequested: ((Int64) -> Void)? { get set }
+    var onUpdateRequested: (() -> Void)? { get set }
+    var onUpdateLaterRequested: (() -> Void)? { get set }
     func show()
     func hide()
     func applyAuthenticatedUser(_ user: AuthenticatedUser)
     func applyLoggedOutState()
     func applyBasicCapabilityState()
     func setAdvancedFeaturesEnabled(_ isEnabled: Bool)
+    func presentUpdatePrompt(version: String, build: String)
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
 }
@@ -62,6 +66,8 @@ final class SceneCoordinator {
     let todoPollingController: TodoPollingController
     let todoMutationController: TodoMutationController
     private let updateCheckPolicy: UpdateCheckPolicy
+    private let updateCoordinator: UpdateCoordinator
+    private var updateStateCancellable: AnyCancellable?
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
@@ -69,6 +75,7 @@ final class SceneCoordinator {
         let advancedFeaturesSettings = AdvancedFeaturesSettings()
         let settingsAccountState = SettingsAccountState()
         let updateCoordinator = UpdateCoordinator(engine: SparkleUpdateAdapter())
+        self.updateCoordinator = updateCoordinator
         self.updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
         let sessionStore = KeychainAuthSessionStore()
         let apiClient = try! APIClient(
@@ -179,6 +186,7 @@ final class SceneCoordinator {
                 Task { await authCoordinator?.logout() }
             }
         )
+        configureUpdatePromptBridge()
     }
 
     init(
@@ -196,6 +204,7 @@ final class SceneCoordinator {
         self.advancedFeaturesSettings = AdvancedFeaturesSettings(store: InMemoryAdvancedFeaturesStore(isEnabled: true))
         self.settingsAccountState = SettingsAccountState()
         let updateCoordinator = UpdateCoordinator(engine: SparkleUpdateAdapter())
+        self.updateCoordinator = updateCoordinator
         self.updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
         let resolvedAuthCoordinator: AuthCoordinating
         let resolvedSessionStore: AuthSessionStoring
@@ -249,6 +258,7 @@ final class SceneCoordinator {
             preferencesWindowController: preferencesWindowController,
             languageSettings: languageSettings
         )
+        configureUpdatePromptBridge()
     }
 
     func start() {
@@ -317,6 +327,30 @@ final class SceneCoordinator {
             _ = try? await authCoordinator.restoreAndVerifySession()
             guard generation == capabilityGeneration,
                   advancedFeaturesSettings.isEnabled else { return }
+        }
+    }
+
+    private func configureUpdatePromptBridge() {
+        windowController.onUpdateRequested = { [weak self] in
+            guard let self else { return }
+            _ = self.updateCoordinator.downloadAvailableUpdate()
+        }
+        windowController.onUpdateLaterRequested = { [weak self] in
+            guard let self,
+                  case .available(let release) = self.updateCoordinator.state else { return }
+            let until = self.updateCheckPolicy.deferVersion(release.build)
+            _ = self.updateCoordinator.deferAvailableUpdate(until: until)
+        }
+        updateStateCancellable = updateCoordinator.$state.sink { [weak self] state in
+            guard let self, case .available(let release) = state else { return }
+            self.updateCheckPolicy.clearDeferralIfSuperseded(by: release.build)
+            guard self.updateCheckPolicy.shouldPresent(version: release.build) else {
+                if let until = self.updateCheckPolicy.suppressionUntil(version: release.build) {
+                    _ = self.updateCoordinator.deferAvailableUpdate(until: until)
+                }
+                return
+            }
+            self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
         }
     }
 }

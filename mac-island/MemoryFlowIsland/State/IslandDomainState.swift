@@ -173,18 +173,26 @@ struct IslandMusicReturnState: Codable, Equatable {
     let forceCompactMode: Bool
     let isHovered: Bool
     let isLoginRequiredPresented: Bool
+    let updatePrompt: IslandUpdatePrompt?
 
     init(
         presentationState: IslandPresentationState,
         forceCompactMode: Bool,
         isHovered: Bool,
-        isLoginRequiredPresented: Bool = false
+        isLoginRequiredPresented: Bool = false,
+        updatePrompt: IslandUpdatePrompt? = nil
     ) {
         self.presentationState = presentationState
         self.forceCompactMode = forceCompactMode
         self.isHovered = isHovered
         self.isLoginRequiredPresented = isLoginRequiredPresented
+        self.updatePrompt = updatePrompt
     }
+}
+
+struct IslandUpdatePrompt: Codable, Equatable {
+    let version: String
+    let build: String
 }
 
 struct IslandMockActivitySources: Codable, Equatable {
@@ -216,6 +224,7 @@ struct IslandDomainState: Codable, Equatable {
     var isGreetingActive: Bool
     var greetingText: String?
     var isLoginRequiredPresented: Bool = false
+    var updatePrompt: IslandUpdatePrompt? = nil
     var reviewSnapshot: ReviewSnapshot? = nil
     var todoSnapshot: TodoSnapshot? = nil
     var musicReturnState: IslandMusicReturnState? = nil

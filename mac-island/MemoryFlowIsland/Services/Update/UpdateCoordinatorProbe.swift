@@ -61,7 +61,22 @@ enum UpdateCoordinatorProbe {
         guard policyEngine.lastSession != nil else { throw UpdateCoordinatorProbeError.failed("launch catch-up missing") }
         policy.deferVersion("101")
         guard !policy.shouldPresent(version: "101"), policy.shouldPresent(version: "102"),
+              policy.suppressionUntil(version: "101") == now.addingTimeInterval(UpdateCheckPolicy.deferral),
               policyStore.deferredUntil == now.addingTimeInterval(UpdateCheckPolicy.deferral) else { throw UpdateCoordinatorProbeError.failed("four-hour deferral failed") }
+        let relaunchedPolicy = UpdateCheckPolicy(
+            coordinator: deferred,
+            clock: ProbeClock(now: now),
+            store: policyStore
+        )
+        guard !relaunchedPolicy.shouldPresent(version: "101") else {
+            throw UpdateCoordinatorProbeError.failed("relaunch deferral was not restored")
+        }
+        let previousManualSession = deferredEngine.lastSession
+        relaunchedPolicy.manualCheck()
+        guard deferredEngine.lastSession != previousManualSession else {
+            throw UpdateCoordinatorProbeError.failed("manual check was blocked during deferral")
+        }
+        relaunchedPolicy.stop()
         policy.clearDeferralIfSuperseded(by: "102")
         guard policyStore.deferredVersion == nil else { throw UpdateCoordinatorProbeError.failed("newer-version deferral cleanup failed") }
         policy.stop()

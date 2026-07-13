@@ -1,4 +1,12 @@
 import CoreGraphics
+
+enum IslandUpdatePromptLayout {
+    static let actionWidth: CGFloat = 82
+    static let actionHeight: CGFloat = 34
+    static let actionSpacing: CGFloat = 10
+    static let updateColorHex = "#0A84FF"
+    static let laterColorHex = "#636366"
+}
 import Foundation
 
 enum IslandVisualTokenSet: String, CaseIterable {
@@ -119,7 +127,7 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverBuffer.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp, .loginRequired:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
             return expandedBuffer.scaled(by: visualScale)
         case .compactCollapsed, .activityCollapsed:
             return .zero
@@ -130,7 +138,7 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverAppearance.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp, .loginRequired:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
             return expandedAppearance.scaled(by: visualScale)
         case .compactCollapsed, .activityCollapsed:
             return IslandShadowAppearanceTokens(opacity: 0, radius: 0, offsetY: 0)

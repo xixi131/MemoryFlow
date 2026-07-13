@@ -81,7 +81,7 @@
       "Verify visual frames, hit regions, colors, capsule geometry, notch clearance, Reduce Motion, repeated callbacks, outside clicks, relaunch deferral, and music takeover or return."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-update-download-activity",

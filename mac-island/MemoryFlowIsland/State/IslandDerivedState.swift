@@ -108,6 +108,9 @@ struct IslandDerivedState: Equatable {
         for state: IslandDomainState,
         showAnyActivity: Bool
     ) -> IslandVisualState {
+        if state.updatePrompt != nil {
+            return .updatePrompt
+        }
         if state.isLoginRequiredPresented {
             return .loginRequired
         }
@@ -417,6 +420,7 @@ struct IslandPreviewContent: Equatable {
     enum Kind: String, Equatable {
         case signedOutCompact
         case loginRequired
+        case updatePrompt
         case reviewCompact
         case todoCompact
         case reviewActivity
@@ -461,6 +465,21 @@ struct IslandPreviewContent: Equatable {
                 todo: nil,
                 music: nil,
                 contentWidthRequirement: width(leading: 36, trailing: 108, padding: 14)
+            )
+        }
+
+        if let prompt = state.updatePrompt {
+            return IslandPreviewContent(
+                kind: .updatePrompt,
+                eyebrow: "Update available",
+                title: "MemoryFlow \(prompt.version)",
+                subtitle: "Build \(prompt.build)",
+                badge: "UPDATE",
+                tone: .review,
+                review: nil,
+                todo: nil,
+                music: nil,
+                contentWidthRequirement: .none
             )
         }
 

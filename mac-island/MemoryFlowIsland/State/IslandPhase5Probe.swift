@@ -901,6 +901,12 @@ enum IslandPhase5Probe {
             return "loginRequiredRequested"
         case .loginRequiredDismissed:
             return "loginRequiredDismissed"
+        case let .updatePromptAvailable(prompt):
+            return "updatePromptAvailable(\(prompt.build))"
+        case .updatePromptUpdateRequested:
+            return "updatePromptUpdateRequested"
+        case .updatePromptLaterRequested:
+            return "updatePromptLaterRequested"
         case .outsideCollapse:
             return "outsideCollapse"
         case let .pointerSwipe(direction):
