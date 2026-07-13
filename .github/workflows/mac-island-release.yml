@@ -1,0 +1,168 @@
+name: MemoryFlow Island Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag in vX.Y.Z form"
+        required: true
+        type: string
+      build_number:
+        description: "Increasing CFBundleVersion"
+        required: true
+        type: number
+      candidate_kind:
+        description: "Manual releases stay non-production"
+        required: true
+        default: draft
+        type: choice
+        options:
+          - draft
+          - prerelease
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mac-island-release-${{ github.ref_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPOSITORY: xixi131/MemoryFlow
+      DERIVED_DATA: /tmp/memoryflow-phase7-cicd-derived
+      OUTPUT_DIR: /tmp/memoryflow-phase7-release
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate trigger and signing secret
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+            BUILD_NUMBER="${{ inputs.build_number }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            BUILD_NUMBER="$(git rev-list --count HEAD)"
+          fi
+          [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release tag: ${TAG}" >&2; exit 1; }
+          [[ "${BUILD_NUMBER}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid build number: ${BUILD_NUMBER}" >&2; exit 1; }
+          [[ -n "${SPARKLE_PRIVATE_KEY}" ]] || { echo "SPARKLE_EDDSA_PRIVATE_KEY is required" >&2; exit 1; }
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "build_number=${BUILD_NUMBER}" >> "${GITHUB_OUTPUT}"
+        id: release_input
+
+      - name: Resolve previous published version
+        id: previous
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/previous"
+          if PREVIOUS_TAG="$(gh api "repos/${REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null)"; then
+            if gh release download "${PREVIOUS_TAG}" --repo "${REPOSITORY}" --pattern release-metadata.json --dir "${RUNNER_TEMP}/previous" 2>/dev/null; then
+              PREVIOUS_VERSION="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0])).fetch("marketing_version")' "${RUNNER_TEMP}/previous/release-metadata.json")"
+              PREVIOUS_BUILD="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0])).fetch("build_version")' "${RUNNER_TEMP}/previous/release-metadata.json")"
+            else
+              PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+              PREVIOUS_BUILD="$(git show "${PREVIOUS_TAG}:mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj" | awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(";", "", $3); print $3; exit}')"
+            fi
+          else
+            PREVIOUS_VERSION="0.0.0"
+            PREVIOUS_BUILD="0"
+          fi
+          [[ "${PREVIOUS_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "${PREVIOUS_BUILD}" =~ ^[0-9]+$ ]]
+          echo "version=${PREVIOUS_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "build=${PREVIOUS_BUILD}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and sign release candidate
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          PRIVATE_KEY_FILE="$(mktemp "${RUNNER_TEMP}/sparkle-key.XXXXXX")"
+          trap 'rm -f "${PRIVATE_KEY_FILE}"' EXIT
+          printf '%s' "${SPARKLE_PRIVATE_KEY}" > "${PRIVATE_KEY_FILE}"
+          ./mac-island/release.sh \
+            --tag "${{ steps.release_input.outputs.tag }}" \
+            --build-number "${{ steps.release_input.outputs.build_number }}" \
+            --previous-version "${{ steps.previous.outputs.version }}" \
+            --previous-build-number "${{ steps.previous.outputs.build }}" \
+            --private-key-file "${PRIVATE_KEY_FILE}" \
+            --derived-data "${DERIVED_DATA}" \
+            --output-dir "${OUTPUT_DIR}" \
+            --repository "${REPOSITORY}"
+
+      - name: Validate assets before publication
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.release_input.outputs.tag }}"
+          VERSION="${TAG#v}"
+          ARCHIVE="${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip"
+          test -s "${ARCHIVE}"
+          test -s "${ARCHIVE}.sha256"
+          test -s "${OUTPUT_DIR}/release-metadata.json"
+          test -s "${OUTPUT_DIR}/release-notes.html"
+          test -s "${OUTPUT_DIR}/appcast.xml"
+          (cd "${OUTPUT_DIR}" && shasum -a 256 -c "MemoryFlowIsland-${VERSION}.zip.sha256")
+          grep -Fq "https://github.com/${REPOSITORY}/releases/download/${TAG}/MemoryFlowIsland-${VERSION}.zip" "${OUTPUT_DIR}/appcast.xml"
+          grep -Fq 'sparkle:edSignature=' "${OUTPUT_DIR}/appcast.xml"
+          if grep -R -Fq -- "${SPARKLE_PRIVATE_KEY}" "${OUTPUT_DIR}"; then
+            echo "Private signing key leaked into release assets" >&2
+            exit 1
+          fi
+          if gh release view "${TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; refusing to replace immutable assets" >&2
+            exit 1
+          fi
+
+      - name: Create release shell
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.release_input.outputs.tag }}"
+          FLAGS=()
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.candidate_kind }}" == "draft" ]]; then
+            FLAGS+=(--draft)
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            FLAGS+=(--prerelease)
+          fi
+          gh release create "${TAG}" \
+            --repo "${REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "MemoryFlow Island ${TAG}" \
+            --notes-file "${OUTPUT_DIR}/release-notes.md" \
+            "${FLAGS[@]}"
+
+      - name: Upload immutable release assets
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.release_input.outputs.tag }}"
+          VERSION="${TAG#v}"
+          gh release upload "${TAG}" \
+            "${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip" \
+            "${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip.sha256" \
+            "${OUTPUT_DIR}/release-metadata.json" \
+            "${OUTPUT_DIR}/release-notes.html" \
+            --repo "${REPOSITORY}"
+
+      - name: Publish signed appcast last
+        run: |
+          set -euo pipefail
+          gh release upload "${{ steps.release_input.outputs.tag }}" \
+            "${OUTPUT_DIR}/appcast.xml" \
+            --repo "${REPOSITORY}"

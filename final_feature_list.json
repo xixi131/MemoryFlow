@@ -1,0 +1,1801 @@
+[
+  {
+    "task_type": "docs",
+    "description": "Create the Phase 5 interaction and mock-state acceptance document shell.",
+    "steps": [
+      "Create docs/mac-island-phase5-interaction-state-acceptance.md with headings for State Model, Derived State, Interaction Intents, Mock Scenarios, Window Wiring, Gesture Guards, Preview Evidence, and Non-Goals.",
+      "Add a one-sentence scope note that Phase 5 uses mock data and native interaction intents without real backend or real music provider integration.",
+      "Check that every heading is unique and the document opens from repository root."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Phase 5 acceptance rows for state and derived-state behavior.",
+    "steps": [
+      "Add acceptance rows for authState, primaryMode, appDisplayMode, presentationState, forceCompactMode, hover, gesture, mode-switch, reminder, and greeting flags.",
+      "Add acceptance rows for hasMusicActivitySource, hasAppActivitySource, showMusicActivity, showAppActivity, showAnyActivity, isActivityVisualState, collapsedWidth, radius, and smoothness outputs.",
+      "Link each row to the Phase 5 section in 灵动岛迁移方案.md and to docs/mac-island-state-spec.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Add Phase 5 acceptance rows for mouse and trackpad interaction intents.",
+    "steps": [
+      "Add acceptance rows for hover enter, hover leave, tap expand, tap collapse, pointer swipe compact/activity, trackpad vertical open/close, and trackpad horizontal music command intents.",
+      "Record the Windows baseline thresholds for tap, pointer swipe, trackpad horizontal, trackpad vertical, reset window, and cooldown window.",
+      "Link each row to docs/mac-island-interaction-spec.md and docs/mac-island-animation-spec.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native Phase 5 domain state types for mock-driven island behavior.",
+    "steps": [
+      "Create a Phase 5 state model file under mac-island/MemoryFlowIsland/State/ for authState, primaryMode, appDisplayMode, presentationState, forceCompactMode, hover, gesture, animation, reminder, and greeting flags.",
+      "Include lightweight mock payload fields for review, todo, and music activity sources without adding real providers or API calls.",
+      "Check the full native Swift source set with swiftc typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native Phase 5 interaction intent types and gesture thresholds.",
+    "steps": [
+      "Create an IslandInteractionIntent model with cases for hoverEnter, hoverLeave, tap, outsideCollapse, pointerSwipe, trackpadSwipe, horizontalMusicCommand, mockScenarioSelect, and transitionComplete.",
+      "Add threshold constants that mirror the documented Windows tap, pointer swipe, trackpad threshold, reset, and cooldown values.",
+      "Check that the model has no dependency on AppKit windows or SwiftUI views."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add derived-state output for Phase 5 visual decisions.",
+    "steps": [
+      "Create IslandDerivedState with booleans for music, app, review, todo, reminder, any-activity, and activity-visual branches.",
+      "Compute collapsed width, radius, smoothness, visual state, and content-width requirement from the mock domain state.",
+      "Check representative logged-out, logged-in review, todo, and music inputs with a lightweight Swift harness or typecheck-safe probe."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the Phase 5 presentation reducer shell.",
+    "steps": [
+      "Create IslandPresentationReducer with an API that accepts current domain state and IslandInteractionIntent and returns the next domain state plus a transition reason.",
+      "Keep the reducer pure and free of window mutation, timers, menu objects, or real provider calls.",
+      "Check that unknown or no-op intents preserve state without changing visual output."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement logged-out and logged-in compact derivation in the Phase 5 reducer path.",
+    "steps": [
+      "Map logged-out mock state to compact collapsed visual output with the documented signed-out width branch.",
+      "Map logged-in app/review compact state to compact collapsed visual output with the documented logged-in width branch.",
+      "Check derived-state probe rows for logged-out and logged-in review compact scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement app review and todo activity derivation for mock scenarios.",
+    "steps": [
+      "Map logged-in review activity mock state to app activity visual output when forceCompactMode is false.",
+      "Map logged-in todo activity mock state to todo activity visual output when forceCompactMode is false.",
+      "Check derived-state probe rows for review activity, todo activity, and todo compact special-width scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement music activity derivation for mock takeover scenarios.",
+    "steps": [
+      "Map mock music data plus primaryMode music to music activity visual output when forceCompactMode is false.",
+      "Keep the music branch independent from real MediaRemote, Apple Music, Spotify, or IPC provider code.",
+      "Check derived-state probe rows for music activity and music compact fallback scenarios."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement tap-driven expand and collapse transitions in the reducer.",
+    "steps": [
+      "Make tap intent expand collapsed or activity states into the correct expanded app or expanded music presentation.",
+      "Make tap or collapse intent return expanded states to the correct collapsed or activity presentation based on activity-source availability.",
+      "Check a reducer probe sequence for compact to expanded to activity or compact recovery."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement hover enter and hover leave transitions in the reducer.",
+    "steps": [
+      "Make hoverEnter set isHovered and produce hoverCollapsed only when the island is not expanded.",
+      "Make hoverLeave clear isHovered and preserve expanded presentation when the island is expanded.",
+      "Check reducer probe sequences for compact hover enter/leave and expanded hover leave."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement pointer swipe compact and activity transitions in the reducer.",
+    "steps": [
+      "Map pointer swipe right to forceCompactMode true when an activity source is visible.",
+      "Map pointer swipe left to forceCompactMode false when an activity source exists and the island is compact.",
+      "Check reducer probe sequences for review activity collapse and compact activity restore."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement trackpad vertical open and close transitions in the reducer.",
+    "steps": [
+      "Map trackpad swipe up to close expanded presentation or collapse activity presentation to compact.",
+      "Map trackpad swipe down to reopen activity from compact or expand activity presentation.",
+      "Check reducer probe sequences for expanded close, activity close, activity reopen, and activity expand."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Implement mock music horizontal trackpad command intents.",
+    "steps": [
+      "Map horizontal trackpad intents to previous-track and next-track mock command outputs only when primaryMode is music.",
+      "Keep command output as mock reducer metadata instead of sending real media keys.",
+      "Check reducer probe rows for music horizontal swipe and app-mode ignored horizontal swipe."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add reducer guards for gesture locks and animation locks.",
+    "steps": [
+      "Add state fields or helper logic that blocks overlapping trackpad gestures during the cooldown window.",
+      "Add mode-switch and force-compact transition guards so repeated intents do not skip visual states.",
+      "Check rapid tap, hover, and trackpad probe sequences for stable target-state output."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add reminder and paused-music mock timer intents without real timers.",
+    "steps": [
+      "Add reducer intents that simulate reminder becoming due and paused music timeout completion.",
+      "Make reminder due open the app review activity path only when compact, app-mode, and not expanded.",
+      "Make paused music timeout return to app mode and clear mock music activity source in reducer output."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create the Phase 5 mock scenario catalog.",
+    "steps": [
+      "Create IslandMockScenario definitions for logged-out compact, logged-in review compact, logged-in todo compact, review activity, todo activity, music activity, expanded music, expanded app, reminder due, and paused music timeout scenarios.",
+      "Give every scenario a stable id, menu title, initial state, and expected derived visual state.",
+      "Check that the scenario catalog compiles without referencing backend or real music provider modules."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create a Phase 5 state-machine probe for derived-state coverage.",
+    "steps": [
+      "Extend or add a lightweight Swift probe that evaluates every mock scenario and writes derived visual state, width, mode, presentation, and activity booleans to docs/evidence/mac-island-phase5/.",
+      "Check that every required Phase 5 scenario appears exactly once in the generated JSON output.",
+      "Check that no generated row reports an unsupported visual state or missing width value."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Create a Phase 5 reducer probe for interaction sequence coverage.",
+    "steps": [
+      "Add reducer sequence cases for hover enter/leave, tap expand/collapse, pointer compact/activity swipes, trackpad vertical swipes, horizontal music command, reminder due, paused timeout, and rapid retargeting.",
+      "Write sequence outputs under docs/evidence/mac-island-phase5/ as JSON or Markdown evidence.",
+      "Check that every sequence records initial state, intents, final state, visual state, and guard outcome."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Wire IslandWindowController to own Phase 5 domain state behind preview mode.",
+    "steps": [
+      "Add a Phase 5 preview state container to IslandWindowController without removing the existing Phase 4 sizing and motion engine paths.",
+      "Map IslandDerivedState visual output into the existing resolvePreviewLayout and IslandMotionEngine request path.",
+      "Check that the native source set typechecks and compact startup still renders when Phase 5 preview mode is enabled."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Route tap interaction through the Phase 5 reducer in preview mode.",
+    "steps": [
+      "Replace preview-only tap cycling with a reducer tap intent when Phase 5 preview mode is enabled.",
+      "Keep the old preview cycling path available only when Phase 5 preview mode is disabled or explicitly requested.",
+      "Check that tapping compact opens expanded and tapping or collapse intent returns to the expected state in a reducer-backed probe."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Route hover monitoring through the Phase 5 reducer in preview mode.",
+    "steps": [
+      "Make IslandHoverMonitor callbacks send hoverEnter and hoverLeave intents to the Phase 5 reducer path.",
+      "Keep click-through disable and recovery tied to the derived hover or expanded state instead of direct preview-state checks.",
+      "Check that hover enter grows the compact shell and hover leave returns it without moving away from the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native pointer drag classification for Phase 5 preview interactions.",
+    "steps": [
+      "Add a small pointer gesture adapter that records pointer-down, pointer-move, and pointer-up horizontal deltas for the island view or panel.",
+      "Convert tap-sized movement into tap intent and swipe-sized movement into pointer swipe intents using the documented thresholds.",
+      "Check with a focused probe or manual preview path that drag right collapses activity and drag left restores activity."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add native trackpad wheel classification for Phase 5 preview interactions.",
+    "steps": [
+      "Add a wheel or scroll event adapter that accumulates deltaX and deltaY over the documented reset window.",
+      "Convert dominant vertical and horizontal movement into trackpad intents using the documented threshold and cooldown values.",
+      "Check that repeated wheel events during cooldown do not emit duplicate reducer intents."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose Phase 5 mock scenarios in the status menu.",
+    "steps": [
+      "Add a preview-only Phase 5 Scenarios submenu gated by a clear environment flag.",
+      "Wire each scenario menu item to select the corresponding IslandMockScenario through the reducer path.",
+      "Check that selecting logged-out, review activity, todo activity, music activity, expanded music, and expanded app changes the visible shell state."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Expose Phase 5 interaction demo controls in the status menu.",
+    "steps": [
+      "Add a preview-only Phase 5 Interactions submenu for hover enter, hover leave, tap, pointer swipe left, pointer swipe right, trackpad up, trackpad down, horizontal previous, and horizontal next intents.",
+      "Route every menu item through the same reducer path used by real preview interactions.",
+      "Check that menu-triggered interaction demos produce the same derived final states as reducer probe sequences."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add minimal mock content markers so Phase 5 state changes are visible.",
+    "steps": [
+      "Add lightweight preview-only labels or glyph markers for logged-out, review, todo, music, reminder, and gesture-lock states without implementing the full Phase 6 content layout.",
+      "Keep marker sizing inputs flowing through IslandContentWidthRequirement rather than directly resizing the window from the view layer.",
+      "Check that each mock scenario has a visibly distinct marker while the shell remains attached to the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Connect Phase 5 content width requirements to mock derived state.",
+    "steps": [
+      "Make derived state declare content width requirements for review, todo, music, greeting, and compact branches.",
+      "Feed the derived content width requirement into IslandWindowSizingEngine through the controller path.",
+      "Check that activity width changes with mock scenario requirements and remains centered around the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Keep expanded collapse recovery tied to activity-source availability.",
+    "steps": [
+      "When expanded app or music collapses, return to activity presentation if a mock activity source is still available.",
+      "When expanded logged-out or compact-only scenarios collapse, return to compact presentation.",
+      "Check reducer and visible preview paths for expanded music, expanded app, and logged-out collapse recovery."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add Phase 5 motion-plan selection from reducer transition reasons.",
+    "steps": [
+      "Map reducer transition reasons to existing IslandTransitionKind values for compact, activity, expanded, hover, and retarget paths.",
+      "Preserve Phase 4 motion tokens while making Phase 5 state transitions choose the correct motion path.",
+      "Check that tap, hover, pointer swipe, and trackpad swipe sequences each record the expected transition kind."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Add Phase 5 retarget handling for rapid mouse and gesture input.",
+    "steps": [
+      "Allow a new reducer intent to retarget the in-flight presentation target without resetting to an old source state.",
+      "Keep hover leave, tap collapse, and trackpad close from fighting over stale animation locks.",
+      "Check rapid hover-tap-hover and tap-tap-trackpad reducer sequences for stable final state and no skipped root view update."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 5 scenario matrix evidence.",
+    "steps": [
+      "Generate docs/evidence/mac-island-phase5/scenario-matrix.json from the Phase 5 scenario probe.",
+      "Confirm the matrix includes logged-out, review compact, todo compact, review activity, todo activity, music activity, expanded app, expanded music, reminder due, and paused timeout rows.",
+      "Check that every row includes domain state, derived state, visual state, width, and expected transition metadata."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "frontend",
+    "description": "Capture Phase 5 interaction sequence evidence.",
+    "steps": [
+      "Generate docs/evidence/mac-island-phase5/interaction-sequences.json or Markdown from the reducer sequence probe.",
+      "Confirm the evidence covers hover, tap, pointer swipe, trackpad vertical, horizontal music, reminder, paused timeout, and rapid retargeting paths.",
+      "Check that guard outcomes are explicit for click-through, gesture lock, animation lock, and cooldown behavior."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 mock scenarios in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 scenario controls enabled when the local environment supports it.",
+      "Select at least logged-out, review activity, todo activity, music activity, expanded app, and expanded music scenarios from the status menu.",
+      "Record whether each scenario visibly changes shell shape, marker content, and notch attachment, noting any environment limitation if physical capture is unavailable."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 mouse interactions in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 interactions enabled when the local environment supports it.",
+      "Use real hover, tap, and pointer drag interactions on the island shell or the matching interaction menu fallbacks.",
+      "Record whether hover grows with shadow, tap expands or collapses, pointer swipes compact or restore activity, and the island stays attached to the notch."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "e2e",
+    "description": "Verify visible Phase 5 trackpad interactions in the native preview host.",
+    "steps": [
+      "Launch the native preview host with Phase 5 interactions enabled when the local environment supports it.",
+      "Use real trackpad vertical and horizontal gestures on the island shell or the matching interaction menu fallbacks.",
+      "Record whether vertical swipes open, expand, close, or compact as expected and horizontal music gestures emit mock previous or next commands without breaking app mode."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Fill the Phase 5 acceptance document with state and reducer evidence links.",
+    "steps": [
+      "Link scenario-matrix evidence and interaction-sequence evidence from docs/mac-island-phase5-interaction-state-acceptance.md.",
+      "Mark state, derived-state, and reducer rows as Passed only when the corresponding generated evidence exists.",
+      "Leave native runtime rows Prepared or Real-device pending if visible preview evidence is unavailable."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Fill the Phase 5 acceptance document with visible interaction evidence.",
+    "steps": [
+      "Add links or notes for manual preview observations, screenshots, videos, or environment limitations for scenario, mouse, and trackpad visible checks.",
+      "Mark visible scenario and interaction rows according to the actual evidence captured by the e2e tasks.",
+      "Check that the document clearly distinguishes mock Phase 5 behavior from real provider or backend integration."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Update the migration checklist with Phase 5 state and interaction gates.",
+    "steps": [
+      "Add Phase 5 checklist rows for state model, derived state, mock scenarios, mouse interactions, trackpad interactions, gesture guards, and visible preview evidence.",
+      "Link each row to docs/mac-island-phase5-interaction-state-acceptance.md and the generated evidence files.",
+      "Check that Phase 6 content migration and Phase 8 real music provider work remain explicitly out of scope."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_type": "docs",
+    "description": "Refresh the handoff notes after the Phase 5 queue is initialized.",
+    "steps": [
+      "Update agent-state.md with Phase 5 as the current queue, the first pending task, and recommended startup files for state-machine and interaction work.",
+      "Add a concise codex-progress.md record that Phase 4 tasks were archived into feature_list_summary.json and Phase 5 tasks were generated.",
+      "Check that normal startup does not require reading codex-progress-archive.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-acceptance-shell",
+    "task_type": "docs",
+    "description": "Create the Phase 6 mock animation acceptance document shell.",
+    "steps": [
+      "Create docs/mac-island-phase6-mock-animation-acceptance.md with sections for Windows Parity, Motion Architecture, Shell Morphs, Content Choreography, Mouse Input, Trackpad Input, Mock Modules, Interruptibility, Accessibility, Performance, Evidence, and Non-Goals.",
+      "State that this queue uses mock review, todo, reminder, greeting, and music data without backend, authentication, MediaRemote, Apple Music, Spotify, Keychain, or IPC integration.",
+      "Check that the document links to docs/mac-island-state-spec.md, docs/mac-island-interaction-spec.md, docs/mac-island-animation-spec.md, and the Phase 6 section of 灵动岛迁移方案.md."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-windows-parity-contract",
+    "task_type": "docs",
+    "description": "Record the complete Windows interaction and animation contract for native implementation.",
+    "steps": [
+      "Add a state matrix covering logged-out compact, logged-in compact, greeting, review activity, todo activity, music activity, expanded review, expanded todo, expanded music, reminder due, music paused, and music stopped.",
+      "Record the exact Windows constants: spring stiffness 280, damping 30, mass 1.2; pointer swipe 26px; tap 10px; trackpad threshold 70; reset 160ms; cooldown 320ms; activity open 0.56s; activity collapse 0.85s; segmented times [0, 0.45, 0.55, 1].",
+      "Record the mode-switch sequence as long press 420ms, compact phase 320ms, reopen delay 70ms, then activity reopen.",
+      "Link every row to the matching DynamicIslandWidget.tsx or Electron main.cjs line and state that Windows files are parity references, not modification targets."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-core-plans",
+    "task_type": "frontend",
+    "description": "Restore a compilable native motion-plan layer for all island transitions.",
+    "steps": [
+      "Recreate the deleted UI/Motion types for IslandMotionTokens, IslandTransitionKind, IslandMotionPlan, and IslandMotionEngine; use commits f8be49d and b59f777 only as historical references and adapt them to the current Phase 5 reducer.",
+      "Centralize shell spring, keyframe, path morph, shadow, content enter, and content exit values; include the Windows constants and separate hover, open, collapse, expand, mode-switch, reminder, and music-takeover profiles.",
+      "Make IslandMotionEngine accept previous derived state, next derived state, reducer transition reason, current presentation snapshot, and Reduce Motion preference without mutating UI.",
+      "Run Swift typecheck and a focused probe that resolves a non-default plan for every supported transition kind."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-mock-scenario-catalog",
+    "task_type": "frontend",
+    "description": "Expose every Windows-visible mode through deterministic native mock scenarios.",
+    "steps": [
+      "Extend the mock models with review counters and subjects, todo counters and six tasks, reminder time and due flags, greeting text, and music metadata, artwork placeholder, playback status, position, duration, and theme color.",
+      "Add status-menu scenarios for logged-out compact, logged-in compact, greeting, review activity, todo activity, music playing, music paused, expanded review, expanded todo, expanded music, reminder due, and music stopped fallback.",
+      "Keep all scenarios local and deterministic; do not start MusicTakeoverController providers or call backend services from the scenario path.",
+      "Verify each menu selection produces distinct derived state, preview content, visual state, and width requirement in a Swift probe."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-live-animation-driver",
+    "task_type": "frontend",
+    "description": "Drive shell animation from live presentation values instead of immediate target replacement.",
+    "steps": [
+      "Create an IslandAnimationDriver that stores current presentation metrics, target metrics, normalized progress, phase, velocity, transition identifier, and completion callback state.",
+      "Advance the driver from a display-linked or Core Animation-compatible clock suitable for macOS 13 instead of using blocking timers on the main thread.",
+      "Allow a new reducer update to retarget the active animation from its current presentation metrics without snapping to the previous start or target.",
+      "Verify deterministic sampled frames for compact to activity, activity to expanded, and mid-flight reverse transitions."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-window-anchor",
+    "task_type": "frontend",
+    "description": "Animate panel geometry while preserving the top-center attachment and interactive bounds.",
+    "steps": [
+      "Route animated visible size through IslandWindowSizingEngine and compute every panel frame from a fixed screen top-center anchor.",
+      "Keep enough transparent panel and shadow buffer during the full transition so expanded shape, ears, stroke, and shadow are never clipped.",
+      "Synchronize visible frame, content frame, hover hotspot, hit-test frame, and click-through state on every animation sample.",
+      "Verify synthetic notch and flat-display probes keep centerX and maxY stable through compact, activity, and expanded transitions."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-shape-morph",
+    "task_type": "frontend",
+    "description": "Morph the island shell continuously through interpolated geometry metrics.",
+    "steps": [
+      "Interpolate width, height, bottom radius, smoothness, ear tension, ear blend height, cap geometry, stroke visibility, and shadow appearance instead of switching CGPath objects at state boundaries.",
+      "Generate body, cap, ear, and open-stroke paths from the interpolated metrics on each frame so path topology remains stable.",
+      "Preserve the opaque black top edge and overlap rules at ear-to-body joins during all sampled frames.",
+      "Run a frame probe that rejects transparent seams, invalid paths, negative sizes, and discontinuous center or top attachment values."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-compact-content",
+    "task_type": "frontend",
+    "description": "Animate compact logged-out, idle, and greeting content without changing shell state semantics.",
+    "steps": [
+      "Render the Windows-parity logged-out login icon and text, the logged-in idle compact branch, and the greeting branch from mock content.",
+      "Crossfade compact content with opacity, blur, and small vertical offset while keeping the compact shell width rules at logged-out 180, logged-in 160, and greeting clamped to 220...300 before display scaling.",
+      "Make login tap remain a mock command in this phase and prevent it from opening an expanded app panel.",
+      "Verify the native preview can cycle logged-out, idle, greeting-enter, greeting-visible, and greeting-exit states without content clipping."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-hover-breathing",
+    "task_type": "frontend",
+    "description": "Add a subtle iOS-like hover breathing animation to collapsed shells.",
+    "steps": [
+      "Animate compact hover width to 1.025 of the current compact width, height from 36 to 37, and hover shadow toward 0px 5px 12px at 0.14 opacity using the hover motion profile.",
+      "Keep activity and expanded shells out of the compact hover geometry branch; expanded hover must not resize the shell.",
+      "Make enter and leave interruptible so rapid pointer crossings reverse from the current presentation value.",
+      "Verify hover preserves top-center attachment, click-through recovery, and the current animated hotspot."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-activity-open",
+    "task_type": "frontend",
+    "description": "Animate compact shells into review, todo, or music activity presentation.",
+    "steps": [
+      "Implement compact-to-activity geometry opening with the 0.56s Windows baseline and a spring-calibrated native profile selected by IslandMotionEngine.",
+      "Morph compact radius and smoothness toward the activity values while expanding width from the current compact width to the sizing-engine content requirement.",
+      "Delay activity content by 0.10s and reveal it over 0.26s using opacity plus blur 4 to 0 with ease-out timing.",
+      "Verify review, todo, and music mock scenarios share the shell motion while retaining distinct content."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-activity-collapse",
+    "task_type": "frontend",
+    "description": "Animate activity presentation back into compact presentation with segmented timing.",
+    "steps": [
+      "Implement the 0.85s segmented collapse with normalized times [0, 0.45, 0.55, 1] and a mid-width equivalent of the Windows 155px stage before final compact width.",
+      "Fade and blur activity content out before the final shell compression, then delay compact content until the shell has cleared the mid-width hold.",
+      "Apply the same collapse profile to review, todo, music, reminder recovery, and expanded-to-compact recovery when an activity source exists.",
+      "Verify generated frames contain the mid-width hold and no content appears inside the wrong shell geometry."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-expanded-app-open",
+    "task_type": "frontend",
+    "description": "Animate review and todo activity shells into the expanded app panel.",
+    "steps": [
+      "Morph activity geometry into the 460 by 320 baseline before display scaling with a lightly overshooting spring and fixed top-center attachment.",
+      "Fade activity-row content out before revealing expanded app content; keep content pointer handling disabled until its enter phase begins.",
+      "Route both review and todo through the same expanded shell animation while preserving their separate mock layouts.",
+      "Verify tap and trackpad-down entry paths produce the same final expanded app geometry and timeline."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-expanded-music-open",
+    "task_type": "frontend",
+    "description": "Animate music activity presentation into the expanded music panel.",
+    "steps": [
+      "Morph music activity geometry into the 460 by 210 baseline before display scaling with the music expansion profile.",
+      "Coordinate shell growth, expanded shadow, artwork movement, metadata reveal, waveform placement, progress row, and transport controls on one timeline.",
+      "Keep the mock music snapshot as the only data source and do not invoke real media providers or commands.",
+      "Verify tap and trackpad-down entry paths reach identical expanded music content and geometry."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-expanded-collapse",
+    "task_type": "frontend",
+    "description": "Collapse expanded panels back to the correct activity or compact destination.",
+    "steps": [
+      "Resolve the destination from activity-source availability and forceCompactMode instead of always returning to one collapsed state.",
+      "Exit expanded content over the Windows 0.15s fade/blur timing before running the shell collapse profile.",
+      "Preserve hover focus for trackpad-up collapse while outside-click and direct tap collapse follow their existing click-through semantics.",
+      "Verify expanded review, todo, and music each recover to activity when a source exists and to compact when force compact is active."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-content-choreography",
+    "task_type": "frontend",
+    "description": "Coordinate shell-first and content-second transitions across every presentation state.",
+    "steps": [
+      "Introduce explicit content phases for hidden, exiting, waitingForShell, entering, and visible instead of deriving visibility only from final visual state.",
+      "Route opacity, blur, scale, offset, and hit-testing through the motion plan so outgoing content leaves before shell compression and incoming content waits for usable geometry.",
+      "Prevent stale review, todo, or music content from flashing when the target mode changes during an active transition.",
+      "Verify sampled timelines for compact to activity, activity to expanded, expanded to activity, and mode retargeting."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-greeting-sequence",
+    "task_type": "frontend",
+    "description": "Animate the mock login greeting through its complete ten-second lifecycle.",
+    "steps": [
+      "Enter greeting text with opacity 0 to 1 and y 6 to 0 over 0.35s ease-out, using the Windows time-of-day text format and mock user name.",
+      "Keep the greeting visible for the Windows-equivalent 10-second lifecycle in the scenario runner, with a fast-forward control for testing.",
+      "Exit with opacity 1 to 0 and y 0 to -6, then animate the shell width back from the clamped greeting width to normal compact width.",
+      "Verify switching to music cancels greeting presentation without leaving an oversized compact shell."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-review-todo-switch",
+    "task_type": "frontend",
+    "description": "Animate long-press switching between review and todo activity modes.",
+    "steps": [
+      "Require a 420ms primary-button hold on the activity leading icon and cancel the action on early release, pointer leave, or pointer cancel.",
+      "Run the Windows sequence: collapse for 320ms, mutate appDisplayMode, wait 70ms, then reopen through the 0.56s activity-open animation.",
+      "Keep the full sequence locked against duplicate long presses while still allowing the animation driver to finish or safely cancel on scenario replacement.",
+      "Verify review-to-todo and todo-to-review sequences show no mixed labels, icons, badges, or stale content."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-reminder-auto-open",
+    "task_type": "frontend",
+    "description": "Animate reminder-due mock events into the existing review activity state.",
+    "steps": [
+      "Add a deterministic reminderDue mock intent that only opens when primaryMode is app, forceCompactMode is true, presentation is not expanded, and the daily reminder key has not fired.",
+      "Reuse the compact-to-review-activity shell and content motion instead of introducing a separate reminder visual mode.",
+      "Use the activity segmented collapse when the reminder presentation later closes or returns from expanded review.",
+      "Verify repeated due events with the same key do not replay while a new key can trigger the animation again."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-takeover",
+    "task_type": "frontend",
+    "description": "Animate mock music takeover from app presentation into music activity presentation.",
+    "steps": [
+      "Add a mock playback-start intent that changes primaryMode to music, clears force compact, and targets music activity only when the mock auth state permits takeover.",
+      "Crossfade app content out before morphing to the music activity shell, then reveal artwork and waveform after the shell opens.",
+      "Handle a track update while already in music mode as content retargeting without replaying the full app-to-music takeover.",
+      "Verify logged-out app state ignores initial takeover while an already-active mock music state continues accepting snapshot updates."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-release",
+    "task_type": "frontend",
+    "description": "Animate paused-timeout and stopped-music fallback back to app presentation.",
+    "steps": [
+      "Add deterministic controls for immediate Stopped fallback and fast-forwarded Paused 30-second timeout while preserving the Windows state guards.",
+      "Exit music content before retargeting the shell to review or todo activity according to the current appDisplayMode and force-compact state.",
+      "Cancel the pending timeout when mock playback resumes or a newer music snapshot arrives.",
+      "Verify paused-resume, paused-timeout, and stopped sequences do not leave music artwork, progress, or waveform visible in app mode."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-waveform",
+    "task_type": "frontend",
+    "description": "Animate native music waveform bars for playing and paused mock states.",
+    "steps": [
+      "Implement four bars in activity mode and five bars in expanded mode with per-bar phase offsets matching the Windows 2.2s repeating ease-in-out rhythm.",
+      "Animate playing bar heights through the 4, 16, 8, 20, 6, 12, 4 pattern after display scaling and settle all bars to height 4 over 0.3s when paused.",
+      "Apply the mock theme color and update color changes without restarting shell geometry animation.",
+      "Verify waveform animation stops when the view is hidden and does not continuously invalidate the entire panel."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-artwork",
+    "task_type": "frontend",
+    "description": "Animate music artwork and metadata continuously between activity and expanded layouts.",
+    "steps": [
+      "Move artwork from the activity 24 by 27 squircle toward the expanded 72 by 80 squircle using matched geometry or one shared animatable presentation model.",
+      "Interpolate artwork radius and smoothness from 6.4 and 1.92 toward 16 and 1.85 while preserving aspect fill and placeholder behavior.",
+      "Crossfade title and artist changes directionally without reconstructing the whole expanded content tree.",
+      "Verify expand, collapse, track change, and missing-artwork scenarios have no duplicate covers or flashes."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-controls",
+    "task_type": "frontend",
+    "description": "Animate expanded mock music progress and transport control feedback.",
+    "steps": [
+      "Render progress as clamp(elapsedSeconds / durationSeconds, 0...1), update it from a deterministic mock clock, and freeze it while paused.",
+      "Animate play and pause icon replacement plus pressed feedback for favorite, previous, play-pause, next, and device controls without sending real media commands.",
+      "Show remaining time as max(0, duration - elapsed) and retarget smoothly on mock seek or track changes.",
+      "Verify controls stop pointer propagation so pressing them never collapses the island."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-music-track-swipe",
+    "task_type": "frontend",
+    "description": "Animate horizontal trackpad track changes in mock music mode.",
+    "steps": [
+      "Use dominant horizontal accumulated movement with the existing 70 threshold, 160ms reset window, and 320ms cooldown.",
+      "Map positive accumulated delta to next and negative delta to previous, matching the current Windows command mapping.",
+      "Animate outgoing artwork and metadata toward the swipe direction and incoming track content from the opposite side while keeping the shell stationary.",
+      "Verify horizontal gestures are ignored in app mode and repeated threshold crossings during cooldown produce one mock command."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-review-expanded-content",
+    "task_type": "frontend",
+    "description": "Animate the complete expanded review layout from mock data.",
+    "steps": [
+      "Render pending-review and completed-today counters plus up to four pending subject cards, placeholder slots, and the extra-subject footer from deterministic mock data.",
+      "Reveal the subject grid with 0.10s child delay and 0.05s stagger; animate each real card from opacity 0 and scale 0.9 using a spring near stiffness 300 and damping 20.",
+      "Keep the review content inside the content phase timeline so it never appears before the expanded app shell can contain it.",
+      "Verify zero, partial, four-item, and more-than-four mock subject scenarios."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-todo-expanded-content",
+    "task_type": "frontend",
+    "description": "Animate the complete expanded todo layout from mock data.",
+    "steps": [
+      "Render pending, due-today, and overdue summary values plus up to six task rows with title, due text, priority, overdue state, and completed state.",
+      "Stage summary counters before task rows using the shared expanded content choreography and keep long text within the 460 by 320 baseline layout.",
+      "Animate empty-state replacement and task-list changes without resizing the shell or changing the top-center anchor.",
+      "Verify empty, normal, overdue, long-title, and six-task mock scenarios."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-todo-toggle",
+    "task_type": "frontend",
+    "description": "Animate local mock todo completion without backend persistence.",
+    "steps": [
+      "On checkbox press, animate the check mark, row opacity, title treatment, and affected counters immediately from local mock state.",
+      "Temporarily lock repeated presses for that task and provide scenario controls for simulated success and simulated rollback.",
+      "On rollback, reverse from the current presentation value instead of resetting the entire todo view.",
+      "Verify no network request is sent and the task row interaction never triggers island collapse."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-pointer-gesture",
+    "task_type": "frontend",
+    "description": "Add visual feedback to pointer swipe activity switching while preserving Windows thresholds.",
+    "steps": [
+      "Track one captured pointer identifier and ignore button-originated drags, matching the existing Windows gesture guards.",
+      "Apply bounded interactive shell translation or compression feedback during horizontal drag, then resolve right drag over 26 to compact, left drag below -26 to activity, and absolute movement below 10 to tap.",
+      "Spring back when released between tap and swipe thresholds or when pointer capture is cancelled.",
+      "Verify click-through remains disabled during capture and recovers after finalization when the pointer is no longer over the shell."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-trackpad-vertical",
+    "task_type": "frontend",
+    "description": "Animate the complete vertical trackpad presentation sequence.",
+    "steps": [
+      "Preserve dominant-axis classification, 70 vertical threshold, 160ms accumulation reset, and 320ms cooldown.",
+      "Map swipe up to expanded-to-activity or activity-to-compact and swipe down to compact-to-activity or activity-to-expanded.",
+      "Route every accepted gesture through IslandMotionEngine and keep hover focus after expanded swipe-up collapse.",
+      "Verify the sequence compact to activity to expanded to activity to compact and confirm each cooldown blocks duplicate transitions."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-hit-testing",
+    "task_type": "frontend",
+    "description": "Keep mouse hit testing and outside-collapse behavior correct throughout animation.",
+    "steps": [
+      "Update IslandPanel hoverHotspotFrame and hit-test geometry from the current animated presentation frame rather than the final target.",
+      "Preserve click-through on idle compact shells, disable it on hover or pointer capture, and keep expanded content interactive until its exit phase completes.",
+      "Collapse expanded presentation on outside pointer-down and app deactivation without treating transport or todo controls as outside clicks.",
+      "Verify immediate tap-expand then tap-collapse works without requiring hover leave and re-entry."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-rapid-retarget",
+    "task_type": "frontend",
+    "description": "Preserve velocity during rapid hover, tap, swipe, and mode retargeting.",
+    "steps": [
+      "Capture current interpolated geometry and velocity before replacing an active target, then seed the next spring from that presentation snapshot.",
+      "Support rapid compact to hover to activity to expanded to compact sequences without completing stale transition callbacks.",
+      "Associate transitionComplete intents with transition identifiers so an old completion cannot unlock or overwrite a newer transition.",
+      "Verify frame deltas stay bounded and final reducer state, visual state, click-through state, and gesture locks converge."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-reduce-motion",
+    "task_type": "frontend",
+    "description": "Provide an accessible Reduce Motion animation profile.",
+    "steps": [
+      "Read the macOS Reduce Motion accessibility setting and expose it to IslandMotionEngine.",
+      "Replace overshoot, matched movement, waveform travel, and large scale changes with short opacity transitions while preserving state timing and input guards.",
+      "Keep shell geometry changes top-anchored and fast enough to avoid clipping even when movement is minimized.",
+      "Verify every mock scenario and mouse or trackpad command remains usable with Reduce Motion enabled."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-responsive-layout",
+    "task_type": "frontend",
+    "description": "Keep animated content readable across notch and flat-display width constraints.",
+    "steps": [
+      "Derive activity width from notch base width, measured leading content, measured trailing content, padding, fallback tokens, and maximum visible width instead of forcing 240 on every Mac.",
+      "Interpolate width requirement changes when mock titles, todo badges, greeting text, or music controls change during an active presentation.",
+      "Keep left and right activity content balanced around the physical notch and prevent long text from occluding adjacent content.",
+      "Verify internal-notch, external-flat, narrow, and wide synthetic display profiles through the sizing matrix probe."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-e2e-visual-states",
+    "task_type": "e2e",
+    "description": "Capture native visual evidence for every mock island state and transition.",
+    "steps": [
+      "Capture or generate deterministic frame sequences for logged-out compact, greeting, review activity, todo activity, music activity, expanded review, expanded todo, expanded music, reminder due, paused timeout, and stopped fallback.",
+      "For each sequence, record start, intermediate, overshoot or hold, content-enter, and settled frames with visual state, frame, shape metrics, shadow, and content phase metadata.",
+      "Reject evidence with transparent top gaps, ear seams, clipped shadows, off-center attachment, overlapping text, or stale mode content.",
+      "Store machine-readable evidence under docs/evidence/mac-island-phase6/ and link every artifact from the acceptance document."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-e2e-mouse",
+    "task_type": "e2e",
+    "description": "Verify native mouse animation workflows end to end.",
+    "steps": [
+      "Exercise hover enter and leave, tap expand and collapse, pointer swipe compact and activity, long-press review and todo switch, control presses, todo toggle, outside collapse, and click-through recovery.",
+      "Record actual or fallback-probe interaction sources, thresholds, transition identifiers, current and target frames, final state, and guard outcomes.",
+      "Include rapid enter-leave-enter and expand-collapse-expand cases to prove interruptible retargeting.",
+      "Mark GUI-only rows honestly when physical capture is unavailable and do not label synthetic evidence as real-device observation."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-e2e-trackpad",
+    "task_type": "e2e",
+    "description": "Verify native trackpad animation workflows end to end.",
+    "steps": [
+      "Exercise vertical compact-to-activity-to-expanded and reverse transitions plus horizontal previous and next mock track changes.",
+      "Verify axis dominance, 70 thresholds, 160ms reset, 320ms cooldown, music-only horizontal handling, and hover-focus recovery.",
+      "Record accepted and ignored gesture sequences with animation plan, transition identifier, final state, and mock command metadata.",
+      "Capture real-device evidence when available and retain a clearly labeled Swift fallback probe for environments without GUI input capture."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-performance-evidence",
+    "task_type": "e2e",
+    "description": "Validate animation frame stability and main-thread cost for rapid native transitions.",
+    "steps": [
+      "Measure frame cadence and dropped-frame indicators for shell morph, waveform, content stagger, rapid retarget, and expanded shadow paths on the available runtime.",
+      "Confirm path generation and mock clock work do not trigger full-panel invalidation or unbounded timers when hidden.",
+      "Run at least one stress sequence with repeated hover, tap, trackpad, mode switch, and scenario replacement events.",
+      "Record limitations when 120Hz or physical-device profiling is unavailable and keep acceptance claims bounded to observed evidence."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-acceptance-fill",
+    "task_type": "docs",
+    "description": "Fill the Phase 6 animation acceptance document with verified results.",
+    "steps": [
+      "Map every Windows state, mouse interaction, trackpad interaction, animation profile, mock module, accessibility branch, and performance requirement to implementation and evidence links.",
+      "Mark rows Passed only when native preview or clearly labeled fallback evidence demonstrates the expected result.",
+      "List remaining physical-device spring calibration, real provider integration, backend data, authentication, and persisted todo updates as explicit future work.",
+      "Update docs/mac-island-migration-checklist.md with Phase 6 mock animation and content gates."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_id": "mac-motion-handoff",
+    "task_type": "docs",
+    "description": "Refresh project memory after the mock animation queue is complete.",
+    "steps": [
+      "Update agent-state.md with the completed motion modules, mock scenario coverage, evidence paths, remaining real-device calibration, and first pending task.",
+      "Add a concise codex-progress.md record without copying full task history into the startup handoff.",
+      "Confirm feature_list.json has no false task before declaring the phase complete and preserve all task history in final_feature_list.json.",
+      "Keep real review, todo, reminder, authentication, and music-provider integration assigned to later phases."
+    ],
+    "budget_minutes": 5,
+    "passes": true
+  },
+  {
+    "task_id": "mac-auth-api-client-foundation",
+    "task_type": "frontend",
+    "description": "Give the native island one typed HTTP client that can call the existing MemoryFlow API without leaking transport details into state or views.",
+    "steps": [
+      "Add Services/API types for environment-aware base URL resolution, the existing ApiResponse envelope, JSON request encoding, JSON response decoding, and injectable URLSession transport.",
+      "Keep Authorization header construction and HTTP status handling inside the API layer, with no URLSession calls from SwiftUI, IslandDomainState, reducers, or window controllers.",
+      "Add a deterministic transport probe that verifies localhost and production base URLs normalize to an /api suffix and that a typed GET decodes a representative successful envelope.",
+      "Run the full native Swift source typecheck and the focused API client probe without changing Windows or Electron files."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-keychain-session-store",
+    "task_type": "frontend",
+    "description": "Persist native login sessions securely so the island can restore authentication after relaunch without storing tokens in preferences or view state.",
+    "steps": [
+      "Add an AuthSession value containing accessToken, refreshToken, and expiresAt plus an AuthSessionStoring protocol under Services/Auth.",
+      "Implement the production store with Keychain Services and keep account or service identifiers centralized and namespaced for MemoryFlow Island.",
+      "Add an in-memory store for probes and dependency injection so auth flows can be tested without touching the user's Keychain.",
+      "Run a focused save-load-delete round-trip probe and the full native Swift source typecheck."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-deep-link-callback",
+    "task_type": "e2e",
+    "description": "Accept the existing web login callback in the native app and convert it into a validated persisted session.",
+    "steps": [
+      "Register the memoryflow URL scheme in the native target and route AppKit open-URL events from AppDelegate into an injected auth callback handler.",
+      "Parse memoryflow://callback token, refreshToken, and expiresIn query values with URLComponents, rejecting missing access tokens and invalid expiry values without mutating the current session.",
+      "Persist a valid callback through AuthSessionStoring and notify the app state layer exactly once even when the same callback is delivered repeatedly.",
+      "Launch the native app with valid and malformed callback URLs and verify the valid session is restored while malformed input leaves the app logged out."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-logged-out-login-cta",
+    "task_type": "frontend",
+    "description": "Show a clear Login plus MemoryFlow logo prompt whenever the native island has no authenticated session.",
+    "steps": [
+      "Add a logged-out preview content kind that renders the localized Login label with the existing MemoryFlow app logo in compact and hover presentations without copying the Windows layout.",
+      "Route click activation for the logged-out app mode to NSWorkspace.open using the configured web URL and /#/login?callback=desktop path used by the Windows island.",
+      "Prevent logged-out clicks from expanding review or todo content and keep music takeover behavior independent from the app authentication prompt.",
+      "Run the native app in a clean-session configuration and verify the prompt is visible and clicking it opens the browser login page."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-session-bootstrap",
+    "task_type": "e2e",
+    "description": "Restore a saved native session at launch and show authenticated island state only after the backend confirms the user.",
+    "steps": [
+      "Add an AuthCoordinator under Services/Auth that loads the Keychain session, calls GET /auth/me through APIClient, and publishes loading, loggedOut, or loggedIn user state.",
+      "Compose AuthCoordinator in SceneCoordinator and map confirmed auth state into IslandDomainState without placing service DTOs or tokens in the reducer.",
+      "Keep the logged-out Login prompt visible while no session exists or validation fails, and preserve the existing greeting lifecycle using the confirmed nickname or email.",
+      "Start the native app with a valid saved session and verify one /auth/me request produces logged-in compact state and a greeting; repeat with an invalid session and verify logged-out state."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-refresh-and-retry",
+    "task_type": "e2e",
+    "description": "Keep the native island logged in when an access token expires but its refresh token is still valid.",
+    "steps": [
+      "Add POST /auth/refresh support that sends the persisted refreshToken and atomically replaces accessToken, refreshToken, and expiresAt from the returned AuthResponse.",
+      "Make APIClient retry one protected request once after a 401 or 403, with a single shared refresh operation when concurrent review and todo requests fail together.",
+      "Exclude login and refresh requests from recursive retry and clear the session only after refresh fails or the retried protected request remains unauthorized.",
+      "Run an injected transport probe with concurrent unauthorized requests and verify one refresh call, successful retries, persisted replacement tokens, and no retry loop."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-auth-logout-flow",
+    "task_type": "e2e",
+    "description": "Let the user log out from the native island and immediately return every app-backed presentation to the logged-out prompt.",
+    "steps": [
+      "Add a Logout command to the menu bar that calls POST /auth/logout with the current bearer token when available.",
+      "Clear the Keychain session even when the logout request is offline or rejected, then cancel review and todo polling and discard user-specific snapshots and pending mutations.",
+      "Map the state back to loggedOut, app primary mode, collapsed presentation, and the Login plus logo content without disturbing unrelated music-provider state.",
+      "Launch with a valid session, trigger Logout, and verify the backend request, empty Keychain store, stopped protected requests, and visible logged-out prompt."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-review-summary-contract",
+    "task_type": "frontend",
+    "description": "Decode the existing widget review summary into a native review domain snapshot without coupling backend field names to the island UI.",
+    "steps": [
+      "Add Services/Review response DTOs for GET /widget/summary including totalPendingReviews, totalCompletedToday, reminderTime, and subject light fields used by the Windows island.",
+      "Add a mapper from transport DTOs into a native ReviewSnapshot used by IslandDomainState, normalizing missing subjects and optional display fields without inventing backend defaults.",
+      "Cover zero reviews, multiple subjects, and malformed required fields with fixture-based decode and mapping probes.",
+      "Run the focused review contract probe and the full native Swift source typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-review-repository-live-fetch",
+    "task_type": "e2e",
+    "description": "Fetch the signed-in user's real pending-review summary through a dedicated native review repository.",
+    "steps": [
+      "Add a ReviewRepository protocol and production implementation that calls GET /widget/summary through the authenticated APIClient and returns ReviewSnapshot.",
+      "Keep request creation, response mapping, and repository errors outside IslandDomainState, SwiftUI views, and IslandWindowController.",
+      "Trigger one immediate repository fetch after AuthCoordinator confirms login and expose success or failure to the app state owner without starting a timer yet.",
+      "Run against the configured backend with a valid test session and verify the request carries Bearer authentication and the returned pending count matches the API response."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-review-live-state-rendering",
+    "task_type": "frontend",
+    "description": "Render real pending-review data in review mode while preserving the native island's current visual design and mode transitions.",
+    "steps": [
+      "Replace review mock-source updates in the production composition path with ReviewSnapshot values while keeping mock scenarios available only to probes or explicit preview configuration.",
+      "Map total pending, completed today, subject titles, and the next subject into IslandDomainState and derived preview content without importing service DTOs into State or UI folders.",
+      "Keep zero-review state readable and stable in compact, activity, hover, and expanded review presentations without changing the existing shell geometry or animation behavior.",
+      "Launch with backend fixtures for zero and nonzero pending reviews and verify the displayed counts and subject content match each response."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-review-thirty-second-polling",
+    "task_type": "e2e",
+    "description": "Refresh real review data every 30 seconds while the user is logged in without overlapping requests or leaking timers.",
+    "steps": [
+      "Add a ReviewPollingController with an injectable clock that performs an immediate fetch and then one fetch every 30 seconds.",
+      "Start polling only after confirmed login, stop it on logout and app shutdown, and restart it once after a new login without creating duplicate timers.",
+      "Coalesce or skip a tick while the previous review request is still in flight and deliver state mutations on the main actor.",
+      "Run a deterministic clock probe covering immediate fetch, two 30-second ticks, slow-request overlap prevention, logout cancellation, and relogin restart."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-review-refresh-failure-policy",
+    "task_type": "frontend",
+    "description": "Keep review mode useful during temporary backend failures and return to login only for an unrecoverable authentication failure.",
+    "steps": [
+      "Preserve the last successful ReviewSnapshot when a network, timeout, decoding, or server error occurs and expose a nonblocking stale-data state for diagnostics.",
+      "Route unauthorized responses through the shared refresh-and-retry policy and transition to loggedOut only when that policy clears the session.",
+      "Ensure a later successful poll replaces stale data and clears the error marker without forcing a presentation or mode change.",
+      "Run injected failure sequences for offline recovery, malformed payload recovery, and failed token refresh and verify each final island state."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-preview-contract",
+    "task_type": "frontend",
+    "description": "Decode the existing todo statistics and task-list responses into one native todo preview snapshot matching Windows behavior.",
+    "steps": [
+      "Add Services/Todo DTOs for GET /todos/stats and GET /todos/tasks fields used by the Windows island, including status, priority, due date, due time, overdue, and dueToday.",
+      "Map both responses into a TodoSnapshot with pending, dueToday, overdue, and at most the first six tasks while keeping transport DTOs out of State and UI.",
+      "Use the Windows query contract status=todo, sortBy=due, and sortOrder=asc and preserve stable task identifiers for mutations.",
+      "Run fixture probes for empty data, six-item truncation, due metadata, and unknown optional values plus the full native Swift source typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-repository-live-fetch",
+    "task_type": "e2e",
+    "description": "Fetch real todo statistics and pending tasks for the authenticated user through one dedicated native repository.",
+    "steps": [
+      "Add a TodoRepository protocol whose production implementation requests /todos/stats and /todos/tasks concurrently through the authenticated APIClient.",
+      "Return one TodoSnapshot only after mapping both responses, with explicit partial-failure handling instead of performing URLSession work in the state owner or view.",
+      "Trigger one immediate todo refresh after confirmed login while keeping the current review mode visible until the user switches modes.",
+      "Run against the configured backend with a valid test session and verify both requests, their query parameters, and the mapped counts and first six tasks."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-live-state-rendering",
+    "task_type": "frontend",
+    "description": "Show the user's real pending todos in native todo mode while retaining the current macOS-specific UI and interactions.",
+    "steps": [
+      "Replace todo mock-source updates in the production composition path with TodoSnapshot values while retaining mock scenarios only for probes or explicit preview configuration.",
+      "Map pending, dueToday, overdue, next task title, and task rows into IslandDomainState and derived preview content without exposing repository DTOs to SwiftUI.",
+      "Render empty, compact, activity, hover, and expanded todo states with the existing native layout and mode-switch behavior.",
+      "Launch with empty and populated backend fixtures, switch from review to todo, and verify counts, ordering, titles, due labels, and completion appearance."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-sixty-second-polling",
+    "task_type": "e2e",
+    "description": "Keep native todo data synchronized on the same 60-second background cadence used by the Windows island.",
+    "steps": [
+      "Add a TodoPollingController with an injectable clock that performs an immediate fetch and then one fetch every 60 seconds after confirmed login.",
+      "Keep todo polling independent from the 30-second review poller so either repository can fail or refresh without blocking the other.",
+      "Stop polling on logout and shutdown, prevent overlapping todo refreshes, and avoid duplicate timers across mode switches or relogin.",
+      "Run a deterministic clock probe covering immediate fetch, two 60-second ticks, mode switches, slow-request overlap prevention, logout cancellation, and relogin restart."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-optimistic-completion",
+    "task_type": "e2e",
+    "description": "Let the user mark a visible todo complete from the native island with immediate feedback and server persistence.",
+    "steps": [
+      "Route a todo row click through the render model into TodoRepository PATCH /todos/tasks/{id}/status with the body { completed: true }.",
+      "Apply the Windows optimistic behavior by marking the task complete immediately and decrementing pending, dueToday, and overdue counts only when applicable.",
+      "Track an in-flight mutation per task so repeated clicks cannot send duplicate PATCH requests or corrupt aggregate counts.",
+      "Use a real or controlled backend request to verify the optimistic UI appears immediately and a subsequent GET /todos/tasks confirms the task is persisted as completed."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-todo-completion-rollback",
+    "task_type": "e2e",
+    "description": "Restore the previous todo state when completion fails and reconcile successful mutations with current server data.",
+    "steps": [
+      "Capture the pre-mutation task and aggregate snapshot so a failed PATCH restores status, pending, dueToday, and overdue values exactly once.",
+      "After a successful PATCH, trigger one repository refresh to reconcile server-calculated fields and remove completed tasks from the pending-only preview when returned data requires it.",
+      "Route unauthorized mutation failures through the shared refresh-and-retry policy and clear user data if the session becomes logged out.",
+      "Run controlled success, offline failure, server failure, and expired-token sequences and verify persisted state, rollback state, in-flight cleanup, and final auth state."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-backend-integration-lifecycle-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the native island can complete the full login, review polling, todo viewing, todo completion, and logout lifecycle against the existing backend.",
+    "steps": [
+      "Run the native app from a clean Keychain state, click the Login plus logo prompt, complete the existing web login, and verify the memoryflow callback returns the app to confirmed logged-in state.",
+      "Verify review mode shows backend data immediately and after a 30-second refresh, then switch to todo mode and verify the Windows-compatible pending query and 60-second refresh path.",
+      "Complete one visible todo, confirm the backend persists it, then log out and verify protected snapshots, timers, pending mutations, and Keychain credentials are cleared.",
+      "Record API request evidence and native state or screenshot evidence under docs/evidence/mac-island-backend-integration without modifying Windows or Electron behavior."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-apple-spring-global-api",
+    "task_type": "frontend",
+    "description": "Expose one reusable Apple-style underdamped spring API for native SwiftUI views.",
+    "steps": [
+      "Add a shared SwiftUI motion file under mac-island/MemoryFlowIsland/UI/Motion with one static let Animation.spring model using response 0.3...0.4 and dampingFraction 0.65...0.75.",
+      "Add a ViewModifier and View extension so Equatable state changes can opt in with applyAppleSpring(value:) without business-layer withAnimation parameter blocks.",
+      "Document in code that the modifier must be attached once to the outer shell container and relies on SwiftUI spring transaction retargeting to preserve in-flight velocity.",
+      "Run the full native Swift source typecheck and a focused compile probe that calls applyAppleSpring(value:) with representative Bool and enum values."
+    ],
+    "budget_minutes": 8,
+    "passes": true
+  },
+  {
+    "task_id": "mac-apple-spring-shell-integration",
+    "task_type": "frontend",
+    "description": "Make the native island shell use the shared spring while keeping inner content out of the shell animation transaction.",
+    "steps": [
+      "Identify the outermost black island shell container in IslandVisualStatePreview or its current extracted shell view and attach applyAppleSpring(value:) exactly once to the state value that drives shell shape and size.",
+      "Remove any redundant shell-level duration-based SwiftUI animation modifier or parameterized business-layer withAnimation call that competes with the shared spring, without changing content-local animations or the AppKit window animation driver.",
+      "Add or extend a focused probe that retargets the shell state forward and backward before completion and rejects reset, snap, or stale-target behavior.",
+      "Run the full native Swift typecheck plus the focused rapid-retarget probe and confirm no Windows or Electron files changed."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-activity-notch-clearance-layout",
+    "task_type": "frontend",
+    "description": "Make native activity sizing reserve usable content space on both sides of the physical notch instead of treating the notch-covered center as content width.",
+    "steps": [
+      "Trace the current compact notch width, activity content-width requirement, and visible-window width path without changing Windows or Electron files.",
+      "Add one reusable native layout calculation that derives activity width from the compact notch-aligned center width plus explicit leading and trailing content slots and shared spacing or padding.",
+      "Keep compact sizing exactly tied to the current per-screen notch metrics while ensuring activity width grows by enough usable width beyond both notch edges.",
+      "Add or extend a focused Swift probe covering representative notched and notchless screen metrics and run the full native Swift source typecheck."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-activity-three-mode-clearance-integration",
+    "task_type": "frontend",
+    "description": "Render review, todo, and music activity content inside shared left and right notch-clear slots so all three modes remain visible beside the physical notch.",
+    "steps": [
+      "Route review activity, todo activity, and music activity through the shared notch-clear activity layout without duplicating width formulas per mode.",
+      "Keep the center notch span free of essential activity content and preserve the existing compact proportions, state transitions, and outer shell spring behavior.",
+      "Extend the native sizing or visual-state evidence probe to assert that each activity mode receives nonzero leading and trailing usable widths outside the compact notch span across representative screen sizes.",
+      "Run the full native Swift source typecheck and focused activity sizing probes, then confirm no Windows or Electron files changed."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-auth-native-adapter-foundation",
+    "task_type": "e2e",
+    "description": "Give the native island a secure authentication adapter for the existing MemoryFlow backend without rebuilding any login UI or authentication endpoint.",
+    "steps": [
+      "Add a typed Services/API client for the existing ApiResponse envelope, /api base URL normalization, JSON transport, Bearer headers, and injectable URLSession behavior, and register every new Swift source in the Xcode project.",
+      "Add AuthSession models plus production Keychain and in-memory AuthSessionStoring implementations for accessToken, refreshToken, and expiresAt; never store credentials in UserDefaults, SwiftUI state, reducers, or window controllers.",
+      "Add an AuthCoordinator interface and compose APIClient, session storage, and app-state callbacks from SceneCoordinator so review and todo services can reuse the same authenticated client.",
+      "Explicitly do not create a native email/password form, do not copy the React login page, and do not modify POST /auth/login, CAPTCHA behavior, JWT generation, or any existing web/backend authentication code.",
+      "Run the native Swift typecheck plus transport and Keychain probes, then call GET /auth/me with an injected or valid stored session and verify the typed authenticated response."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-auth-existing-web-login-callback",
+    "task_type": "e2e",
+    "description": "Let a logged-out native island reuse the existing web login flow and return through the established desktop callback.",
+    "steps": [
+      "Render the requested Login label plus MemoryFlow logo for logged-out compact and hover states, and prevent logged-out app-mode clicks from expanding review or todo content.",
+      "Open the existing /#/login?callback=desktop page with NSWorkspace; do not add a native credential form or change the existing Login.tsx flow.",
+      "Register and handle memoryflow://callback with URLComponents, validate token, refreshToken, and expiresIn values, deduplicate repeated callbacks, and persist a valid session through AuthSessionStoring.",
+      "Confirm the callback with GET /auth/me, map the verified user into IslandDomainState, preserve the existing nickname/email greeting behavior, and leave malformed or rejected callbacks logged out.",
+      "Launch from a clean session, click the island login prompt, complete the existing browser login, and verify the browser callback returns the native app to confirmed logged-in state without changing Windows or Electron files."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-auth-session-lifecycle",
+    "task_type": "e2e",
+    "description": "Maintain and end the reused web-login session correctly across app launches, token expiry, network failures, and user logout.",
+    "steps": [
+      "Restore a Keychain session at startup and show authenticated island state only after GET /auth/me confirms it; otherwise clear invalid credentials and show the Login plus logo prompt.",
+      "Implement one shared POST /auth/refresh operation that atomically replaces tokens and retries a protected request once after 401 or 403, including concurrent-request coalescing and recursion guards.",
+      "Add a menu-bar Logout command that calls POST /auth/logout when possible, always clears Keychain credentials locally, cancels review and todo pollers, clears user snapshots and pending mutations, and returns the app presentation to loggedOut.",
+      "Keep temporary offline or server failures distinct from authentication failure so a valid saved session is not discarded unless refresh or verification proves it unusable.",
+      "Run deterministic startup, concurrent refresh, failed refresh, offline logout, and normal logout probes and verify final Keychain, auth, timer, and island presentation state."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-review-live-summary-display",
+    "task_type": "e2e",
+    "description": "Show the authenticated user's real pending-review summary in the native review mode using the existing widget endpoint.",
+    "steps": [
+      "Add Services/Review transport DTOs for GET /widget/summary and map totalPendingReviews, totalCompletedToday, reminderTime, and subject light fields into a UI-independent ReviewSnapshot.",
+      "Add a ReviewRepository that uses the shared authenticated APIClient and perform one immediate fetch after login without placing URLSession calls or backend DTOs in State, SwiftUI, reducers, or IslandWindowController.",
+      "Replace production review mock updates with ReviewSnapshot state while keeping mock scenarios available only to probes or explicit preview configuration.",
+      "Render zero and nonzero pending counts, completed-today data, subject titles, and next-subject content across the existing compact, activity, hover, and expanded native presentations without copying the Windows UI.",
+      "Verify a real or controlled GET /widget/summary response matches the visible native counts and content and confirm no Windows, Electron, web login, or backend files changed."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-review-thirty-second-sync",
+    "task_type": "e2e",
+    "description": "Keep real review data synchronized every 30 seconds while preserving usable last-known data during temporary failures.",
+    "steps": [
+      "Add an injectable ReviewPollingController that fetches immediately and every 30 seconds only after confirmed login, stops on logout and shutdown, and restarts once after relogin.",
+      "Prevent duplicate timers and overlapping requests by coalescing or skipping a tick while the previous review request is still in flight and deliver state changes on the main actor.",
+      "Preserve the last successful ReviewSnapshot for network, timeout, decoding, or server failures and clear its stale marker after the next successful response.",
+      "Route unauthorized responses through the shared refresh-and-retry flow and return to the login prompt only when that flow invalidates the session.",
+      "Run a deterministic clock and failure probe covering immediate fetch, two 30-second ticks, a slow request, offline recovery, failed refresh, logout cancellation, and relogin restart."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-todo-live-preview-sync",
+    "task_type": "e2e",
+    "description": "Show and periodically refresh the authenticated user's real pending todos with the same query semantics as the Windows island.",
+    "steps": [
+      "Add Services/Todo DTOs and a TodoRepository that concurrently calls GET /todos/stats and GET /todos/tasks with status=todo, sortBy=due, and sortOrder=asc through the shared authenticated APIClient.",
+      "Map pendingTasks, dueToday, overdueTasks, and at most the first six stable task records into a UI-independent TodoSnapshot including title, status, priority, due date, due time, overdue, and dueToday.",
+      "Replace production todo mock updates with TodoSnapshot state while retaining mocks only for probes, and render empty and populated compact, activity, hover, and expanded todo presentations using the existing native design.",
+      "Add an independent injectable 60-second todo poller with immediate fetch, login/logout lifecycle control, overlap prevention, last-good-data retention, and shared auth refresh handling.",
+      "Verify real or controlled endpoint responses, task ordering, six-item limit, counts, due labels, mode switching, two polling ticks, failure recovery, and cancellation without modifying Windows or backend behavior."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-todo-persisted-completion",
+    "task_type": "e2e",
+    "description": "Let the user complete a visible native-island todo with immediate feedback, backend persistence, and exact rollback on failure.",
+    "steps": [
+      "Route a todo row interaction through the render model and repository to PATCH /todos/tasks/{id}/status with { completed: true }, using one in-flight mutation guard per task.",
+      "Apply the Windows optimistic behavior by immediately marking the task complete and decrementing pending, dueToday, and overdue counts only when the selected task contributes to each value.",
+      "After success, refresh the TodoRepository snapshot to reconcile server-calculated fields and remove completed items from the pending-only preview when required.",
+      "On network, server, or final authorization failure, restore the exact pre-mutation task and aggregate snapshot once, clear the in-flight guard, and follow shared session invalidation behavior when applicable.",
+      "Verify controlled success, duplicate click, offline failure, server failure, and expired-token cases, including a subsequent GET proving successful completion was persisted."
+    ],
+    "budget_minutes": 15,
+    "passes": true
+  },
+  {
+    "task_id": "mac-backend-integration-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the native island completes the reused login, review, todo, completion, refresh, and logout lifecycle against the existing MemoryFlow system.",
+    "steps": [
+      "Start from a clean Keychain, click Login plus logo, complete the existing browser login, and verify memoryflow://callback returns the native app to a backend-confirmed session without any native login form.",
+      "Verify review data appears immediately and after 30 seconds, then switch to todo mode and verify the Windows-compatible query, first-six ordering, and 60-second refresh.",
+      "Complete one todo and confirm persistence, exercise one access-token refresh, then log out and verify credentials, protected snapshots, timers, and pending mutations are cleared.",
+      "Record API request evidence and native screenshots or state evidence under docs/evidence/mac-island-backend-integration and confirm Windows Electron, Login.tsx, and backend authentication code remain unchanged."
+    ],
+    "budget_minutes": 10,
+    "passes": true
+  },
+  {
+    "task_id": "mac-menu-remove-phase5-interactions",
+    "task_type": "frontend",
+    "description": "Remove the Phase 5 Interactions submenu from the production menu bar menu.",
+    "steps": [
+      "Remove the Phase 5 interaction controls, selector, and controller wiring from StatusBarController and StatusMenuBuilder while leaving unrelated menu commands intact.",
+      "Keep Phase 5 probe and scenario infrastructure outside the production menu available for deterministic development validation instead of deleting shared test fixtures.",
+      "Open the status item menu and verify no Phase 5 Interactions entry is visible and Settings, visibility, sign-out, and quit commands still execute.",
+      "Run the native menu builder probe and full Swift source typecheck without changing Electron or Windows files."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-advanced-features-setting",
+    "task_type": "frontend",
+    "description": "Let users persistently enable or disable Advanced Features from MemoryFlow Settings.",
+    "steps": [
+      "Add an AdvancedFeaturesSettings observable model backed by a namespaced UserDefaults store, defaulting to disabled for users who have never chosen a value.",
+      "Render one localized Advanced Features toggle in PreferencesView and keep persistence and notification behavior in the settings model rather than the SwiftUI view.",
+      "Relaunch the native app after toggling the setting in each direction and verify the selected value is restored.",
+      "Run a store round-trip probe and full Swift source typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-basic-mode-music-only-lifecycle",
+    "task_type": "e2e",
+    "description": "Run the native island without login when Advanced Features is disabled while preserving music mode.",
+    "steps": [
+      "Add a capability policy owned by SceneCoordinator that treats music as always available and authentication, review, todo, and reminder data as advanced capabilities.",
+      "When Advanced Features is disabled, do not restore or verify a Keychain session, start protected pollers, or expose review and todo interaction paths.",
+      "Launch from an empty session with Advanced Features disabled and verify the island stays in its normal compact shell with no login content or protected API requests.",
+      "Start and stop music playback and verify music takeover, controls, activity presentation, and release still work without authentication."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-advanced-enable-auth-lifecycle",
+    "task_type": "e2e",
+    "description": "Activate the existing authenticated study features only after Advanced Features is enabled.",
+    "steps": [
+      "Observe AdvancedFeaturesSettings in SceneCoordinator and start session restore plus protected repositories only when the setting becomes enabled.",
+      "Keep login, Keychain, API transport, and polling behavior inside existing Auth and Services coordinators instead of PreferencesView or IslandWindowController.",
+      "Enable Advanced Features with a valid saved session and verify one session verification starts review and todo synchronization without duplicating timers.",
+      "Enable Advanced Features without a session and verify the app reaches the advanced logged-out state while music remains usable."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-advanced-disable-cleanup",
+    "task_type": "e2e",
+    "description": "Return immediately to login-free music-only behavior when Advanced Features is disabled.",
+    "steps": [
+      "Handle the enabled-to-disabled transition in SceneCoordinator by stopping review and todo polling, clearing user snapshots and pending mutations, and collapsing any advanced presentation.",
+      "Preserve the Keychain session so re-enabling Advanced Features can verify it again, and do not route the transition through logout or a backend sign-out request.",
+      "Disable Advanced Features during logged-in review, logged-out login-required, and active music states and verify each path settles into a valid basic-mode state.",
+      "Verify no protected API request resumes until Advanced Features is enabled again."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-settings-account-advanced-gating",
+    "task_type": "frontend",
+    "description": "Show account controls in Settings only when Advanced Features requires them.",
+    "steps": [
+      "Make PreferencesView derive account-section visibility from AdvancedFeaturesSettings without duplicating authentication state in the view.",
+      "When advanced features are enabled, retain the existing sign-in or signed-in account controls and existing browser login callback flow.",
+      "When advanced features are disabled, hide account login and logout controls and show no wording that implies login is required.",
+      "Open Settings in disabled, enabled-logged-out, and enabled-logged-in configurations and verify the visible controls and actions."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-compact-notch-content-clearance",
+    "task_type": "frontend",
+    "description": "Keep the notch-covered center of every compact island visually empty when the user is logged out.",
+    "steps": [
+      "Remove the compact Login label, logo, button, and accessibility action currently rendered in the island center for logged-out app state.",
+      "Keep authentication status in domain state and settings surfaces instead of replacing the removed content with another centered marker.",
+      "Render compact and hover frames for basic mode and advanced logged-out mode and verify the notch center contains no visible or clickable content.",
+      "Run compact-content and notch-clearance probes plus the full Swift source typecheck."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-login-required-presentation-state",
+    "task_type": "frontend",
+    "description": "Represent the login-required prompt as a dedicated island presentation without coupling it to authentication services.",
+    "steps": [
+      "Add a loginRequired presentation or content state and reducer intents for opening and closing it only when Advanced Features is enabled and auth state is logged out.",
+      "Keep the reducer limited to domain transitions; do not open browsers, inspect UserDefaults, or call AuthCoordinator from State files.",
+      "Define precedence so active music can take over and return to the prior compact advanced logged-out state without losing playback behavior.",
+      "Run reducer sequences for basic mode, advanced logged-out, advanced logged-in, music takeover, outside collapse, and repeated taps."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-login-required-square-motion",
+    "task_type": "frontend",
+    "description": "Expand the login-required island downward into a square using the existing physical spring system.",
+    "steps": [
+      "Add a dedicated visual state whose visible width equals its visible height and whose top-center notch anchor remains fixed while the panel grows downward.",
+      "Route compact-to-login-required and reverse transitions through IslandMotionEngine and the shared Apple spring driver without creating a second animation owner.",
+      "Add shape and motion probes that verify equal final width and height, fixed top-center anchoring, bounded overshoot, reversible retargeting, and Reduce Motion behavior.",
+      "Run the full native Swift source typecheck and focused shape-motion probes."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-login-required-square-content",
+    "task_type": "frontend",
+    "description": "Show only the localized Login Required message inside the square login-required island.",
+    "steps": [
+      "Add a derived render-content branch for the login-required presentation and render the required four-character Simplified Chinese Login Required copy or its localized equivalent centered in the usable area below the notch.",
+      "Do not add a logo, browser-login button, account details, or other content to this island presentation.",
+      "Verify text remains clear of the notch and fits at standard and narrow notch-compatible square sizes without changing shell dimensions.",
+      "Capture deterministic light and dark desktop frames and run the focused render probe."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-login-required-click-flow",
+    "task_type": "e2e",
+    "description": "Open the login-required square when an advanced logged-out user clicks the normal island.",
+    "steps": [
+      "Route the existing island tap adapter into the loginRequired reducer intent only for Advanced Features enabled plus logged-out state.",
+      "Keep browser login initiation in Settings and the existing DesktopLoginCoordinator rather than triggering login from the compact or square island.",
+      "Verify an outside click and accepted collapse gesture return to the empty compact shell while a logged-in tap follows normal review or todo behavior.",
+      "Play music before and during the login-required presentation and verify music takeover and return behavior remain independent from login."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-advanced-mode-acceptance",
+    "task_type": "e2e",
+    "description": "Prove login-free basic mode and opt-in authenticated advanced mode work across relaunches.",
+    "steps": [
+      "Launch with default settings and no session and verify no login UI, no protected API traffic, and working music takeover.",
+      "Enable Advanced Features, click the compact island while logged out, and verify the spring-driven Login Required square opens with a clear notch center.",
+      "Complete login from Settings and verify review and todo features activate, then disable Advanced Features and verify protected activity stops without deleting the saved session.",
+      "Relaunch, re-enable Advanced Features, and verify session validation restores advanced features without affecting Windows or Electron behavior."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-updater-sparkle-bootstrap",
+    "task_type": "e2e",
+    "description": "Give the signed macOS app a production update engine that can discover a newer release.",
+    "steps": [
+      "Add Sparkle 2 through Swift Package Manager and configure the native target with an HTTPS appcast URL and public EdDSA key supplied by build configuration rather than source secrets.",
+      "Create an UpdateChecking protocol and Sparkle-backed adapter under Services/Update; do not place Sparkle types in State, SwiftUI views, or IslandWindowController.",
+      "Use a local signed appcast fixture to verify the adapter reports current-version and update-available results with version, release notes URL, and expected download size.",
+      "Run the native build and verify an invalid signature or non-HTTPS production feed is rejected without presenting an update."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-coordinator-state-machine",
+    "task_type": "frontend",
+    "description": "Expose update availability and download lifecycle through one UI-independent coordinator.",
+    "steps": [
+      "Add an UpdateCoordinator with idle, checking, available, deferred, downloading, readyToInstall, installing, and failed states plus typed metadata and recoverable errors.",
+      "Bridge Sparkle callbacks through a custom user driver owned by Services/Update and publish main-actor state without importing island presentation types.",
+      "Reject duplicate checks and downloads, coalesce concurrent callers, and ignore callbacks from superseded update sessions.",
+      "Run deterministic state-machine probes for no update, available update, duplicate requests, download completion, and failure recovery."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-settings-manual-update-check",
+    "task_type": "frontend",
+    "description": "Let users check for updates manually from Settings and understand the result.",
+    "steps": [
+      "Add a localized Check for Updates command to PreferencesView backed only by UpdateCoordinator state and commands.",
+      "Show checking, up-to-date, update-available, and recoverable error feedback in the Settings update section without opening Sparkle's default alert UI.",
+      "Keep the command available regardless of Advanced Features or login state and disable only while the same check or download is active.",
+      "Open Settings with injected current, newer, offline, and malformed-feed responses and verify feedback and retry behavior."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-scheduled-checks",
+    "task_type": "e2e",
+    "description": "Check periodically for updates without login and without creating duplicate timers.",
+    "steps": [
+      "Add an injectable UpdateScheduleController that checks after a short launch delay and then every 24 hours while the app is running.",
+      "Persist last successful check time and use it on relaunch to avoid an immediate duplicate check while still retrying later after transient failures.",
+      "Start update scheduling independently from Advanced Features, AuthCoordinator, and protected data pollers, and stop it on app termination.",
+      "Run a deterministic clock probe covering launch, relaunch, 24-hour cadence, sleep or wake catch-up, offline retry, and single-timer ownership."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-defer-policy",
+    "task_type": "frontend",
+    "description": "Remember Later choices and re-present an available update on a controlled schedule.",
+    "steps": [
+      "Add an UpdatePromptPolicy with a namespaced persistent store for deferred version and next eligible prompt date, defaulting Later to a four-hour delay.",
+      "Suppress repeated island prompts for the same version until the deferral expires while allowing manual checks in Settings at any time.",
+      "Clear stale deferral data when a newer version appears, the installed version catches up, or the user starts the update.",
+      "Run deterministic policy probes for repeated checks, relaunch, clock advance, a newer version, and successful installation state."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-presentation-arbitration",
+    "task_type": "frontend",
+    "description": "Present update prompts and downloads predictably alongside music and advanced-feature states.",
+    "steps": [
+      "Add update availability and download intents to the domain reducer through an adapter owned by SceneCoordinator, keeping UpdateCoordinator free of island UI concepts.",
+      "Define update download activity as higher priority than login-required and app activity, and preserve enough return state for music takeover or normal compact mode to resume correctly.",
+      "Prevent outside clicks, hover, review or todo timers, and repeated update callbacks from corrupting an active update download presentation.",
+      "Run reducer matrices covering basic mode, advanced logged-out, advanced logged-in, music playback, available update, active download, completion, and failure."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-prompt-square-ui",
+    "task_type": "frontend",
+    "description": "Show an available update in the reusable square island shape with Update and Later actions.",
+    "steps": [
+      "Reuse the login-required square shell geometry and physical spring transition while providing a separate update prompt content kind.",
+      "Render localized Update and Later buttons using Capsule backgrounds: solid blue for Update and solid gray for Later, with no border or rounded-rectangle shape.",
+      "Keep both buttons below the notch-covered center, provide accessible labels and keyboard focus, and prevent text or controls from clipping at supported sizes.",
+      "Capture deterministic prompt frames and verify button hit regions, colors, capsule geometry, notch clearance, and Reduce Motion behavior."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-later-interaction",
+    "task_type": "e2e",
+    "description": "Collapse the update prompt and honor the reminder delay when the user chooses Later.",
+    "steps": [
+      "Route the Later capsule action through SceneCoordinator to UpdatePromptPolicy and a reducer collapse intent without calling persistence from SwiftUI.",
+      "Collapse through the shared reverse spring and restore the correct compact or music presentation.",
+      "Verify scheduled checks before the next eligible prompt do not reopen the island and the prompt returns after the four-hour delay.",
+      "Relaunch during the delay and verify the persisted deferral remains effective while manual Settings checks still work."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-download-start-flow",
+    "task_type": "e2e",
+    "description": "Start a verified update download after the user chooses Update and transition cleanly out of the prompt.",
+    "steps": [
+      "Route the Update capsule action from the render model to UpdateCoordinator through SceneCoordinator without exposing Sparkle commands to the view or reducer.",
+      "Collapse the square prompt first, then enter update activity when Sparkle confirms the download started, using the existing single motion driver for both transitions.",
+      "Disable duplicate Update activation and preserve the current installed app when download setup fails.",
+      "Use a signed local update fixture to verify one download begins, the prompt closes, and setup failure produces a recoverable final state."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-download-activity-ui",
+    "task_type": "frontend",
+    "description": "Show update download progress in the native island activity shape.",
+    "steps": [
+      "Add a dedicated update activity content kind that uses the existing left-and-right activity layout rather than introducing a new window or shell.",
+      "Render a continuously rotating blue progress indicator on the left and a stable-width white integer percentage on the right, leaving the notch center empty.",
+      "Keep spinner animation isolated from shell geometry and honor Reduce Motion with a nonrotating but visibly active fallback.",
+      "Render 0, 7, 42, 99, and 100 percent fixtures and verify stable dimensions, colors, notch clearance, and no layout shift."
+    ],
+    "budget_minutes": 8,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-progress-bridge",
+    "task_type": "e2e",
+    "description": "Keep the island percentage synchronized with the verified update download.",
+    "steps": [
+      "Convert Sparkle expected-content-length and received-byte callbacks into clamped monotonic percentage updates in UpdateCoordinator.",
+      "Handle unknown length with an indeterminate activity state and prevent regressions, division errors, or stale callbacks after retry.",
+      "Throttle presentation updates enough to avoid excessive window layout work while always delivering initial, final, and meaningful intermediate progress.",
+      "Run a controlled download stream and verify byte totals, displayed percentages, unknown-length behavior, retry reset, and final 100 percent state."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-install-relaunch-flow",
+    "task_type": "e2e",
+    "description": "Install the verified update and relaunch MemoryFlow safely after download completes.",
+    "steps": [
+      "Map Sparkle ready-to-install and install callbacks into UpdateCoordinator and settle the island download activity before relaunch.",
+      "Allow Sparkle to perform signature verification, atomic replacement, privileged authorization when required, and relaunch instead of implementing file replacement in app code.",
+      "Refuse installation when verification fails and keep the existing app launchable with a recoverable error exposed in Settings.",
+      "Install a signed higher-version fixture, verify the relaunched bundle version changed, and confirm the updater does not offer the same version again."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-failure-recovery",
+    "task_type": "e2e",
+    "description": "Recover cleanly from update network, storage, feed, and verification failures.",
+    "steps": [
+      "Map offline, HTTP, malformed appcast, insufficient disk, cancelled authorization, and signature failures into user-safe UpdateCoordinator errors with diagnostic detail kept out of island copy.",
+      "Collapse failed download activity to a stable prior presentation and expose retry from Settings without silently retrying installation in a loop.",
+      "Remove temporary download state through Sparkle's lifecycle while preserving the installed application and future scheduled checks.",
+      "Run injected failure sequences and verify final presentation, retry eligibility, persisted deferral state, and absence of duplicate downloads or timers."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-release-pipeline",
+    "task_type": "e2e",
+    "description": "Produce a signed, notarized, and publishable MemoryFlow Island update feed for production releases.",
+    "steps": [
+      "Add a release command that archives with monotonically increasing marketing and build versions, signs with Developer ID, submits for notarization, staples the ticket, and packages the app for Sparkle.",
+      "Generate an EdDSA-signed appcast entry over HTTPS with minimum-system-version, release notes, content length, and phased-rollout metadata while keeping the private signing key outside the repository.",
+      "Publish the update artifact before atomically publishing the appcast so clients never receive a feed entry whose download is unavailable.",
+      "Verify Gatekeeper assessment, notarization status, appcast signature, downgrade rejection, minimum macOS filtering, and staged-rollout eligibility using a release candidate fixture."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-update-production-acceptance",
+    "task_type": "e2e",
+    "description": "Prove update discovery, deferral, download progress, and installation work without login in a production-like release path.",
+    "steps": [
+      "Launch a signed older build with Advanced Features disabled and verify scheduled and manual checks both discover the signed newer release without authentication.",
+      "Choose Later, verify the square prompt collapses and remains deferred across relaunch, then advance the controlled schedule and verify the prompt returns.",
+      "Choose Update and verify square collapse, blue left spinner, white right percentage, signed download, safe installation, and relaunch into the newer version.",
+      "Record appcast, signing, state-transition, percentage, visual-frame, installed-version, and failure-recovery evidence under docs/evidence/mac-island-updater without modifying Windows or Electron behavior."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-install-and-recovery",
+    "task_type": "e2e",
+    "description": "Install verified updates safely and recover without damaging the current app when updating fails.",
+    "steps": [
+      "Map Sparkle ready, verification, authorization, installation, and relaunch callbacks into UpdateCoordinator and settle the island activity before replacement or relaunch.",
+      "Delegate EdDSA verification, temporary-file lifecycle, privileged authorization, atomic replacement, and relaunch to Sparkle instead of implementing app replacement in MemoryFlow code.",
+      "Map offline, HTTP, malformed feed, insufficient disk, cancelled authorization, and signature errors into recoverable state, collapse to a stable presentation, and expose retry from Settings without an automatic loop.",
+      "Install a signed higher-version fixture and verify relaunch, changed bundle version, no repeated offer, and preserved app launchability after each injected failure.",
+      "Verify temporary state, timers, prompt deferral, duplicate operations, and future scheduled checks are correct after success and failure."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-release-pipeline",
+    "task_type": "e2e",
+    "description": "Publish signed and notarized MemoryFlow Island releases through a secure staged appcast pipeline.",
+    "steps": [
+      "Add a release command that enforces increasing marketing and build versions, archives with Developer ID, submits for notarization, staples the ticket, and packages the app for Sparkle.",
+      "Generate an EdDSA-signed HTTPS appcast entry with minimum macOS, release notes, content length, and phased-rollout metadata while keeping credentials and the private update key outside the repository.",
+      "Publish the immutable update artifact before atomically publishing the appcast so clients never discover an unavailable download.",
+      "Verify Gatekeeper, notarization, appcast signature, downgrade rejection, minimum-system filtering, staged-rollout eligibility, and artifact availability with a release candidate.",
+      "Document the release inputs, secret locations, rollback procedure, and evidence commands without placing secrets in generated logs."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-production-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the complete basic, advanced, login-required, and production update experience on macOS.",
+    "steps": [
+      "Launch with Advanced Features disabled and no session, verify an empty compact notch center, no protected traffic, working music, and login-independent manual and scheduled update checks.",
+      "Enable Advanced Features, verify the Login Required square and Settings browser login path, restore authenticated review and todo behavior, then disable advanced mode without deleting the saved session.",
+      "Discover a signed newer build, verify Later across relaunch, then choose Update and verify prompt collapse, blue spinner, white percentage, safe installation, and relaunch into the new version.",
+      "Exercise invalid signature, offline download, insufficient disk, authorization cancellation, music takeover, sleep or wake, rapid clicks, and app relaunch without duplicate timers or corrupted presentation state.",
+      "Record API, appcast, signing, transition, visual, percentage, installed-version, and failure evidence under docs/evidence/mac-island-phase7 without modifying Windows or Electron behavior."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-unsigned-install-and-recovery",
+    "task_type": "e2e",
+    "description": "Install an EdDSA-verified unsigned GitHub release safely and recover without damaging the current app.",
+    "steps": [
+      "Finish the existing Sparkle verification, ready, installation, relaunch, recoverable failure, and explicit retry lifecycle without requiring Developer ID, notarization, or a Team ID.",
+      "Build real older and higher-version app bundles with ad-hoc signing, package the higher build as a Sparkle archive, sign it with a test-only EdDSA key outside tracked files, and serve the appcast and archive over controlled HTTPS.",
+      "Install the higher build through Sparkle after the user-approved unsigned-app launch path, then verify changed CFBundleVersion, relaunch, no repeated offer, and continued launchability after injected failures.",
+      "Verify offline, HTTP, malformed feed, insufficient disk, cancelled installation, invalid EdDSA signature, duplicate operations, stale callbacks, timers, deferral, and future checks without an automatic retry loop."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-github-release-pipeline",
+    "task_type": "e2e",
+    "description": "Package and publish unsigned MemoryFlow Island releases through GitHub Releases and a signed Sparkle appcast.",
+    "steps": [
+      "Add a release command and GitHub Actions workflow that enforce increasing marketing and build versions, build the macOS app, apply ad-hoc signing, package the app for Sparkle, and never request Developer ID or notarization credentials.",
+      "Generate an EdDSA-signed appcast entry with GitHub Release HTTPS URLs, minimum macOS, release notes, content length, checksum, and phased-rollout metadata while keeping the private update key in a local or GitHub Actions secret.",
+      "Upload the immutable archive and checksums before publishing the appcast or release metadata so clients never discover a missing asset.",
+      "Validate the workflow locally or with a release-candidate run, including appcast signature, archive download, downgrade rejection, minimum-system filtering, version monotonicity, and absence of private keys in artifacts or logs."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-unsigned-production-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the complete open-source macOS experience using unsigned GitHub releases and EdDSA-verified updates.",
+    "steps": [
+      "Document and verify first installation from a GitHub Release, including drag-to-Applications and the macOS right-click Open or Privacy and Security approval path, with a clear warning that the app is not notarized.",
+      "Verify basic mode, music, login-independent checks, Advanced Features, the Login Required square, browser login, review, todo, and session preservation without changing Windows or Electron behavior.",
+      "Discover the higher GitHub-style release, verify Later across relaunch, then verify prompt collapse, blue spinner, white percentage, EdDSA verification, replacement, and relaunch into the new version.",
+      "Exercise invalid signature, offline download, insufficient disk, cancelled installation, sleep or wake, rapid clicks, and relaunch, then record install guidance, appcast, transition, visual, percentage, installed-version, and recovery evidence under docs/evidence/mac-island-phase7."
+    ],
+    "budget_minutes": 10,
+    "passes": false
+  }
+]

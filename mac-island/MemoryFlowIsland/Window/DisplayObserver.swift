@@ -1,0 +1,123 @@
+import AppKit
+
+final class DisplayObserver {
+    enum ChangeSignal {
+        case screenParametersChanged
+        case workspaceDidWake
+        case windowScreenChanged
+        case backingPropertiesChanged
+    }
+
+    private struct ObservationRegistration {
+        let center: NotificationCenter
+        let token: NSObjectProtocol
+    }
+
+    private var observationRegistrations: [ObservationRegistration] = []
+    private let center: NotificationCenter
+    private let workspaceCenter: NotificationCenter
+
+    init(
+        center: NotificationCenter = .default,
+        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
+        self.center = center
+        self.workspaceCenter = workspaceCenter
+    }
+
+    func startObserving(window: NSWindow?, onChange: @escaping (ChangeSignal) -> Void) {
+        stopObserving()
+        observationRegistrations = [
+            registerObserver(
+                center: center,
+                name: NSApplication.didChangeScreenParametersNotification,
+                signal: .screenParametersChanged,
+                onChange: onChange
+            ),
+            registerObserver(
+                center: workspaceCenter,
+                name: NSWorkspace.didWakeNotification,
+                signal: .workspaceDidWake,
+                onChange: onChange
+            )
+        ]
+        if let window {
+            observationRegistrations.append(
+                registerObserver(
+                    center: center,
+                    name: NSWindow.didChangeScreenNotification,
+                    object: window,
+                    signal: .windowScreenChanged,
+                    onChange: onChange
+                )
+            )
+            observationRegistrations.append(
+                registerObserver(
+                    center: center,
+                    name: NSWindow.didChangeBackingPropertiesNotification,
+                    object: window,
+                    signal: .backingPropertiesChanged,
+                    onChange: onChange
+                )
+            )
+        }
+    }
+
+    func stopObserving() {
+        observationRegistrations.forEach { registration in
+            registration.center.removeObserver(registration.token)
+        }
+        observationRegistrations.removeAll()
+    }
+
+    func preferredScreenMetrics(
+        for window: NSWindow? = nil,
+        preferredDisplayIdentity: ScreenMetrics.DisplayIdentity? = nil
+    ) -> ScreenMetrics? {
+        let availableMetrics = NSScreen.screens.compactMap(ScreenMetrics.init(screen:))
+        let windowMetrics = window?.screen.flatMap(ScreenMetrics.init(screen:))
+        let fallbackMetrics = (NSScreen.main ?? NSScreen.screens.first).flatMap(ScreenMetrics.init(screen:))
+        return resolvePreferredScreenMetrics(
+            availableMetrics: availableMetrics,
+            windowMetrics: windowMetrics,
+            preferredDisplayIdentity: preferredDisplayIdentity,
+            fallbackMetrics: fallbackMetrics
+        )
+    }
+
+    private func registerObserver(
+        center: NotificationCenter,
+        name: NSNotification.Name,
+        object: AnyObject? = nil,
+        signal: ChangeSignal,
+        onChange: @escaping (ChangeSignal) -> Void
+    ) -> ObservationRegistration {
+        let token = center.addObserver(
+            forName: name,
+            object: object,
+            queue: .main
+        ) { _ in
+            onChange(signal)
+        }
+
+        return ObservationRegistration(center: center, token: token)
+    }
+
+    func resolvePreferredScreenMetrics(
+        availableMetrics: [ScreenMetrics],
+        windowMetrics: ScreenMetrics?,
+        preferredDisplayIdentity: ScreenMetrics.DisplayIdentity?,
+        fallbackMetrics: ScreenMetrics?
+    ) -> ScreenMetrics? {
+        if let windowMetrics {
+            return windowMetrics
+        }
+
+        if let preferredDisplayIdentity,
+           let matchedMetrics = availableMetrics.first(where: { $0.displayIdentity == preferredDisplayIdentity }) {
+            return matchedMetrics
+        }
+
+        return fallbackMetrics ?? availableMetrics.first
+    }
+}

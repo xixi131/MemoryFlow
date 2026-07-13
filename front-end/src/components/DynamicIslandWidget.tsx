@@ -1501,7 +1501,14 @@ const DynamicIslandWidget: React.FC = () => {
     // Get theme color for music
     const themeColor = musicData?.themeColor || '#22d3ee';
 
-    const shouldShowShadow = isExpanded || isHovered;
+    const isInitialHoverState = isHovered && !isExpanded && !showAnyActivity;
+    const hoverCollapsedWidth = isInitialHoverState ? collapsedWidth * 1.025 : collapsedWidth;
+    const hoverCollapsedHeight = isInitialHoverState ? 37 : 36;
+    const islandDropShadow = isExpanded
+        ? 'drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.22)) drop-shadow(0px 6px 14px rgba(0, 0, 0, 0.18)) drop-shadow(0px 2px 6px rgba(0, 0, 0, 0.12))'
+        : isInitialHoverState
+            ? 'drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.14))'
+            : 'none';
 
     const handleTrackpadWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
         if (!isHovered && !isExpandedRef.current) return;
@@ -1727,9 +1734,8 @@ const DynamicIslandWidget: React.FC = () => {
                 className="relative pointer-events-none"
                 style={{
                     transform: 'translateZ(0)',
-                    filter: shouldShowShadow
-                        ? 'drop-shadow(0px 10px 25px rgba(0, 0, 0, 0.22)) drop-shadow(0px 6px 14px rgba(0, 0, 0, 0.18)) drop-shadow(0px 2px 6px rgba(0, 0, 0, 0.12))'
-                        : 'none',
+                    transformOrigin: 'center top',
+                    filter: islandDropShadow,
                     transition: 'filter 260ms ease-out',
                     willChange: 'transform, filter',
                 }}
@@ -1737,24 +1743,26 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? "expanded" : "collapsed"}
                 variants={{
                     collapsed: {
-                        width: isActivitySegmentedTransition ? segmentedWidthKeyframes : collapsedWidth,
-                        height: isActivitySegmentedTransition ? segmentedHeightKeyframes : 36,
-                        scale: isHovered ? 1.06 : 1,
+                        width: isActivitySegmentedTransition ? segmentedWidthKeyframes : hoverCollapsedWidth,
+                        height: isActivitySegmentedTransition ? segmentedHeightKeyframes : hoverCollapsedHeight,
+                        scale: 1,
                         originY: 0,
                         transition: isActivityOpenTransition ? {
                             width: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" },
-                            height: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" },
-                            scale: { ...containerSpring }
+                            height: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
                         } : (isActivitySegmentedTransition ? {
                             width: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" },
-                            height: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" },
-                            scale: { ...containerSpring }
-                        } : undefined)
+                            height: { times: segmentedTimes, duration: segmentedDuration, ease: "easeInOut" }
+                        } : {
+                            width: { duration: 0.16, ease: "easeOut" },
+                            height: { duration: 0.16, ease: "easeOut" }
+                        })
                     },
                     expanded: {
                         width: expandedWidth,
                         height: mode === 'music' ? expandedMusicHeight : expandedAppHeight,
                         scale: 1,
+                        y: 0,
                         originY: 0,
                     }
                 }}
@@ -1773,7 +1781,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isActivitySegmentedTransition
                                             ? leftCapCollapsedPath
-                                            : generateLeftCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                            : generateLeftCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
                                         transition: isActivityOpenTransition ? {
                                             d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
                                         } : (isActivitySegmentedTransition ? {
@@ -1801,7 +1809,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isActivitySegmentedTransition
                                             ? rightCapCollapsedPath
-                                            : generateRightCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                            : generateRightCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
                                         transition: isActivityOpenTransition ? {
                                             d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
                                         } : (isActivitySegmentedTransition ? {
@@ -1931,7 +1939,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isActivitySegmentedTransition
                                             ? squircleCollapsedPath
-                                            : generateSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                            : generateSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
                                         transition: isActivityOpenTransition ? {
                                             d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
                                         } : (isActivitySegmentedTransition ? {
@@ -1976,7 +1984,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isActivitySegmentedTransition
                                             ? openSquircleCollapsedPath
-                                            : generateOpenSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness),
+                                            : generateOpenSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
                                         transition: isActivityOpenTransition ? {
                                             d: { duration: ACTIVITY_OPEN_DURATION_SECONDS, ease: "easeInOut" }
                                         } : (isActivitySegmentedTransition ? {

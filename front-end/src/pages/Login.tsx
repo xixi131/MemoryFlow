@@ -28,27 +28,50 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
         return params.get('callback') === 'desktop';
     };
 
+    const getDesktopCallbackScheme = () => {
+        const params = new URLSearchParams(location.search);
+        return params.get('client') === 'mac-island' ? 'memoryflow-island' : 'memoryflow';
+    };
+
+    const getStoredExpiresIn = (accessToken: string) => {
+        const storedExpiry = Number(localStorage.getItem('tokenExpiresAt'));
+        if (Number.isFinite(storedExpiry) && storedExpiry > Date.now()) {
+            return Math.max(1, Math.floor((storedExpiry - Date.now()) / 1000));
+        }
+
+        try {
+            const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()) {
+                return Math.max(1, Math.floor(payload.exp - Date.now() / 1000));
+            }
+        } catch {
+            // The backend-provided token expiry remains the primary source.
+        }
+        return undefined;
+    };
+
     const launchDesktopCallback = (accessToken: string, refreshToken?: string, expiresIn?: number, force: boolean = false) => {
         if (!accessToken) return;
 
+        const params = new URLSearchParams();
+        params.set('token', accessToken);
+        if (refreshToken) params.set('refreshToken', refreshToken);
+        if (typeof expiresIn === 'number' && Number.isFinite(expiresIn) && expiresIn > 0) {
+            params.set('expiresIn', String(expiresIn));
+        }
+        const callbackURL = `${getDesktopCallbackScheme()}://callback?${params.toString()}`;
         const lastLaunchedToken = sessionStorage.getItem('desktop_callback_launched_token');
-        if (!force && lastLaunchedToken === accessToken) {
+        if (!force && lastLaunchedToken === callbackURL) {
             return;
         }
 
-        sessionStorage.setItem('desktop_callback_launched_token', accessToken);
+        sessionStorage.setItem('desktop_callback_launched_token', callbackURL);
 
         setDesktopRedirecting(true);
         setIsConnecting(true);
 
         setTimeout(() => {
-            const params = new URLSearchParams();
-            params.set('token', accessToken);
-            if (refreshToken) params.set('refreshToken', refreshToken);
-            if (typeof expiresIn === 'number' && Number.isFinite(expiresIn) && expiresIn > 0) {
-                params.set('expiresIn', String(expiresIn));
-            }
-            window.location.href = `memoryflow://callback?${params.toString()}`;
+            window.location.href = callbackURL;
         }, 300);
 
         setTimeout(() => {
@@ -79,7 +102,7 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
                 if (cancelled) return;
 
                 if (res && res.code === 200) {
-                    launchDesktopCallback(token, refreshToken);
+                    launchDesktopCallback(token, refreshToken, getStoredExpiresIn(token));
                 } else {
                     throw new Error(res?.message || 'token invalid');
                 }
@@ -127,7 +150,7 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
                 }
 
                 if (isDesktopCallback()) {
-                    return { redirectTo: '/login?callback=desktop' };
+                    return { redirectTo: `/login${location.search}` };
                 }
 
                 if (res.data.user && (res.data.user.role === 'ADMIN' || res.data.user.email === 'admin@gmail.com')) {
