@@ -76,7 +76,11 @@ jobs:
               PREVIOUS_BUILD="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0])).fetch("build_version")' "${RUNNER_TEMP}/previous/release-metadata.json")"
             else
               PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
-              PREVIOUS_BUILD="$(git show "${PREVIOUS_TAG}:mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj" | awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(";", "", $3); print $3; exit}')"
+              if git cat-file -e "${PREVIOUS_TAG}:mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj" 2>/dev/null; then
+                PREVIOUS_BUILD="$(git show "${PREVIOUS_TAG}:mac-island/MemoryFlowIsland.xcodeproj/project.pbxproj" | awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(";", "", $3); print $3; exit}')"
+              else
+                PREVIOUS_BUILD="0"
+              fi
             fi
           else
             PREVIOUS_VERSION="0.0.0"
