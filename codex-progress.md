@@ -140,3 +140,7 @@
 ### 2026-07-13 - Login-required square
 - Removed compact login UI and added a pure advanced-only login-required presentation with the exact four-character `需要登录` message in a notch-safe square.
 - Deterministic wide/narrow geometry, repeat/outside/login/music routes, reverse spring, Reduce Motion, integrated Debug build, and full Swift source typecheck passed.
+
+### 2026-07-13 - Update check and deferral policy
+- Added a persistent login-independent launch/24-hour/wake scheduler, typed Settings update states, offline retry, and four-hour same-version deferral with manual bypass and newer-version cleanup.
+- Deterministic relaunch/cadence/termination policy probes, integrated Debug build, and full Swift source typecheck passed without starting authentication or protected traffic.

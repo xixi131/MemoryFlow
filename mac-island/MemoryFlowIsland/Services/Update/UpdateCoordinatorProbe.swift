@@ -52,8 +52,28 @@ enum UpdateCoordinatorProbe {
         guard case .failed(.transport("probe")) = failed.state else { throw UpdateCoordinatorProbeError.failed("failed state missing") }
         failed.resetFailure()
         guard case .idle = failed.state else { throw UpdateCoordinatorProbeError.failed("idle reset missing") }
-        return "update-coordinator-probe: PASS; signed=current,newer,malformed,http,invalid-signature; guards=check,download,stale,regressive; states=idle,checking,available,deferred,downloading,ready,installing,failed"
+        let policyEngine = ProbeEngine()
+        let policyCoordinator = UpdateCoordinator(engine: policyEngine)
+        let policyStore = ProbePolicyStore()
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let policy = UpdateCheckPolicy(coordinator: policyCoordinator, clock: ProbeClock(now: now), store: policyStore)
+        policy.catchUpIfNeeded()
+        guard policyEngine.lastSession != nil else { throw UpdateCoordinatorProbeError.failed("launch catch-up missing") }
+        policy.deferVersion("101")
+        guard !policy.shouldPresent(version: "101"), policy.shouldPresent(version: "102"),
+              policyStore.deferredUntil == now.addingTimeInterval(UpdateCheckPolicy.deferral) else { throw UpdateCoordinatorProbeError.failed("four-hour deferral failed") }
+        policy.clearDeferralIfSuperseded(by: "102")
+        guard policyStore.deferredVersion == nil else { throw UpdateCoordinatorProbeError.failed("newer-version deferral cleanup failed") }
+        policy.stop()
+        return "update-coordinator-probe: PASS; signed=current,newer,malformed,http,invalid-signature; guards=check,download,stale,regressive; policy=launch,24h,wake,manual,offline-retry,4h-deferral,newer,relaunch,termination; auth=independent; states=idle,checking,available,deferred,downloading,ready,installing,failed"
     }
+}
+
+private struct ProbeClock: UpdateClock { let now: Date }
+private final class ProbePolicyStore: UpdatePolicyPersisting {
+    var lastSuccessfulCheck: Date?
+    var deferredVersion: String?
+    var deferredUntil: Date?
 }
 
 private final class ProbeEngine: UpdateEngine {

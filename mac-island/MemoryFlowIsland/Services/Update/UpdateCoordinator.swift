@@ -1,4 +1,5 @@
 import Combine
+import AppKit
 import Foundation
 
 @MainActor
@@ -91,4 +92,64 @@ final class UpdateCoordinator: ObservableObject {
         activeSessionID = nil
         selectedRelease = nil
     }
+}
+
+protocol UpdatePolicyPersisting: AnyObject {
+    var lastSuccessfulCheck: Date? { get set }
+    var deferredVersion: String? { get set }
+    var deferredUntil: Date? { get set }
+}
+
+final class UserDefaultsUpdatePolicyStore: UpdatePolicyPersisting {
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    var lastSuccessfulCheck: Date? { get { defaults.object(forKey: "update.lastSuccessfulCheck") as? Date } set { defaults.set(newValue, forKey: "update.lastSuccessfulCheck") } }
+    var deferredVersion: String? { get { defaults.string(forKey: "update.deferredVersion") } set { defaults.set(newValue, forKey: "update.deferredVersion") } }
+    var deferredUntil: Date? { get { defaults.object(forKey: "update.deferredUntil") as? Date } set { defaults.set(newValue, forKey: "update.deferredUntil") } }
+}
+
+@MainActor
+final class UpdateCheckPolicy {
+    static let cadence: TimeInterval = 24 * 60 * 60
+    static let deferral: TimeInterval = 4 * 60 * 60
+    private let coordinator: UpdateCoordinator
+    private let clock: UpdateClock
+    private let store: UpdatePolicyPersisting
+    private var timer: Timer?
+    private var wakeObserver: NSObjectProtocol?
+    private var cancellable: AnyCancellable?
+    private var wasChecking = false
+
+    init(coordinator: UpdateCoordinator, clock: UpdateClock = SystemUpdateClock(), store: UpdatePolicyPersisting = UserDefaultsUpdatePolicyStore()) {
+        self.coordinator = coordinator; self.clock = clock; self.store = store
+        cancellable = coordinator.$state.sink { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .checking: self.wasChecking = true
+            case .idle where self.wasChecking: self.store.lastSuccessfulCheck = self.clock.now; self.wasChecking = false
+            case .available: self.store.lastSuccessfulCheck = self.clock.now; self.wasChecking = false
+            case .failed: self.wasChecking = false
+            default: break
+            }
+        }
+    }
+
+    func start() {
+        guard timer == nil else { return }
+        catchUpIfNeeded()
+        timer = Timer.scheduledTimer(withTimeInterval: Self.cadence, repeats: true) { [weak self] _ in Task { @MainActor in self?.catchUpIfNeeded() } }
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.catchUpIfNeeded() } }
+    }
+    func stop() { timer?.invalidate(); timer = nil; if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }; wakeObserver = nil }
+    func manualCheck() { _ = coordinator.checkForUpdates() }
+    func catchUpIfNeeded() {
+        guard store.lastSuccessfulCheck.map({ clock.now.timeIntervalSince($0) >= Self.cadence }) ?? true else { return }
+        _ = coordinator.checkForUpdates()
+    }
+    func deferVersion(_ version: String) { store.deferredVersion = version; store.deferredUntil = clock.now.addingTimeInterval(Self.deferral) }
+    func shouldPresent(version: String) -> Bool {
+        guard store.deferredVersion == version, let until = store.deferredUntil else { return true }
+        return clock.now >= until
+    }
+    func clearDeferralIfSuperseded(by version: String) { if store.deferredVersion != version { store.deferredVersion = nil; store.deferredUntil = nil } }
 }

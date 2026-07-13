@@ -13,6 +13,7 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
         languageSettings: AppLanguageSettings,
         advancedFeaturesSettings: AdvancedFeaturesSettings,
         accountState: SettingsAccountState,
+        updateCoordinator: UpdateCoordinator,
         onLoginRequested: @escaping () -> Void,
         onLogoutRequested: @escaping () -> Void
     ) {
@@ -33,6 +34,7 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
                 languageSettings: languageSettings,
                 advancedFeaturesSettings: advancedFeaturesSettings,
                 accountState: accountState,
+                updateCoordinator: updateCoordinator,
                 onLoginRequested: onLoginRequested,
                 onLogoutRequested: onLogoutRequested
             )

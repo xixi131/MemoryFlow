@@ -61,12 +61,15 @@ final class SceneCoordinator {
     let todoRepository: TodoRepositoryProtocol
     let todoPollingController: TodoPollingController
     let todoMutationController: TodoMutationController
+    private let updateCheckPolicy: UpdateCheckPolicy
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
         let languageSettings = AppLanguageSettings()
         let advancedFeaturesSettings = AdvancedFeaturesSettings()
         let settingsAccountState = SettingsAccountState()
+        let updateCoordinator = UpdateCoordinator(engine: SparkleUpdateAdapter())
+        self.updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
         let sessionStore = KeychainAuthSessionStore()
         let apiClient = try! APIClient(
             baseURL: MemoryFlowRuntimeEndpoints.apiBaseURL,
@@ -151,6 +154,7 @@ final class SceneCoordinator {
             languageSettings: languageSettings,
             advancedFeaturesSettings: advancedFeaturesSettings,
             accountState: settingsAccountState,
+            updateCoordinator: updateCoordinator,
             onLoginRequested: { [weak desktopLoginCoordinator] in
                 _ = desktopLoginCoordinator?.openLogin()
             },
@@ -191,6 +195,8 @@ final class SceneCoordinator {
         self.languageSettings = languageSettings
         self.advancedFeaturesSettings = AdvancedFeaturesSettings(store: InMemoryAdvancedFeaturesStore(isEnabled: true))
         self.settingsAccountState = SettingsAccountState()
+        let updateCoordinator = UpdateCoordinator(engine: SparkleUpdateAdapter())
+        self.updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
         let resolvedAuthCoordinator: AuthCoordinating
         let resolvedSessionStore: AuthSessionStoring
         if let authCoordinator {
@@ -259,12 +265,14 @@ final class SceneCoordinator {
             Task { @MainActor in self?.applyCapabilityPolicy() }
         }
         applyCapabilityPolicy()
+        updateCheckPolicy.start()
     }
 
     func stop() {
         reviewPollingController.stop()
         todoPollingController.stop()
         todoMutationController.cancelAll()
+        updateCheckPolicy.stop()
         capabilityGeneration += 1
         if let advancedFeaturesObserver {
             NotificationCenter.default.removeObserver(advancedFeaturesObserver)

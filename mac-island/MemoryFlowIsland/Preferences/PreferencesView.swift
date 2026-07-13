@@ -4,6 +4,7 @@ struct PreferencesView: View {
     @ObservedObject private var languageSettings: AppLanguageSettings
     @ObservedObject private var advancedFeaturesSettings: AdvancedFeaturesSettings
     @ObservedObject private var accountState: SettingsAccountState
+    @ObservedObject private var updateCoordinator: UpdateCoordinator
     private let onLoginRequested: () -> Void
     private let onLogoutRequested: () -> Void
 
@@ -11,12 +12,14 @@ struct PreferencesView: View {
         languageSettings: AppLanguageSettings,
         advancedFeaturesSettings: AdvancedFeaturesSettings,
         accountState: SettingsAccountState,
+        updateCoordinator: UpdateCoordinator,
         onLoginRequested: @escaping () -> Void,
         onLogoutRequested: @escaping () -> Void
     ) {
         self.languageSettings = languageSettings
         self.advancedFeaturesSettings = advancedFeaturesSettings
         self.accountState = accountState
+        self.updateCoordinator = updateCoordinator
         self.onLoginRequested = onLoginRequested
         self.onLogoutRequested = onLogoutRequested
     }
@@ -77,6 +80,16 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
             }
 
+            GroupBox("Updates") {
+                HStack {
+                    Text(updateStatus)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Check for Updates") { _ = updateCoordinator.checkForUpdates() }
+                        .disabled(updateCoordinator.state == .checking)
+                }.padding(.vertical, 4)
+            }
+
             Spacer()
         }
         .padding(24)
@@ -99,5 +112,15 @@ struct PreferencesView: View {
 
     private func copy(_ key: AppCopy.Key) -> String {
         AppCopy.text(key, language: languageSettings.language)
+    }
+
+    private var updateStatus: String {
+        switch updateCoordinator.state {
+        case .idle: return "Up to date"
+        case .checking: return "Checking..."
+        case .available(let release): return "Version \(release.version) available"
+        case .failed: return "Check failed. Try again."
+        default: return "Update in progress"
+        }
     }
 }

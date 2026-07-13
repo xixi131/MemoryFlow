@@ -67,7 +67,7 @@
       "Confirm update checks never start AuthCoordinator or protected API traffic."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-update-prompt-square",
