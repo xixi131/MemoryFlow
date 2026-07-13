@@ -1211,7 +1211,7 @@ private struct IslandExpandedReviewContent: View {
                     VStack(alignment: .leading, spacing: 16) {
                         reviewCounterRow
                             .scaleEffect(1 - (collapseProgress * 0.18), anchor: .topLeading)
-                            .opacity(1 - (collapseProgress * 0.5))
+                            .opacity(Double(1 - (collapseProgress * 0.5)))
                             .background(
                                 IslandReviewScrollOffsetReader(offset: $scrollOffset)
                             )
@@ -1573,7 +1573,7 @@ private struct IslandExpandedTodoContent: View {
                     VStack(alignment: .leading, spacing: 16) {
                         todoCounterRow
                             .scaleEffect(1 - (collapseProgress * 0.18), anchor: .topLeading)
-                            .opacity((1 - (collapseProgress * 0.5)) * (summaryIsVisible ? 1 : 0))
+                            .opacity(Double(1 - (collapseProgress * 0.5)) * (summaryIsVisible ? 1 : 0))
                             .offset(y: summaryIsVisible ? 0 : 4)
                             .animation(IslandExpandedTodoContentLayout.summaryAnimation, value: summaryIsVisible)
                             .background(
