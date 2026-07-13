@@ -13,7 +13,8 @@ enum UpdateCoordinatorProbe {
         let currentData = try Data(contentsOf: fixtures.appendingPathComponent("current.xml"))
         guard try verifier.release(from: currentData, currentBuild: "100", fixtureRoot: fixtures) == nil else { throw UpdateCoordinatorProbeError.failed("current release offered") }
         let newerData = try Data(contentsOf: fixtures.appendingPathComponent("newer.xml"))
-        guard try verifier.release(from: newerData, currentBuild: "100", fixtureRoot: fixtures)?.build == "101" else { throw UpdateCoordinatorProbeError.failed("newer release missing") }
+        guard let signedRelease = try verifier.release(from: newerData, currentBuild: "100", fixtureRoot: fixtures),
+              signedRelease.build == "101" else { throw UpdateCoordinatorProbeError.failed("newer release missing") }
         do { _ = try verifier.release(from: Data("<rss>".utf8), currentBuild: "100", fixtureRoot: fixtures); throw UpdateCoordinatorProbeError.failed("malformed feed accepted") } catch UpdateFailure.invalidFeed { }
         do { _ = try AppcastConfiguration(feedURL: URL(string: "http://updates.memoryflow.example/appcast.xml")!, publicEdKeyBase64: publicKey); throw UpdateCoordinatorProbeError.failed("HTTP feed accepted") } catch UpdateFailure.invalidConfiguration { }
         let invalidData = try Data(contentsOf: fixtures.appendingPathComponent("invalid-signature.xml"))
@@ -23,19 +24,78 @@ enum UpdateCoordinatorProbe {
         let coordinator = UpdateCoordinator(engine: engine)
         guard coordinator.checkForUpdates(), !coordinator.checkForUpdates() else { throw UpdateCoordinatorProbeError.failed("duplicate check guard failed") }
         let active = engine.lastSession!
-        engine.emit(.available(UpdateRelease(version: "1.0.1", build: "101", downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!, contentLength: 12)), sessionID: active)
+        engine.emit(.available(UpdateRelease(
+            version: signedRelease.version,
+            build: signedRelease.build,
+            downloadURL: signedRelease.downloadURL,
+            contentLength: nil
+        )), sessionID: active)
         try await Task.sleep(for: .milliseconds(20))
         guard case .available = coordinator.state else { throw UpdateCoordinatorProbeError.failed("available state missing") }
-        guard coordinator.downloadAvailableUpdate(), !coordinator.downloadAvailableUpdate() else { throw UpdateCoordinatorProbeError.failed("duplicate download guard failed") }
-        engine.emit(.downloadProgress(receivedBytes: 8, totalBytes: 12), sessionID: UUID())
+        guard coordinator.downloadAvailableUpdate(),
+              !coordinator.downloadAvailableUpdate(),
+              case .downloadRequested = coordinator.state,
+              engine.downloadCount == 1 else {
+            throw UpdateCoordinatorProbeError.failed("duplicate download request guard failed")
+        }
+        engine.emit(.downloadStarted(totalBytes: nil), sessionID: UUID())
+        guard case .downloadRequested = coordinator.state else {
+            throw UpdateCoordinatorProbeError.failed("stale start callback changed state")
+        }
+        engine.emit(.downloadStarted(totalBytes: nil), sessionID: active)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let indeterminate) = coordinator.state,
+              indeterminate == .indeterminate else {
+            throw UpdateCoordinatorProbeError.failed("unknown-length start state missing")
+        }
+        engine.emit(.downloadProgress(receivedBytes: 8, totalBytes: nil), sessionID: active)
+        engine.emit(.downloadExpectedContentLength(12), sessionID: active)
         engine.emit(.downloadProgress(receivedBytes: 4, totalBytes: 12), sessionID: active)
         engine.emit(.downloadProgress(receivedBytes: 2, totalBytes: 12), sessionID: active)
         try await Task.sleep(for: .milliseconds(20))
-        guard case .downloading(_, 4, 12) = coordinator.state else { throw UpdateCoordinatorProbeError.failed("stale or regressive progress applied") }
+        guard case .downloading(_, let clamped) = coordinator.state,
+              clamped.receivedBytes == 8,
+              clamped.totalBytes == 12,
+              clamped.percentage == 66 else {
+            throw UpdateCoordinatorProbeError.failed("stale, throttled, or regressive progress failed")
+        }
+        engine.emit(.downloadProgress(receivedBytes: 99, totalBytes: 12), sessionID: active)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let completed) = coordinator.state,
+              completed.percentage == 100 else {
+            throw UpdateCoordinatorProbeError.failed("download progress did not clamp to 100 percent")
+        }
         engine.emit(.downloadFinished, sessionID: active)
         try await Task.sleep(for: .milliseconds(20))
         guard case .ready = coordinator.state, coordinator.installReadyUpdate() else { throw UpdateCoordinatorProbeError.failed("ready/install states missing") }
         guard case .installing = coordinator.state else { throw UpdateCoordinatorProbeError.failed("installing state missing") }
+
+        let retryEngine = ProbeEngine()
+        let retry = UpdateCoordinator(engine: retryEngine)
+        _ = retry.checkForUpdates()
+        let failedSession = retryEngine.lastSession!
+        retryEngine.emit(.available(UpdateRelease(version: "1.0.1", build: "101", downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!, contentLength: 50)), sessionID: failedSession)
+        try await Task.sleep(for: .milliseconds(20))
+        _ = retry.downloadAvailableUpdate()
+        retryEngine.emit(.failed(.transport("setup")), sessionID: failedSession)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .failed(.transport("setup")) = retry.state else {
+            throw UpdateCoordinatorProbeError.failed("download setup failure missing")
+        }
+        retry.resetFailure()
+        _ = retry.checkForUpdates()
+        let retrySession = retryEngine.lastSession!
+        retryEngine.emit(.available(UpdateRelease(version: "1.0.1", build: "101", downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!, contentLength: 50)), sessionID: retrySession)
+        try await Task.sleep(for: .milliseconds(20))
+        _ = retry.downloadAvailableUpdate()
+        retryEngine.emit(.downloadStarted(totalBytes: 50), sessionID: retrySession)
+        retryEngine.emit(.downloadProgress(receivedBytes: 40, totalBytes: 50), sessionID: failedSession)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let reset) = retry.state,
+              reset.receivedBytes == 0,
+              reset.percentage == 0 else {
+            throw UpdateCoordinatorProbeError.failed("retry reset or stale-session guard failed")
+        }
 
         let deferredEngine = ProbeEngine()
         let deferred = UpdateCoordinator(engine: deferredEngine)
@@ -80,7 +140,7 @@ enum UpdateCoordinatorProbe {
         policy.clearDeferralIfSuperseded(by: "102")
         guard policyStore.deferredVersion == nil else { throw UpdateCoordinatorProbeError.failed("newer-version deferral cleanup failed") }
         policy.stop()
-        return "update-coordinator-probe: PASS; signed=current,newer,malformed,http,invalid-signature; guards=check,download,stale,regressive; policy=launch,24h,wake,manual,offline-retry,4h-deferral,newer,relaunch,termination; auth=independent; states=idle,checking,available,deferred,downloading,ready,installing,failed"
+        return "update-coordinator-probe: PASS; signed=current,newer,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale; policy=launch,24h,wake,manual,offline-retry,4h-deferral,newer,relaunch,termination; auth=independent; states=idle,checking,available,deferred,download-requested,downloading,ready,installing,failed"
     }
 }
 
@@ -94,8 +154,9 @@ private final class ProbePolicyStore: UpdatePolicyPersisting {
 private final class ProbeEngine: UpdateEngine {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)?
     var lastSession: UUID?
+    var downloadCount = 0
     func check(sessionID: UUID) { lastSession = sessionID }
-    func download(_ release: UpdateRelease, sessionID: UUID) {}
+    func download(_ release: UpdateRelease, sessionID: UUID) { downloadCount += 1 }
     func install(_ release: UpdateRelease, sessionID: UUID) { emit(.installationStarted, sessionID: sessionID) }
     func emit(_ event: UpdateEngineEvent, sessionID: UUID) { eventHandler?(sessionID, event) }
 }

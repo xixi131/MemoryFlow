@@ -94,8 +94,15 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
     func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {}
     func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) { acknowledgement() }
     func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) { emit(.failed(.engine(error.localizedDescription))); acknowledgement() }
-    func showDownloadInitiated(cancellation: @escaping () -> Void) { receivedBytes = 0 }
-    func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) { expectedBytes = expectedContentLength }
+    func showDownloadInitiated(cancellation: @escaping () -> Void) {
+        receivedBytes = 0
+        expectedBytes = nil
+        emit(.downloadStarted(totalBytes: nil))
+    }
+    func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
+        expectedBytes = expectedContentLength
+        emit(.downloadExpectedContentLength(Int64(expectedContentLength)))
+    }
     func showDownloadDidReceiveData(ofLength length: UInt64) { receivedBytes += length; emit(.downloadProgress(receivedBytes: Int64(receivedBytes), totalBytes: expectedBytes.map(Int64.init))) }
     func showDownloadDidStartExtractingUpdate() { emit(.downloadFinished) }
     func showExtractionReceivedProgress(_ progress: Double) {}

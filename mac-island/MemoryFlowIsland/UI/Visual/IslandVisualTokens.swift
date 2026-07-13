@@ -7,6 +7,13 @@ enum IslandUpdatePromptLayout {
     static let updateColorHex = "#0A84FF"
     static let laterColorHex = "#636366"
 }
+
+enum IslandUpdateDownloadLayout {
+    static let indicatorColorHex = "#0A84FF"
+    static let indicatorSize: CGFloat = 20
+    static let percentageWidth: CGFloat = 40
+    static let rotationDuration: TimeInterval = 0.9
+}
 import Foundation
 
 enum IslandVisualTokenSet: String, CaseIterable {

@@ -39,6 +39,8 @@ protocol IslandWindowControlling: AnyObject {
     func applyBasicCapabilityState()
     func setAdvancedFeaturesEnabled(_ isEnabled: Bool)
     func presentUpdatePrompt(version: String, build: String)
+    func applyUpdateDownloadProgress(_ progress: UpdateDownloadProgress)
+    func endUpdateDownloadActivity()
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
 }
@@ -342,15 +344,24 @@ final class SceneCoordinator {
             _ = self.updateCoordinator.deferAvailableUpdate(until: until)
         }
         updateStateCancellable = updateCoordinator.$state.sink { [weak self] state in
-            guard let self, case .available(let release) = state else { return }
-            self.updateCheckPolicy.clearDeferralIfSuperseded(by: release.build)
-            guard self.updateCheckPolicy.shouldPresent(version: release.build) else {
-                if let until = self.updateCheckPolicy.suppressionUntil(version: release.build) {
-                    _ = self.updateCoordinator.deferAvailableUpdate(until: until)
+            guard let self else { return }
+            switch state {
+            case .available(let release):
+                self.updateCheckPolicy.clearDeferralIfSuperseded(by: release.build)
+                guard self.updateCheckPolicy.shouldPresent(version: release.build) else {
+                    if let until = self.updateCheckPolicy.suppressionUntil(version: release.build) {
+                        _ = self.updateCoordinator.deferAvailableUpdate(until: until)
+                    }
+                    return
                 }
-                return
+                self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
+            case .downloading(_, let progress):
+                self.windowController.applyUpdateDownloadProgress(progress)
+            case .ready, .failed:
+                self.windowController.endUpdateDownloadActivity()
+            case .idle, .checking, .deferred, .downloadRequested, .installing:
+                break
             }
-            self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
         }
     }
 }

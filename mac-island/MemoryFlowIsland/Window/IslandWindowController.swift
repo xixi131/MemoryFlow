@@ -62,6 +62,7 @@ private extension IslandPreviewContent.Kind {
         case .signedOutCompact,
              .loginRequired,
              .updatePrompt,
+             .updateDownloadActivity,
              .reviewActivity,
              .todoActivity,
              .musicActivity,
@@ -1327,6 +1328,19 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         dispatchPhase5Intent(
             .updatePromptAvailable(IslandUpdatePrompt(version: version, build: build))
         )
+    }
+
+    @MainActor
+    func applyUpdateDownloadProgress(_ progress: UpdateDownloadProgress) {
+        let intent: IslandInteractionIntent = phase5PreviewStateContainer.domainState.updateDownloadProgress == nil
+            ? .updateDownloadStarted(progress)
+            : .updateDownloadProgressed(progress)
+        dispatchPhase5Intent(intent)
+    }
+
+    @MainActor
+    func endUpdateDownloadActivity() {
+        dispatchPhase5Intent(.updateDownloadEnded)
     }
 
     @MainActor

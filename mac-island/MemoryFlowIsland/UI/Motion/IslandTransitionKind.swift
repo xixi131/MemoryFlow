@@ -59,7 +59,8 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
              (.activityHoverCollapsed, .updatePrompt): return .activityToExpanded
         case (.expandedMusic, .activityCollapsed), (.expandedApp, .activityCollapsed),
              (.expandedMusic, .activityHoverCollapsed), (.expandedApp, .activityHoverCollapsed): return .expandedToActivity
-        case (.updatePrompt, .activityCollapsed), (.updatePrompt, .activityHoverCollapsed): return .expandedToActivity
+        case (.loginRequired, .activityCollapsed), (.loginRequired, .activityHoverCollapsed),
+             (.updatePrompt, .activityCollapsed), (.updatePrompt, .activityHoverCollapsed): return .expandedToActivity
         case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed),
              (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed),
              (.updatePrompt, .compactCollapsed), (.updatePrompt, .hoverCollapsed): return .expandedToCompact

@@ -56,6 +56,7 @@ enum SettingsAndMenuProbe {
 
         try validateLoginRequiredPresentation()
         try validateUpdatePromptPresentation()
+        try validateUpdateDownloadPresentation()
 
         let user = AuthenticatedUser(
             id: 7,
@@ -92,7 +93,7 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Status menu removal changed an unrelated command: \(titles)")
         }
 
-        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=square+notch-safe+spring+reverse+reduce-motion; update-prompt=pure+square+notch-safe+capsules+colors+focus+outside-safe+music-return+reduce-motion; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=square+notch-safe+spring+reverse+reduce-motion; update-prompt=pure+square+notch-safe+capsules+colors+focus+outside-safe+music-return; update-download=pure+priority+left-blue-spinner+right-stable-percent+empty-notch+reduce-motion+restore; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
     }
 
     private static func validateLoginRequiredPresentation() throws {
@@ -252,6 +253,101 @@ enum SettingsAndMenuProbe {
                   attachment.expandedContentTopInset >= attachment.notchFrame!.height,
                   actionsWidth < result.visibleFrame.width else {
                 throw SettingsAndMenuProbeError.failed("Update prompt square, notch, or hit regions failed at width \(availableWidth)")
+            }
+        }
+    }
+
+    private static func validateUpdateDownloadPresentation() throws {
+        let prompt = IslandUpdatePrompt(version: "1.0.1", build: "101")
+        let login = IslandPresentationReducer.reduce(
+            current: .loggedOutCompact,
+            intent: .loginRequiredRequested
+        )
+        let prompted = IslandPresentationReducer.reduce(
+            current: login.state,
+            intent: .updatePromptAvailable(prompt)
+        )
+        let requested = IslandPresentationReducer.reduce(
+            current: prompted.state,
+            intent: .updatePromptUpdateRequested
+        )
+        let started = IslandPresentationReducer.reduce(
+            current: requested.state,
+            intent: .updateDownloadStarted(.indeterminate)
+        )
+        let progress = UpdateDownloadProgress(receivedBytes: 42, totalBytes: 100)
+        let progressed = IslandPresentationReducer.reduce(
+            current: started.state,
+            intent: .updateDownloadProgressed(progress)
+        )
+        let repeated = IslandPresentationReducer.reduce(
+            current: progressed.state,
+            intent: .updateDownloadProgressed(progress)
+        )
+        let ended = IslandPresentationReducer.reduce(
+            current: progressed.state,
+            intent: .updateDownloadEnded
+        )
+
+        let promptedMusic = IslandPresentationReducer.reduce(
+            current: .expandedMusic,
+            intent: .updatePromptAvailable(prompt)
+        )
+        let requestedMusic = IslandPresentationReducer.reduce(
+            current: promptedMusic.state,
+            intent: .updatePromptUpdateRequested
+        )
+        let downloadingMusic = IslandPresentationReducer.reduce(
+            current: requestedMusic.state,
+            intent: .updateDownloadStarted(progress)
+        )
+        let restoredMusic = IslandPresentationReducer.reduce(
+            current: downloadingMusic.state,
+            intent: .updateDownloadEnded
+        )
+
+        guard requested.derivedState.visualState == .loginRequired,
+              started.derivedState.visualState == .activityCollapsed,
+              started.derivedState.previewContent.kind == .updateDownloadActivity,
+              started.derivedState.previewContent.badge == "--%",
+              progressed.derivedState.previewContent.badge == "42%",
+              repeated.reason == .noChange,
+              ended.derivedState.visualState == .loginRequired,
+              downloadingMusic.derivedState.visualState == .activityCollapsed,
+              restoredMusic.derivedState.visualState == .expandedMusic,
+              IslandUpdateDownloadLayout.indicatorColorHex == "#0A84FF",
+              IslandUpdateDownloadLayout.indicatorSize >= 20,
+              IslandUpdateDownloadLayout.percentageWidth >= 40,
+              IslandUpdateDownloadLayout.rotationDuration > 0,
+              IslandMotionTokens.reduceMotionDuration < IslandMotionTokens.profile(for: .expandedToActivity).shellKeyframes.duration else {
+            throw SettingsAndMenuProbeError.failed("Update download priority, content, progress, motion, or restoration failed")
+        }
+
+        for availableWidth in [1440.0, 360.0] {
+            let attachment = TopAttachmentMetrics(
+                kind: .notch,
+                topBandFrame: CGRect(x: 0, y: 876, width: availableWidth, height: 36),
+                notchFrame: CGRect(x: (availableWidth - 180) / 2, y: 876, width: 180, height: 36),
+                menuBarHeight: 36,
+                safeTopInset: 36,
+                pixelScale: 2,
+                availableTopWidth: availableWidth,
+                centerX: availableWidth / 2
+            )
+            let result = IslandWindowSizingEngine.resolve(
+                state: .activityCollapsed,
+                attachmentMetrics: attachment,
+                widthConstraints: progressed.derivedState.widthConstraints
+            )
+            let frames = IslandActivityNotchClearContentFrames.resolve(
+                visibleSize: result.visibleFrame.size,
+                contentWidthRequirement: progressed.derivedState.contentWidthRequirement
+            )
+            guard frames.leadingContentFrame.maxX < frames.trailingContentFrame.minX,
+                  frames.leadingContentFrame.width >= IslandUpdateDownloadLayout.indicatorSize,
+                  frames.trailingContentFrame.width >= IslandActivityContentWidthProfile.contentSlotWidth,
+                  result.visibleFrame.midX == attachment.centerX else {
+                throw SettingsAndMenuProbeError.failed("Update download notch or activity layout failed at width \(availableWidth)")
             }
         }
     }

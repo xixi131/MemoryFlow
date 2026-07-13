@@ -54,6 +54,9 @@ enum IslandInteractionIntent: Codable, Equatable {
     case updatePromptAvailable(IslandUpdatePrompt)
     case updatePromptUpdateRequested
     case updatePromptLaterRequested
+    case updateDownloadStarted(UpdateDownloadProgress)
+    case updateDownloadProgressed(UpdateDownloadProgress)
+    case updateDownloadEnded
     case outsideCollapse
     case pointerSwipe(IslandPointerSwipeDirection)
     case trackpadSwipe(IslandTrackpadSwipeDirection)

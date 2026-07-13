@@ -225,6 +225,7 @@ struct IslandDomainState: Codable, Equatable {
     var greetingText: String?
     var isLoginRequiredPresented: Bool = false
     var updatePrompt: IslandUpdatePrompt? = nil
+    var updateDownloadProgress: UpdateDownloadProgress? = nil
     var reviewSnapshot: ReviewSnapshot? = nil
     var todoSnapshot: TodoSnapshot? = nil
     var musicReturnState: IslandMusicReturnState? = nil

@@ -11,6 +11,7 @@ final class UpdateCoordinator: ObservableObject {
     private var activeSessionID: UUID?
     private var selectedRelease: UpdateRelease?
     private var handlingEvent = false
+    private var pendingReceivedBytes: Int64 = 0
 
     init(engine: UpdateEngine, clock: UpdateClock = SystemUpdateClock()) {
         self.engine = engine
@@ -34,7 +35,8 @@ final class UpdateCoordinator: ObservableObject {
     @discardableResult
     func downloadAvailableUpdate() -> Bool {
         guard case .available(let release) = state, let sessionID = activeSessionID else { return false }
-        state = .downloading(release, receivedBytes: 0, totalBytes: release.contentLength)
+        pendingReceivedBytes = 0
+        state = .downloadRequested(release)
         engine.download(release, sessionID: sessionID)
         return true
     }
@@ -73,12 +75,36 @@ final class UpdateCoordinator: ObservableObject {
             guard case .checking = state else { return }
             selectedRelease = release
             state = .available(release)
+        case .downloadStarted(let total):
+            guard case .downloadRequested(let release) = state else { return }
+            pendingReceivedBytes = 0
+            state = .downloading(
+                release,
+                progress: UpdateDownloadProgress(
+                    receivedBytes: 0,
+                    totalBytes: normalizedTotal(total) ?? normalizedTotal(release.contentLength)
+                )
+            )
+        case .downloadExpectedContentLength(let total):
+            guard case .downloading(let release, let previous) = state,
+                  let normalized = normalizedTotal(total) else { return }
+            publishProgress(
+                release: release,
+                previous: previous,
+                received: pendingReceivedBytes,
+                total: normalized
+            )
         case .downloadProgress(let received, let total):
-            guard case .downloading(let release, let previous, _) = state else { return }
-            guard received >= previous else { return }
-            state = .downloading(release, receivedBytes: received, totalBytes: total ?? release.contentLength)
+            guard case .downloading(let release, let previous) = state else { return }
+            pendingReceivedBytes = max(pendingReceivedBytes, max(received, 0))
+            publishProgress(
+                release: release,
+                previous: previous,
+                received: pendingReceivedBytes,
+                total: normalizedTotal(total) ?? previous.totalBytes ?? normalizedTotal(release.contentLength)
+            )
         case .downloadFinished:
-            guard case .downloading(let release, _, _) = state else { return }
+            guard case .downloading(let release, _) = state else { return }
             state = .ready(release)
         case .installationStarted:
             guard case .installing = state else { return }
@@ -91,6 +117,32 @@ final class UpdateCoordinator: ObservableObject {
     private func finishSession() {
         activeSessionID = nil
         selectedRelease = nil
+        pendingReceivedBytes = 0
+    }
+
+    private func publishProgress(
+        release: UpdateRelease,
+        previous: UpdateDownloadProgress,
+        received: Int64,
+        total: Int64?
+    ) {
+        let monotonicReceived = max(previous.receivedBytes, max(received, 0))
+        let monotonicTotal = total.map { max($0, monotonicReceived) }
+        let clampedReceived = monotonicTotal.map { min(monotonicReceived, $0) } ?? monotonicReceived
+        let candidate = UpdateDownloadProgress(
+            receivedBytes: clampedReceived,
+            totalBytes: monotonicTotal
+        )
+        pendingReceivedBytes = candidate.receivedBytes
+        let visibleProgressChanged = candidate.percentage != previous.percentage
+        let totalBecameKnown = candidate.totalBytes != previous.totalBytes
+        guard visibleProgressChanged || totalBecameKnown else { return }
+        state = .downloading(release, progress: candidate)
+    }
+
+    private func normalizedTotal(_ total: Int64?) -> Int64? {
+        guard let total, total > 0 else { return nil }
+        return total
     }
 }
 

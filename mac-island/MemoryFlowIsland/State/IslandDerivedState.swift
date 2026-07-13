@@ -11,6 +11,7 @@ struct IslandDerivedState: Equatable {
     let showReminder: Bool
     let showAppActivity: Bool
     let showAnyActivity: Bool
+    let showUpdateDownloadActivity: Bool
     let isActivityVisualState: Bool
     let collapsedWidth: CGFloat
     let collapsedCornerRadius: CGFloat
@@ -24,7 +25,8 @@ struct IslandDerivedState: Equatable {
     static func derive(from state: IslandDomainState) -> IslandDerivedState {
         let hasMusicActivitySource = state.primaryMode == .music && state.mockSources.music != nil
         let hasAppActivitySource = state.primaryMode == .app && state.authState == .loggedIn
-        let hasAnyActivitySource = hasMusicActivitySource || hasAppActivitySource
+        let showUpdateDownloadActivity = state.updateDownloadProgress != nil
+        let hasAnyActivitySource = showUpdateDownloadActivity || hasMusicActivitySource || hasAppActivitySource
         let canShowActivityContent = state.presentationState == .activity && state.forceCompactMode == false
         let showMusicActivity = hasMusicActivitySource && canShowActivityContent
         let showReviewActivity = canShowActivityContent &&
@@ -37,7 +39,7 @@ struct IslandDerivedState: Equatable {
             (state.todoSnapshot != nil || state.mockSources.todo != nil)
         let showReminder = showReviewActivity && state.isReminderActive
         let showAppActivity = showReviewActivity || showTodoActivity
-        let showAnyActivity = showMusicActivity || showAppActivity
+        let showAnyActivity = showUpdateDownloadActivity || showMusicActivity || showAppActivity
         let visualState = resolveVisualState(
             for: state,
             showAnyActivity: showAnyActivity
@@ -84,6 +86,7 @@ struct IslandDerivedState: Equatable {
             showReminder: showReminder,
             showAppActivity: showAppActivity,
             showAnyActivity: showAnyActivity,
+            showUpdateDownloadActivity: showUpdateDownloadActivity,
             isActivityVisualState: visualState == .activityCollapsed || visualState == .activityHoverCollapsed,
             collapsedWidth: collapsedWidth,
             collapsedCornerRadius: shellTokens.radius,
@@ -108,6 +111,9 @@ struct IslandDerivedState: Equatable {
         for state: IslandDomainState,
         showAnyActivity: Bool
     ) -> IslandVisualState {
+        if state.updateDownloadProgress != nil {
+            return state.isHovered ? .activityHoverCollapsed : .activityCollapsed
+        }
         if state.updatePrompt != nil {
             return .updatePrompt
         }
@@ -187,6 +193,9 @@ struct IslandDerivedState: Equatable {
     }
 
     private static func compactContentWidthBranch(for state: IslandDomainState) -> IslandMockContentWidthBranch {
+        if state.updateDownloadProgress != nil {
+            return .updateDownload
+        }
         if state.primaryMode == .music {
             return .music
         }
@@ -215,6 +224,12 @@ struct IslandDerivedState: Equatable {
         showTodoActivity: Bool,
         showReminder: Bool
     ) -> IslandMockContentWidthResolution {
+        if state.updateDownloadProgress != nil {
+            return IslandMockContentWidthResolution(
+                branch: .updateDownload,
+                requirement: IslandActivityContentWidthProfile.requirement(for: .updateDownload)
+            )
+        }
         if state.primaryMode == .music || showMusicActivity {
             return IslandMockContentWidthResolution(
                 branch: .music,
@@ -268,6 +283,7 @@ struct IslandDerivedState: Equatable {
 }
 
 enum IslandMockContentWidthBranch: String, Equatable {
+    case updateDownload
     case review
     case todo
     case music
@@ -296,7 +312,7 @@ enum IslandActivityContentWidthProfile {
         isReminder: Bool = false
     ) -> IslandContentWidthRequirement {
         switch branch {
-        case .review, .todo, .music:
+        case .review, .todo, .music, .updateDownload:
             return IslandContentWidthRequirement(
                 leadingContentWidth: minimumLeadingIdentityWidth,
                 trailingContentWidth: minimumTrailingControlWidth,
@@ -421,6 +437,7 @@ struct IslandPreviewContent: Equatable {
         case signedOutCompact
         case loginRequired
         case updatePrompt
+        case updateDownloadActivity
         case reviewCompact
         case todoCompact
         case reviewActivity
@@ -453,6 +470,21 @@ struct IslandPreviewContent: Equatable {
         showTodoActivity: Bool,
         showReminder: Bool
     ) -> IslandPreviewContent {
+        if let progress = state.updateDownloadProgress {
+            return IslandPreviewContent(
+                kind: .updateDownloadActivity,
+                eyebrow: "Update",
+                title: "Downloading update",
+                subtitle: progress.totalBytes == nil ? "Preparing download" : "Download in progress",
+                badge: progress.percentage.map { "\($0)%" } ?? "--%",
+                tone: .review,
+                review: nil,
+                todo: nil,
+                music: nil,
+                contentWidthRequirement: IslandActivityContentWidthProfile.requirement(for: .updateDownload)
+            )
+        }
+
         if state.isGestureTracking || (state.isTrackpadGestureLocked && state.primaryMode != .music) {
             return IslandPreviewContent(
                 kind: .gestureLock,

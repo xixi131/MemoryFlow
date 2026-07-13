@@ -148,3 +148,7 @@
 ### 2026-07-13 - Update prompt square
 - Routed updater availability through pure island intents and added a notch-safe square prompt with accessible solid blue Update and solid gray Later capsules.
 - Music return, outside-click safety, Reduce Motion, repeated callbacks, four-hour relaunch deferral, manual checks during deferral, integrated build, and deterministic UI/update probes passed.
+
+### 2026-07-13 - Update download activity
+- Gated island activity on Sparkle download-start confirmation and added duplicate/stale/retry-safe progress normalization with unknown-length support.
+- Signed setup/failure/retry and 0-100 probes plus the blue left spinner, stable white right percentage, empty notch, restoration, Reduce Motion, and integrated build passed.

@@ -475,11 +475,25 @@ private struct IslandPreviewContentOverlay: View {
         )
 
         return ZStack(alignment: .topLeading) {
-            activityModeIcon
+            Group {
+                if content.kind == .updateDownloadActivity {
+                    UpdateDownloadIndicator(reduceMotion: reduceMotion)
+                } else {
+                    activityModeIcon
+                }
+            }
                 .position(frames.leadingVisualCenter)
 
             Group {
-                if let music = content.music {
+                if content.kind == .updateDownloadActivity {
+                    Text(content.badge)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .frame(width: IslandUpdateDownloadLayout.percentageWidth, alignment: .trailing)
+                        .accessibilityLabel("Update download \(content.badge)")
+                } else if let music = content.music {
                     MusicWaveformMark(
                         tint: compactForegroundColor,
                         isPlaying: music.isPlaying,
@@ -2085,6 +2099,44 @@ enum IslandExpandedTodoContentProbe {
 
 enum IslandExpandedTodoContentProbeError: Error {
     case invalidLayout([IslandExpandedTodoContentProbeRow])
+}
+
+private struct UpdateDownloadIndicator: View {
+    let reduceMotion: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+            let phase = timeline.date.timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: IslandUpdateDownloadLayout.rotationDuration)
+                / IslandUpdateDownloadLayout.rotationDuration
+            ZStack {
+                Circle()
+                    .stroke(indicatorColor.opacity(0.24), lineWidth: 2.4)
+                Circle()
+                    .trim(from: 0.08, to: 0.72)
+                    .stroke(
+                        indicatorColor,
+                        style: StrokeStyle(lineWidth: 2.4, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(reduceMotion ? -35 : phase * 360 - 90))
+                if reduceMotion {
+                    Circle()
+                        .fill(indicatorColor)
+                        .frame(width: 4, height: 4)
+                }
+            }
+        }
+        .frame(
+            width: IslandUpdateDownloadLayout.indicatorSize,
+            height: IslandUpdateDownloadLayout.indicatorSize
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Downloading update")
+    }
+
+    private var indicatorColor: Color {
+        Color(memoryFlowHex: IslandUpdateDownloadLayout.indicatorColorHex)
+    }
 }
 
 private struct MusicWaveformMark: View {

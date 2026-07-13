@@ -18,10 +18,10 @@ The backend-integration phase is complete. The active Phase 7 queue adds a login
 - Performance: `docs/evidence/mac-island-phase6/motion-performance-evidence.{json,md}`.
 
 ## Remaining real-world work
-Phase 7 Settings/menu cleanup, Advanced Features lifecycle, login-required square, Sparkle updater core, check/deferral policy, and update prompt square are complete. Remaining work is download activity, install/recovery, release, and production acceptance. Existing real music-provider work in the current dirty worktree is not part of this queue.
+Phase 7 Settings/menu cleanup, Advanced Features lifecycle, login-required square, Sparkle core/policy/prompt, and update download activity are complete. Remaining work is install/recovery, release, and production acceptance. Existing real music-provider work in the current dirty worktree is not part of this queue.
 
 ## Queue status
-`feature_list.json` contains 4 pending Phase 7 tasks. Start with `mac-phase7-update-download-activity`, then continue through install/recovery, release, and production acceptance. The updater acceptance target is a signed older-to-newer installation path, not only mocked UI.
+`feature_list.json` contains 3 pending Phase 7 tasks. Start with `mac-phase7-update-install-and-recovery`, then continue through release and production acceptance. The updater acceptance target is a signed older-to-newer installation path, not only mocked UI.
 
 ## Phase 7 task groups
 - Tasks 1-3 deliver Settings and menu cleanup, the basic-versus-advanced lifecycle, and the complete login-required square.

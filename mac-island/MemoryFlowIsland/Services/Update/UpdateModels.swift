@@ -7,6 +7,22 @@ struct UpdateRelease: Equatable, Sendable {
     let contentLength: Int64?
 }
 
+struct UpdateDownloadProgress: Codable, Equatable, Sendable {
+    let receivedBytes: Int64
+    let totalBytes: Int64?
+
+    var fraction: Double? {
+        guard let totalBytes, totalBytes > 0 else { return nil }
+        return min(max(Double(receivedBytes) / Double(totalBytes), 0), 1)
+    }
+
+    var percentage: Int? {
+        fraction.map { Int(($0 * 100).rounded(.down)) }
+    }
+
+    static let indeterminate = UpdateDownloadProgress(receivedBytes: 0, totalBytes: nil)
+}
+
 enum UpdateFailure: Error, Equatable, Sendable {
     case invalidConfiguration(String)
     case invalidFeed(String)
@@ -20,7 +36,8 @@ enum UpdateState: Equatable, Sendable {
     case checking
     case available(UpdateRelease)
     case deferred(UpdateRelease, until: Date)
-    case downloading(UpdateRelease, receivedBytes: Int64, totalBytes: Int64?)
+    case downloadRequested(UpdateRelease)
+    case downloading(UpdateRelease, progress: UpdateDownloadProgress)
     case ready(UpdateRelease)
     case installing(UpdateRelease)
     case failed(UpdateFailure)
@@ -29,6 +46,8 @@ enum UpdateState: Equatable, Sendable {
 enum UpdateEngineEvent: Equatable, Sendable {
     case current
     case available(UpdateRelease)
+    case downloadStarted(totalBytes: Int64?)
+    case downloadExpectedContentLength(Int64)
     case downloadProgress(receivedBytes: Int64, totalBytes: Int64?)
     case downloadFinished
     case installationStarted

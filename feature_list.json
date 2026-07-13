@@ -95,7 +95,7 @@
       "Run a signed controlled download covering setup failure, unknown length, retry, 0 to 100 percent progress, layout stability, duplicate clicks, and restoration of the prior presentation."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "mac-phase7-update-install-and-recovery",

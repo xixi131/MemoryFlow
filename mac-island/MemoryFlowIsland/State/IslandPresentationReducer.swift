@@ -43,6 +43,9 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case updatePromptPresented
     case updatePromptUpdateRequested
     case updatePromptLaterRequested
+    case updateDownloadStarted
+    case updateDownloadProgressed
+    case updateDownloadEnded
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
     case presentationRetargeted
@@ -83,6 +86,34 @@ enum IslandPresentationReducer {
         intent: IslandInteractionIntent
     ) -> IslandPresentationReducerResult {
         switch intent {
+        case let .updateDownloadStarted(progress):
+            guard state.updateDownloadProgress == nil else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .updateDownloadStarted) {
+                $0.updatePrompt = nil
+                $0.updateDownloadProgress = progress
+                $0.isHovered = false
+            }
+        case let .updateDownloadProgressed(progress):
+            guard let previous = state.updateDownloadProgress else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            guard previous != progress,
+                  (progress.percentage ?? previous.percentage ?? 0) >= (previous.percentage ?? 0) else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .updateDownloadProgressed) {
+                $0.updateDownloadProgress = progress
+            }
+        case .updateDownloadEnded:
+            guard state.updateDownloadProgress != nil else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .updateDownloadEnded) {
+                $0.updateDownloadProgress = nil
+                $0.isHovered = false
+            }
         case let .updatePromptAvailable(prompt):
             guard state.updatePrompt != prompt else {
                 return unchanged(state, reason: .noChange)
@@ -173,7 +204,8 @@ enum IslandPresentationReducer {
 
         switch intent {
         case .loginRequiredRequested, .loginRequiredDismissed,
-             .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested:
+             .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested,
+             .updateDownloadStarted, .updateDownloadProgressed, .updateDownloadEnded:
             return unchanged(state, reason: .noChange)
         case .outsideCollapse:
             if state.updatePrompt != nil {
@@ -440,6 +472,9 @@ enum IslandPresentationReducer {
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
+             .updateDownloadStarted,
+             .updateDownloadProgressed,
+             .updateDownloadEnded,
              .mockScenarioSelect,
              .retargetPresentation:
             return unchanged(state, reason: .noChange)
@@ -599,6 +634,9 @@ enum IslandPresentationReducer {
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
+             .updateDownloadStarted,
+             .updateDownloadProgressed,
+             .updateDownloadEnded,
              .mockScenarioSelect,
              .retargetPresentation,
              .transitionComplete:
@@ -623,6 +661,9 @@ enum IslandPresentationReducer {
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
+             .updateDownloadStarted,
+             .updateDownloadProgressed,
+             .updateDownloadEnded,
              .mockScenarioSelect,
              .retargetPresentation,
              .transitionComplete:
@@ -642,6 +683,9 @@ enum IslandPresentationReducer {
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
+             .updateDownloadStarted,
+             .updateDownloadProgressed,
+             .updateDownloadEnded,
              .outsideCollapse,
              .pointerSwipe,
              .mockPlaybackStarted,

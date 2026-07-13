@@ -784,6 +784,12 @@ enum IslandPreviewInteractionProbe {
             return "updatePromptUpdateRequested"
         case .updatePromptLaterRequested:
             return "updatePromptLaterRequested"
+        case let .updateDownloadStarted(progress):
+            return "updateDownloadStarted(\(progress.percentage.map(String.init) ?? "unknown"))"
+        case let .updateDownloadProgressed(progress):
+            return "updateDownloadProgressed(\(progress.percentage.map(String.init) ?? "unknown"))"
+        case .updateDownloadEnded:
+            return "updateDownloadEnded"
         case .outsideCollapse:
             return "outsideCollapse"
         case let .pointerSwipe(direction):
