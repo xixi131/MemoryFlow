@@ -6,10 +6,8 @@ protocol StatusMenuBuilding {
         isIslandVisible: Bool,
         language: AppLanguage,
         phase5Scenarios: [IslandMockScenario],
-        phase5InteractionDemoControls: [IslandPhase5InteractionDemoControl],
         showHideAction: Selector,
         phase5ScenarioAction: Selector,
-        phase5InteractionDemoAction: Selector,
         preferencesAction: Selector,
         logoutAction: Selector,
         quitAction: Selector
@@ -22,10 +20,8 @@ struct StatusMenuBuilder: StatusMenuBuilding {
         isIslandVisible: Bool,
         language: AppLanguage,
         phase5Scenarios: [IslandMockScenario],
-        phase5InteractionDemoControls: [IslandPhase5InteractionDemoControl],
         showHideAction: Selector,
         phase5ScenarioAction: Selector,
-        phase5InteractionDemoAction: Selector,
         preferencesAction: Selector,
         logoutAction: Selector,
         quitAction: Selector
@@ -53,24 +49,6 @@ struct StatusMenuBuilder: StatusMenuBuilding {
             let scenariosRootItem = NSMenuItem(title: AppCopy.text(.phase5Scenarios, language: language), action: nil, keyEquivalent: "")
             scenariosRootItem.submenu = scenariosMenu
             menu.addItem(scenariosRootItem)
-        }
-
-        if phase5InteractionDemoControls.isEmpty == false {
-            let interactionsMenu = NSMenu(title: AppCopy.text(.phase5Interactions, language: language))
-            for control in phase5InteractionDemoControls {
-                let interactionItem = NSMenuItem(
-                    title: control.menuTitle,
-                    action: phase5InteractionDemoAction,
-                    keyEquivalent: ""
-                )
-                interactionItem.target = target
-                interactionItem.representedObject = control.rawValue
-                interactionsMenu.addItem(interactionItem)
-            }
-
-            let interactionsRootItem = NSMenuItem(title: AppCopy.text(.phase5Interactions, language: language), action: nil, keyEquivalent: "")
-            interactionsRootItem.submenu = interactionsMenu
-            menu.addItem(interactionsRootItem)
         }
 
         let preferencesItem = NSMenuItem(title: AppCopy.text(.settings, language: language), action: preferencesAction, keyEquivalent: ",")

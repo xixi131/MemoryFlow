@@ -60,6 +60,7 @@ final class SceneCoordinator {
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
         let languageSettings = AppLanguageSettings()
+        let advancedFeaturesSettings = AdvancedFeaturesSettings()
         let settingsAccountState = SettingsAccountState()
         let sessionStore = KeychainAuthSessionStore()
         let apiClient = try! APIClient(
@@ -140,6 +141,7 @@ final class SceneCoordinator {
         let desktopLoginCoordinator = self.desktopLoginCoordinator
         let preferencesWindowController = PreferencesWindowController(
             languageSettings: languageSettings,
+            advancedFeaturesSettings: advancedFeaturesSettings,
             accountState: settingsAccountState,
             onLoginRequested: { [weak desktopLoginCoordinator] in
                 _ = desktopLoginCoordinator?.openLogin()

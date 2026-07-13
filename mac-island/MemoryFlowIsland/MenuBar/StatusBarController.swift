@@ -4,7 +4,6 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private var statusItem: NSStatusItem?
     private let windowController: IslandWindowControlling
     private let phase5ScenarioController: IslandPhase5ScenarioControlling?
-    private let phase5InteractionDemoController: IslandPhase5InteractionDemoControlling?
     private let preferencesWindowController: PreferencesWindowControlling
     private let languageSettings: AppLanguageSettings
     private let menuBuilder: StatusMenuBuilding
@@ -24,7 +23,6 @@ final class StatusBarController: NSObject, MenuBarControlling {
     ) {
         self.windowController = windowController
         self.phase5ScenarioController = windowController as? IslandPhase5ScenarioControlling
-        self.phase5InteractionDemoController = windowController as? IslandPhase5InteractionDemoControlling
         self.preferencesWindowController = preferencesWindowController
         self.languageSettings = languageSettings
         self.menuBuilder = menuBuilder
@@ -95,24 +93,6 @@ final class StatusBarController: NSObject, MenuBarControlling {
         refreshMenu()
     }
 
-    @objc func phase5InteractionDemoMenuItemClicked(_ sender: Any?) {
-        guard
-            let menuItem = sender as? NSMenuItem,
-            let rawValue = menuItem.representedObject as? String,
-            let control = IslandPhase5InteractionDemoControl(rawValue: rawValue)
-        else {
-            return
-        }
-
-        if isIslandVisible == false {
-            windowController.show()
-            isIslandVisible = true
-        }
-
-        phase5InteractionDemoController?.triggerPhase5InteractionDemo(control)
-        refreshMenu()
-    }
-
     @objc func quitMenuItemClicked(_ sender: Any?) {
         quitHandler()
     }
@@ -139,16 +119,13 @@ final class StatusBarController: NSObject, MenuBarControlling {
         guard let statusItem else { return }
 
         let phase5Scenarios = phase5ScenarioController?.availablePhase5Scenarios ?? []
-        let phase5InteractionDemoControls = phase5InteractionDemoController?.availablePhase5InteractionDemoControls ?? []
         statusItem.menu = menuBuilder.buildMenu(
             target: self,
             isIslandVisible: isIslandVisible,
             language: languageSettings.language,
             phase5Scenarios: phase5Scenarios,
-            phase5InteractionDemoControls: phase5InteractionDemoControls,
             showHideAction: #selector(toggleIslandMenuItemClicked(_:)),
             phase5ScenarioAction: #selector(phase5ScenarioMenuItemClicked(_:)),
-            phase5InteractionDemoAction: #selector(phase5InteractionDemoMenuItemClicked(_:)),
             preferencesAction: #selector(preferencesMenuItemClicked(_:)),
             logoutAction: #selector(logoutMenuItemClicked(_:)),
             quitAction: #selector(quitMenuItemClicked(_:))

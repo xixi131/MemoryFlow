@@ -2,17 +2,20 @@ import SwiftUI
 
 struct PreferencesView: View {
     @ObservedObject private var languageSettings: AppLanguageSettings
+    @ObservedObject private var advancedFeaturesSettings: AdvancedFeaturesSettings
     @ObservedObject private var accountState: SettingsAccountState
     private let onLoginRequested: () -> Void
     private let onLogoutRequested: () -> Void
 
     init(
         languageSettings: AppLanguageSettings,
+        advancedFeaturesSettings: AdvancedFeaturesSettings,
         accountState: SettingsAccountState,
         onLoginRequested: @escaping () -> Void,
         onLogoutRequested: @escaping () -> Void
     ) {
         self.languageSettings = languageSettings
+        self.advancedFeaturesSettings = advancedFeaturesSettings
         self.accountState = accountState
         self.onLoginRequested = onLoginRequested
         self.onLogoutRequested = onLogoutRequested
@@ -40,25 +43,34 @@ struct PreferencesView: View {
                 .padding(.vertical, 4)
             }
 
-            GroupBox(copy(.account)) {
-                VStack(alignment: .leading, spacing: 10) {
-                    if let user = accountState.user {
-                        Text(copy(.signedInAs))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(user.nickname?.isEmpty == false ? user.nickname! : user.email)
-                            .font(.headline)
-                        if user.nickname?.isEmpty == false {
-                            Text(user.email)
+            GroupBox(copy(.advancedFeatures)) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(copy(.advancedFeaturesDescription))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Toggle(copy(.advancedFeatures), isOn: advancedFeaturesBinding)
+
+                    if advancedFeaturesSettings.isEnabled {
+                        Divider()
+                        if let user = accountState.user {
+                            Text(copy(.signedInAs))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                            Text(user.nickname?.isEmpty == false ? user.nickname! : user.email)
+                                .font(.headline)
+                            if user.nickname?.isEmpty == false {
+                                Text(user.email)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Button(copy(.signOut), role: .destructive, action: onLogoutRequested)
+                        } else {
+                            Text(copy(.notSignedIn))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button(copy(.signIn), action: onLoginRequested)
                         }
-                        Button(copy(.signOut), role: .destructive, action: onLogoutRequested)
-                    } else {
-                        Text(copy(.notSignedIn))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Button(copy(.signIn), action: onLoginRequested)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -75,6 +87,13 @@ struct PreferencesView: View {
         Binding(
             get: { languageSettings.language },
             set: { languageSettings.setLanguage($0) }
+        )
+    }
+
+    private var advancedFeaturesBinding: Binding<Bool> {
+        Binding(
+            get: { advancedFeaturesSettings.isEnabled },
+            set: { advancedFeaturesSettings.setEnabled($0) }
         )
     }
 

@@ -124,3 +124,7 @@
 ### 2026-07-11 - Backend integration acceptance
 - Recorded controlled deterministic evidence for the reused browser callback, confirmed session, review and todo synchronization, persisted todo completion, token refresh, and complete logout cleanup under `docs/evidence/mac-island-backend-integration`.
 - The full native build and focused lifecycle probes passed; evidence is explicitly labeled controlled-synthetic because no real user credentials were available for live browser credential entry.
+
+### 2026-07-13 - Phase 7 Settings and menu cleanup
+- Added persistent localized Advanced Features settings with conditional account controls and removed the obsolete production Phase 5 Interactions menu wiring while preserving probe fixtures and unrelated commands.
+- The native settings/menu probe, full Swift source typecheck, and unsigned Debug build passed; Windows and Electron files were unchanged and no native validation process remained running.

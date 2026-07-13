@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-The native activity-state notch-clearance phase is complete. The next phase connects the macOS native island to the existing MemoryFlow backend in three ordered groups: authentication, real review data, and real todo data plus completion. Windows Electron remains the read-only behavior and API-contract baseline.
+The backend-integration phase is complete. The active Phase 7 queue adds a login-free music-only default, opt-in Advanced Features, a notch-safe login-required square presentation, production update checks and island update progress. Windows Electron remains out of scope and must not be modified.
 
 ## Completed native modules
 - Motion plans, live animation driver, top-center window anchoring, shell shape morphing, compact/activity/expanded content choreography, hover breathing, Reduce Motion, responsive layout, and rapid-retarget guards.
@@ -18,15 +18,36 @@ The native activity-state notch-clearance phase is complete. The next phase conn
 - Performance: `docs/evidence/mac-island-phase6/motion-performance-evidence.{json,md}`.
 
 ## Remaining real-world work
-The backend-integration queue is complete: browser callback login, Keychain session lifecycle, refresh/logout, 30-second review sync, 60-second todo sync, and persisted todo completion are implemented and covered by controlled deterministic evidence. Live credential/device calibration, performance capture, and remaining real music-provider work stay outside this phase.
+Phase 7 Settings and menu cleanup is complete. Remaining work must make authentication conditional on Advanced Features, remove centered compact login content, add the spring-driven square login-required prompt, and deliver a signed Sparkle-based update lifecycle. Existing real music-provider work in the current dirty worktree is not part of this queue.
 
 ## Queue status
-The backend-integration queue is complete. No pending tasks remain in `feature_list.json`; run `$Task_init` before starting another delivery phase. Acceptance evidence lives under `docs/evidence/mac-island-backend-integration` and is explicitly labeled controlled-synthetic because no real user credentials were used for browser entry.
+`feature_list.json` contains 9 pending Phase 7 tasks in dependency order. The superseded 27-task draft and the 12 completed predecessor tasks are preserved unchanged in `final_feature_list.json`. Start with `mac-phase7-advanced-capability-lifecycle`, then deliver the login-required square before updater presentation work. The updater acceptance target is a signed older-to-newer installation path, not only mocked UI.
+
+## Phase 7 task groups
+- Tasks 1-3 deliver Settings and menu cleanup, the basic-versus-advanced lifecycle, and the complete login-required square.
+- Tasks 4-8 deliver the updater engine, check policy, prompt, download activity, and installation or recovery lifecycle.
+- Task 9 delivers the signed release pipeline; Task 10 proves the full production-like experience.
+
+## Phase 7 layering contract
+- `Preferences/`: persist language, Advanced Features, and user-issued update commands; views never own auth or update network logic.
+- `Services/Auth`, review, and todo coordinators: remain the only owners of sessions and protected API work; SceneCoordinator starts or stops them from the advanced-capability policy.
+- `Services/Update`: own Sparkle, appcast checks, prompt scheduling, deferral, byte progress, verification, and installation; this subsystem never depends on login.
+- `State/`: own pure presentation intents, precedence, return state, and derived content; no UserDefaults, network, Sparkle, or browser calls.
+- `UI/Visual` and `UI/Motion`: render the login/update square and update activity through existing shape and spring infrastructure; no service calls.
+- `Window/IslandWindowController`: adapt pointer and window events and render state only; orchestration remains in SceneCoordinator.
 
 ## Authentication reuse boundary
 - Reuse the existing browser login page, `POST /auth/login`, CAPTCHA flow, JWT implementation, and `memoryflow://callback` contract.
 - Do not build a native email/password login form, copy the React login UI into SwiftUI, or modify the existing web login and backend authentication implementation.
-- Native macOS work is limited to the Login plus logo entry state, opening the existing web flow, receiving the callback, Keychain session storage, `/auth/me` verification, refresh/retry, and logout lifecycle.
+- Native macOS authentication continues to reuse the existing web flow, callback, Keychain session storage, `/auth/me` verification, refresh/retry, and logout lifecycle.
+- Phase 7 removes the Login plus logo entry from the compact island. Browser login remains available from Settings only when Advanced Features is enabled.
+- Advanced Features defaults to disabled. Disabling it stops protected work but preserves the Keychain session for later verification; music and update checks never require login.
+
+## Updater boundary
+- Use Sparkle 2 as the download, EdDSA verification, atomic replacement, authorization, and relaunch engine; do not hand-roll app replacement.
+- Use an app-owned `UpdateCoordinator` and custom Sparkle user driver so Settings and island presentations consume typed state without importing Sparkle types.
+- Scheduled checks run after launch and every 24 hours; Later defers the same version for four hours. Keep these constants centralized and clock-injectable.
+- Production acceptance requires Developer ID signing, notarization, an HTTPS signed appcast, monotonic versions, minimum-macOS filtering, phased rollout metadata, and failure evidence.
 
 ## Backend integration contracts
 - Login parity uses `/#/login?callback=desktop` and `memoryflow://callback?token=...&refreshToken=...&expiresIn=...`.

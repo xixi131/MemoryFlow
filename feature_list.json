@@ -1,165 +1,142 @@
 [
   {
-    "task_id": "mac-apple-spring-global-api",
+    "task_id": "mac-phase7-settings-and-menu",
     "task_type": "frontend",
-    "description": "Expose one reusable Apple-style underdamped spring API for native SwiftUI views.",
+    "description": "Give users one clean Settings surface for Advanced Features while removing the obsolete Phase 5 Interactions menu.",
     "steps": [
-      "Add a shared SwiftUI motion file under mac-island/MemoryFlowIsland/UI/Motion with one static let Animation.spring model using response 0.3...0.4 and dampingFraction 0.65...0.75.",
-      "Add a ViewModifier and View extension so Equatable state changes can opt in with applyAppleSpring(value:) without business-layer withAnimation parameter blocks.",
-      "Document in code that the modifier must be attached once to the outer shell container and relies on SwiftUI spring transaction retargeting to preserve in-flight velocity.",
-      "Run the full native Swift source typecheck and a focused compile probe that calls applyAppleSpring(value:) with representative Bool and enum values."
-    ],
-    "budget_minutes": 8,
-    "passes": true
-  },
-  {
-    "task_id": "mac-apple-spring-shell-integration",
-    "task_type": "frontend",
-    "description": "Make the native island shell use the shared spring while keeping inner content out of the shell animation transaction.",
-    "steps": [
-      "Identify the outermost black island shell container in IslandVisualStatePreview or its current extracted shell view and attach applyAppleSpring(value:) exactly once to the state value that drives shell shape and size.",
-      "Remove any redundant shell-level duration-based SwiftUI animation modifier or parameterized business-layer withAnimation call that competes with the shared spring, without changing content-local animations or the AppKit window animation driver.",
-      "Add or extend a focused probe that retargets the shell state forward and backward before completion and rejects reset, snap, or stale-target behavior.",
-      "Run the full native Swift typecheck plus the focused rapid-retarget probe and confirm no Windows or Electron files changed."
+      "Add a namespaced UserDefaults-backed AdvancedFeaturesSettings model that defaults to disabled, publishes changes, and restores its value after relaunch.",
+      "Add a localized Advanced Features toggle to PreferencesView and show account login or logout controls only while the toggle is enabled, without duplicating auth state in SwiftUI.",
+      "Remove the Phase 5 Interactions submenu, selectors, and production controller wiring while preserving reusable probe fixtures and every unrelated status menu command.",
+      "Verify setting persistence and the disabled, enabled-logged-out, and enabled-logged-in Settings states, then open the menu and confirm the obsolete interaction entry is absent.",
+      "Run the settings and menu probes plus the full native Swift source typecheck without changing Windows or Electron files."
     ],
     "budget_minutes": 10,
     "passes": true
   },
   {
-    "task_id": "mac-activity-notch-clearance-layout",
-    "task_type": "frontend",
-    "description": "Make native activity sizing reserve usable content space on both sides of the physical notch instead of treating the notch-covered center as content width.",
+    "task_id": "mac-phase7-advanced-capability-lifecycle",
+    "task_type": "e2e",
+    "description": "Run music without login by default and activate authenticated study features only when Advanced Features is enabled.",
     "steps": [
-      "Trace the current compact notch width, activity content-width requirement, and visible-window width path without changing Windows or Electron files.",
-      "Add one reusable native layout calculation that derives activity width from the compact notch-aligned center width plus explicit leading and trailing content slots and shared spacing or padding.",
-      "Keep compact sizing exactly tied to the current per-screen notch metrics while ensuring activity width grows by enough usable width beyond both notch edges.",
-      "Add or extend a focused Swift probe covering representative notched and notchless screen metrics and run the full native Swift source typecheck."
+      "Add a capability policy owned by SceneCoordinator: music and update services are always available, while authentication, review, todo, and reminder data require Advanced Features.",
+      "When disabled, skip Keychain session verification and protected pollers, hide review and todo interaction paths, clear user snapshots or pending mutations, and preserve any saved Keychain session without sending logout.",
+      "When enabled, reuse the existing AuthCoordinator, browser login callback, Keychain session, repositories, and polling controllers; do not add native credentials UI or duplicate service logic in Preferences or Window layers.",
+      "Verify default disabled launch has no login UI or protected requests, music takeover still works, enabling restores valid sessions or reaches logged-out state, and disabling stops protected work without duplicate timers.",
+      "Relaunch through disabled, enabled-logged-out, and enabled-logged-in configurations and record deterministic lifecycle evidence."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-login-required-square",
+    "task_type": "e2e",
+    "description": "Show a notch-safe spring-driven square Login Required presentation when an advanced logged-out user clicks the island.",
+    "steps": [
+      "Remove the compact Login label, logo, button, and accessibility action so the notch-covered center remains visually and interactively empty in basic and advanced logged-out compact states.",
+      "Add pure reducer intents, derived content, and a dedicated visual state for loginRequired; State files must not read settings, open the browser, or call AuthCoordinator.",
+      "Make the expanded visible width equal its height, keep the top-center notch anchor fixed, grow downward through the existing Apple spring and single motion driver, and support reverse retargeting plus Reduce Motion.",
+      "Render only the localized four-character Simplified Chinese Login Required message below the notch and route taps into this presentation only when Advanced Features is enabled and auth is logged out; browser login remains in Settings.",
+      "Verify square geometry, notch clearance, repeated taps, outside collapse, logged-in behavior, music takeover and return, narrow layouts, and deterministic visual frames."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-updater-core",
+    "task_type": "e2e",
+    "description": "Discover trusted MemoryFlow releases through one login-independent production update service.",
+    "steps": [
+      "Add Sparkle 2 through Swift Package Manager and configure an HTTPS appcast URL plus public EdDSA key from build configuration, keeping private signing material outside the repository.",
+      "Create Services/Update protocols, a Sparkle adapter, a custom user driver, and an UpdateCoordinator whose typed states cover idle, checking, available, deferred, downloading, ready, installing, and failed.",
+      "Keep Sparkle types and callbacks inside Services/Update, publish state on the main actor, and prevent duplicate checks, downloads, recursive callbacks, or stale session updates.",
+      "Use signed local appcast fixtures to verify current, newer, malformed, non-HTTPS, and invalid-signature outcomes without importing island presentation types into the updater.",
+      "Run coordinator probes, the native build, and the full Swift source typecheck."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-check-policy",
+    "task_type": "e2e",
+    "description": "Check for updates manually and on schedule while honoring a persistent Later choice.",
+    "steps": [
+      "Add a localized Settings update section driven by UpdateCoordinator with Check for Updates, checking, up-to-date, available, and recoverable-error states independent from login and Advanced Features.",
+      "Add one injectable schedule owner that checks shortly after launch and every 24 hours, persists the last successful check, catches up after sleep or wake, and never creates duplicate timers.",
+      "Add a persistent prompt policy that defers the same version for four hours after Later, still permits manual checks, and clears stale deferral when a newer or installed version supersedes it.",
+      "Verify launch, relaunch, manual retry, offline recovery, 24-hour cadence, sleep or wake, four-hour deferral, newer-version replacement, and app termination with a deterministic clock.",
+      "Confirm update checks never start AuthCoordinator or protected API traffic."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
-    "task_id": "mac-activity-three-mode-clearance-integration",
-    "task_type": "frontend",
-    "description": "Render review, todo, and music activity content inside shared left and right notch-clear slots so all three modes remain visible beside the physical notch.",
+    "task_id": "mac-phase7-update-prompt-square",
+    "task_type": "e2e",
+    "description": "Present an available update in the reusable square island with Update and Later capsule actions.",
     "steps": [
-      "Route review activity, todo activity, and music activity through the shared notch-clear activity layout without duplicating width formulas per mode.",
-      "Keep the center notch span free of essential activity content and preserve the existing compact proportions, state transitions, and outer shell spring behavior.",
-      "Extend the native sizing or visual-state evidence probe to assert that each activity mode receives nonzero leading and trailing usable widths outside the compact notch span across representative screen sizes.",
-      "Run the full native Swift source typecheck and focused activity sizing probes, then confirm no Windows or Electron files changed."
+      "Adapt UpdateCoordinator availability into pure reducer intents through SceneCoordinator and define prompt precedence and return state alongside basic, advanced, login-required, app activity, and music presentations.",
+      "Reuse the login-required square geometry and shared spring while rendering separate update content with a solid blue Update Capsule and solid gray Later Capsule, no border, and no rounded-rectangle button shape.",
+      "Keep both actions below the notch with stable sizing, accessibility labels, keyboard focus, and no clipping; SwiftUI sends commands through the render model and never accesses persistence or Sparkle directly.",
+      "Route Later through the prompt policy, collapse through the reverse spring, restore compact or music state, suppress the prompt until eligible, and allow a manual Settings check during deferral.",
+      "Verify visual frames, hit regions, colors, capsule geometry, notch clearance, Reduce Motion, repeated callbacks, outside clicks, relaunch deferral, and music takeover or return."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-download-activity",
+    "task_type": "e2e",
+    "description": "Download a selected update while the island shows a blue left spinner and white right percentage.",
+    "steps": [
+      "Route Update through SceneCoordinator to UpdateCoordinator, prevent duplicate activation, collapse the square first, and enter update activity only after Sparkle confirms download start.",
+      "Convert expected and received byte callbacks into clamped monotonic progress, support unknown length, throttle redundant updates, reset correctly on retry, and ignore stale callbacks.",
+      "Render update progress through the existing left-and-right activity layout with a continuously rotating blue indicator on the left, stable-width white percentage on the right, and an empty notch center.",
+      "Keep update download activity above login-required and app activity without adding a second motion driver; provide a visibly active nonrotating fallback under Reduce Motion.",
+      "Run a signed controlled download covering setup failure, unknown length, retry, 0 to 100 percent progress, layout stability, duplicate clicks, and restoration of the prior presentation."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-install-and-recovery",
+    "task_type": "e2e",
+    "description": "Install verified updates safely and recover without damaging the current app when updating fails.",
+    "steps": [
+      "Map Sparkle ready, verification, authorization, installation, and relaunch callbacks into UpdateCoordinator and settle the island activity before replacement or relaunch.",
+      "Delegate EdDSA verification, temporary-file lifecycle, privileged authorization, atomic replacement, and relaunch to Sparkle instead of implementing app replacement in MemoryFlow code.",
+      "Map offline, HTTP, malformed feed, insufficient disk, cancelled authorization, and signature errors into recoverable state, collapse to a stable presentation, and expose retry from Settings without an automatic loop.",
+      "Install a signed higher-version fixture and verify relaunch, changed bundle version, no repeated offer, and preserved app launchability after each injected failure.",
+      "Verify temporary state, timers, prompt deferral, duplicate operations, and future scheduled checks are correct after success and failure."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "mac-phase7-update-release-pipeline",
+    "task_type": "e2e",
+    "description": "Publish signed and notarized MemoryFlow Island releases through a secure staged appcast pipeline.",
+    "steps": [
+      "Add a release command that enforces increasing marketing and build versions, archives with Developer ID, submits for notarization, staples the ticket, and packages the app for Sparkle.",
+      "Generate an EdDSA-signed HTTPS appcast entry with minimum macOS, release notes, content length, and phased-rollout metadata while keeping credentials and the private update key outside the repository.",
+      "Publish the immutable update artifact before atomically publishing the appcast so clients never discover an unavailable download.",
+      "Verify Gatekeeper, notarization, appcast signature, downgrade rejection, minimum-system filtering, staged-rollout eligibility, and artifact availability with a release candidate.",
+      "Document the release inputs, secret locations, rollback procedure, and evidence commands without placing secrets in generated logs."
     ],
     "budget_minutes": 10,
-    "passes": true
+    "passes": false
   },
   {
-    "task_id": "mac-auth-native-adapter-foundation",
+    "task_id": "mac-phase7-production-acceptance",
     "task_type": "e2e",
-    "description": "Give the native island a secure authentication adapter for the existing MemoryFlow backend without rebuilding any login UI or authentication endpoint.",
+    "description": "Prove the complete basic, advanced, login-required, and production update experience on macOS.",
     "steps": [
-      "Add a typed Services/API client for the existing ApiResponse envelope, /api base URL normalization, JSON transport, Bearer headers, and injectable URLSession behavior, and register every new Swift source in the Xcode project.",
-      "Add AuthSession models plus production Keychain and in-memory AuthSessionStoring implementations for accessToken, refreshToken, and expiresAt; never store credentials in UserDefaults, SwiftUI state, reducers, or window controllers.",
-      "Add an AuthCoordinator interface and compose APIClient, session storage, and app-state callbacks from SceneCoordinator so review and todo services can reuse the same authenticated client.",
-      "Explicitly do not create a native email/password form, do not copy the React login page, and do not modify POST /auth/login, CAPTCHA behavior, JWT generation, or any existing web/backend authentication code.",
-      "Run the native Swift typecheck plus transport and Keychain probes, then call GET /auth/me with an injected or valid stored session and verify the typed authenticated response."
+      "Launch with Advanced Features disabled and no session, verify an empty compact notch center, no protected traffic, working music, and login-independent manual and scheduled update checks.",
+      "Enable Advanced Features, verify the Login Required square and Settings browser login path, restore authenticated review and todo behavior, then disable advanced mode without deleting the saved session.",
+      "Discover a signed newer build, verify Later across relaunch, then choose Update and verify prompt collapse, blue spinner, white percentage, safe installation, and relaunch into the new version.",
+      "Exercise invalid signature, offline download, insufficient disk, authorization cancellation, music takeover, sleep or wake, rapid clicks, and app relaunch without duplicate timers or corrupted presentation state.",
+      "Record API, appcast, signing, transition, visual, percentage, installed-version, and failure evidence under docs/evidence/mac-island-phase7 without modifying Windows or Electron behavior."
     ],
     "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-auth-existing-web-login-callback",
-    "task_type": "e2e",
-    "description": "Let a logged-out native island reuse the existing web login flow and return through the established desktop callback.",
-    "steps": [
-      "Render the requested Login label plus MemoryFlow logo for logged-out compact and hover states, and prevent logged-out app-mode clicks from expanding review or todo content.",
-      "Open the existing /#/login?callback=desktop page with NSWorkspace; do not add a native credential form or change the existing Login.tsx flow.",
-      "Register and handle memoryflow://callback with URLComponents, validate token, refreshToken, and expiresIn values, deduplicate repeated callbacks, and persist a valid session through AuthSessionStoring.",
-      "Confirm the callback with GET /auth/me, map the verified user into IslandDomainState, preserve the existing nickname/email greeting behavior, and leave malformed or rejected callbacks logged out.",
-      "Launch from a clean session, click the island login prompt, complete the existing browser login, and verify the browser callback returns the native app to confirmed logged-in state without changing Windows or Electron files."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-auth-session-lifecycle",
-    "task_type": "e2e",
-    "description": "Maintain and end the reused web-login session correctly across app launches, token expiry, network failures, and user logout.",
-    "steps": [
-      "Restore a Keychain session at startup and show authenticated island state only after GET /auth/me confirms it; otherwise clear invalid credentials and show the Login plus logo prompt.",
-      "Implement one shared POST /auth/refresh operation that atomically replaces tokens and retries a protected request once after 401 or 403, including concurrent-request coalescing and recursion guards.",
-      "Add a menu-bar Logout command that calls POST /auth/logout when possible, always clears Keychain credentials locally, cancels review and todo pollers, clears user snapshots and pending mutations, and returns the app presentation to loggedOut.",
-      "Keep temporary offline or server failures distinct from authentication failure so a valid saved session is not discarded unless refresh or verification proves it unusable.",
-      "Run deterministic startup, concurrent refresh, failed refresh, offline logout, and normal logout probes and verify final Keychain, auth, timer, and island presentation state."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-review-live-summary-display",
-    "task_type": "e2e",
-    "description": "Show the authenticated user's real pending-review summary in the native review mode using the existing widget endpoint.",
-    "steps": [
-      "Add Services/Review transport DTOs for GET /widget/summary and map totalPendingReviews, totalCompletedToday, reminderTime, and subject light fields into a UI-independent ReviewSnapshot.",
-      "Add a ReviewRepository that uses the shared authenticated APIClient and perform one immediate fetch after login without placing URLSession calls or backend DTOs in State, SwiftUI, reducers, or IslandWindowController.",
-      "Replace production review mock updates with ReviewSnapshot state while keeping mock scenarios available only to probes or explicit preview configuration.",
-      "Render zero and nonzero pending counts, completed-today data, subject titles, and next-subject content across the existing compact, activity, hover, and expanded native presentations without copying the Windows UI.",
-      "Verify a real or controlled GET /widget/summary response matches the visible native counts and content and confirm no Windows, Electron, web login, or backend files changed."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-review-thirty-second-sync",
-    "task_type": "e2e",
-    "description": "Keep real review data synchronized every 30 seconds while preserving usable last-known data during temporary failures.",
-    "steps": [
-      "Add an injectable ReviewPollingController that fetches immediately and every 30 seconds only after confirmed login, stops on logout and shutdown, and restarts once after relogin.",
-      "Prevent duplicate timers and overlapping requests by coalescing or skipping a tick while the previous review request is still in flight and deliver state changes on the main actor.",
-      "Preserve the last successful ReviewSnapshot for network, timeout, decoding, or server failures and clear its stale marker after the next successful response.",
-      "Route unauthorized responses through the shared refresh-and-retry flow and return to the login prompt only when that flow invalidates the session.",
-      "Run a deterministic clock and failure probe covering immediate fetch, two 30-second ticks, a slow request, offline recovery, failed refresh, logout cancellation, and relogin restart."
-    ],
-    "budget_minutes": 10,
-    "passes": true
-  },
-  {
-    "task_id": "mac-todo-live-preview-sync",
-    "task_type": "e2e",
-    "description": "Show and periodically refresh the authenticated user's real pending todos with the same query semantics as the Windows island.",
-    "steps": [
-      "Add Services/Todo DTOs and a TodoRepository that concurrently calls GET /todos/stats and GET /todos/tasks with status=todo, sortBy=due, and sortOrder=asc through the shared authenticated APIClient.",
-      "Map pendingTasks, dueToday, overdueTasks, and at most the first six stable task records into a UI-independent TodoSnapshot including title, status, priority, due date, due time, overdue, and dueToday.",
-      "Replace production todo mock updates with TodoSnapshot state while retaining mocks only for probes, and render empty and populated compact, activity, hover, and expanded todo presentations using the existing native design.",
-      "Add an independent injectable 60-second todo poller with immediate fetch, login/logout lifecycle control, overlap prevention, last-good-data retention, and shared auth refresh handling.",
-      "Verify real or controlled endpoint responses, task ordering, six-item limit, counts, due labels, mode switching, two polling ticks, failure recovery, and cancellation without modifying Windows or backend behavior."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-todo-persisted-completion",
-    "task_type": "e2e",
-    "description": "Let the user complete a visible native-island todo with immediate feedback, backend persistence, and exact rollback on failure.",
-    "steps": [
-      "Route a todo row interaction through the render model and repository to PATCH /todos/tasks/{id}/status with { completed: true }, using one in-flight mutation guard per task.",
-      "Apply the Windows optimistic behavior by immediately marking the task complete and decrementing pending, dueToday, and overdue counts only when the selected task contributes to each value.",
-      "After success, refresh the TodoRepository snapshot to reconcile server-calculated fields and remove completed items from the pending-only preview when required.",
-      "On network, server, or final authorization failure, restore the exact pre-mutation task and aggregate snapshot once, clear the in-flight guard, and follow shared session invalidation behavior when applicable.",
-      "Verify controlled success, duplicate click, offline failure, server failure, and expired-token cases, including a subsequent GET proving successful completion was persisted."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-backend-integration-acceptance",
-    "task_type": "e2e",
-    "description": "Prove the native island completes the reused login, review, todo, completion, refresh, and logout lifecycle against the existing MemoryFlow system.",
-    "steps": [
-      "Start from a clean Keychain, click Login plus logo, complete the existing browser login, and verify memoryflow://callback returns the native app to a backend-confirmed session without any native login form.",
-      "Verify review data appears immediately and after 30 seconds, then switch to todo mode and verify the Windows-compatible query, first-six ordering, and 60-second refresh.",
-      "Complete one todo and confirm persistence, exercise one access-token refresh, then log out and verify credentials, protected snapshots, timers, and pending mutations are cleared.",
-      "Record API request evidence and native screenshots or state evidence under docs/evidence/mac-island-backend-integration and confirm Windows Electron, Login.tsx, and backend authentication code remain unchanged."
-    ],
-    "budget_minutes": 10,
-    "passes": true
+    "passes": false
   }
 ]

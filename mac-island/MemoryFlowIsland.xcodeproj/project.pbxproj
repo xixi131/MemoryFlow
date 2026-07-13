@@ -21,6 +21,7 @@
 		B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010B0000000000000001 /* PreferencesWindowController.swift */; };
 		B001020C0000000000000001 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010C0000000000000001 /* PreferencesView.swift */; };
 		AA1100020000000000000001 /* SettingsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1100010000000000000001 /* SettingsModels.swift */; };
+		AA1100040000000000000001 /* SettingsAndMenuProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1100030000000000000001 /* SettingsAndMenuProbe.swift */; };
 		B001020D0000000000000001 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010E0000000000000001 /* ScreenMetrics.swift */; };
 		B001020E0000000000000001 /* DisplayTopEdgeClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001010F0000000000000001 /* DisplayTopEdgeClassifier.swift */; };
 		B001020F0000000000000001 /* IslandHoverMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00101100000000000000001 /* IslandHoverMonitor.swift */; };
@@ -104,6 +105,7 @@
 		B001010B0000000000000001 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 		B001010C0000000000000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		AA1100010000000000000001 /* SettingsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModels.swift; sourceTree = "<group>"; };
+		AA1100030000000000000001 /* SettingsAndMenuProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAndMenuProbe.swift; sourceTree = "<group>"; };
 		B001010D0000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B001010E0000000000000001 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 		B001010F0000000000000001 /* DisplayTopEdgeClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayTopEdgeClassifier.swift; sourceTree = "<group>"; };
@@ -320,6 +322,7 @@
 				B001010B0000000000000001 /* PreferencesWindowController.swift */,
 				B001010C0000000000000001 /* PreferencesView.swift */,
 				AA1100010000000000000001 /* SettingsModels.swift */,
+				AA1100030000000000000001 /* SettingsAndMenuProbe.swift */,
 			);
 			path = Preferences;
 			sourceTree = "<group>";
@@ -488,6 +491,7 @@
 				B001020B0000000000000001 /* PreferencesWindowController.swift in Sources */,
 				B001020C0000000000000001 /* PreferencesView.swift in Sources */,
 				AA1100020000000000000001 /* SettingsModels.swift in Sources */,
+				AA1100040000000000000001 /* SettingsAndMenuProbe.swift in Sources */,
 				B001020D0000000000000001 /* ScreenMetrics.swift in Sources */,
 				B001020E0000000000000001 /* DisplayTopEdgeClassifier.swift in Sources */,
 				B001020F0000000000000001 /* IslandHoverMonitor.swift in Sources */,

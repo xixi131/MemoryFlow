@@ -11,6 +11,7 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
 
     init(
         languageSettings: AppLanguageSettings,
+        advancedFeaturesSettings: AdvancedFeaturesSettings,
         accountState: SettingsAccountState,
         onLoginRequested: @escaping () -> Void,
         onLogoutRequested: @escaping () -> Void
@@ -30,6 +31,7 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
         window.contentView = NSHostingView(
             rootView: PreferencesView(
                 languageSettings: languageSettings,
+                advancedFeaturesSettings: advancedFeaturesSettings,
                 accountState: accountState,
                 onLoginRequested: onLoginRequested,
                 onLogoutRequested: onLogoutRequested

@@ -49,11 +49,62 @@ final class AppLanguageSettings: ObservableObject {
     }
 }
 
+protocol AdvancedFeaturesPersisting: AnyObject {
+    func loadAdvancedFeaturesEnabled() -> Bool
+    func saveAdvancedFeaturesEnabled(_ isEnabled: Bool)
+}
+
+final class UserDefaultsAdvancedFeaturesStore: AdvancedFeaturesPersisting {
+    static let key = "com.memoryflow.island.settings.advancedFeaturesEnabled"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func loadAdvancedFeaturesEnabled() -> Bool {
+        defaults.bool(forKey: Self.key)
+    }
+
+    func saveAdvancedFeaturesEnabled(_ isEnabled: Bool) {
+        defaults.set(isEnabled, forKey: Self.key)
+    }
+}
+
+final class AdvancedFeaturesSettings: ObservableObject {
+    @Published private(set) var isEnabled: Bool
+    private let store: AdvancedFeaturesPersisting
+
+    init(store: AdvancedFeaturesPersisting = UserDefaultsAdvancedFeaturesStore()) {
+        self.store = store
+        isEnabled = store.loadAdvancedFeaturesEnabled()
+    }
+
+    func setEnabled(_ isEnabled: Bool) {
+        guard self.isEnabled != isEnabled else { return }
+        self.isEnabled = isEnabled
+        store.saveAdvancedFeaturesEnabled(isEnabled)
+    }
+}
+
 final class SettingsAccountState: ObservableObject {
     @Published private(set) var user: AuthenticatedUser?
 
     func apply(_ user: AuthenticatedUser?) {
         self.user = user
+    }
+}
+
+enum PreferencesAccountPresentation: Equatable {
+    case hidden
+    case loggedOut
+    case loggedIn(email: String)
+
+    static func resolve(advancedFeaturesEnabled: Bool, user: AuthenticatedUser?) -> Self {
+        guard advancedFeaturesEnabled else { return .hidden }
+        guard let user else { return .loggedOut }
+        return .loggedIn(email: user.email)
     }
 }
 
@@ -63,11 +114,12 @@ enum AppCopy {
         case showIsland
         case hideIsland
         case phase5Scenarios
-        case phase5Interactions
         case settings
         case settingsWindowTitle
         case quit
         case account
+        case advancedFeatures
+        case advancedFeaturesDescription
         case language
         case languageDescription
         case english
@@ -92,11 +144,12 @@ enum AppCopy {
         .showIsland: "Show Island",
         .hideIsland: "Hide Island",
         .phase5Scenarios: "Phase 5 Scenarios",
-        .phase5Interactions: "Phase 5 Interactions",
         .settings: "Settings...",
         .settingsWindowTitle: "MemoryFlow Settings",
         .quit: "Quit",
         .account: "Account",
+        .advancedFeatures: "Advanced Features",
+        .advancedFeaturesDescription: "Enable account-based review, todo, and reminder features.",
         .language: "Language",
         .languageDescription: "Choose the language used by menu bar controls and settings.",
         .english: "English",
@@ -112,11 +165,12 @@ enum AppCopy {
         .showIsland: "显示灵动岛",
         .hideIsland: "隐藏灵动岛",
         .phase5Scenarios: "第五阶段场景",
-        .phase5Interactions: "第五阶段交互",
         .settings: "设置...",
         .settingsWindowTitle: "MemoryFlow 设置",
         .quit: "退出",
         .account: "账号",
+        .advancedFeatures: "高级功能",
+        .advancedFeaturesDescription: "启用需要账号的复习、待办和提醒功能。",
         .language: "语言",
         .languageDescription: "选择菜单栏控制项和设置页面使用的语言。",
         .english: "英文",
