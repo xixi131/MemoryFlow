@@ -152,3 +152,7 @@
 ### 2026-07-13 - Update download activity
 - Gated island activity on Sparkle download-start confirmation and added duplicate/stale/retry-safe progress normalization with unknown-length support.
 - Signed setup/failure/retry and 0-100 probes plus the blue left spinner, stable white right percentage, empty notch, restoration, Reduce Motion, and integrated build passed.
+
+### 2026-07-13 - Unsigned GitHub CI/CD release foundation
+- Added one local and CI release path for ad-hoc MemoryFlow Island builds, Sparkle ZIP packaging, SHA-256, EdDSA-signed appcasts, monotonic version guards, and ordered GitHub Release publication.
+- A v1.1.0 build 10 dry-run produced and verified a 2,685,138-byte app archive with GitHub URLs, no Team ID or notarization, valid archive/appcast signatures, and no private-key leakage.
