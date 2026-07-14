@@ -22,11 +22,6 @@ on:
         options:
           - draft
           - prerelease
-      release_notes:
-        description: "Concise user-facing Markdown shown under Changes"
-        required: true
-        default: "- Bug fixes and stability improvements."
-        type: string
 
 permissions:
   contents: write
@@ -96,28 +91,39 @@ jobs:
           echo "version=${PREVIOUS_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "build=${PREVIOUS_BUILD}" >> "${GITHUB_OUTPUT}"
 
+      - name: Download recent stable archives for delta updates
+        id: delta_archives
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.release_input.outputs.tag }}"
+          DELTA_ARCHIVES_DIR="${RUNNER_TEMP}/sparkle-delta-archives"
+          mkdir -p "${DELTA_ARCHIVES_DIR}"
+          while IFS= read -r historical_tag; do
+            [[ -n "${historical_tag}" && "${historical_tag}" != "${TAG}" ]] || continue
+            if ! gh release download "${historical_tag}" \
+              --repo "${REPOSITORY}" \
+              --pattern 'MemoryFlowIsland-*.zip' \
+              --dir "${DELTA_ARCHIVES_DIR}"; then
+              echo "::warning::Skipping ${historical_tag}; no usable full archive was available for a delta update"
+            fi
+          done < <(gh release list \
+            --repo "${REPOSITORY}" \
+            --limit 3 \
+            --exclude-drafts \
+            --exclude-pre-releases \
+            --json tagName \
+            --jq '.[].tagName')
+          echo "delta_archives_dir=${DELTA_ARCHIVES_DIR}" >> "${GITHUB_OUTPUT}"
+
       - name: Build and sign release candidate
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
-          RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
         run: |
           set -euo pipefail
           umask 077
           PRIVATE_KEY_FILE="$(mktemp "${RUNNER_TEMP}/sparkle-key.XXXXXX")"
           trap 'rm -f "${PRIVATE_KEY_FILE}"' EXIT
           printf '%s' "${SPARKLE_PRIVATE_KEY}" > "${PRIVATE_KEY_FILE}"
-          RELEASE_NOTES_ARGS=()
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            RELEASE_VERSION="${{ steps.release_input.outputs.tag }}"
-            RELEASE_VERSION="${RELEASE_VERSION#v}"
-            RELEASE_NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
-            {
-              printf '# MemoryFlow Island %s\n\n' "${RELEASE_VERSION}"
-              printf 'Unsigned open-source release. On first launch, use right-click Open or approve the app in Privacy and Security.\n\n'
-              printf '## Changes\n\n%s\n' "${RELEASE_NOTES_INPUT}"
-            } > "${RELEASE_NOTES_FILE}"
-            RELEASE_NOTES_ARGS+=(--release-notes "${RELEASE_NOTES_FILE}")
-          fi
           zsh ./mac-island/release.sh \
             --tag "${{ steps.release_input.outputs.tag }}" \
             --build-number "${{ steps.release_input.outputs.build_number }}" \
@@ -126,8 +132,9 @@ jobs:
             --private-key-file "${PRIVATE_KEY_FILE}" \
             --derived-data "${DERIVED_DATA}" \
             --output-dir "${OUTPUT_DIR}" \
-            --repository "${REPOSITORY}" \
-            "${RELEASE_NOTES_ARGS[@]}"
+            --delta-archives-dir "${{ steps.delta_archives.outputs.delta_archives_dir }}" \
+            --maximum-deltas 3 \
+            --repository "${REPOSITORY}"
 
       - name: Validate assets before publication
         env:
@@ -137,23 +144,28 @@ jobs:
           TAG="${{ steps.release_input.outputs.tag }}"
           VERSION="${TAG#v}"
           ARCHIVE="${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip"
+          INSTALLER="${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.dmg"
           test -s "${ARCHIVE}"
           test -s "${ARCHIVE}.sha256"
+          test -s "${INSTALLER}"
+          test -s "${INSTALLER}.sha256"
           test -s "${OUTPUT_DIR}/release-metadata.json"
           test -s "${OUTPUT_DIR}/release-notes.html"
           test -s "${OUTPUT_DIR}/appcast.xml"
           (cd "${OUTPUT_DIR}" && shasum -a 256 -c "MemoryFlowIsland-${VERSION}.zip.sha256")
+          (cd "${OUTPUT_DIR}" && shasum -a 256 -c "MemoryFlowIsland-${VERSION}.dmg.sha256")
+          hdiutil verify "${INSTALLER}"
           grep -Fq "https://github.com/${REPOSITORY}/releases/download/${TAG}/MemoryFlowIsland-${VERSION}.zip" "${OUTPUT_DIR}/appcast.xml"
           grep -Fq 'sparkle:edSignature=' "${OUTPUT_DIR}/appcast.xml"
+          shopt -s nullglob
+          DELTA_ASSETS=("${OUTPUT_DIR}"/*.delta)
+          if (( ${#DELTA_ASSETS[@]} > 0 )); then
+            grep -Fq 'sparkle:deltaFrom=' "${OUTPUT_DIR}/appcast.xml"
+          fi
           if grep -R -Fq -- "${SPARKLE_PRIVATE_KEY}" "${OUTPUT_DIR}"; then
             echo "Private signing key leaked into release assets" >&2
             exit 1
           fi
-          if gh release view "${TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists; refusing to replace immutable assets" >&2
-            exit 1
-          fi
-
       - name: Create release shell
         run: |
           set -euo pipefail
@@ -164,20 +176,36 @@ jobs:
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             FLAGS+=(--prerelease)
           fi
-          gh release create "${TAG}" \
+          if gh release view "${TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" \
+              --repo "${REPOSITORY}" \
+              --title "MemoryFlow Island ${TAG}" \
+              --notes-file "${OUTPUT_DIR}/release-notes.md"
+          elif ! gh release create "${TAG}" \
             --repo "${REPOSITORY}" \
             --target "${GITHUB_SHA}" \
             --title "MemoryFlow Island ${TAG}" \
             --notes-file "${OUTPUT_DIR}/release-notes.md" \
-            "${FLAGS[@]}"
+            "${FLAGS[@]}"; then
+            gh release edit "${TAG}" \
+              --repo "${REPOSITORY}" \
+              --title "MemoryFlow Island ${TAG}" \
+              --notes-file "${OUTPUT_DIR}/release-notes.md"
+          fi
 
       - name: Upload immutable release assets
         run: |
           set -euo pipefail
           TAG="${{ steps.release_input.outputs.tag }}"
           VERSION="${TAG#v}"
+          shopt -s nullglob
+          ASSETS=(
+            "${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.dmg"
+            "${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip"
+            "${OUTPUT_DIR}"/*.delta
+          )
           gh release upload "${TAG}" \
-            "${OUTPUT_DIR}/MemoryFlowIsland-${VERSION}.zip" \
+            "${ASSETS[@]}" \
             --repo "${REPOSITORY}"
 
       - name: Publish signed appcast last

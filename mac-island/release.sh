@@ -14,8 +14,10 @@ PREVIOUS_BUILD=""
 PRIVATE_KEY_FILE=""
 OUTPUT_DIR=""
 DERIVED_DATA="${MEMORYFLOW_DERIVED_DATA:-/tmp/memoryflow-phase7-cicd-derived}"
-RELEASE_NOTES_FILE=""
+RELEASE_NOTES_FILE="$PROJECT_ROOT/RELEASE_NOTES.md"
 PHASED_ROLLOUT_INTERVAL="86400"
+DELTA_ARCHIVES_DIR=""
+MAXIMUM_DELTAS="3"
 
 usage() {
   cat <<'USAGE'
@@ -31,7 +33,8 @@ Options:
   --previous-build-number N     Previous build number; defaults to 0 for the first release
   --output-dir PATH             Output directory (default: /tmp/memoryflow-release-TAG)
   --derived-data PATH           Xcode DerivedData directory
-  --release-notes PATH          Markdown release notes input
+  --delta-archives-dir PATH     Directory of prior full Sparkle ZIP archives to delta from
+  --maximum-deltas N            Positive maximum prior versions to delta from (default: 3)
   --phased-rollout-seconds N    Sparkle phased rollout interval (default: 86400)
   --repository OWNER/REPO       GitHub release target (default: xixi131/MemoryFlow)
   --help                        Show this help
@@ -56,7 +59,8 @@ while (( $# > 0 )); do
     --private-key-file) PRIVATE_KEY_FILE="${2:-}"; shift 2 ;;
     --output-dir) OUTPUT_DIR="${2:-}"; shift 2 ;;
     --derived-data) DERIVED_DATA="${2:-}"; shift 2 ;;
-    --release-notes) RELEASE_NOTES_FILE="${2:-}"; shift 2 ;;
+    --delta-archives-dir) DELTA_ARCHIVES_DIR="${2:-}"; shift 2 ;;
+    --maximum-deltas) MAXIMUM_DELTAS="${2:-}"; shift 2 ;;
     --phased-rollout-seconds) PHASED_ROLLOUT_INTERVAL="${2:-}"; shift 2 ;;
     --repository) REPOSITORY="${2:-}"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
@@ -64,7 +68,7 @@ while (( $# > 0 )); do
   esac
 done
 
-for command_name in codesign ditto git plutil ruby shasum stat swift xcodebuild; do
+for command_name in codesign ditto git hdiutil plutil ruby shasum stat swift xcodebuild; do
   require_command "$command_name"
 done
 
@@ -73,8 +77,10 @@ MARKETING_VERSION="${TAG#v}"
 [[ "$BUILD_VERSION" =~ '^[1-9][0-9]*$' ]] || fail "build number must be a positive integer"
 [[ "$REPOSITORY" =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' ]] || fail "repository must be OWNER/REPO"
 [[ "$PHASED_ROLLOUT_INTERVAL" =~ '^[1-9][0-9]*$' ]] || fail "phased rollout interval must be positive"
+[[ "$MAXIMUM_DELTAS" =~ '^[1-9][0-9]*$' ]] || fail "maximum deltas must be a positive integer"
 [[ -f "$PRIVATE_KEY_FILE" && -s "$PRIVATE_KEY_FILE" ]] || fail "Sparkle EdDSA private key file is missing or empty"
-[[ -z "$RELEASE_NOTES_FILE" || -f "$RELEASE_NOTES_FILE" ]] || fail "release notes file does not exist"
+[[ -f "$RELEASE_NOTES_FILE" ]] || fail "release notes file does not exist: $RELEASE_NOTES_FILE"
+[[ -z "$DELTA_ARCHIVES_DIR" || -d "$DELTA_ARCHIVES_DIR" ]] || fail "delta archives directory does not exist: $DELTA_ARCHIVES_DIR"
 
 PUBLIC_ED_KEY="$(swift -e '
   import CryptoKit
@@ -139,6 +145,10 @@ BUILT_APP="$DERIVED_DATA/Build/Products/Release/MemoryFlowIsland.app"
 [[ -d "$BUILT_APP/Contents" ]] || fail "build did not produce MemoryFlowIsland.app"
 STAGED_APP="$OUTPUT_DIR/MemoryFlowIsland.app"
 ditto "$BUILT_APP" "$STAGED_APP"
+# Sparkle's delta generator requires standard readable bundle permissions.
+find "$STAGED_APP" -type d -exec chmod 755 {} +
+find "$STAGED_APP" -type f -perm -u+x -exec chmod 755 {} +
+find "$STAGED_APP" -type f ! -perm -u+x -exec chmod 644 {} +
 codesign --force --deep --sign - "$STAGED_APP"
 codesign --verify --deep --strict "$STAGED_APP"
 
@@ -154,6 +164,8 @@ ACTUAL_PUBLIC_ED_KEY="$(plutil -extract SUPublicEDKey raw -o - "$STAGED_APP/Cont
 
 SIGN_UPDATE="$(find "$DERIVED_DATA/SourcePackages/artifacts" -type f -path '*/Sparkle/bin/sign_update' -perm -111 -print -quit 2>/dev/null || true)"
 [[ -x "$SIGN_UPDATE" ]] || fail "Sparkle sign_update was not resolved under DerivedData"
+GENERATE_APPCAST="$(find "$DERIVED_DATA/SourcePackages/artifacts" -type f -path '*/Sparkle/bin/generate_appcast' -perm -111 -print -quit 2>/dev/null || true)"
+[[ -x "$GENERATE_APPCAST" ]] || fail "Sparkle generate_appcast was not resolved under DerivedData"
 
 ARCHIVE_NAME="MemoryFlowIsland-${MARKETING_VERSION}.zip"
 ARCHIVE_PATH="$OUTPUT_DIR/$ARCHIVE_NAME"
@@ -166,53 +178,104 @@ ARCHIVE_SIGNATURE="$($SIGN_UPDATE --ed-key-file "$PRIVATE_KEY_FILE" -p "$ARCHIVE
 $SIGN_UPDATE --verify --ed-key-file "$PRIVATE_KEY_FILE" "$ARCHIVE_PATH" "$ARCHIVE_SIGNATURE" >/dev/null
 
 EXPANDED_DIR="$(mktemp -d /tmp/memoryflow-release-expand.XXXXXX)"
-trap 'rm -rf "$EXPANDED_DIR"' EXIT
+DMG_STAGING_DIR="$(mktemp -d /tmp/memoryflow-release-dmg.XXXXXX)"
+DMG_MOUNT_DIR="$(mktemp -d /tmp/memoryflow-release-mount.XXXXXX)"
+DMG_ATTACHED=false
+cleanup_release_temporary_files() {
+  if [[ "$DMG_ATTACHED" == true ]]; then
+    hdiutil detach "$DMG_MOUNT_DIR" -quiet >/dev/null 2>&1 || hdiutil detach "$DMG_MOUNT_DIR" -force -quiet >/dev/null 2>&1 || true
+  fi
+  rm -rf "$EXPANDED_DIR" "$DMG_STAGING_DIR" "$DMG_MOUNT_DIR"
+}
+trap cleanup_release_temporary_files EXIT
 ditto -x -k "$ARCHIVE_PATH" "$EXPANDED_DIR"
 [[ -d "$EXPANDED_DIR/MemoryFlowIsland.app/Contents" ]] || fail "archive does not expand to an app bundle"
 
+DMG_NAME="MemoryFlowIsland-${MARKETING_VERSION}.dmg"
+DMG_PATH="$OUTPUT_DIR/$DMG_NAME"
+ditto "$STAGED_APP" "$DMG_STAGING_DIR/MemoryFlowIsland.app"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
+hdiutil create \
+  -volname "MemoryFlow Island" \
+  -srcfolder "$DMG_STAGING_DIR" \
+  -format UDZO \
+  -ov \
+  "$DMG_PATH" >/dev/null
+hdiutil verify "$DMG_PATH" >/dev/null
+hdiutil attach \
+  -readonly \
+  -nobrowse \
+  -mountpoint "$DMG_MOUNT_DIR" \
+  "$DMG_PATH" >/dev/null
+DMG_ATTACHED=true
+[[ -d "$DMG_MOUNT_DIR/MemoryFlowIsland.app/Contents" ]] || fail "DMG does not contain the app bundle"
+[[ -L "$DMG_MOUNT_DIR/Applications" && "$(readlink "$DMG_MOUNT_DIR/Applications")" == "/Applications" ]] || fail "DMG does not contain the Applications shortcut"
+hdiutil detach "$DMG_MOUNT_DIR" -quiet >/dev/null
+DMG_ATTACHED=false
+DMG_LENGTH="$(stat -f '%z' "$DMG_PATH")"
+DMG_SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
+print -- "${DMG_SHA256}  ${DMG_NAME}" > "$OUTPUT_DIR/${DMG_NAME}.sha256"
+
 RELEASE_NOTES_MD="$OUTPUT_DIR/release-notes.md"
-if [[ -n "$RELEASE_NOTES_FILE" ]]; then
-  cp "$RELEASE_NOTES_FILE" "$RELEASE_NOTES_MD"
-else
-  {
-    print -- "# MemoryFlow Island ${MARKETING_VERSION}"
-    print -- ""
-    print -- "Unsigned open-source release. On first launch, use right-click Open or approve the app in Privacy and Security."
-    print -- ""
-    print -- "## Changes"
-    print -- ""
-    print -- "- Bug fixes and stability improvements."
-  } > "$RELEASE_NOTES_MD"
-fi
+ruby "$SCRIPT_DIR/release/extract_release_notes.rb" \
+  --tag "$TAG" \
+  --input "$RELEASE_NOTES_FILE" \
+  --output "$RELEASE_NOTES_MD"
 ruby -rcgi -e 'body = CGI.escapeHTML(File.read(ARGV[0])); File.write(ARGV[1], "<pre>#{body}</pre>\n")' \
   "$RELEASE_NOTES_MD" "$OUTPUT_DIR/release-notes.html"
 
-ARCHIVE_URL="https://github.com/${REPOSITORY}/releases/download/${TAG}/${ARCHIVE_NAME}"
-RELEASE_PAGE_URL="https://github.com/${REPOSITORY}/releases/tag/${TAG}"
 APPCAST_PATH="$OUTPUT_DIR/appcast.xml"
-APPCAST_PATH="$APPCAST_PATH" \
-ARCHIVE_NAME="$ARCHIVE_NAME" \
-ARCHIVE_URL="$ARCHIVE_URL" \
-ARCHIVE_LENGTH="$ARCHIVE_LENGTH" \
-ARCHIVE_SIGNATURE="$ARCHIVE_SIGNATURE" \
-ARCHIVE_SHA256="$ARCHIVE_SHA256" \
-BUILD_VERSION="$BUILD_VERSION" \
-MARKETING_VERSION="$MARKETING_VERSION" \
-MINIMUM_MACOS="$MINIMUM_MACOS" \
-PHASED_ROLLOUT_INTERVAL="$PHASED_ROLLOUT_INTERVAL" \
-PUBLICATION_DATE="$(date -R)" \
-RELEASE_NOTES_PATH="$OUTPUT_DIR/release-notes.html" \
-RELEASE_PAGE_URL="$RELEASE_PAGE_URL" \
-REPOSITORY="$REPOSITORY" \
-METADATA_PATH="$OUTPUT_DIR/release-metadata.json" \
-ruby "$SCRIPT_DIR/release/generate_appcast.rb"
+ARCHIVE_URL_PREFIX="https://github.com/${REPOSITORY}/releases/download/${TAG}/"
+SPARKLE_ARCHIVES_DIR="$OUTPUT_DIR/sparkle-archives"
+mkdir -p "$SPARKLE_ARCHIVES_DIR"
+if [[ -n "$DELTA_ARCHIVES_DIR" ]]; then
+  for prior_archive in "$DELTA_ARCHIVES_DIR"/*.zip(N); do
+    cp "$prior_archive" "$SPARKLE_ARCHIVES_DIR/"
+  done
+fi
+cp "$ARCHIVE_PATH" "$SPARKLE_ARCHIVES_DIR/"
+cp "$OUTPUT_DIR/release-notes.html" "$SPARKLE_ARCHIVES_DIR/${ARCHIVE_NAME%.zip}.html"
+
+"$GENERATE_APPCAST" \
+  --ed-key-file "$PRIVATE_KEY_FILE" \
+  --versions "$BUILD_VERSION" \
+  --maximum-deltas "$MAXIMUM_DELTAS" \
+  --delta-compression lzfse \
+  --download-url-prefix "$ARCHIVE_URL_PREFIX" \
+  --phased-rollout-interval "$PHASED_ROLLOUT_INTERVAL" \
+  --embed-release-notes \
+  -o "$APPCAST_PATH" \
+  "$SPARKLE_ARCHIVES_DIR"
+
+for delta_archive in "$SPARKLE_ARCHIVES_DIR"/*.delta(N); do
+  cp "$delta_archive" "$OUTPUT_DIR/"
+done
 
 $SIGN_UPDATE --ed-key-file "$PRIVATE_KEY_FILE" "$APPCAST_PATH" >/dev/null
 $SIGN_UPDATE --verify --ed-key-file "$PRIVATE_KEY_FILE" "$APPCAST_PATH" >/dev/null
-/usr/bin/grep -Fq "$ARCHIVE_URL" "$APPCAST_PATH" || fail "appcast archive URL contract is invalid"
+
+ruby -rjson -e '
+  metadata = {
+    tag: "v#{ARGV.fetch(1)}",
+    marketing_version: ARGV.fetch(1),
+    build_version: Integer(ARGV.fetch(2), 10),
+    minimum_macos: ARGV.fetch(3),
+    archive: ARGV.fetch(4),
+    archive_length: Integer(ARGV.fetch(5), 10),
+    archive_sha256: ARGV.fetch(6),
+    installation_image: ARGV.fetch(7),
+    installation_image_length: Integer(ARGV.fetch(8), 10),
+    installation_image_sha256: ARGV.fetch(9),
+    maximum_deltas: Integer(ARGV.fetch(10), 10)
+  }
+  File.write(ARGV.fetch(0), JSON.pretty_generate(metadata) + "\n")
+' "$OUTPUT_DIR/release-metadata.json" "$MARKETING_VERSION" "$BUILD_VERSION" "$MINIMUM_MACOS" "$ARCHIVE_NAME" "$ARCHIVE_LENGTH" "$ARCHIVE_SHA256" "$DMG_NAME" "$DMG_LENGTH" "$DMG_SHA256" "$MAXIMUM_DELTAS"
+
+/usr/bin/grep -Fq "${ARCHIVE_URL_PREFIX}${ARCHIVE_NAME}" "$APPCAST_PATH" || fail "appcast archive URL contract is invalid"
 /usr/bin/grep -Fq 'sparkle:edSignature=' "$APPCAST_PATH" || fail "appcast is missing the archive signature"
 
 rm -rf "$STAGED_APP"
 print -- "Release candidate ready: $OUTPUT_DIR"
-print -- "Archive: $ARCHIVE_NAME ($ARCHIVE_LENGTH bytes)"
+print -- "Sparkle archive: $ARCHIVE_NAME ($ARCHIVE_LENGTH bytes)"
+print -- "Installer image: $DMG_NAME ($DMG_LENGTH bytes)"
 print -- "Feed: $FEED_URL"
