@@ -170,11 +170,11 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.release_input.outputs.tag }}"
-          FLAGS=()
+          FLAGS=(--latest)
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.candidate_kind }}" == "draft" ]]; then
-            FLAGS+=(--draft)
+            FLAGS=(--draft)
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            FLAGS+=(--prerelease)
+            FLAGS=(--prerelease)
           fi
           if gh release view "${TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
             gh release edit "${TAG}" \
