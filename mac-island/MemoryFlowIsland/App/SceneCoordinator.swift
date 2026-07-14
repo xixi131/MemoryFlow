@@ -7,11 +7,7 @@ private enum MemoryFlowRuntimeEndpoints {
            let url = URL(string: override) {
             return url
         }
-#if DEBUG
-        return URL(string: "http://127.0.0.1:8080")!
-#else
         return URL(string: "https://memoryflow.tanxhub.com")!
-#endif
     }
 
     static var webBaseURL: URL {
@@ -19,11 +15,7 @@ private enum MemoryFlowRuntimeEndpoints {
            let url = URL(string: override) {
             return url
         }
-#if DEBUG
-        return URL(string: "http://127.0.0.1:3101")!
-#else
         return URL(string: "https://memoryflow.tanxhub.com")!
-#endif
     }
 }
 
@@ -78,8 +70,9 @@ final class SceneCoordinator {
         let settingsAccountState = SettingsAccountState()
         let updateCoordinator = UpdateCoordinator(engine: SparkleUpdateAdapter())
         self.updateCoordinator = updateCoordinator
-        self.updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
-        let sessionStore = KeychainAuthSessionStore()
+        let updateCheckPolicy = UpdateCheckPolicy(coordinator: updateCoordinator)
+        self.updateCheckPolicy = updateCheckPolicy
+        let sessionStore = DefaultAuthSessionStore.make()
         let apiClient = try! APIClient(
             baseURL: MemoryFlowRuntimeEndpoints.apiBaseURL,
             tokenProvider: sessionStore,
@@ -169,6 +162,17 @@ final class SceneCoordinator {
             },
             onLogoutRequested: { [weak authCoordinator] in
                 Task { await authCoordinator?.logout() }
+            },
+            onUpdateCommand: { command in
+                switch command {
+                case .check:
+                    updateCheckPolicy.manualCheck()
+                case .retry:
+                    _ = updateCoordinator.retryFailure()
+                case .update:
+                    updateCheckPolicy.clearDeferral()
+                    _ = updateCoordinator.requestAvailableUpdate()
+                }
             }
         )
         self.preferencesWindowController = preferencesWindowController
@@ -266,8 +270,10 @@ final class SceneCoordinator {
     func start() {
         menuBarController.install()
         windowController.show()
-        Task { [weak authCoordinator] in
-            _ = try? await authCoordinator?.restoreAndVerifySession()
+        if let scenarioID = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_INITIAL_SCENARIO"],
+           let scenarioController = windowController as? IslandPhase5ScenarioControlling {
+            scenarioController.selectPhase5Scenario(id: scenarioID)
+            return
         }
         advancedFeaturesObserver = NotificationCenter.default.addObserver(
             forName: AdvancedFeaturesSettings.didChangeNotification,
@@ -335,7 +341,8 @@ final class SceneCoordinator {
     private func configureUpdatePromptBridge() {
         windowController.onUpdateRequested = { [weak self] in
             guard let self else { return }
-            _ = self.updateCoordinator.downloadAvailableUpdate()
+            self.updateCheckPolicy.clearDeferral()
+            _ = self.updateCoordinator.requestAvailableUpdate()
         }
         windowController.onUpdateLaterRequested = { [weak self] in
             guard let self,
@@ -343,7 +350,9 @@ final class SceneCoordinator {
             let until = self.updateCheckPolicy.deferVersion(release.build)
             _ = self.updateCoordinator.deferAvailableUpdate(until: until)
         }
-        updateStateCancellable = updateCoordinator.$state.sink { [weak self] state in
+        updateStateCancellable = updateCoordinator.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] state in
             guard let self else { return }
             switch state {
             case .available(let release):
@@ -376,6 +385,6 @@ final class SceneCoordinator {
                  .awaitingAuthorization, .installing:
                 break
             }
-        }
+            }
     }
 }

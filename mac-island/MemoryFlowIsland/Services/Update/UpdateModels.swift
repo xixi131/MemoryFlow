@@ -37,10 +37,31 @@ enum UpdateFailure: Error, Equatable, Sendable {
 
 enum UpdateFailureMapper {
     static func map(_ error: Error) -> UpdateFailure {
+        map(error, depth: 0)
+    }
+
+    private static func map(_ error: Error, depth: Int) -> UpdateFailure {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain,
-           [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(nsError.code) {
+           [
+               NSURLErrorNotConnectedToInternet,
+               NSURLErrorTimedOut,
+               NSURLErrorNetworkConnectionLost,
+               NSURLErrorCannotFindHost,
+               NSURLErrorCannotConnectToHost,
+               NSURLErrorDNSLookupFailed,
+               NSURLErrorSecureConnectionFailed
+           ].contains(nsError.code) {
             return .offline
+        }
+        if depth < 4,
+           let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            let mappedUnderlying = map(underlyingError, depth: depth + 1)
+            if case .engine = mappedUnderlying {
+                // Preserve a more specific outer Sparkle error below when available.
+            } else {
+                return mappedUnderlying
+            }
         }
         if nsError.code == NSUserCancelledError {
             return .authorizationCancelled
@@ -96,7 +117,9 @@ enum UpdateEngineEvent: Equatable, Sendable {
 protocol UpdateEngine: AnyObject {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)? { get set }
     func check(sessionID: UUID)
+    func cancelCheck(sessionID: UUID)
     func download(_ release: UpdateRelease, sessionID: UUID)
+    func dismissAvailableUpdate(sessionID: UUID)
     func install(_ release: UpdateRelease, sessionID: UUID)
 }
 

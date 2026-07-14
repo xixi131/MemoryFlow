@@ -199,8 +199,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         self.phase5PreviewModeEnabled = phase5PreviewModeEnabled
         self.phase5ScenarioMenuEnabled = phase5ScenarioMenuEnabled
         self.legacyPreviewInteractionRoutingRequested = legacyPreviewInteractionRoutingRequested
-        self.realMusicProviderEnabled = phase5PreviewModeEnabled == false ||
-            ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_REAL_MUSIC"] == "1"
+        if let explicitMusicSetting = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_REAL_MUSIC"] {
+            self.realMusicProviderEnabled = explicitMusicSetting == "1"
+        } else {
+            self.realMusicProviderEnabled = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_INITIAL_SCENARIO"] == nil
+        }
         self.phase5PreviewStateContainer = phase5PreviewStateContainer
         self.activeLayoutInput = initialLayoutInput
         self.previewState = initialLayoutInput.visualState
@@ -212,7 +215,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 widthConstraints: initialLayoutInput.widthConstraints,
                 previewContent: initialLayoutInput.previewContent,
                 reduceMotion: false
-            )
+            ),
+            waveformModel: musicTakeoverController.waveformModel
         )
         self.renderModel = renderModel
         self.animationDriver = IslandAnimationDriver(
@@ -318,8 +322,25 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             self.hostingView.consumeNextPointerTap()
             self.onUpdateLaterRequested?()
         }
-        renderModel.onMusicControlInteraction = { [weak self] in
-            self?.hostingView.consumeNextPointerTap()
+        renderModel.onMusicCommand = { [weak self] command in
+            guard let self else { return }
+            self.hostingView.consumeNextPointerTap()
+            if self.isShowingMockMusic {
+                _ = self.dispatchPhase5Intent(.horizontalMusicCommand(command.horizontalCommand))
+            } else {
+                self.musicTakeoverController.sendCommand(command)
+            }
+        }
+        renderModel.onMusicSeek = { [weak self] position in
+            guard let self else { return }
+            guard self.isShowingMockMusic == false else { return }
+            _ = self.musicTakeoverController.seek(to: position)
+        }
+        renderModel.onMusicSeekInteractionStarted = { [weak self] in
+            guard let self else { return }
+            _ = self.pointerGestureAdapter.cancel()
+            self.cancelPendingModeSwitchHold()
+            self.resetPointerFeedbackImmediately()
         }
         renderModel.onTodoTaskInteraction = { [weak self] taskID in
             self?.hostingView.consumeNextPointerTap()
@@ -1103,7 +1124,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         attachmentMetrics: TopAttachmentMetrics
     ) -> IslandWidthConstraints {
         if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt {
-            return IslandLoginRequiredLayout.constraints(for: attachmentMetrics)
+            return IslandLoginRequiredLayout.loginConstraints(for: attachmentMetrics)
         }
         if usesPhase5PreviewInteractionRouting {
             let notchAlignedBodyWidth = notchAlignedCompactBodyWidth(
@@ -1268,11 +1289,13 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         var state = phase5PreviewStateContainer.domainState
         state.authState = .loggedIn
         state.primaryMode = .app
+        state.appDisplayMode = .review
         state.presentationState = .collapsed
         state.forceCompactMode = true
         state.isHovered = false
-        state.isGreetingActive = true
-        state.greetingText = user.nickname?.isEmpty == false ? user.nickname : user.email
+        state.isGreetingActive = false
+        state.greetingText = nil
+        state.isLoginRequiredPresented = false
         applyPhase5PreviewUpdate(
             phase5PreviewStateContainer.replaceDomainState(state),
             using: nil,
@@ -1282,8 +1305,12 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     @MainActor
     func applyLoggedOutState() {
+        let currentState = phase5PreviewStateContainer.domainState
+        var loggedOutState = IslandDomainState.loggedOutCompact
+        loggedOutState.updatePrompt = currentState.updatePrompt
+        loggedOutState.updateDownloadProgress = currentState.updateDownloadProgress
         applyPhase5PreviewUpdate(
-            phase5PreviewStateContainer.replaceDomainState(.loggedOutCompact),
+            phase5PreviewStateContainer.replaceDomainState(loggedOutState),
             using: nil,
             allowLockScheduling: true
         )
@@ -1300,6 +1327,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         state.mockSources.todo = nil
         state.isGreetingActive = false
         state.greetingText = nil
+        state.isLoginRequiredPresented = false
         if preservesMusicPresentation == false {
             state.primaryMode = .app
             state.appDisplayMode = .review
@@ -1393,6 +1421,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handlePointerDragged(_ input: IslandPointerInput) {
         guard usesPhase5PreviewInteractionRouting else { return }
+        guard pointerGestureAdapter.isTracking else { return }
         pointerGestureAdapter.pointerDragged(pointerID: input.identifier, to: input.screenLocation)
         applyPointerFeedback(pointerGestureAdapter.stretchFeedback)
         if isModeSwitchLeadingIcon(input.screenLocation) == false {
@@ -1423,7 +1452,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         stopPointerFeedbackSampling(flushPending: true)
         if let intent {
             clearPointerFeedbackTracking()
-            dispatchPhase5Intent(intent)
+            if intent == .tap {
+                handleTapInteraction()
+            } else {
+                dispatchPhase5Intent(intent)
+            }
         } else {
             animatePointerFeedbackReturn(
                 releaseLocation: input.screenLocation,
@@ -1629,8 +1662,12 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
         if case let .horizontalMusicCommand(command) = intent,
            update.reducerResult.reason != .intentIgnored {
-            phase5PreviewStateContainer.advanceMockMusicTrack(command)
             musicTrackSwipeDirection = IslandMusicTrackSwipeDirection(command)
+            if isShowingMockMusic {
+                phase5PreviewStateContainer.advanceMockMusicTrack(command)
+            } else {
+                musicTakeoverController.sendCommand(command.musicCommand)
+            }
             // The reducer validates the command first. Re-derive after the
             // mock track changes so title-width changes receive the same
             // top-anchored sizing interpolation as every other transition.
@@ -1661,6 +1698,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             )
         }
         return update
+    }
+
+    private var isShowingMockMusic: Bool {
+        phase5PreviewStateContainer.domainState.mockSources.music?.sourceName == "Mock"
     }
 
     private func beginModeSwitchHoldIfNeeded(at screenPoint: CGPoint) {
@@ -1767,6 +1808,14 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     private func handleMusicTakeoverUpdate(_ update: MusicTakeoverUpdate) {
         guard usesPhase5PreviewInteractionRouting else { return }
+        if let command = update.commandToSend {
+            switch command {
+            case .previous, .next:
+                musicTrackSwipeDirection = IslandMusicTrackSwipeDirection(command.horizontalCommand)
+            case .playPause:
+                break
+            }
+        }
         dispatchPhase5Intent(
             update.intent,
             using: lastAppliedScreenMetrics,

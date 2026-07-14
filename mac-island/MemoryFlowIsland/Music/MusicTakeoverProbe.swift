@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 struct MusicTakeoverProbeRow: Codable, Equatable {
@@ -43,6 +44,22 @@ enum MusicTakeoverProbe {
             current: .loggedOutCompact,
             intent: .mockPlaybackStarted(snapshots.playing)
         )
+        let realLoggedOutTakeover = IslandPresentationReducer.reduce(
+            current: .loggedOutCompact,
+            intent: .musicSnapshotUpdated(snapshots.playing)
+        )
+        let unlockedLoggedOutMusic = IslandPresentationReducer.reduce(
+            current: realLoggedOutTakeover.state,
+            intent: .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition)
+        )
+        let expandedLoggedOutMusic = IslandPresentationReducer.reduce(
+            current: unlockedLoggedOutMusic.state,
+            intent: .tap
+        )
+        let restoredLoggedOut = IslandPresentationReducer.reduce(
+            current: realLoggedOutTakeover.state,
+            intent: .musicStopped
+        )
         var loggedOutMusic = started.state
         loggedOutMusic.authState = .loggedOut
         let acceptedWhileActive = IslandPresentationReducer.reduce(
@@ -63,10 +80,26 @@ enum MusicTakeoverProbe {
               retargetPlan.shellFrame.keyframes.duration == 0.18,
               ignoredLoggedOut.reason == .musicSnapshotIgnoredLoggedOut,
               ignoredLoggedOut.state == .loggedOutCompact,
+              realLoggedOutTakeover.reason == .musicSnapshotAccepted,
+              realLoggedOutTakeover.state.primaryMode == .music,
+              realLoggedOutTakeover.derivedState.visualState == .activityCollapsed,
+              expandedLoggedOutMusic.reason == .tapExpandedToMusic,
+              expandedLoggedOutMusic.state.authState == .loggedOut,
+              expandedLoggedOutMusic.state.presentationState == .expanded,
+              expandedLoggedOutMusic.derivedState.visualState == .expandedMusic,
+              restoredLoggedOut.state.authState == .loggedOut,
+              restoredLoggedOut.state.primaryMode == .app,
+              restoredLoggedOut.state.presentationState == .collapsed,
+              restoredLoggedOut.state.musicReturnState == nil,
               acceptedWhileActive.reason == .musicSnapshotRetargeted,
               acceptedWhileActive.state.mockSources.music?.trackTitle == snapshots.paused.title else {
             throw MusicTakeoverProbeError.invalidTakeoverOrRetarget
         }
+
+        try validateArtworkPaletteExtraction()
+        try validateArtworkSnapshotMerging()
+        try validateWrappedArtworkBase64Decoding()
+        try validateDistributedDurationNormalization()
     }
 
     static func rows() -> [MusicTakeoverProbeRow] {
@@ -82,10 +115,10 @@ enum MusicTakeoverProbe {
                 intentDescription: "musicSnapshotUpdated(playing)"
             ),
             row(
-                scenarioID: "tap-expands-real-music",
+                scenarioID: "logged-out-tap-expands-real-music",
                 initialState: state(
                     after: .transitionComplete(IslandTransitionLockIdentifier.forceCompactTransition),
-                    from: state(after: .musicSnapshotUpdated(playingSnapshot), from: .loggedInReviewCompact)
+                    from: state(after: .musicSnapshotUpdated(playingSnapshot), from: .loggedOutCompact)
                 ),
                 intent: .tap,
                 intentDescription: "tap"
@@ -140,6 +173,7 @@ enum MusicTakeoverProbe {
             duration: 241,
             artworkData: Data([0x01, 0x02, 0x03]),
             themeColorHex: "#f6b7a2",
+            themePalette: MusicThemePalette(colorsHex: ["#f6b7a2", "#8b5cf6"]),
             source: "Apple Music",
             updatedAt: Date(timeIntervalSince1970: 1),
             capabilities: .transport
@@ -154,6 +188,7 @@ enum MusicTakeoverProbe {
             duration: 180,
             artworkData: nil,
             themeColorHex: "#22d3ee",
+            themePalette: .fallback,
             source: "Apple Music",
             updatedAt: Date(timeIntervalSince1970: 2),
             capabilities: .transport
@@ -199,8 +234,100 @@ enum MusicTakeoverProbe {
     private static func scalar(_ value: TimeInterval) -> Double {
         (Double(value) * 100).rounded() / 100
     }
+
+    private static func validateArtworkPaletteExtraction() throws {
+        let size = NSSize(width: 12, height: 6)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.systemRed.setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: 6, height: 6)).fill()
+        NSColor.systemBlue.setFill()
+        NSBezierPath(rect: NSRect(x: 6, y: 0, width: 6, height: 6)).fill()
+        image.unlockFocus()
+
+        guard let data = image.tiffRepresentation else {
+            throw MusicTakeoverProbeError.invalidArtworkPalette
+        }
+        let palette = MusicArtworkPaletteExtractor.extract(from: data)
+        guard palette.colorsHex.count >= 2,
+              palette.primaryHex != MusicThemePalette.fallbackHex else {
+            throw MusicTakeoverProbeError.invalidArtworkPalette
+        }
+    }
+
+    private static func validateArtworkSnapshotMerging() throws {
+        let snapshots = sampleSnapshots()
+        let knownArtwork = snapshots.playing.artworkData
+        var sameTrackWithoutArtwork = snapshots.playing
+        sameTrackWithoutArtwork.artworkData = nil
+        let preserved = MusicArtworkSnapshotMerger.merge(
+            primary: sameTrackWithoutArtwork,
+            previous: snapshots.playing
+        )
+
+        var nextTrackWithoutArtwork = snapshots.paused
+        nextTrackWithoutArtwork.status = .playing
+        nextTrackWithoutArtwork.isPlaying = true
+        var matchingFallback = nextTrackWithoutArtwork
+        matchingFallback.artworkData = Data([0x10, 0x20, 0x30])
+        let recovered = MusicArtworkSnapshotMerger.merge(
+            primary: nextTrackWithoutArtwork,
+            previous: snapshots.playing,
+            fallback: matchingFallback
+        )
+
+        var mismatchedFallback = matchingFallback
+        mismatchedFallback.title = "Different Song"
+        let rejected = MusicArtworkSnapshotMerger.merge(
+            primary: nextTrackWithoutArtwork,
+            previous: snapshots.playing,
+            fallback: mismatchedFallback
+        )
+
+        guard preserved.artworkData == knownArtwork,
+              recovered.artworkData == matchingFallback.artworkData,
+              rejected.artworkData == nil else {
+            throw MusicTakeoverProbeError.invalidArtworkSnapshotMerge
+        }
+    }
+
+    private static func validateWrappedArtworkBase64Decoding() throws {
+        let artwork = Data((0..<192).map { UInt8($0) })
+        let encoded = artwork.base64EncodedString()
+        let encodedBytes = Array(encoded.utf8)
+        let wrapped = stride(from: 0, to: encodedBytes.count, by: 64)
+            .map { offset in
+                let end = min(offset + 64, encodedBytes.count)
+                return String(decoding: encodedBytes[offset..<end], as: UTF8.self)
+            }
+            .joined(separator: "\n")
+
+        guard AppleMusicProvider.decodeArtworkBase64(wrapped) == artwork,
+              AppleMusicProvider.decodeArtworkBase64("") == nil else {
+            throw MusicTakeoverProbeError.invalidWrappedArtworkBase64
+        }
+    }
+
+    private static func validateDistributedDurationNormalization() throws {
+        let normalizedTotalTime = MediaRemoteMusicProvider.normalizedDistributedDuration(
+            durationSeconds: nil,
+            totalTimeMilliseconds: 262_000
+        )
+        let preferredSeconds = MediaRemoteMusicProvider.normalizedDistributedDuration(
+            durationSeconds: 262,
+            totalTimeMilliseconds: 999_000
+        )
+        guard normalizedTotalTime == 262,
+              preferredSeconds == 262 else {
+            throw MusicTakeoverProbeError.invalidDistributedDuration
+        }
+    }
 }
 
 enum MusicTakeoverProbeError: Error {
     case invalidTakeoverOrRetarget
+    case invalidArtworkPalette
+    case invalidArtworkSnapshotMerge
+    case invalidWrappedArtworkBase64
+    case invalidDistributedDuration
 }

@@ -48,9 +48,19 @@ enum IslandMusicWaveform {
     static let cycleDuration: TimeInterval = 2.2
     static let phaseOffset: TimeInterval = 0.2
     static let pausedSettleDuration: TimeInterval = 0.3
+    static let minimumFrameInterval: TimeInterval = 1.0 / 60.0
 
     static func phase(for barIndex: Int) -> TimeInterval {
         TimeInterval(barIndex) * phaseOffset
+    }
+
+    static func liveLevel(
+        _ level: Float,
+        barIndex: Int,
+        barCount: Int
+    ) -> CGFloat {
+        guard barIndex >= 0, barIndex < barCount, level >= 0.035 else { return 0 }
+        return CGFloat(min(level, 1))
     }
 
     static func height(
@@ -99,6 +109,17 @@ struct IslandMockMusicProgressClock: Equatable {
         anchorDate = date
         self.isPlaying = isPlaying
         duration = music.durationSeconds
+    }
+
+    mutating func setPlaying(_ isPlaying: Bool, at date: Date) {
+        guard hasMusic else {
+            self.isPlaying = isPlaying
+            anchorDate = date
+            return
+        }
+        elapsedAtAnchor = elapsed(at: date) ?? elapsedAtAnchor
+        anchorDate = date
+        self.isPlaying = isPlaying
     }
 
     func elapsed(at date: Date) -> TimeInterval? {

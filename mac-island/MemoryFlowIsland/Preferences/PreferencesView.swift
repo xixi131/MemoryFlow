@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum PreferencesUpdateCommand {
+    case check
+    case retry
+    case update
+}
+
 struct PreferencesView: View {
     @ObservedObject private var languageSettings: AppLanguageSettings
     @ObservedObject private var advancedFeaturesSettings: AdvancedFeaturesSettings
@@ -7,6 +13,7 @@ struct PreferencesView: View {
     @ObservedObject private var updateCoordinator: UpdateCoordinator
     private let onLoginRequested: () -> Void
     private let onLogoutRequested: () -> Void
+    private let onUpdateCommand: (PreferencesUpdateCommand) -> Void
 
     init(
         languageSettings: AppLanguageSettings,
@@ -14,7 +21,8 @@ struct PreferencesView: View {
         accountState: SettingsAccountState,
         updateCoordinator: UpdateCoordinator,
         onLoginRequested: @escaping () -> Void,
-        onLogoutRequested: @escaping () -> Void
+        onLogoutRequested: @escaping () -> Void,
+        onUpdateCommand: @escaping (PreferencesUpdateCommand) -> Void
     ) {
         self.languageSettings = languageSettings
         self.advancedFeaturesSettings = advancedFeaturesSettings
@@ -22,78 +30,130 @@ struct PreferencesView: View {
         self.updateCoordinator = updateCoordinator
         self.onLoginRequested = onLoginRequested
         self.onLogoutRequested = onLogoutRequested
+        self.onUpdateCommand = onUpdateCommand
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text(copy(.settingsWindowTitle))
-                .font(.title2.weight(.semibold))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                settingsSection(title: copy(.language), systemImage: "globe") {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(copy(.languageDescription))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
 
-            GroupBox(copy(.language)) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(copy(.languageDescription))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Picker(copy(.language), selection: languageBinding) {
-                        Text(copy(.english)).tag(AppLanguage.english)
-                        Text(copy(.simplifiedChinese)).tag(AppLanguage.simplifiedChinese)
+                        Picker(copy(.language), selection: languageBinding) {
+                            Text(copy(.english)).tag(AppLanguage.english)
+                            Text(copy(.simplifiedChinese)).tag(AppLanguage.simplifiedChinese)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
-            }
 
-            GroupBox(copy(.advancedFeatures)) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(copy(.advancedFeaturesDescription))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                sectionDivider
 
-                    Toggle(copy(.advancedFeatures), isOn: advancedFeaturesBinding)
-
-                    if advancedFeaturesSettings.isEnabled {
-                        Divider()
-                        if let user = accountState.user {
-                            Text(copy(.signedInAs))
+                settingsSection(title: copy(.advancedFeatures), systemImage: "sparkles") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .center, spacing: 20) {
+                            Text(copy(.advancedFeaturesDescription))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text(user.nickname?.isEmpty == false ? user.nickname! : user.email)
-                                .font(.headline)
-                            if user.nickname?.isEmpty == false {
-                                Text(user.email)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Spacer(minLength: 12)
+
+                            Toggle(copy(.advancedFeatures), isOn: advancedFeaturesBinding)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                        }
+
+                        if advancedFeaturesSettings.isEnabled {
+                            Divider()
+
+                            HStack(alignment: .center, spacing: 16) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    if let user = accountState.user {
+                                        Text(copy(.signedInAs))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text(user.nickname?.isEmpty == false ? user.nickname! : user.email)
+                                            .font(.body.weight(.medium))
+                                        if user.nickname?.isEmpty == false {
+                                            Text(user.email)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    } else {
+                                        Text(copy(.account))
+                                            .font(.body.weight(.medium))
+                                        Text(copy(.notSignedIn))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                Spacer(minLength: 12)
+
+                                if accountState.user != nil {
+                                    Button(copy(.signOut), role: .destructive, action: onLogoutRequested)
+                                } else {
+                                    Button(copy(.signIn), action: onLoginRequested)
+                                        .buttonStyle(.borderedProminent)
+                                }
                             }
-                            Button(copy(.signOut), role: .destructive, action: onLogoutRequested)
-                        } else {
-                            Text(copy(.notSignedIn))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Button(copy(.signIn), action: onLoginRequested)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
-            }
 
-            GroupBox("Updates") {
-                HStack {
-                    Text(updateStatus)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button(updateActionTitle) { performUpdateAction() }
-                        .disabled(updateCoordinator.state == .checking)
-                }.padding(.vertical, 4)
-            }
+                sectionDivider
 
-            Spacer()
+                settingsSection(title: copy(.updates), systemImage: "arrow.triangle.2.circlepath") {
+                    HStack(alignment: .center, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(updateStatus)
+                                .font(.body.weight(.medium))
+                            Text(copy(.updatesDescription))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 12)
+
+                        Button(updateActionTitle) { performUpdateAction() }
+                            .disabled(updateActionDisabled)
+                    }
+                }
+            }
+            .frame(maxWidth: 620, alignment: .leading)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .padding(24)
-        .frame(minWidth: 480, minHeight: 300, alignment: .topLeading)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(minWidth: 520, minHeight: 420)
+    }
+
+    private func settingsSection<Content: View>(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            content()
+                .padding(.leading, 24)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var sectionDivider: some View {
+        Divider()
+            .padding(.vertical, 24)
+            .padding(.leading, 24)
     }
 
     private var languageBinding: Binding<AppLanguage> {
@@ -116,37 +176,67 @@ struct PreferencesView: View {
 
     private var updateStatus: String {
         switch updateCoordinator.state {
-        case .idle: return "Up to date"
-        case .checking: return "Checking..."
-        case .available(let release): return "Version \(release.version) available"
+        case .idle:
+            return String(format: copy(.upToDate), installedVersion, installedBuild)
+        case .checking: return copy(.checkingForUpdates)
+        case .available(let release), .deferred(let release, _):
+            return String(format: copy(.versionAvailable), release.version, release.build)
         case .failed(let failure): return recoveryMessage(failure)
-        case .installed(let release, let relaunched): return "Installed \(release.version)\(relaunched ? " and relaunched" : "")"
-        default: return "Update in progress"
+        case .installed(let release, let relaunched):
+            return String(format: copy(relaunched ? .installedAndRelaunched : .installed), release.version)
+        default: return copy(.updateInProgress)
         }
     }
 
     private var updateActionTitle: String {
-        if case .failed = updateCoordinator.state { return "Retry" }
-        return "Check for Updates"
+        switch updateCoordinator.state {
+        case .available, .deferred:
+            return copy(.update)
+        case .failed:
+            return copy(.retry)
+        default:
+            return copy(.checkForUpdates)
+        }
+    }
+
+    private var updateActionDisabled: Bool {
+        switch updateCoordinator.state {
+        case .checking, .downloadRequested, .downloading, .verifying, .ready,
+             .awaitingAuthorization, .installing:
+            return true
+        case .idle, .available, .deferred, .installed, .failed:
+            return false
+        }
     }
 
     private func performUpdateAction() {
-        if case .failed = updateCoordinator.state {
-            _ = updateCoordinator.retryFailure()
-        } else {
-            _ = updateCoordinator.checkForUpdates()
+        switch updateCoordinator.state {
+        case .available, .deferred:
+            onUpdateCommand(.update)
+        case .failed:
+            onUpdateCommand(.retry)
+        default:
+            onUpdateCommand(.check)
         }
+    }
+
+    private var installedVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
+    }
+
+    private var installedBuild: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
     }
 
     private func recoveryMessage(_ failure: UpdateFailure) -> String {
         switch failure {
-        case .offline: return "Offline. Retry when connected."
-        case .httpStatus(let status): return "Update server returned HTTP \(status)."
-        case .invalidConfiguration, .invalidFeed: return "The update feed is unavailable."
-        case .signatureRejected: return "Update signature verification failed."
-        case .insufficientDisk: return "Not enough disk space for the update."
-        case .authorizationCancelled: return "Installation authorization was cancelled."
-        case .transport, .engine: return "Update failed. Try again."
+        case .offline: return copy(.updateOffline)
+        case .httpStatus(let status): return String(format: copy(.updateHTTPError), status)
+        case .invalidConfiguration, .invalidFeed: return copy(.updateFeedUnavailable)
+        case .signatureRejected: return copy(.updateSignatureFailed)
+        case .insufficientDisk: return copy(.updateInsufficientDisk)
+        case .authorizationCancelled: return copy(.updateAuthorizationCancelled)
+        case .transport, .engine: return copy(.updateFailed)
         }
     }
 }

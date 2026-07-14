@@ -151,6 +151,24 @@ enum AppCopy {
         case notSignedIn
         case signIn
         case signOut
+        case updates
+        case updatesDescription
+        case upToDate
+        case checkingForUpdates
+        case versionAvailable
+        case installed
+        case installedAndRelaunched
+        case updateInProgress
+        case retry
+        case update
+        case checkForUpdates
+        case updateOffline
+        case updateHTTPError
+        case updateFeedUnavailable
+        case updateSignatureFailed
+        case updateInsufficientDisk
+        case updateAuthorizationCancelled
+        case updateFailed
     }
 
     static func text(_ key: Key, language: AppLanguage) -> String {
@@ -180,7 +198,25 @@ enum AppCopy {
         .signedInAs: "Signed in as",
         .notSignedIn: "Not signed in",
         .signIn: "Sign In",
-        .signOut: "Sign Out"
+        .signOut: "Sign Out",
+        .updates: "Updates",
+        .updatesDescription: "Keep MemoryFlow up to date.",
+        .upToDate: "MemoryFlow %@ (Build %@) is up to date",
+        .checkingForUpdates: "Checking for updates...",
+        .versionAvailable: "Version %@ (Build %@) is available",
+        .installed: "Version %@ installed",
+        .installedAndRelaunched: "Version %@ installed and relaunched",
+        .updateInProgress: "Update in progress",
+        .retry: "Retry",
+        .update: "Update",
+        .checkForUpdates: "Check for Updates",
+        .updateOffline: "Offline. Retry when connected.",
+        .updateHTTPError: "Update server returned HTTP %ld.",
+        .updateFeedUnavailable: "The update feed is unavailable.",
+        .updateSignatureFailed: "Update signature verification failed.",
+        .updateInsufficientDisk: "Not enough disk space for the update.",
+        .updateAuthorizationCancelled: "Installation authorization was cancelled.",
+        .updateFailed: "Update failed. Try again."
     ]
 
     private static let simplifiedChinese: [Key: String] = [
@@ -201,6 +237,24 @@ enum AppCopy {
         .signedInAs: "当前登录账号",
         .notSignedIn: "尚未登录",
         .signIn: "登录",
-        .signOut: "退出登录"
+        .signOut: "退出登录",
+        .updates: "软件更新",
+        .updatesDescription: "让 MemoryFlow 保持最新版本。",
+        .upToDate: "MemoryFlow %@（Build %@）已是最新版本",
+        .checkingForUpdates: "正在检查更新...",
+        .versionAvailable: "发现新版本 %@（Build %@）",
+        .installed: "已安装版本 %@",
+        .installedAndRelaunched: "已安装版本 %@ 并重新启动",
+        .updateInProgress: "正在更新",
+        .retry: "重试",
+        .update: "更新",
+        .checkForUpdates: "检查更新",
+        .updateOffline: "当前离线，请联网后重试。",
+        .updateHTTPError: "更新服务器返回 HTTP %ld。",
+        .updateFeedUnavailable: "更新源暂时不可用。",
+        .updateSignatureFailed: "更新签名验证失败。",
+        .updateInsufficientDisk: "磁盘空间不足，无法完成更新。",
+        .updateAuthorizationCancelled: "已取消安装授权。",
+        .updateFailed: "更新失败，请重试。"
     ]
 }

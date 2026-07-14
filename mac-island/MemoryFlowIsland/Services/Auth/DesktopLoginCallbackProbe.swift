@@ -22,6 +22,17 @@ enum DesktopLoginCallbackProbe {
               opener.openedURL?.absoluteString == "https://memoryflow.tanxhub.com/#/login?callback=desktop&client=mac-island" else {
             throw DesktopLoginCallbackError.invalidCallback
         }
+        let retryCallback = URL(string: "memoryflow-island://callback?token=access-retry&refreshToken=refresh-retry&expiresIn=3600")!
+        transport.failNextRequest = true
+        do {
+            _ = try await coordinator.handleCallback(retryCallback)
+            throw DesktopLoginCallbackError.invalidCallback
+        } catch DesktopLoginCallbackError.invalidCallback {}
+        let retriedUser = try await coordinator.handleCallback(retryCallback)
+        guard retriedUser.nickname == "Memory Tester" else {
+            throw DesktopLoginCallbackError.invalidCallback
+        }
+
         let callback = URL(string: "memoryflow-island://callback?token=access-1&refreshToken=refresh-1&expiresIn=3600")!
         let user = try await coordinator.handleCallback(callback)
         guard try store.load()?.accessToken == "access-1",
@@ -33,6 +44,8 @@ enum DesktopLoginCallbackProbe {
             _ = try await coordinator.handleCallback(callback)
             throw DesktopLoginCallbackError.invalidCallback
         } catch DesktopLoginCallbackError.duplicate {}
+        let correctedCallback = URL(string: "memoryflow-island://callback?token=access-1&refreshToken=refresh-1&expiresIn=3599")!
+        _ = try await coordinator.handleCallback(correctedCallback)
         return user
     }
 }
@@ -47,9 +60,14 @@ private final class DesktopLoginProbeOpener: ExternalURLOpening {
 
 private final class DesktopLoginProbeSession: URLSessioning {
     private(set) var lastAuthorization: String?
+    var failNextRequest = false
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         lastAuthorization = request.value(forHTTPHeaderField: "Authorization")
+        if failNextRequest {
+            failNextRequest = false
+            throw DesktopLoginCallbackError.invalidCallback
+        }
         let json = """
         {"code":200,"message":"success","data":{"id":11,"email":"tester@memoryflow.example","nickname":"Memory Tester","avatarUrl":null,"profession":"Student","age":null},"timestamp":1}
         """

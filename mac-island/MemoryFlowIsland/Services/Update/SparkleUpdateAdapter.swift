@@ -1,9 +1,12 @@
 import Foundation
+import OSLog
 import Sparkle
 
 @MainActor
 final class SparkleUpdateAdapter: NSObject, UpdateEngine {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)?
+    private let logger = Logger(subsystem: "com.memoryflow.island", category: "Updater")
+    private var startupFailure: UpdateFailure?
 
     private lazy var userDriver = SparkleUpdateUserDriver { [weak self] event in
         self?.handleUserDriverEvent(event)
@@ -18,19 +21,39 @@ final class SparkleUpdateAdapter: NSObject, UpdateEngine {
 
     override init() {
         super.init()
-        do { try updater.start() }
-        catch { assertionFailure("Sparkle failed to start: \(error)") }
+        do {
+            try updater.start()
+        } catch {
+            startupFailure = UpdateFailureMapper.map(error)
+            log(error, context: "start")
+        }
     }
 
     func check(sessionID: UUID) {
         guard self.sessionID == nil else { return }
+        if let startupFailure {
+            eventHandler?(sessionID, .failed(startupFailure))
+            return
+        }
         self.sessionID = sessionID
         updater.checkForUpdates()
+    }
+
+    func cancelCheck(sessionID: UUID) {
+        guard sessionID == self.sessionID else { return }
+        userDriver.cancelUpdateCheck()
+        self.sessionID = nil
     }
 
     func download(_ release: UpdateRelease, sessionID: UUID) {
         guard sessionID == self.sessionID else { return }
         userDriver.acceptAvailableUpdate()
+    }
+
+    func dismissAvailableUpdate(sessionID: UUID) {
+        guard sessionID == self.sessionID else { return }
+        userDriver.dismissAvailableUpdate()
+        self.sessionID = nil
     }
 
     func install(_ release: UpdateRelease, sessionID: UUID) {
@@ -48,6 +71,13 @@ final class SparkleUpdateAdapter: NSObject, UpdateEngine {
             break
         }
     }
+
+    private func log(_ error: Error, context: String) {
+        let nsError = error as NSError
+        logger.error(
+            "Sparkle \(context, privacy: .public) failed: domain=\(nsError.domain, privacy: .public) code=\(nsError.code) description=\(nsError.localizedDescription, privacy: .public)"
+        )
+    }
 }
 
 extension SparkleUpdateAdapter: SPUUpdaterDelegate {
@@ -64,12 +94,15 @@ extension SparkleUpdateAdapter: SPUUpdaterDelegate {
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
         guard let sessionID else { return }
+        userDriver.finishUpdateCheck()
         eventHandler?(sessionID, .current)
         self.sessionID = nil
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
         guard let sessionID else { return }
+        userDriver.finishUpdateCheck()
+        log(error, context: "check")
         eventHandler?(sessionID, .failed(UpdateFailureMapper.map(error)))
         self.sessionID = nil
     }
@@ -80,6 +113,7 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
     private let emit: (UpdateEngineEvent) -> Void
     private var updateReply: ((SPUUserUpdateChoice) -> Void)?
     private var installationReply: ((SPUUserUpdateChoice) -> Void)?
+    private var checkCancellation: (() -> Void)?
     private var receivedBytes: UInt64 = 0
     private var expectedBytes: UInt64?
 
@@ -87,6 +121,20 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
 
     func acceptAvailableUpdate() {
         updateReply?(.install)
+        updateReply = nil
+    }
+
+    func cancelUpdateCheck() {
+        checkCancellation?()
+        checkCancellation = nil
+    }
+
+    func finishUpdateCheck() {
+        checkCancellation = nil
+    }
+
+    func dismissAvailableUpdate() {
+        updateReply?(.dismiss)
         updateReply = nil
     }
 
@@ -99,12 +147,22 @@ private final class SparkleUpdateUserDriver: NSObject, SPUUserDriver {
     func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
         reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false))
     }
-    func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {}
-    func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState, reply: @escaping (SPUUserUpdateChoice) -> Void) { updateReply = reply }
+    func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) { checkCancellation = cancellation }
+    func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState, reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        checkCancellation = nil
+        updateReply = reply
+    }
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {}
     func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {}
-    func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) { acknowledgement() }
-    func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) { emit(.failed(UpdateFailureMapper.map(error))); acknowledgement() }
+    func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        checkCancellation = nil
+        acknowledgement()
+    }
+    func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        checkCancellation = nil
+        emit(.failed(UpdateFailureMapper.map(error)))
+        acknowledgement()
+    }
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
         receivedBytes = 0
         expectedBytes = nil

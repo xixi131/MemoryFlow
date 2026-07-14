@@ -126,15 +126,21 @@ struct IslandShapeMetrics: Equatable {
             max($0 - (earReach * 2), 1)
         }
 
-        if let fixedVisibleWidth = widthConstraints.fixedVisibleWidth {
+        let fixedVisibleWidth: CGFloat?
+        if let requestedFixedVisibleWidth = widthConstraints.fixedVisibleWidth {
             let constrainedVisibleWidth = widthConstraints.maximumVisibleWidth.map {
-                min(max(fixedVisibleWidth, 1), $0)
-            } ?? max(fixedVisibleWidth, 1)
+                min(max(requestedFixedVisibleWidth, 1), $0)
+            } ?? max(requestedFixedVisibleWidth, 1)
             width = max(constrainedVisibleWidth - (earReach * 2), 1)
+            fixedVisibleWidth = constrainedVisibleWidth
         } else {
             width = maximumBodyWidth.map { min(unconstrainedWidth, $0) } ?? unconstrainedWidth
+            fixedVisibleWidth = nil
         }
-        height = resolvedHeight
+        // Login and update prompts share the same compact-expanded shell.
+        height = (state == .loginRequired || state == .updatePrompt) && fixedVisibleWidth != nil
+            ? IslandVisualTokens.compact.height * resolvedVisualScale * 2
+            : resolvedHeight
         radius = shellTokens.radius * resolvedVisualScale
         smoothness = shellTokens.smoothness
         earTension = shellTokens.earTension

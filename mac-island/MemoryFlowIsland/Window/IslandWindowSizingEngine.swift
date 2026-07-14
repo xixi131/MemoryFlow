@@ -7,20 +7,30 @@ struct IslandWindowSizingRequest: Equatable {
 }
 
 enum IslandLoginRequiredLayout {
-    static func constraints(for attachmentMetrics: TopAttachmentMetrics) -> IslandWidthConstraints {
-        let squareSide = IslandShapeEngine.snapshot(
-            for: .loginRequired,
+    static func loginConstraints(for attachmentMetrics: TopAttachmentMetrics) -> IslandWidthConstraints {
+        // Tapping opens Login Required from the hovered compact shell. Preserve that
+        // shell's complete visible width, including its liquid ears, and grow only down.
+        let hoverBodyWidth = attachmentMetrics.notchAlignedBodyWidth(for: .hoverCollapsed)
+            ?? (IslandVisualTokens.compactPreviewWidth * attachmentMetrics.horizontalVisualScale)
+        let hoverSnapshot = IslandShapeEngine.snapshot(
+            for: .hoverCollapsed,
             visualScale: attachmentMetrics.visualScale,
             horizontalScale: attachmentMetrics.horizontalVisualScale,
-            widthConstraints: .none
-        ).visibleFrame.height
+            widthConstraints: IslandWidthConstraints(
+                baseBodyWidth: hoverBodyWidth,
+                maximumVisibleWidth: attachmentMetrics.availableTopWidth,
+                contentWidthRequirement: .none
+            )
+        )
+        let width = min(hoverSnapshot.visibleFrame.width, attachmentMetrics.availableTopWidth)
         return IslandWidthConstraints(
-            baseBodyWidth: squareSide,
+            baseBodyWidth: hoverBodyWidth,
             maximumVisibleWidth: attachmentMetrics.availableTopWidth,
             contentWidthRequirement: .none,
-            fixedVisibleWidth: min(squareSide, attachmentMetrics.availableTopWidth)
+            fixedVisibleWidth: width
         )
     }
+
 }
 
 enum IslandWindowSizingEngine {

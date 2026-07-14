@@ -1,7 +1,20 @@
 import AppKit
+import OSLog
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let callbackLogger = Logger(subsystem: "com.memoryflow.island", category: "LoginCallback")
     private var sceneCoordinator: SceneCoordinator?
+    private var pendingIncomingURLs: [URL] = []
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let fixturePath = ProcessInfo.processInfo.environment["MEMORYFLOW_UPDATE_PROBE_FIXTURES"] {
@@ -28,15 +41,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         sceneCoordinator = SceneCoordinator()
         sceneCoordinator?.start()
+        let pendingURLs = pendingIncomingURLs
+        pendingIncomingURLs.removeAll()
+        pendingURLs.forEach { sceneCoordinator?.handleIncomingURL($0) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        NSAppleEventManager.shared().removeEventHandler(
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
         sceneCoordinator?.stop()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            sceneCoordinator?.handleIncomingURL(url)
+            routeIncomingURL(url, source: "application-open")
+        }
+    }
+
+    @objc
+    private func handleGetURLEvent(
+        _ event: NSAppleEventDescriptor,
+        withReplyEvent replyEvent: NSAppleEventDescriptor
+    ) {
+        guard let urlText = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: urlText) else {
+            callbackLogger.error("Rejected malformed URL Apple event")
+            return
+        }
+        routeIncomingURL(url, source: "apple-event")
+    }
+
+    private func routeIncomingURL(_ url: URL, source: String) {
+        callbackLogger.info("Received login callback via \(source, privacy: .public)")
+        if let sceneCoordinator {
+            sceneCoordinator.handleIncomingURL(url)
+        } else {
+            pendingIncomingURLs.append(url)
         }
     }
 }

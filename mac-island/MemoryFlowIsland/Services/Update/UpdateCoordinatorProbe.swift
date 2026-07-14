@@ -91,6 +91,20 @@ enum UpdateCoordinatorProbe {
             throw UpdateCoordinatorProbeError.failed("future check did not return to idle")
         }
 
+        let timeoutEngine = ProbeEngine()
+        let timeoutCoordinator = UpdateCoordinator(
+            engine: timeoutEngine,
+            checkTimeout: .milliseconds(20)
+        )
+        guard timeoutCoordinator.checkForUpdates() else {
+            throw UpdateCoordinatorProbeError.failed("timeout check did not start")
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        guard case .failed(.transport("Update check timed out")) = timeoutCoordinator.state,
+              timeoutEngine.cancelCount == 1 else {
+            throw UpdateCoordinatorProbeError.failed("check timeout did not cancel the engine session")
+        }
+
         let retryEngine = ProbeEngine()
         let retry = UpdateCoordinator(engine: retryEngine)
         _ = retry.checkForUpdates()
@@ -122,7 +136,31 @@ enum UpdateCoordinatorProbe {
         _ = deferred.checkForUpdates()
         deferredEngine.emit(.available(UpdateRelease(version: "1.0.1", build: "101", downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!, contentLength: nil)), sessionID: deferredEngine.lastSession!)
         try await Task.sleep(for: .milliseconds(20))
-        guard deferred.deferAvailableUpdate(until: Date(timeIntervalSince1970: 10)), case .deferred = deferred.state else { throw UpdateCoordinatorProbeError.failed("deferred state missing") }
+        guard deferred.deferAvailableUpdate(until: Date(timeIntervalSince1970: 10)),
+              case .deferred = deferred.state,
+              deferredEngine.dismissCount == 1,
+              deferredEngine.lastSession == nil else {
+            throw UpdateCoordinatorProbeError.failed("deferred state did not dismiss the active engine session")
+        }
+        guard deferred.requestAvailableUpdate(),
+              case .checking = deferred.state,
+              let resumedSession = deferredEngine.lastSession else {
+            throw UpdateCoordinatorProbeError.failed("settings update could not resume a deferred release")
+        }
+        deferredEngine.emit(
+            .available(UpdateRelease(
+                version: "1.0.1",
+                build: "101",
+                downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!,
+                contentLength: nil
+            )),
+            sessionID: resumedSession
+        )
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloadRequested = deferred.state,
+              deferredEngine.downloadCount == 1 else {
+            throw UpdateCoordinatorProbeError.failed("deferred release was not downloaded after its refresh check")
+        }
 
         let failedEngine = ProbeEngine()
         let failed = UpdateCoordinator(engine: failedEngine)
@@ -142,20 +180,46 @@ enum UpdateCoordinatorProbe {
         guard !policy.shouldPresent(version: "101"), policy.shouldPresent(version: "102"),
               policy.suppressionUntil(version: "101") == now.addingTimeInterval(UpdateCheckPolicy.deferral),
               policyStore.deferredUntil == now.addingTimeInterval(UpdateCheckPolicy.deferral) else { throw UpdateCoordinatorProbeError.failed("four-hour deferral failed") }
+        let relaunchedEngine = ProbeEngine()
+        let relaunchedCoordinator = UpdateCoordinator(engine: relaunchedEngine)
         let relaunchedPolicy = UpdateCheckPolicy(
-            coordinator: deferred,
+            coordinator: relaunchedCoordinator,
             clock: ProbeClock(now: now),
             store: policyStore
         )
         guard !relaunchedPolicy.shouldPresent(version: "101") else {
             throw UpdateCoordinatorProbeError.failed("relaunch deferral was not restored")
         }
-        let previousManualSession = deferredEngine.lastSession
+        let previousManualSession = relaunchedEngine.lastSession
         relaunchedPolicy.manualCheck()
-        guard deferredEngine.lastSession != previousManualSession else {
+        guard relaunchedEngine.lastSession != previousManualSession else {
             throw UpdateCoordinatorProbeError.failed("manual check was blocked during deferral")
         }
         relaunchedPolicy.stop()
+
+        let expiryEngine = ProbeEngine()
+        let expiryCoordinator = UpdateCoordinator(engine: expiryEngine)
+        let expiryStore = ProbePolicyStore()
+        expiryStore.deferredVersion = "101"
+        expiryStore.deferredUntil = now.addingTimeInterval(UpdateCheckPolicy.deferral)
+        let expiryClock = ProbeClock(now: now)
+        let expiryPolicy = UpdateCheckPolicy(
+            coordinator: expiryCoordinator,
+            clock: expiryClock,
+            store: expiryStore
+        )
+        expiryPolicy.recheckDeferredVersionIfNeeded()
+        guard expiryEngine.lastSession == nil else {
+            throw UpdateCoordinatorProbeError.failed("deferred version rechecked before its deadline")
+        }
+        expiryClock.now = now.addingTimeInterval(UpdateCheckPolicy.deferral)
+        expiryPolicy.recheckDeferredVersionIfNeeded()
+        guard expiryStore.deferredVersion == nil,
+              expiryEngine.lastSession != nil,
+              case .checking = expiryCoordinator.state else {
+            throw UpdateCoordinatorProbeError.failed("four-hour deferral did not trigger a fresh check")
+        }
+        expiryPolicy.stop()
         policy.clearDeferralIfSuperseded(by: "102")
         guard policyStore.deferredVersion == nil else { throw UpdateCoordinatorProbeError.failed("newer-version deferral cleanup failed") }
         policy.stop()
@@ -181,7 +245,7 @@ enum UpdateCoordinatorProbe {
         installedPolicy.stop()
 
         try validateRecoverableFailures()
-        return "update-coordinator-probe: PASS; signed=current,newer,higher-version,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale; install=verifying,ready,authorization,duplicate-guard,installing,relaunched,version-changed,no-repeat,future-check,sparkle-delegated; recovery=offline,http,feed,disk,auth-cancel,signature,explicit-retry,no-auto-loop,launchable; policy=launch,24h,wake,manual,4h-deferral,future-version,termination"
+        return "update-coordinator-probe: PASS; signed=current,newer,higher-version,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale,deferred-direct; install=verifying,ready,authorization,duplicate-guard,installing,relaunched,version-changed,no-repeat,future-check,sparkle-delegated; recovery=offline,http,feed,disk,auth-cancel,signature,explicit-retry,no-auto-loop,launchable; policy=launch,24h,wake,manual,4h-deferral,recheck,future-version,termination"
     }
 
     private static func validateRecoverableFailures() throws {
@@ -199,7 +263,10 @@ enum UpdateCoordinatorProbe {
     }
 }
 
-private struct ProbeClock: UpdateClock { let now: Date }
+private final class ProbeClock: UpdateClock, @unchecked Sendable {
+    var now: Date
+    init(now: Date) { self.now = now }
+}
 private final class ProbePolicyStore: UpdatePolicyPersisting {
     var lastSuccessfulCheck: Date?
     var deferredVersion: String?
@@ -211,9 +278,21 @@ private final class ProbeEngine: UpdateEngine {
     var eventHandler: (@Sendable (UUID, UpdateEngineEvent) -> Void)?
     var lastSession: UUID?
     var downloadCount = 0
+    var dismissCount = 0
+    var cancelCount = 0
     var installCount = 0
     func check(sessionID: UUID) { lastSession = sessionID }
+    func cancelCheck(sessionID: UUID) {
+        guard lastSession == sessionID else { return }
+        cancelCount += 1
+        lastSession = nil
+    }
     func download(_ release: UpdateRelease, sessionID: UUID) { downloadCount += 1 }
+    func dismissAvailableUpdate(sessionID: UUID) {
+        guard lastSession == sessionID else { return }
+        dismissCount += 1
+        lastSession = nil
+    }
     func install(_ release: UpdateRelease, sessionID: UUID) { installCount += 1 }
     func emit(_ event: UpdateEngineEvent, sessionID: UUID) { eventHandler?(sessionID, event) }
 }

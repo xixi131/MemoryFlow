@@ -51,15 +51,6 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case presentationRetargeted
 }
 
-private extension IslandInteractionIntent {
-    var isMockPlaybackStart: Bool {
-        if case .mockPlaybackStarted = self {
-            return true
-        }
-        return false
-    }
-}
-
 struct IslandPresentationReducerMetadata: Codable, Equatable {
     let mockMusicCommand: IslandHorizontalMusicCommand?
     let musicCommand: IslandHorizontalMusicCommand?
@@ -85,6 +76,11 @@ enum IslandPresentationReducer {
         current state: IslandDomainState,
         intent: IslandInteractionIntent
     ) -> IslandPresentationReducerResult {
+        if state.updatePrompt != nil,
+           isBlockedByUpdatePrompt(intent) {
+            return unchanged(state, reason: .intentIgnored)
+        }
+
         switch intent {
         case let .updateDownloadStarted(progress):
             guard state.updateDownloadProgress == nil else {
@@ -127,16 +123,14 @@ enum IslandPresentationReducer {
                 return unchanged(state, reason: .intentIgnored)
             }
             return transition(state, reason: .updatePromptUpdateRequested) {
-                $0.updatePrompt = nil
-                $0.isHovered = false
+                dismissUpdatePrompt(&$0)
             }
         case .updatePromptLaterRequested:
             guard state.updatePrompt != nil else {
                 return unchanged(state, reason: .intentIgnored)
             }
             return transition(state, reason: .updatePromptLaterRequested) {
-                $0.updatePrompt = nil
-                $0.isHovered = false
+                dismissUpdatePrompt(&$0)
             }
         case .loginRequiredRequested:
             guard state.authState == .loggedOut,
@@ -243,7 +237,7 @@ enum IslandPresentationReducer {
                     activityReason: .tapCollapsedToActivity
                 )
             case .collapsed, .activity:
-                guard state.authState == .loggedIn else {
+                guard state.primaryMode == .music || state.authState == .loggedIn else {
                     return unchanged(state, reason: .intentIgnored)
                 }
 
@@ -363,36 +357,13 @@ enum IslandPresentationReducer {
             ) { nextState in
                 lockTrackpadGesture(&nextState)
             }
-        case let .mockPlaybackStarted(snapshot), let .musicSnapshotUpdated(snapshot):
+        case let .mockPlaybackStarted(snapshot):
             if state.authState != .loggedIn && state.primaryMode != .music {
                 return unchanged(state, reason: .musicSnapshotIgnoredLoggedOut)
             }
-
-            let isAlreadyInMusic = state.primaryMode == .music
-            let reason: IslandPresentationTransitionReason
-            if isAlreadyInMusic {
-                reason = .musicSnapshotRetargeted
-            } else if intent.isMockPlaybackStart {
-                reason = .musicTakeoverStarted
-            } else {
-                reason = .musicSnapshotAccepted
-            }
-
-            return transition(state, reason: reason) { nextState in
-                nextState.primaryMode = .music
-                nextState.presentationState = nextState.presentationState == .expanded ? .expanded : .activity
-                nextState.forceCompactMode = false
-                nextState.isHovered = false
-                nextState.isReminderActive = false
-                nextState.isGreetingActive = false
-                nextState.greetingText = nil
-                nextState.mockSources.music = IslandMockMusicActivity(snapshot: snapshot)
-                nextState.mockSources.todo = nil
-                if nextState.presentationLockState.isForceCompactLocked == false,
-                   state.primaryMode != .music || state.forceCompactMode {
-                    lockForceCompactTransition(&nextState)
-                }
-            }
+            return acceptMusicSnapshot(state, snapshot: snapshot, isMockStart: true)
+        case let .musicSnapshotUpdated(snapshot):
+            return acceptMusicSnapshot(state, snapshot: snapshot, isMockStart: false)
         case .musicStopped:
             guard state.primaryMode == .music || state.mockSources.music != nil else {
                 return unchanged(state, reason: .intentIgnored)
@@ -501,12 +472,58 @@ enum IslandPresentationReducer {
         reason: IslandPresentationTransitionReason
     ) -> IslandPresentationReducerResult {
         transition(state, reason: reason) { nextState in
+            let returnState = state.musicReturnState ?? IslandMusicReturnState(
+                presentationState: state.forceCompactMode ? .collapsed : .activity,
+                forceCompactMode: state.forceCompactMode,
+                isHovered: false
+            )
             nextState.primaryMode = .app
-            nextState.presentationState = state.forceCompactMode ? .collapsed : .activity
-            nextState.forceCompactMode = state.forceCompactMode
-            nextState.isHovered = false
+            nextState.presentationState = returnState.presentationState
+            nextState.forceCompactMode = returnState.forceCompactMode
+            nextState.isHovered = returnState.isHovered
+            nextState.isLoginRequiredPresented = returnState.isLoginRequiredPresented
+            nextState.updatePrompt = state.updatePrompt ?? returnState.updatePrompt
+            nextState.musicReturnState = nil
             nextState.mockSources.music = nil
-            ensureAppMockSource(&nextState, for: state.appDisplayMode)
+            if nextState.authState == .loggedIn {
+                ensureAppMockSource(&nextState, for: state.appDisplayMode)
+            }
+        }
+    }
+
+    private static func acceptMusicSnapshot(
+        _ state: IslandDomainState,
+        snapshot: MusicTrackSnapshot,
+        isMockStart: Bool
+    ) -> IslandPresentationReducerResult {
+        let isAlreadyInMusic = state.primaryMode == .music
+        let reason: IslandPresentationTransitionReason = isAlreadyInMusic
+            ? .musicSnapshotRetargeted
+            : (isMockStart ? .musicTakeoverStarted : .musicSnapshotAccepted)
+
+        return transition(state, reason: reason) { nextState in
+            if isAlreadyInMusic == false {
+                nextState.musicReturnState = IslandMusicReturnState(
+                    presentationState: state.presentationState,
+                    forceCompactMode: state.forceCompactMode,
+                    isHovered: state.isHovered,
+                    isLoginRequiredPresented: state.isLoginRequiredPresented,
+                    updatePrompt: nil
+                )
+            }
+            nextState.primaryMode = .music
+            nextState.presentationState = nextState.presentationState == .expanded ? .expanded : .activity
+            nextState.forceCompactMode = false
+            nextState.isHovered = false
+            nextState.isLoginRequiredPresented = false
+            nextState.isReminderActive = false
+            nextState.isGreetingActive = false
+            nextState.greetingText = nil
+            nextState.mockSources.music = IslandMockMusicActivity(snapshot: snapshot)
+            if nextState.presentationLockState.isForceCompactLocked == false,
+               isAlreadyInMusic == false || state.forceCompactMode {
+                lockForceCompactTransition(&nextState)
+            }
         }
     }
 
@@ -515,6 +532,18 @@ enum IslandPresentationReducer {
         reason: IslandPresentationTransitionReason
     ) -> IslandPresentationReducerResult {
         transition(state, reason: reason) { _ in }
+    }
+
+    private static func isBlockedByUpdatePrompt(_ intent: IslandInteractionIntent) -> Bool {
+        switch intent {
+        case .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested,
+             .updateDownloadStarted, .updateDownloadProgressed, .updateDownloadEnded,
+             .transitionComplete, .retargetPresentation,
+             .mockPlaybackStarted, .musicSnapshotUpdated, .musicStopped, .pausedMusicTimeout:
+            return false
+        default:
+            return true
+        }
     }
 
     private static func collapseExpanded(
@@ -557,6 +586,21 @@ enum IslandPresentationReducer {
             }
         case .music:
             return state.mockSources.music != nil
+        }
+    }
+
+    private static func dismissUpdatePrompt(_ state: inout IslandDomainState) {
+        state.updatePrompt = nil
+        state.isLoginRequiredPresented = false
+        state.isHovered = false
+
+        guard state.presentationState == .expanded else { return }
+        if state.primaryMode == .music && hasRecoverableActivitySource(state) {
+            state.presentationState = .activity
+            state.forceCompactMode = false
+        } else {
+            state.presentationState = .collapsed
+            state.forceCompactMode = true
         }
     }
 

@@ -1,24 +1,30 @@
 import CoreGraphics
 
 enum IslandUpdatePromptLayout {
-    static let actionWidth: CGFloat = 82
-    static let actionHeight: CGFloat = 34
-    static let actionSpacing: CGFloat = 10
+    static let actionWidth: CGFloat = 66
+    static let actionHeight: CGFloat = 22
+    static let actionSpacing: CGFloat = 8
+    static let actionFontSize: CGFloat = 12
+    static let actionHorizontalPadding: CGFloat = 10
     static let updateColorHex = "#0A84FF"
+    static let updateHoverColorHex = "#2F92FF"
     static let laterColorHex = "#636366"
+    static let laterHoverColorHex = "#707075"
 }
 
 enum IslandUpdateDownloadLayout {
     static let indicatorColorHex = "#0A84FF"
     static let indicatorSize: CGFloat = 20
     static let percentageWidth: CGFloat = 40
-    static let rotationDuration: TimeInterval = 0.9
+    static let percentageFontSize: CGFloat = 10
+    static let rotationDuration: TimeInterval = 1.5
 }
 import Foundation
 
 enum IslandVisualTokenSet: String, CaseIterable {
     case compact
     case activity
+    case compactExpanded
     case expandedMusic
     case expandedApp
 }
@@ -134,9 +140,9 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverBuffer.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
+        case .expandedMusic, .expandedApp:
             return expandedBuffer.scaled(by: visualScale)
-        case .compactCollapsed, .activityCollapsed:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
             return .zero
         }
     }
@@ -145,9 +151,9 @@ struct IslandShadowBehaviorTokens: Equatable {
         switch state {
         case .hoverCollapsed, .activityHoverCollapsed:
             return hoverAppearance.scaled(by: visualScale)
-        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
+        case .expandedMusic, .expandedApp:
             return expandedAppearance.scaled(by: visualScale)
-        case .compactCollapsed, .activityCollapsed:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
             return IslandShadowAppearanceTokens(opacity: 0, radius: 0, offsetY: 0)
         }
     }
@@ -191,9 +197,9 @@ enum IslandVisualTokens {
         smoothness: 1.92
     )
     static let expandedMusicArtwork = IslandMusicArtworkPresentation(
-        width: 72,
-        height: 80,
-        radius: 16,
+        width: 61.2,
+        height: 68,
+        radius: 13.6,
         smoothness: 1.85
     )
     static let expandedContentExit = IslandActivityCollapseContentChoreographyTokens(
@@ -233,6 +239,18 @@ enum IslandVisualTokens {
         smoothness: 2.8,
         earTension: 0.4,
         earBlendHeight: 14,
+        showsStroke: false
+    )
+
+    // Reusable compact panel: it grows downward without widening, while
+    // retaining the activity shell's liquid ears and corner treatment.
+    static let compactExpanded = IslandShellGeometryTokens(
+        previewWidth: compactPreviewWidth,
+        height: 72,
+        radius: activity.radius,
+        smoothness: activity.smoothness,
+        earTension: activity.earTension,
+        earBlendHeight: activity.earBlendHeight,
         showsStroke: false
     )
 
@@ -300,6 +318,8 @@ enum IslandVisualTokens {
             return compact
         case .activity:
             return activity
+        case .compactExpanded:
+            return compactExpanded
         case .expandedMusic:
             return expandedMusic
         case .expandedApp:

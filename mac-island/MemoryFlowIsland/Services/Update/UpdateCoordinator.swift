@@ -8,15 +8,23 @@ final class UpdateCoordinator: ObservableObject {
 
     private let engine: UpdateEngine
     private let clock: UpdateClock
+    private let checkTimeout: Duration
     private var activeSessionID: UUID?
     private var selectedRelease: UpdateRelease?
     private var handlingEvent = false
     private var pendingReceivedBytes: Int64 = 0
     private var retryAvailable = false
+    private var downloadWhenAvailable = false
+    private var checkTimeoutTask: Task<Void, Never>?
 
-    init(engine: UpdateEngine, clock: UpdateClock = SystemUpdateClock()) {
+    init(
+        engine: UpdateEngine,
+        clock: UpdateClock = SystemUpdateClock(),
+        checkTimeout: Duration = .seconds(30)
+    ) {
         self.engine = engine
         self.clock = clock
+        self.checkTimeout = checkTimeout
         engine.eventHandler = { [weak self] sessionID, event in
             Task { @MainActor [weak self] in self?.handle(event, sessionID: sessionID) }
         }
@@ -24,12 +32,30 @@ final class UpdateCoordinator: ObservableObject {
 
     @discardableResult
     func checkForUpdates() -> Bool {
+        beginCheck(downloadWhenAvailable: false)
+    }
+
+    @discardableResult
+    func requestAvailableUpdate() -> Bool {
+        switch state {
+        case .available:
+            return downloadAvailableUpdate()
+        case .deferred:
+            return beginCheck(downloadWhenAvailable: true)
+        default:
+            return false
+        }
+    }
+
+    private func beginCheck(downloadWhenAvailable: Bool) -> Bool {
         guard activeSessionID == nil else { return false }
         let sessionID = UUID()
         activeSessionID = sessionID
         selectedRelease = nil
+        self.downloadWhenAvailable = downloadWhenAvailable
         state = .checking
         engine.check(sessionID: sessionID)
+        scheduleCheckTimeout(for: sessionID)
         return true
     }
 
@@ -44,16 +70,20 @@ final class UpdateCoordinator: ObservableObject {
 
     @discardableResult
     func deferAvailableUpdate(until date: Date) -> Bool {
-        guard case .available(let release) = state else { return false }
+        guard case .available(let release) = state,
+              let sessionID = activeSessionID else { return false }
         state = .deferred(release, until: date)
+        engine.dismissAvailableUpdate(sessionID: sessionID)
         finishSession()
         return true
     }
 
     @discardableResult
     func discardAvailableUpdate() -> Bool {
-        guard case .available = state else { return false }
+        guard case .available = state,
+              let sessionID = activeSessionID else { return false }
         state = .idle
+        engine.dismissAvailableUpdate(sessionID: sessionID)
         finishSession()
         return true
     }
@@ -86,7 +116,14 @@ final class UpdateCoordinator: ObservableObject {
         case .available(let release):
             guard case .checking = state else { return }
             selectedRelease = release
-            state = .available(release)
+            if downloadWhenAvailable {
+                downloadWhenAvailable = false
+                pendingReceivedBytes = 0
+                state = .downloadRequested(release)
+                engine.download(release, sessionID: sessionID)
+            } else {
+                state = .available(release)
+            }
         case .downloadStarted(let total):
             guard case .downloadRequested(let release) = state else { return }
             pendingReceivedBytes = 0
@@ -143,9 +180,27 @@ final class UpdateCoordinator: ObservableObject {
     }
 
     private func finishSession() {
+        checkTimeoutTask?.cancel()
+        checkTimeoutTask = nil
         activeSessionID = nil
         selectedRelease = nil
         pendingReceivedBytes = 0
+        downloadWhenAvailable = false
+    }
+
+    private func scheduleCheckTimeout(for sessionID: UUID) {
+        checkTimeoutTask?.cancel()
+        checkTimeoutTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: checkTimeout)
+            guard Task.isCancelled == false,
+                  activeSessionID == sessionID,
+                  case .checking = state else { return }
+            engine.cancelCheck(sessionID: sessionID)
+            state = .failed(.transport("Update check timed out"))
+            retryAvailable = true
+            finishSession()
+        }
     }
 
     private func publishProgress(
@@ -197,7 +252,8 @@ final class UpdateCheckPolicy {
     private let coordinator: UpdateCoordinator
     private let clock: UpdateClock
     private let store: UpdatePolicyPersisting
-    private var timer: Timer?
+    private var cadenceTimer: Timer?
+    private var deferralTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
     private var cancellable: AnyCancellable?
     private var wasChecking = false
@@ -209,7 +265,9 @@ final class UpdateCheckPolicy {
             switch state {
             case .checking: self.wasChecking = true
             case .idle where self.wasChecking: self.store.lastSuccessfulCheck = self.clock.now; self.wasChecking = false
-            case .available: self.store.lastSuccessfulCheck = self.clock.now; self.wasChecking = false
+            case .available, .downloadRequested:
+                self.store.lastSuccessfulCheck = self.clock.now
+                self.wasChecking = false
             case .failed: self.wasChecking = false
             default: break
             }
@@ -217,14 +275,39 @@ final class UpdateCheckPolicy {
     }
 
     func start() {
-        guard timer == nil else { return }
+        guard cadenceTimer == nil else { return }
+        recheckDeferredVersionIfNeeded()
         catchUpIfNeeded()
-        timer = Timer.scheduledTimer(withTimeInterval: Self.cadence, repeats: true) { [weak self] _ in Task { @MainActor in self?.catchUpIfNeeded() } }
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.catchUpIfNeeded() } }
+        cadenceTimer = Timer.scheduledTimer(withTimeInterval: Self.cadence, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.catchUpIfNeeded() }
+        }
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.recheckDeferredVersionIfNeeded()
+                self?.catchUpIfNeeded()
+            }
+        }
     }
-    func stop() { timer?.invalidate(); timer = nil; if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }; wakeObserver = nil }
+
+    func stop() {
+        cadenceTimer?.invalidate()
+        cadenceTimer = nil
+        deferralTimer?.invalidate()
+        deferralTimer = nil
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
+        wakeObserver = nil
+    }
+
     func manualCheck() { _ = coordinator.checkForUpdates() }
+
     func catchUpIfNeeded() {
+        guard hasActiveDeferral == false else { return }
         guard store.lastSuccessfulCheck.map({ clock.now.timeIntervalSince($0) >= Self.cadence }) ?? true else { return }
         _ = coordinator.checkForUpdates()
     }
@@ -233,6 +316,7 @@ final class UpdateCheckPolicy {
         let until = clock.now.addingTimeInterval(Self.deferral)
         store.deferredVersion = version
         store.deferredUntil = until
+        scheduleDeferralTimer(until: until)
         return until
     }
     func shouldPresent(version: String) -> Bool {
@@ -247,10 +331,48 @@ final class UpdateCheckPolicy {
               clock.now < until else { return nil }
         return until
     }
-    func clearDeferralIfSuperseded(by version: String) { if store.deferredVersion != version { store.deferredVersion = nil; store.deferredUntil = nil } }
-    func markInstalled(build: String) {
-        store.installedBuild = build
+    func clearDeferral() {
         store.deferredVersion = nil
         store.deferredUntil = nil
+        deferralTimer?.invalidate()
+        deferralTimer = nil
+    }
+
+    func clearDeferralIfSuperseded(by version: String) {
+        if store.deferredVersion != version { clearDeferral() }
+    }
+
+    func markInstalled(build: String) {
+        store.installedBuild = build
+        clearDeferral()
+    }
+
+    func recheckDeferredVersionIfNeeded() {
+        guard store.deferredVersion != nil,
+              let until = store.deferredUntil else {
+            deferralTimer?.invalidate()
+            deferralTimer = nil
+            return
+        }
+        guard clock.now >= until else {
+            scheduleDeferralTimer(until: until)
+            return
+        }
+        clearDeferral()
+        _ = coordinator.checkForUpdates()
+    }
+
+    private var hasActiveDeferral: Bool {
+        guard store.deferredVersion != nil,
+              let until = store.deferredUntil else { return false }
+        return clock.now < until
+    }
+
+    private func scheduleDeferralTimer(until: Date) {
+        deferralTimer?.invalidate()
+        let delay = max(until.timeIntervalSince(clock.now), 0)
+        deferralTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.recheckDeferredVersionIfNeeded() }
+        }
     }
 }

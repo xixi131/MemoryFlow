@@ -15,17 +15,19 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
         accountState: SettingsAccountState,
         updateCoordinator: UpdateCoordinator,
         onLoginRequested: @escaping () -> Void,
-        onLogoutRequested: @escaping () -> Void
+        onLogoutRequested: @escaping () -> Void,
+        onUpdateCommand: @escaping (PreferencesUpdateCommand) -> Void
     ) {
         self.languageSettings = languageSettings
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
 
         window.title = AppCopy.text(.settingsWindowTitle, language: languageSettings.language)
+        window.contentMinSize = NSSize(width: 520, height: 420)
         window.center()
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("MemoryFlowPreferencesWindow")
@@ -36,7 +38,8 @@ final class PreferencesWindowController: NSWindowController, PreferencesWindowCo
                 accountState: accountState,
                 updateCoordinator: updateCoordinator,
                 onLoginRequested: onLoginRequested,
-                onLogoutRequested: onLogoutRequested
+                onLogoutRequested: onLogoutRequested,
+                onUpdateCommand: onUpdateCommand
             )
         )
 

@@ -4,10 +4,12 @@ import Foundation
 enum IslandMusicWaveformProbe {
     static func validate() throws {
         try validateMockMusicControls()
+        try validateLiveBarMapping()
         guard IslandMusicWaveform.pattern == [4, 16, 8, 20, 6, 12, 4],
               IslandMusicWaveform.cycleDuration == 2.2,
               IslandMusicWaveform.phaseOffset == 0.2,
-              IslandMusicWaveform.pausedSettleDuration == 0.3 else {
+              IslandMusicWaveform.pausedSettleDuration == 0.3,
+              IslandMusicWaveform.minimumFrameInterval == 1.0 / 60.0 else {
             throw IslandMusicWaveformProbeError.invalidTokens
         }
 
@@ -41,6 +43,21 @@ enum IslandMusicWaveformProbe {
         }
     }
 
+    private static func validateLiveBarMapping() throws {
+        let activity = (0..<4).map {
+            IslandMusicWaveform.liveLevel(0.25, barIndex: $0, barCount: 4)
+        }
+        let expanded = (0..<5).map {
+            IslandMusicWaveform.liveLevel(0.25, barIndex: $0, barCount: 5)
+        }
+        guard Set(activity).count == 1,
+              Set(expanded).count == 1,
+              IslandMusicWaveform.liveLevel(0.02, barIndex: 0, barCount: 4) == 0,
+              IslandMusicWaveform.liveLevel(0.8, barIndex: 0, barCount: 4) > activity[0] else {
+            throw IslandMusicWaveformProbeError.invalidLiveBarMapping
+        }
+    }
+
     static func validateMockMusicControls() throws {
         let music = IslandMockMusicActivity.scenarioPlaying
         let anchor = Date(timeIntervalSinceReferenceDate: 100)
@@ -53,6 +70,18 @@ enum IslandMusicWaveformProbe {
         clock.reset(for: music, isPlaying: false, at: anchor)
         guard clock.elapsed(at: anchor.addingTimeInterval(8)) == music.elapsedSeconds else {
             throw IslandMusicWaveformProbeError.pausedClockAdvanced
+        }
+
+        clock.reset(for: music, isPlaying: true, at: anchor)
+        let pauseDate = anchor.addingTimeInterval(5)
+        clock.setPlaying(false, at: pauseDate)
+        guard clock.elapsed(at: pauseDate.addingTimeInterval(8)) == music.elapsedSeconds + 5 else {
+            throw IslandMusicWaveformProbeError.playbackToggleChangedElapsedTime
+        }
+        let resumeDate = pauseDate.addingTimeInterval(8)
+        clock.setPlaying(true, at: resumeDate)
+        guard clock.elapsed(at: resumeDate.addingTimeInterval(3)) == music.elapsedSeconds + 8 else {
+            throw IslandMusicWaveformProbeError.playbackToggleChangedElapsedTime
         }
 
         var seeked = music
@@ -103,9 +132,9 @@ enum IslandMusicArtworkProbe {
             IslandMusicArtworkProbeRow(scenario: "collapse", presentation: collapsed, usesPlaceholder: true)
         ]
 
-        guard activity == IslandMusicArtworkPresentation(width: 24, height: 27, radius: 6.4, smoothness: 1.92),
-              expanded == IslandMusicArtworkPresentation(width: 72, height: 80, radius: 16, smoothness: 1.85),
-              midpoint == IslandMusicArtworkPresentation(width: 48, height: 53.5, radius: 11.2, smoothness: 1.885),
+        guard activity == IslandMusicArtworkPresentation(width: 20, height: 20, radius: 6.4, smoothness: 1.92),
+              expanded == IslandMusicArtworkPresentation(width: 61.2, height: 68, radius: 13.6, smoothness: 1.85),
+              midpoint == IslandMusicArtworkPresentation(width: 40.6, height: 44, radius: 10, smoothness: 1.885),
               collapsed == activity,
               rows.map(\.scenario) == ["expand", "expand-midpoint", "track-change", "missing-artwork", "collapse"],
               rows.filter(\.usesPlaceholder).count == 2 else {
@@ -132,5 +161,7 @@ enum IslandMusicWaveformProbeError: Error {
     case invalidSamples
     case invalidMockProgressClock
     case pausedClockAdvanced
+    case playbackToggleChangedElapsedTime
     case invalidSeekClamp
+    case invalidLiveBarMapping
 }

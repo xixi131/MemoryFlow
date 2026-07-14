@@ -28,7 +28,8 @@ final class DesktopLoginCoordinator: DesktopLoginCoordinating {
     private let sessionStore: AuthSessionStoring
     private let authCoordinator: AuthCoordinating
     private let lock = NSLock()
-    private var handledTokens = Set<String>()
+    private var callbacksInFlight = Set<String>()
+    private var completedCallbacks = Set<String>()
 
     init(
         webBaseURL: URL,
@@ -70,10 +71,16 @@ final class DesktopLoginCoordinator: DesktopLoginCoordinating {
             throw DesktopLoginCallbackError.invalidExpiry
         }
 
-        let inserted = lock.withLock {
-            handledTokens.insert(accessToken).inserted
+        let callbackKey = url.absoluteString
+        let accepted = lock.withLock {
+            guard callbacksInFlight.contains(callbackKey) == false,
+                  completedCallbacks.contains(callbackKey) == false else {
+                return false
+            }
+            callbacksInFlight.insert(callbackKey)
+            return true
         }
-        guard inserted else { throw DesktopLoginCallbackError.duplicate }
+        guard accepted else { throw DesktopLoginCallbackError.duplicate }
 
         let session = AuthSession(
             accessToken: accessToken,
@@ -82,9 +89,19 @@ final class DesktopLoginCoordinator: DesktopLoginCoordinating {
         )
         do {
             try sessionStore.save(session)
-            return try await authCoordinator.verifyCurrentSession()
+            let user = try await authCoordinator.verifyCurrentSession()
+            lock.withLock {
+                _ = callbacksInFlight.remove(callbackKey)
+                _ = completedCallbacks.insert(callbackKey)
+            }
+            return user
         } catch {
-            try? sessionStore.clear()
+            lock.withLock {
+                _ = callbacksInFlight.remove(callbackKey)
+            }
+            if (try? sessionStore.load()) == session {
+                try? sessionStore.clear()
+            }
             throw error
         }
     }

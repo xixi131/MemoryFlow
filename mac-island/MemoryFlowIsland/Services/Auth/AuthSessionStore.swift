@@ -14,8 +14,35 @@ extension AuthSessionStoring {
 
 enum AuthSessionStoreError: Error, Equatable {
     case keychain(OSStatus)
+    case fileSystem(Int)
     case encoding
     case decoding
+}
+
+enum DefaultAuthSessionStore {
+    static func make() -> AuthSessionStoring {
+        hasStableCodeSigningIdentity
+            ? KeychainAuthSessionStore()
+            : ApplicationSupportAuthSessionStore()
+    }
+
+    private static var hasStableCodeSigningIdentity: Bool {
+        guard let executableURL = Bundle.main.executableURL else { return false }
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(executableURL as CFURL, [], &code) == errSecSuccess,
+              let code else { return false }
+        var information: CFDictionary?
+        guard SecCodeCopySigningInformation(
+            code,
+            SecCSFlags(rawValue: kSecCSSigningInformation),
+            &information
+        ) == errSecSuccess,
+              let signingInformation = information as? [String: Any],
+              let teamIdentifier = signingInformation[kSecCodeInfoTeamIdentifier as String] as? String else {
+            return false
+        }
+        return teamIdentifier.isEmpty == false
+    }
 }
 
 final class KeychainAuthSessionStore: AuthSessionStoring {
@@ -77,6 +104,78 @@ final class KeychainAuthSessionStore: AuthSessionStoring {
             kSecAttrAccount as String: account,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
+    }
+}
+
+final class ApplicationSupportAuthSessionStore: AuthSessionStoring {
+    private let fileURL: URL
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+    private let lock = NSLock()
+
+    init(fileURL: URL? = nil) {
+        self.fileURL = fileURL ?? Self.defaultFileURL
+    }
+
+    func load() throws -> AuthSession? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            guard let session = try? decoder.decode(AuthSession.self, from: data) else {
+                throw AuthSessionStoreError.decoding
+            }
+            return session
+        } catch let error as AuthSessionStoreError {
+            throw error
+        } catch {
+            throw AuthSessionStoreError.fileSystem((error as NSError).code)
+        }
+    }
+
+    func save(_ session: AuthSession) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let data = try? encoder.encode(session) else {
+            throw AuthSessionStoreError.encoding
+        }
+        do {
+            let directoryURL = fileURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(
+                at: directoryURL,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o700],
+                ofItemAtPath: directoryURL.path
+            )
+            try data.write(to: fileURL, options: .atomic)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: fileURL.path
+            )
+        } catch {
+            throw AuthSessionStoreError.fileSystem((error as NSError).code)
+        }
+    }
+
+    func clear() throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+        } catch {
+            throw AuthSessionStoreError.fileSystem((error as NSError).code)
+        }
+    }
+
+    private static var defaultFileURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("MemoryFlowIsland", isDirectory: true)
+            .appendingPathComponent("debug-auth-session.json", isDirectory: false)
     }
 }
 

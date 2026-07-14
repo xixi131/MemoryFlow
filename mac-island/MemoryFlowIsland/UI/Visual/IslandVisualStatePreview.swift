@@ -25,9 +25,12 @@ struct IslandVisualStatePreview: View {
     let presentationShadowAppearance: IslandShadowAppearanceTokens?
     let presentationShadowOutsets: IslandShadowOutsets?
     let contentPresentation: IslandContentPresentation
+    @ObservedObject var waveformModel: MusicWaveformModel
     var onAdvanceState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
-    var onMusicControlInteraction: (() -> Void)?
+    var onMusicCommand: ((MusicCommand) -> Void)?
+    var onMusicSeek: ((TimeInterval) -> Void)?
+    var onMusicSeekInteractionStarted: (() -> Void)?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
@@ -80,7 +83,9 @@ struct IslandVisualStatePreview: View {
                 scheduleGreetingLifecycle(for: previewContent)
             }
             .onChange(of: previewContent) { nextContent in
-                scheduleGreetingLifecycle(for: nextContent)
+                DispatchQueue.main.async {
+                    scheduleGreetingLifecycle(for: nextContent)
+                }
             }
     }
 
@@ -162,7 +167,10 @@ struct IslandVisualStatePreview: View {
             musicArtworkNamespace: musicArtworkNamespace,
             musicTrackSwipeDirection: musicTrackSwipeDirection,
             reduceMotion: reduceMotion,
-            onMusicControlInteraction: onMusicControlInteraction,
+            waveformModel: waveformModel,
+            onMusicCommand: onMusicCommand,
+            onMusicSeek: onMusicSeek,
+            onMusicSeekInteractionStarted: onMusicSeekInteractionStarted,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
             onTodoTaskInteraction: onTodoTaskInteraction,
             onLoginRequested: onLoginRequested,
@@ -339,7 +347,10 @@ private struct IslandPreviewContentOverlay: View {
     let musicArtworkNamespace: Namespace.ID
     let musicTrackSwipeDirection: IslandMusicTrackSwipeDirection?
     let reduceMotion: Bool
-    var onMusicControlInteraction: (() -> Void)?
+    @ObservedObject var waveformModel: MusicWaveformModel
+    var onMusicCommand: ((MusicCommand) -> Void)?
+    var onMusicSeek: ((TimeInterval) -> Void)?
+    var onMusicSeekInteractionStarted: (() -> Void)?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
@@ -347,7 +358,12 @@ private struct IslandPreviewContentOverlay: View {
     var onUpdateLaterRequested: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
+    @State private var seekPreviewSeconds: TimeInterval?
     @State private var isFavorite = false
+    @State private var decodedMusicArtwork: NSImage?
+    @State private var isLoginButtonHovered = false
+    @State private var isUpdateButtonHovered = false
+    @State private var isUpdateLaterButtonHovered = false
 
     private var compactForegroundColor: Color {
         IslandDebugAppearance.usesLightNonExpandedShell && state.isExpanded == false
@@ -362,11 +378,20 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private var expandedHorizontalInset: CGFloat {
-        IslandVisualTokens.expandedContentLayout.horizontalInset
+        if content.kind == .expandedMusic {
+            return 28
+        }
+        return IslandVisualTokens.expandedContentLayout.horizontalInset
     }
 
     private var expandedBottomInset: CGFloat {
-        IslandVisualTokens.expandedContentLayout.bottomInset
+        if content.kind == .expandedMusic {
+            return 32
+        }
+        if content.kind == .loginRequired || content.kind == .updatePrompt {
+            return 8
+        }
+        return IslandVisualTokens.expandedContentLayout.bottomInset
     }
 
     private var expandedInnerCornerRadius: CGFloat {
@@ -431,8 +456,24 @@ private struct IslandPreviewContentOverlay: View {
             alignment: .topLeading
         )
         .clipped()
-        .onAppear { resetMusicPresentation(for: content.music, clearsPlaybackOverride: true) }
-        .onChange(of: content.music) { resetMusicPresentation(for: $0, clearsPlaybackOverride: true) }
+        .onAppear {
+            resetMusicPresentation(for: content.music, clearsPlaybackOverride: true)
+            decodeMusicArtwork(content.music?.artworkData)
+        }
+        .onChange(of: content.music) { previousMusic, nextMusic in
+            if isPlaybackStateOnlyChange(from: previousMusic, to: nextMusic) {
+                playbackOverride = nil
+                musicClock.setPlaying(nextMusic?.isPlaying ?? false, at: .now)
+            } else {
+                resetMusicPresentation(for: nextMusic, clearsPlaybackOverride: true)
+            }
+            if let preview = seekPreviewSeconds,
+               let elapsed = nextMusic?.elapsedSeconds,
+               abs(elapsed - preview) <= 1.5 {
+                seekPreviewSeconds = nil
+            }
+        }
+        .onChange(of: content.music?.artworkData) { decodeMusicArtwork($0) }
     }
 
     @ViewBuilder
@@ -453,7 +494,7 @@ private struct IslandPreviewContentOverlay: View {
     private var greetingCompactContent: some View {
         let presentation = IslandGreetingSequence.presentation(for: greetingPhase)
         return Text(content.title)
-            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .font(.system(size: 16, weight: .semibold, design: .rounded))
             .foregroundStyle(compactForegroundColor.opacity(0.9))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
@@ -464,7 +505,7 @@ private struct IslandPreviewContentOverlay: View {
             .accessibilityLabel("Greeting")
     }
 
-    private func runMockLoginCommand() {
+    private func requestLogin() {
         onLoginRequested?()
     }
 
@@ -487,7 +528,11 @@ private struct IslandPreviewContentOverlay: View {
             Group {
                 if content.kind == .updateDownloadActivity {
                     Text(content.badge)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(
+                            size: IslandUpdateDownloadLayout.percentageFontSize,
+                            weight: .bold,
+                            design: .rounded
+                        ))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -495,11 +540,15 @@ private struct IslandPreviewContentOverlay: View {
                         .accessibilityLabel("Update download \(content.badge)")
                 } else if let music = content.music {
                     MusicWaveformMark(
-                        tint: compactForegroundColor,
+                        colors: musicThemeColors,
                         isPlaying: music.isPlaying,
+                        usesMockWaveform: music.sourceName == "Mock",
                         count: 4,
                         displayScale: snapshot.metrics.scale,
-                        reduceMotion: reduceMotion
+                        barThickness: 2,
+                        amplitudeScale: 1,
+                        reduceMotion: reduceMotion,
+                        waveformModel: waveformModel
                     )
                     .frame(
                         width: IslandActivityContentWidthProfile.waveformWidth,
@@ -580,8 +629,12 @@ private struct IslandPreviewContentOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(
             IslandExpandedContentClipShape(
-                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo ? 0 : expandedInnerCornerRadius,
-                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo ? 0 : expandedInnerCornerRadius
+                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedMusic
+                    ? 0
+                    : expandedInnerCornerRadius,
+                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedMusic
+                    ? 0
+                    : expandedInnerCornerRadius
             )
         )
         .padding(.top, max(expandedContentTopInset, 0))
@@ -604,18 +657,23 @@ private struct IslandPreviewContentOverlay: View {
                 Spacer(minLength: 12)
 
                 MusicWaveformMark(
-                    tint: tintColor,
+                    colors: musicThemeColors,
                     isPlaying: effectiveMusicIsPlaying,
+                    usesMockWaveform: content.music?.sourceName == "Mock",
                     count: 5,
                     displayScale: snapshot.metrics.scale,
-                    reduceMotion: reduceMotion
+                    barThickness: 2.3,
+                    amplitudeScale: 1,
+                    reduceMotion: reduceMotion,
+                    waveformModel: waveformModel
                 )
-                .frame(width: 34, height: 26)
+                .frame(width: 34, height: 21)
             }
 
             progressRow
 
             musicTransportControls
+                .offset(y: -3)
         }
     }
 
@@ -624,12 +682,17 @@ private struct IslandPreviewContentOverlay: View {
         if content.kind == .updatePrompt {
             updatePromptContent
         } else if content.kind == .loginRequired {
-            Text("需要登录")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .accessibilityLabel("需要登录")
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            promptCapsuleButton(
+                title: "登陆",
+                accessibilityLabel: "登陆",
+                baseColorHex: IslandUpdatePromptLayout.updateColorHex,
+                hoverColorHex: IslandUpdatePromptLayout.updateHoverColorHex,
+                width: nil,
+                isHovered: $isLoginButtonHovered,
+                action: requestLogin
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .contentShape(Rectangle())
         } else if content.kind == .expandedReview, let review = content.review {
             IslandExpandedReviewContent(
                 review: review,
@@ -650,59 +713,70 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private var updatePromptContent: some View {
-        VStack(spacing: 12) {
-            VStack(spacing: 4) {
-                Text(content.eyebrow.uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(memoryFlowHex: "#0A84FF"))
-                Text(content.title)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                Text(content.subtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.62))
-                    .lineLimit(1)
-            }
-
-            HStack(spacing: IslandUpdatePromptLayout.actionSpacing) {
-                updatePromptButton(
-                    title: "Later",
-                    accessibilityLabel: "Install update later",
-                    color: Color(memoryFlowHex: IslandUpdatePromptLayout.laterColorHex),
-                    action: { onUpdateLaterRequested?() }
-                )
-                updatePromptButton(
-                    title: "Update",
-                    accessibilityLabel: "Update MemoryFlow",
-                    color: Color(memoryFlowHex: IslandUpdatePromptLayout.updateColorHex),
-                    action: { onUpdateRequested?() }
-                )
-            }
+        HStack(spacing: IslandUpdatePromptLayout.actionSpacing) {
+            promptCapsuleButton(
+                title: "稍后",
+                accessibilityLabel: "稍后更新 MemoryFlow",
+                baseColorHex: IslandUpdatePromptLayout.laterColorHex,
+                hoverColorHex: IslandUpdatePromptLayout.laterHoverColorHex,
+                width: IslandUpdatePromptLayout.actionWidth,
+                height: IslandUpdatePromptLayout.actionHeight,
+                fontSize: IslandUpdatePromptLayout.actionFontSize,
+                horizontalPadding: IslandUpdatePromptLayout.actionHorizontalPadding,
+                isHovered: $isUpdateLaterButtonHovered,
+                action: { onUpdateLaterRequested?() }
+            )
+            promptCapsuleButton(
+                title: "更新",
+                accessibilityLabel: "更新 MemoryFlow",
+                baseColorHex: IslandUpdatePromptLayout.updateColorHex,
+                hoverColorHex: IslandUpdatePromptLayout.updateHoverColorHex,
+                width: IslandUpdatePromptLayout.actionWidth,
+                height: IslandUpdatePromptLayout.actionHeight,
+                fontSize: IslandUpdatePromptLayout.actionFontSize,
+                horizontalPadding: IslandUpdatePromptLayout.actionHorizontalPadding,
+                isHovered: $isUpdateButtonHovered,
+                action: { onUpdateRequested?() }
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
-    private func updatePromptButton(
+    private func promptCapsuleButton(
         title: String,
         accessibilityLabel: String,
-        color: Color,
+        baseColorHex: String,
+        hoverColorHex: String,
+        width: CGFloat?,
+        height: CGFloat = 26,
+        fontSize: CGFloat = 14,
+        horizontalPadding: CGFloat = 14,
+        isHovered: Binding<Bool>,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(.system(size: fontSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-                .frame(
-                    width: IslandUpdatePromptLayout.actionWidth,
-                    height: IslandUpdatePromptLayout.actionHeight
+                .lineLimit(1)
+                .padding(.horizontal, horizontalPadding)
+                .frame(width: width, height: height)
+                .background(
+                    Capsule().fill(
+                        Color(memoryFlowHex: isHovered.wrappedValue ? hoverColorHex : baseColorHex)
+                    )
                 )
-                .background(Capsule().fill(color))
                 .contentShape(Capsule())
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovered.wrappedValue)
         }
         .buttonStyle(.plain)
         .focusable(true)
+        .onHover { nextValue in
+            guard isHovered.wrappedValue != nextValue else { return }
+            DispatchQueue.main.async {
+                isHovered.wrappedValue = nextValue
+            }
+        }
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -738,29 +812,49 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private var progressRow: some View {
-        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
+        TimelineView(.animation(
+            minimumInterval: IslandMusicWaveform.minimumFrameInterval,
+            paused: !effectiveMusicIsPlaying || reduceMotion
+        )) { timeline in
             let elapsed = musicClock.elapsed(at: timeline.date)
-            let progress = musicProgress(for: elapsed)
-            let remaining = remainingSeconds(for: elapsed)
-            HStack(spacing: 10) {
-                Text(timeText(elapsed))
-                    .frame(width: 34, alignment: .leading)
+            let displayedElapsed = seekPreviewSeconds ?? elapsed
+            let progress = musicProgress(for: displayedElapsed)
+            let remaining = remainingSeconds(for: displayedElapsed)
+            HStack(spacing: 2) {
+                Text(timeText(displayedElapsed))
+                    .frame(width: 46, alignment: .leading)
 
-                GeometryReader { geometry in
+                GeometryReader { _ in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color(memoryFlowHex: "#222222"))
-                        Capsule()
+                        Rectangle()
                             .fill(Color(memoryFlowHex: "#747376"))
-                            .frame(width: geometry.size.width * progress)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .scaleEffect(x: progress, y: 1, anchor: .leading)
+
+                        MusicProgressScrubbingView(
+                            onBegan: {
+                                onMusicSeekInteractionStarted?()
+                            },
+                            onChanged: { normalizedProgress in
+                                seekPreviewSeconds = seekTarget(progress: normalizedProgress)
+                            },
+                            onEnded: { normalizedProgress in
+                                let target = seekTarget(progress: normalizedProgress)
+                                seekPreviewSeconds = target
+                                registerMusicSeek(target)
+                            }
+                        )
                     }
-                    .animation(.easeInOut(duration: 0.22), value: progress)
+                    .clipShape(Capsule())
                 }
                 .frame(height: 6)
 
                 Text("-\(timeText(remaining))")
-                    .frame(width: 38, alignment: .trailing)
+                    .frame(width: 54, alignment: .trailing)
             }
-            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .font(.system(size: 18, weight: .semibold, design: .rounded))
+            .monospacedDigit()
             .foregroundStyle(.white.opacity(0.42))
             .lineLimit(1)
             .minimumScaleFactor(0.72)
@@ -768,62 +862,57 @@ private struct IslandPreviewContentOverlay: View {
     }
 
     private var musicTransportControls: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 28) {
             MusicTransportButton(
                 symbol: isFavorite ? "star.fill" : "star",
-                size: 20,
+                size: 19,
                 tint: .white.opacity(0.46),
                 label: "Favorite mock track"
             ) {
                 isFavorite.toggle()
-                registerMusicControlInteraction()
             }
-
-            Spacer(minLength: 0)
 
             MusicTransportButton(
                 symbol: "backward.fill",
-                size: 24,
+                size: 20.4,
                 tint: .white,
-                label: "Previous mock track",
-                action: registerMusicControlInteraction
-            )
-
-            Spacer(minLength: 0)
+                label: "Previous track"
+            ) {
+                registerMusicCommand(.previous)
+            }
 
             MusicTransportButton(
                 symbol: effectiveMusicIsPlaying ? "pause.fill" : "play.fill",
-                size: 34,
+                size: 28.9,
                 tint: .white,
-                label: effectiveMusicIsPlaying ? "Pause mock track" : "Play mock track"
+                label: effectiveMusicIsPlaying ? "Pause track" : "Play track"
             ) {
-                playbackOverride = !effectiveMusicIsPlaying
-                resetMusicPresentation(for: content.music, clearsPlaybackOverride: false)
-                registerMusicControlInteraction()
+                let nextIsPlaying = !effectiveMusicIsPlaying
+                musicClock.setPlaying(nextIsPlaying, at: .now)
+                playbackOverride = nextIsPlaying
+                registerMusicCommand(.playPause)
             }
-
-            Spacer(minLength: 0)
 
             MusicTransportButton(
                 symbol: "forward.fill",
-                size: 24,
+                size: 20.4,
                 tint: .white,
-                label: "Next mock track",
-                action: registerMusicControlInteraction
-            )
-
-            Spacer(minLength: 0)
+                label: "Next track"
+            ) {
+                registerMusicCommand(.next)
+            }
 
             MusicTransportButton(
                 symbol: "laptopcomputer",
-                size: 20,
+                size: 19,
                 tint: .white.opacity(0.42),
-                label: "Mock playback device",
-                action: registerMusicControlInteraction
+                label: content.music?.sourceName ?? "Playback device",
+                action: {}
             )
         }
         .padding(.horizontal, 6)
         .frame(height: 34)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var appSummary: some View {
@@ -845,8 +934,7 @@ private struct IslandPreviewContentOverlay: View {
 
     private func artwork(size: CGFloat) -> some View {
         ZStack {
-            if let artworkData = content.music?.artworkData,
-               let image = NSImage(data: artworkData) {
+            if let image = decodedMusicArtwork {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
@@ -877,13 +965,16 @@ private struct IslandPreviewContentOverlay: View {
         isExpanded: Bool
     ) -> some View {
         ZStack {
-            if let artworkData = content.music?.artworkData,
-               let image = NSImage(data: artworkData) {
+            if let image = decodedMusicArtwork {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
             } else {
-                MusicArtworkMask(radius: presentation.radius, smoothness: presentation.smoothness)
+                MusicArtworkMask(
+                    radius: presentation.radius,
+                    smoothness: presentation.smoothness,
+                    usesBulgedCorners: isExpanded
+                )
                     .fill(
                         LinearGradient(
                             colors: [tintColor.opacity(0.92), Color.white.opacity(0.18)],
@@ -898,7 +989,11 @@ private struct IslandPreviewContentOverlay: View {
             }
         }
         .frame(width: presentation.width, height: presentation.height)
-        .clipShape(MusicArtworkMask(radius: presentation.radius, smoothness: presentation.smoothness))
+        .clipShape(MusicArtworkMask(
+            radius: presentation.radius,
+            smoothness: presentation.smoothness,
+            usesBulgedCorners: isExpanded
+        ))
         .modifier(MusicArtworkMotionModifier(
             namespace: musicArtworkNamespace,
             isExpanded: isExpanded,
@@ -916,7 +1011,7 @@ private struct IslandPreviewContentOverlay: View {
         spacing: CGFloat
     ) -> some View {
         HStack(
-            alignment: .center,
+            alignment: isExpanded ? .bottom : .center,
             spacing: isExpanded ? 14 : IslandActivityContentWidthProfile.identitySpacing
         ) {
             musicArtwork(presentation: presentation, isExpanded: isExpanded)
@@ -970,9 +1065,38 @@ private struct IslandPreviewContentOverlay: View {
         musicClock.reset(for: music, isPlaying: effectiveMusicIsPlaying, at: .now)
     }
 
-    private func registerMusicControlInteraction() {
-        // Preview-only controls never dispatch a real media command.
-        onMusicControlInteraction?()
+    private func isPlaybackStateOnlyChange(
+        from previous: IslandMockMusicActivity?,
+        to next: IslandMockMusicActivity?
+    ) -> Bool {
+        guard let previous, let next else { return false }
+        return previous.trackTitle == next.trackTitle &&
+            previous.artistName == next.artistName &&
+            previous.isPlaying != next.isPlaying
+    }
+
+    private func decodeMusicArtwork(_ artworkData: Data?) {
+        guard let artworkData else {
+            decodedMusicArtwork = nil
+            return
+        }
+        decodedMusicArtwork = NSImage(data: artworkData)
+    }
+
+    private func registerMusicCommand(_ command: MusicCommand) {
+        onMusicCommand?(command)
+    }
+
+    private func registerMusicSeek(_ position: TimeInterval) {
+        onMusicSeek?(position)
+    }
+
+    private func seekTarget(progress: CGFloat) -> TimeInterval {
+        guard let duration = content.music?.durationSeconds,
+              duration > 0 else {
+            return content.music?.elapsedSeconds ?? 0
+        }
+        return duration * TimeInterval(min(max(progress, 0), 1))
     }
 
     private func musicProgress(for elapsed: TimeInterval?) -> CGFloat {
@@ -996,6 +1120,11 @@ private struct IslandPreviewContentOverlay: View {
         guard let seconds else { return "--:--" }
         let totalSeconds = max(0, Int(seconds.rounded()))
         return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+
+    private var musicThemeColors: [Color] {
+        let hexColors = content.music?.themePalette.colorsHex ?? [MusicThemePalette.fallbackHex]
+        return hexColors.map { Color(memoryFlowHex: $0) }
     }
 }
 
@@ -1031,6 +1160,7 @@ private struct MusicTransportButtonStyle: ButtonStyle {
 private struct MusicArtworkMask: Shape {
     var radius: CGFloat
     var smoothness: CGFloat
+    let usesBulgedCorners: Bool
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(radius, smoothness) }
@@ -1042,6 +1172,10 @@ private struct MusicArtworkMask: Shape {
 
     func path(in rect: CGRect) -> Path {
         let corner = min(max(radius, 0), min(rect.width, rect.height) / 2)
+        if usesBulgedCorners {
+            return puffyPath(in: rect)
+        }
+
         // A lower exponent draws a slightly rounder continuous corner while
         // retaining the token radius as the physical corner extent.
         let control = corner * (0.552_284_75 / max(smoothness, 0.01))
@@ -1073,6 +1207,43 @@ private struct MusicArtworkMask: Shape {
         )
         path.closeSubpath()
         return path
+    }
+
+    private func puffyPath(in rect: CGRect) -> Path {
+        let steps = 72
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let halfWidth = rect.width / 2
+        let halfHeight = rect.height / 2
+        let minimumSide = min(rect.width, rect.height)
+        let normalizedRadius = min(max(radius / max(minimumSide, 0.001), 0.1), 0.34)
+        let superellipseN = min(
+            max(3.9 + normalizedRadius * 8.5 + (2.4 - smoothness) * 2.2, 3.8),
+            7.2
+        )
+        let exponent = 2 / superellipseN
+
+        var path = Path()
+        for index in 0...steps {
+            let angle = (-CGFloat.pi / 2) + (2 * CGFloat.pi * CGFloat(index) / CGFloat(steps))
+            let cosine = cos(angle)
+            let sine = sin(angle)
+            let point = CGPoint(
+                x: center.x + halfWidth * signedPower(cosine, exponent: exponent),
+                y: center.y + halfHeight * signedPower(sine, exponent: exponent)
+            )
+            if index == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func signedPower(_ value: CGFloat, exponent: CGFloat) -> CGFloat {
+        guard abs(value) > 0.000_001 else { return 0 }
+        return (value < 0 ? -1 : 1) * pow(abs(value), exponent)
     }
 }
 
@@ -2101,6 +2272,59 @@ enum IslandExpandedTodoContentProbeError: Error {
     case invalidLayout([IslandExpandedTodoContentProbeRow])
 }
 
+private struct MusicProgressScrubbingView: NSViewRepresentable {
+    let onBegan: () -> Void
+    let onChanged: (CGFloat) -> Void
+    let onEnded: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> MusicProgressScrubbingNSView {
+        let view = MusicProgressScrubbingNSView()
+        updateNSView(view, context: context)
+        return view
+    }
+
+    func updateNSView(_ nsView: MusicProgressScrubbingNSView, context: Context) {
+        nsView.onBegan = onBegan
+        nsView.onChanged = onChanged
+        nsView.onEnded = onEnded
+    }
+}
+
+private final class MusicProgressScrubbingNSView: NSView {
+    var onBegan: () -> Void = {}
+    var onChanged: (CGFloat) -> Void = { _ in }
+    var onEnded: (CGFloat) -> Void = { _ in }
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .resizeLeftRight)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onBegan()
+        onChanged(normalizedProgress(for: event))
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        onChanged(normalizedProgress(for: event))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        onEnded(normalizedProgress(for: event))
+    }
+
+    private func normalizedProgress(for event: NSEvent) -> CGFloat {
+        guard bounds.width > 0 else { return 0 }
+        let point = convert(event.locationInWindow, from: nil)
+        return min(max(point.x / bounds.width, 0), 1)
+    }
+}
+
 private struct UpdateDownloadIndicator: View {
     let reduceMotion: Bool
 
@@ -2140,35 +2364,79 @@ private struct UpdateDownloadIndicator: View {
 }
 
 private struct MusicWaveformMark: View {
-    let tint: Color
+    let colors: [Color]
     let isPlaying: Bool
+    let usesMockWaveform: Bool
     let count: Int
     let displayScale: CGFloat
+    let barThickness: CGFloat
+    let amplitudeScale: CGFloat
     let reduceMotion: Bool
+    @ObservedObject var waveformModel: MusicWaveformModel
 
     var body: some View {
-        // TimelineView only re-evaluates this mark. The shell and panel keep their
-        // existing presentation values while music animates.
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !isPlaying || reduceMotion)) { timeline in
-            HStack(alignment: .center, spacing: 2) {
-                ForEach(0..<count, id: \.self) { index in
-                    Capsule()
-                        .fill(tint.opacity(isPlaying ? 0.95 : 0.42))
-                        .frame(
-                            width: 3 * displayScale,
-                            height: IslandMusicWaveform.height(
-                                at: timeline.date.timeIntervalSinceReferenceDate,
-                                barIndex: index,
-                                displayScale: displayScale,
-                                isPlaying: isPlaying && !reduceMotion
-                            )
+        TimelineView(.animation(
+            minimumInterval: IslandMusicWaveform.minimumFrameInterval,
+            paused: !isPlaying || reduceMotion
+        )) { timeline in
+            Canvas(opaque: false, colorMode: .linear, rendersAsynchronously: true) { context, size in
+                let barWidth = barThickness * displayScale
+                let spacing: CGFloat = 2
+                let totalWidth = (barWidth * CGFloat(count)) + (spacing * CGFloat(max(count - 1, 0)))
+                let startX = max((size.width - totalWidth) / 2, 0)
+                let opacity = isPlaying ? 0.95 : 0.42
+                let colors = gradientColors.map { $0.opacity(opacity) }
+
+                for index in 0..<count {
+                    let restingHeight = IslandMusicWaveform.pattern[0] * displayScale
+                    let rawHeight: CGFloat
+                    if usesMockWaveform {
+                        rawHeight = IslandMusicWaveform.height(
+                            at: timeline.date.timeIntervalSinceReferenceDate,
+                            barIndex: index,
+                            displayScale: displayScale,
+                            isPlaying: isPlaying && !reduceMotion
                         )
+                    } else {
+                        let sourceLevel = reduceMotion || !isPlaying
+                            ? 0
+                            : waveformModel.frame.level(forBar: index, barCount: count)
+                        let level = IslandMusicWaveform.liveLevel(
+                            sourceLevel,
+                            barIndex: index,
+                            barCount: count
+                        )
+                        rawHeight = restingHeight + ((size.height - restingHeight) * CGFloat(level))
+                    }
+                    let compressedHeight = restingHeight + (rawHeight - restingHeight) * amplitudeScale
+                    let height = min(compressedHeight, size.height)
+                    let rect = CGRect(
+                        x: startX + CGFloat(index) * (barWidth + spacing),
+                        y: (size.height - height) / 2,
+                        width: barWidth,
+                        height: height
+                    )
+                    let path = Path(roundedRect: rect, cornerRadius: barWidth / 2)
+                    context.fill(
+                        path,
+                        with: .linearGradient(
+                            Gradient(colors: colors),
+                            startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                            endPoint: CGPoint(x: rect.midX, y: rect.maxY)
+                        )
+                    )
                 }
             }
-            .animation(.easeOut(duration: IslandMusicWaveform.pausedSettleDuration), value: isPlaying)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(isPlaying ? "Music playing" : "Music paused")
+    }
+
+    private var gradientColors: [Color] {
+        guard let first = colors.first else {
+            return [Color(memoryFlowHex: MusicThemePalette.fallbackHex)]
+        }
+        return colors.count == 1 ? [first, first] : colors
     }
 }
 

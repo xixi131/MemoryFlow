@@ -64,16 +64,18 @@ final class AuthCoordinator: AuthCoordinating {
     }
 
     func restoreAndVerifySession() async throws -> AuthenticatedUser? {
-        guard try sessionStore.load() != nil else {
-            await publishLoggedOut()
+        guard let session = try sessionStore.load() else {
+            await publishLoggedOutIfSessionMatches(nil)
             return nil
         }
         do {
             return try await verifyCurrentSession()
         } catch {
             if APIClient.isAuthenticationFailure(error) {
-                try? sessionStore.clear()
-                await publishLoggedOut()
+                if (try? sessionStore.load()) == session {
+                    try? sessionStore.clear()
+                }
+                await publishLoggedOutIfSessionMatches(nil)
                 return nil
             }
             throw error
@@ -95,6 +97,14 @@ final class AuthCoordinator: AuthCoordinating {
 
     private func publishLoggedOut() async {
         await MainActor.run {
+            onUserChanged(nil)
+            onAuthStateChanged(.loggedOut)
+        }
+    }
+
+    private func publishLoggedOutIfSessionMatches(_ expectedSession: AuthSession?) async {
+        await MainActor.run {
+            guard (try? sessionStore.load()) == expectedSession else { return }
             onUserChanged(nil)
             onAuthStateChanged(.loggedOut)
         }

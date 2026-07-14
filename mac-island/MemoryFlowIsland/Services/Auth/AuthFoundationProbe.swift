@@ -40,6 +40,28 @@ enum AuthFoundationProbe {
         try store.clear()
         guard try store.load() == nil else { throw AuthSessionStoreError.decoding }
     }
+
+    static func runApplicationSupportStoreProbe() throws {
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("memoryflow-auth-store-\(UUID().uuidString)", isDirectory: true)
+        let fileURL = directoryURL.appendingPathComponent("session.json")
+        defer { try? FileManager.default.removeItem(at: directoryURL) }
+
+        let store = ApplicationSupportAuthSessionStore(fileURL: fileURL)
+        let session = AuthSession(
+            accessToken: "file-access",
+            refreshToken: "file-refresh",
+            expiresAt: Date(timeIntervalSince1970: 2_000_000_000)
+        )
+        try store.save(session)
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        guard try store.load() == session,
+              (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600 else {
+            throw AuthSessionStoreError.decoding
+        }
+        try store.clear()
+        guard try store.load() == nil else { throw AuthSessionStoreError.decoding }
+    }
 }
 private final class ProbeURLSession: URLSessioning {
     private(set) var lastRequest: URLRequest?

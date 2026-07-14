@@ -109,6 +109,7 @@ struct IslandMockMusicActivity: Codable, Equatable {
     var artworkData: Data?
     var artworkPlaceholder: String
     var themeColorHex: String
+    var themePalette: MusicThemePalette
     var sourceName: String?
     var playbackStatus: IslandMockMusicPlaybackStatus
 
@@ -126,6 +127,7 @@ struct IslandMockMusicActivity: Codable, Equatable {
         artworkData: nil,
         artworkPlaceholder: "music.artwork.placeholder",
         themeColorHex: "#22d3ee",
+        themePalette: .fallback,
         sourceName: "Mock",
         playbackStatus: .playing
     )
@@ -139,6 +141,7 @@ struct IslandMockMusicActivity: Codable, Equatable {
         artworkData: Data? = nil,
         artworkPlaceholder: String = "music.artwork.placeholder",
         themeColorHex: String = "#22d3ee",
+        themePalette: MusicThemePalette? = nil,
         sourceName: String? = nil,
         playbackStatus: IslandMockMusicPlaybackStatus? = nil
     ) {
@@ -150,6 +153,7 @@ struct IslandMockMusicActivity: Codable, Equatable {
         self.artworkData = artworkData
         self.artworkPlaceholder = artworkPlaceholder
         self.themeColorHex = themeColorHex
+        self.themePalette = themePalette ?? MusicThemePalette(colorsHex: [themeColorHex])
         self.sourceName = sourceName
         self.playbackStatus = playbackStatus ?? (isPlaying ? .playing : .paused)
     }
@@ -163,6 +167,7 @@ struct IslandMockMusicActivity: Codable, Equatable {
         self.artworkData = snapshot.artworkData
         self.artworkPlaceholder = "music.artwork.placeholder"
         self.themeColorHex = snapshot.themeColorHex
+        self.themePalette = snapshot.themePalette
         self.sourceName = snapshot.source
         self.playbackStatus = snapshot.isPlaying ? .playing : .paused
     }

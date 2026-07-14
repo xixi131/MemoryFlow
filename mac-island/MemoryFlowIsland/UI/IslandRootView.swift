@@ -54,17 +54,24 @@ struct IslandRenderPresentation {
 @MainActor
 final class IslandRenderModel: ObservableObject {
     @Published var presentation: IslandRenderPresentation
+    let waveformModel: MusicWaveformModel
 
     var onAdvancePreviewState: (() -> Void)?
     var onGreetingLifecycleCompleted: (() -> Void)?
-    var onMusicControlInteraction: (() -> Void)?
+    var onMusicCommand: ((MusicCommand) -> Void)?
+    var onMusicSeek: ((TimeInterval) -> Void)?
+    var onMusicSeekInteractionStarted: (() -> Void)?
     var onTodoTaskInteraction: ((String) -> Void)?
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
 
-    init(presentation: IslandRenderPresentation) {
+    init(
+        presentation: IslandRenderPresentation,
+        waveformModel: MusicWaveformModel = MusicWaveformModel()
+    ) {
         self.presentation = presentation
+        self.waveformModel = waveformModel
     }
 }
 
@@ -89,9 +96,12 @@ struct IslandRootView: View {
             presentationShadowAppearance: presentation.shadowAppearance,
             presentationShadowOutsets: presentation.shadowOutsets,
             contentPresentation: presentation.contentPresentation,
+            waveformModel: model.waveformModel,
             onAdvanceState: model.onAdvancePreviewState,
             onGreetingLifecycleCompleted: model.onGreetingLifecycleCompleted,
-            onMusicControlInteraction: model.onMusicControlInteraction,
+            onMusicCommand: model.onMusicCommand,
+            onMusicSeek: model.onMusicSeek,
+            onMusicSeekInteractionStarted: model.onMusicSeekInteractionStarted,
             onTodoTaskInteraction: model.onTodoTaskInteraction,
             onLoginRequested: model.onLoginRequested,
             onUpdateRequested: model.onUpdateRequested,

@@ -54,6 +54,8 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Basic and Advanced capability boundaries are incorrect")
         }
 
+        try validateBundledUpdateConfiguration()
+
         try validateLoginRequiredPresentation()
         try validateUpdatePromptPresentation()
         try validateUpdateDownloadPresentation()
@@ -93,7 +95,19 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Status menu removal changed an unrelated command: \(titles)")
         }
 
-        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=square+notch-safe+spring+reverse+reduce-motion; update-prompt=pure+square+notch-safe+capsules+colors+focus+outside-safe+music-return; update-download=pure+priority+left-blue-spinner+right-stable-percent+empty-notch+reduce-motion+restore; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=compact-expanded+notch-safe+spring+reverse+reduce-motion; update-prompt=login-shape+modal+capsules+colors+focus+outside-safe+music-underlay; update-download=pure+priority+left-blue-spinner+right-stable-percent+empty-notch+reduce-motion+restore; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+    }
+
+    private static func validateBundledUpdateConfiguration() throws {
+        guard let feedText = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
+              let feedURL = URL(string: feedText),
+              feedURL.scheme == "https",
+              feedURL.host == "github.com",
+              feedURL.path == "/xixi131/MemoryFlow/releases/latest/download/appcast.xml",
+              let publicKey = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
+              Data(base64Encoded: publicKey)?.count == 32 else {
+            throw SettingsAndMenuProbeError.failed("Bundled Sparkle feed URL or EdDSA public key is not production-ready")
+        }
     }
 
     private static func validateLoginRequiredPresentation() throws {
@@ -156,19 +170,34 @@ enum SettingsAndMenuProbe {
             let result = IslandWindowSizingEngine.resolve(
                 state: .loginRequired,
                 attachmentMetrics: attachment,
-                widthConstraints: IslandLoginRequiredLayout.constraints(for: attachment)
+                widthConstraints: IslandLoginRequiredLayout.loginConstraints(for: attachment)
             )
-            guard result.visibleFrame.width == result.visibleFrame.height,
+            let hoverBodyWidth = attachment.notchAlignedBodyWidth(for: .hoverCollapsed)
+                ?? (IslandVisualTokens.compactPreviewWidth * attachment.horizontalVisualScale)
+            let hoverResult = IslandWindowSizingEngine.resolve(
+                state: .hoverCollapsed,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandWidthConstraints(
+                    baseBodyWidth: hoverBodyWidth,
+                    maximumVisibleWidth: attachment.availableTopWidth,
+                    contentWidthRequirement: .none
+                )
+            )
+            let expectedHeight = IslandVisualTokens.compact.height * attachment.visualScale * 2
+            guard result.visibleFrame.width == hoverResult.visibleFrame.width,
+                  result.visibleFrame.height == expectedHeight,
                   result.visibleFrame.midX == attachment.centerX,
                   result.visibleFrame.maxY == attachment.topBandFrame.maxY,
                   attachment.expandedContentTopInset >= attachment.notchFrame!.height else {
-                throw SettingsAndMenuProbeError.failed("Login Required square or notch anchor failed at width \(availableWidth): frame=\(result.visibleFrame), center=\(attachment.centerX), top=\(attachment.topBandFrame.maxY)")
+                throw SettingsAndMenuProbeError.failed("Login Required width preservation or notch anchor failed at width \(availableWidth): hover=\(hoverResult.visibleFrame), login=\(result.visibleFrame), center=\(attachment.centerX), top=\(attachment.topBandFrame.maxY)")
             }
         }
     }
 
     private static func validateUpdatePromptPresentation() throws {
         let prompt = IslandUpdatePrompt(version: "1.0.1", build: "101")
+        let updateShadowOutsets = IslandVisualTokens.shadow.outsets(for: .updatePrompt, visualScale: 1)
+        let loginShadowOutsets = IslandVisualTokens.shadow.outsets(for: .loginRequired, visualScale: 1)
         let login = IslandPresentationReducer.reduce(
             current: .loggedOutCompact,
             intent: .loginRequiredRequested
@@ -185,6 +214,10 @@ enum SettingsAndMenuProbe {
             current: opened.state,
             intent: .outsideCollapse
         )
+        let tapped = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .tap
+        )
         let later = IslandPresentationReducer.reduce(
             current: opened.state,
             intent: .updatePromptLaterRequested
@@ -196,6 +229,10 @@ enum SettingsAndMenuProbe {
         let musicReturn = IslandPresentationReducer.reduce(
             current: music.state,
             intent: .musicStopped
+        )
+        let laterAfterMusic = IslandPresentationReducer.reduce(
+            current: music.state,
+            intent: .updatePromptLaterRequested
         )
         let promptOverMusic = IslandPresentationReducer.reduce(
             current: .expandedMusic,
@@ -212,15 +249,42 @@ enum SettingsAndMenuProbe {
               repeated.reason == .noChange,
               outside.reason == .intentIgnored,
               outside.derivedState.visualState == .updatePrompt,
-              later.derivedState.visualState == .loginRequired,
-              music.derivedState.visualState == .activityCollapsed,
+              tapped.reason == .intentIgnored,
+              tapped.derivedState.visualState == .updatePrompt,
+              later.derivedState.visualState == .compactCollapsed,
+              later.state.presentationState == .collapsed,
+              later.state.isLoginRequiredPresented == false,
+              music.derivedState.visualState == .updatePrompt,
               musicReturn.derivedState.visualState == .updatePrompt,
-              laterToMusic.derivedState.visualState == .expandedMusic,
+              laterAfterMusic.derivedState.visualState == .activityCollapsed,
+              laterToMusic.derivedState.visualState == .activityCollapsed,
+              IslandTransitionKind.resolve(
+                previous: opened.derivedState,
+                next: later.derivedState,
+                reason: later.reason
+              ) == .expandedToCompact,
+              IslandTransitionKind.resolve(
+                previous: promptOverMusic.derivedState,
+                next: laterToMusic.derivedState,
+                reason: laterToMusic.reason
+              ) == .expandedToActivity,
+              IslandVisualState.updatePrompt.tokenSet == .compactExpanded,
               IslandUpdatePromptLayout.updateColorHex == "#0A84FF",
               IslandUpdatePromptLayout.laterColorHex == "#636366",
-              IslandUpdatePromptLayout.actionWidth >= 82,
-              IslandUpdatePromptLayout.actionHeight >= 34,
-              IslandUpdatePromptLayout.actionSpacing > 0,
+              IslandUpdatePromptLayout.actionWidth == 66,
+              IslandUpdatePromptLayout.actionHeight == 22,
+              IslandUpdatePromptLayout.actionFontSize == 12,
+              IslandUpdatePromptLayout.actionSpacing == 8,
+              updateShadowOutsets.horizontal == loginShadowOutsets.horizontal,
+              updateShadowOutsets.bottom == loginShadowOutsets.bottom,
+              IslandVisualTokens.shadow.appearance(for: .updatePrompt, visualScale: 1)
+                == IslandVisualTokens.shadow.appearance(for: .loginRequired, visualScale: 1),
+              String(
+                  format: AppCopy.text(.versionAvailable, language: .simplifiedChinese),
+                  prompt.version,
+                  prompt.build
+              ).contains(prompt.build),
+              AppCopy.text(.update, language: .simplifiedChinese) == "更新",
               IslandTransitionKind.resolve(
                 previous: IslandDerivedState.derive(from: .loggedOutCompact),
                 next: opened.derivedState,
@@ -244,15 +308,20 @@ enum SettingsAndMenuProbe {
             let result = IslandWindowSizingEngine.resolve(
                 state: .updatePrompt,
                 attachmentMetrics: attachment,
-                widthConstraints: IslandLoginRequiredLayout.constraints(for: attachment)
+                widthConstraints: IslandLoginRequiredLayout.loginConstraints(for: attachment)
+            )
+            let loginResult = IslandWindowSizingEngine.resolve(
+                state: .loginRequired,
+                attachmentMetrics: attachment,
+                widthConstraints: IslandLoginRequiredLayout.loginConstraints(for: attachment)
             )
             let actionsWidth = IslandUpdatePromptLayout.actionWidth * 2 + IslandUpdatePromptLayout.actionSpacing
-            guard result.visibleFrame.width == result.visibleFrame.height,
+            guard result.visibleFrame == loginResult.visibleFrame,
                   result.visibleFrame.midX == attachment.centerX,
                   result.visibleFrame.maxY == attachment.topBandFrame.maxY,
                   attachment.expandedContentTopInset >= attachment.notchFrame!.height,
                   actionsWidth < result.visibleFrame.width else {
-                throw SettingsAndMenuProbeError.failed("Update prompt square, notch, or hit regions failed at width \(availableWidth)")
+                throw SettingsAndMenuProbeError.failed("Update prompt login-shape reuse, notch, or hit regions failed at width \(availableWidth)")
             }
         }
     }
@@ -306,19 +375,20 @@ enum SettingsAndMenuProbe {
             intent: .updateDownloadEnded
         )
 
-        guard requested.derivedState.visualState == .loginRequired,
+        guard requested.derivedState.visualState == .compactCollapsed,
               started.derivedState.visualState == .activityCollapsed,
               started.derivedState.previewContent.kind == .updateDownloadActivity,
               started.derivedState.previewContent.badge == "--%",
               progressed.derivedState.previewContent.badge == "42%",
               repeated.reason == .noChange,
-              ended.derivedState.visualState == .loginRequired,
+              ended.derivedState.visualState == .compactCollapsed,
               downloadingMusic.derivedState.visualState == .activityCollapsed,
-              restoredMusic.derivedState.visualState == .expandedMusic,
+              restoredMusic.derivedState.visualState == .activityCollapsed,
               IslandUpdateDownloadLayout.indicatorColorHex == "#0A84FF",
               IslandUpdateDownloadLayout.indicatorSize >= 20,
               IslandUpdateDownloadLayout.percentageWidth >= 40,
-              IslandUpdateDownloadLayout.rotationDuration > 0,
+              IslandUpdateDownloadLayout.percentageFontSize == 10,
+              IslandUpdateDownloadLayout.rotationDuration == 1.5,
               IslandMotionTokens.reduceMotionDuration < IslandMotionTokens.profile(for: .expandedToActivity).shellKeyframes.duration else {
             throw SettingsAndMenuProbeError.failed("Update download priority, content, progress, motion, or restoration failed")
         }

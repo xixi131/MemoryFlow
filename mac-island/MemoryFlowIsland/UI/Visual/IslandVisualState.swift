@@ -42,7 +42,9 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .activity
         case .expandedMusic:
             return .expandedMusic
-        case .expandedApp, .loginRequired, .updatePrompt:
+        case .loginRequired, .updatePrompt:
+            return .compactExpanded
+        case .expandedApp:
             return .expandedApp
         }
     }

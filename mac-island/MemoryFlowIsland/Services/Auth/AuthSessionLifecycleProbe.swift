@@ -2,6 +2,7 @@ import Foundation
 
 struct AuthSessionLifecycleProbeResult: Equatable {
     let startupVerified: Bool
+    let staleLoggedOutSuppressed: Bool
     let concurrentRefreshCount: Int
     let failedRefreshClearedSession: Bool
     let offlineRestorePreservedSession: Bool
@@ -21,6 +22,25 @@ enum AuthSessionLifecycleProbe {
         let startupTransport = LifecycleProbeTransport(mode: .valid)
         let startupAuth = try makeAuth(store: startupStore, transport: startupTransport)
         let startupVerified = try await startupAuth.restoreAndVerifySession()?.email == "lifecycle@memoryflow.example"
+
+        let replacementStore = StartupReplacementSessionStore(replacementSession: validSession)
+        let replacementTransport = LifecycleProbeTransport(mode: .offline)
+        let replacementClient = try APIClient(
+            baseURL: URL(string: "https://api.memoryflow.example")!,
+            session: replacementTransport,
+            tokenProvider: replacementStore,
+            sessionStore: replacementStore
+        )
+        let replacementRecorder = LifecycleAuthStateRecorder()
+        let replacementAuth = AuthCoordinator(
+            apiClient: replacementClient,
+            sessionStore: replacementStore,
+            onAuthStateChanged: { state in replacementRecorder.states.append(state) }
+        )
+        _ = try await replacementAuth.restoreAndVerifySession()
+        let replacementSessionWasPreserved = try replacementStore.load() == validSession
+        let staleLoggedOutSuppressed = replacementRecorder.states.contains(.loggedOut) == false
+            && replacementSessionWasPreserved
 
         let refreshStore = InMemoryAuthSessionStore(session: validSession)
         let refreshTransport = LifecycleProbeTransport(mode: .requiresRefresh)
@@ -62,6 +82,7 @@ enum AuthSessionLifecycleProbe {
 
         return AuthSessionLifecycleProbeResult(
             startupVerified: startupVerified,
+            staleLoggedOutSuppressed: staleLoggedOutSuppressed,
             concurrentRefreshCount: refreshCount,
             failedRefreshClearedSession: failedRefreshCleared,
             offlineRestorePreservedSession: offlinePreserved,
@@ -82,6 +103,40 @@ enum AuthSessionLifecycleProbe {
             sessionStore: store
         )
         return AuthCoordinator(apiClient: client, sessionStore: store, lifecycleCleaner: hooks)
+    }
+}
+
+private final class LifecycleAuthStateRecorder {
+    var states: [AuthCoordinatorState] = []
+}
+
+private final class StartupReplacementSessionStore: AuthSessionStoring {
+    private let lock = NSLock()
+    private var session: AuthSession?
+    private var shouldSimulateInitialMiss = true
+    private let replacementSession: AuthSession
+
+    init(replacementSession: AuthSession) {
+        self.replacementSession = replacementSession
+    }
+
+    func load() throws -> AuthSession? {
+        lock.withLock {
+            if shouldSimulateInitialMiss {
+                shouldSimulateInitialMiss = false
+                session = replacementSession
+                return nil
+            }
+            return session
+        }
+    }
+
+    func save(_ session: AuthSession) throws {
+        lock.withLock { self.session = session }
+    }
+
+    func clear() throws {
+        lock.withLock { session = nil }
     }
 }
 

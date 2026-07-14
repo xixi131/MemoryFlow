@@ -41,6 +41,8 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>MemoryFlow Island needs access to Apple Music playback so the island can show the current song and control playback.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>MemoryFlow Island analyzes the current music app's audio to animate its live waveform.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>

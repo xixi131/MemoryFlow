@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 final class MediaRemoteMusicProvider: MusicEventProvider {
@@ -9,13 +10,25 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
         @escaping @convention(block) (CFDictionary?) -> Void
     ) -> Void
     private typealias SendCommandFunction = @convention(c) (Int32, CFDictionary?) -> Void
+    private typealias SetElapsedTimeFunction = @convention(c) (Double) -> Void
     private typealias RegisterForNowPlayingNotificationsFunction = @convention(c) (DispatchQueue) -> Void
+    private typealias GetNowPlayingApplicationPIDFunction = @convention(c) (
+        DispatchQueue,
+        @escaping @convention(block) (Int32) -> Void
+    ) -> Void
 
     private let callbackQueue = DispatchQueue(label: "com.memoryflow.island.mediaremote")
+    private let eventQueue = DispatchQueue(
+        label: "com.memoryflow.island.mediaremote-events",
+        qos: .userInitiated
+    )
+    private let stateLock = NSLock()
     private let fallbackProvider: MusicProvider?
     private let getNowPlayingInfo: GetNowPlayingInfoFunction?
     private let sendCommandFunction: SendCommandFunction?
+    private let setElapsedTimeFunction: SetElapsedTimeFunction?
     private let registerForNowPlayingNotifications: RegisterForNowPlayingNotificationsFunction?
+    private let getNowPlayingApplicationPID: GetNowPlayingApplicationPIDFunction?
     private var notificationObserver: NSObjectProtocol?
     private var distributedNotificationObservers: [NSObjectProtocol] = []
     private var lastSnapshot = MusicTrackSnapshot.stopped
@@ -37,6 +50,11 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
         } else {
             sendCommandFunction = nil
         }
+        if let symbol = handle.flatMap({ dlsym($0, "MRMediaRemoteSetElapsedTime") }) {
+            setElapsedTimeFunction = unsafeBitCast(symbol, to: SetElapsedTimeFunction.self)
+        } else {
+            setElapsedTimeFunction = nil
+        }
         if let symbol = handle.flatMap({ dlsym($0, "MRMediaRemoteRegisterForNowPlayingNotifications") }) {
             registerForNowPlayingNotifications = unsafeBitCast(
                 symbol,
@@ -45,10 +63,20 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
         } else {
             registerForNowPlayingNotifications = nil
         }
+        if let symbol = handle.flatMap({ dlsym($0, "MRMediaRemoteGetNowPlayingApplicationPID") }) {
+            getNowPlayingApplicationPID = unsafeBitCast(
+                symbol,
+                to: GetNowPlayingApplicationPIDFunction.self
+            )
+        } else {
+            getNowPlayingApplicationPID = nil
+        }
         self.fallbackProvider = fallbackProvider
     }
 
     func start() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         isStarted = true
         fallbackProvider?.start()
         registerForNowPlayingNotifications?(callbackQueue)
@@ -56,6 +84,8 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
     }
 
     func stop() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         isStarted = false
         fallbackProvider?.stop()
         endObservingNotifications()
@@ -64,11 +94,21 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
     }
 
     func currentSnapshot() -> MusicTrackSnapshot {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         guard isStarted else {
             return .stopped
         }
 
-        if let snapshot = queryMediaRemoteSnapshot() {
+        if let queriedSnapshot = queryMediaRemoteSnapshot() {
+            let fallbackSnapshot = queriedSnapshot.artworkData == nil
+                ? fallbackProvider?.currentSnapshot()
+                : nil
+            let snapshot = MusicArtworkSnapshotMerger.merge(
+                primary: queriedSnapshot,
+                previous: lastSnapshot,
+                fallback: fallbackSnapshot
+            )
             lastSnapshot = snapshot
             if snapshot.status == .playing || snapshot.status == .paused {
                 lastPlayingSnapshot = snapshot
@@ -76,7 +116,11 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             return snapshot
         }
 
-        let fallbackSnapshot = fallbackProvider?.currentSnapshot() ?? .stopped
+        let rawFallbackSnapshot = fallbackProvider?.currentSnapshot() ?? .stopped
+        let fallbackSnapshot = MusicArtworkSnapshotMerger.merge(
+            primary: rawFallbackSnapshot,
+            previous: lastSnapshot
+        )
         if fallbackSnapshot.status == .playing || fallbackSnapshot.status == .paused {
             print("[MusicTakeover] MediaRemote empty, fallback accepted source=\(fallbackSnapshot.source) title=\(fallbackSnapshot.title)")
         }
@@ -98,6 +142,16 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
         }
     }
 
+    @discardableResult
+    func seek(to position: TimeInterval) -> Bool {
+        let safePosition = max(0, position)
+        if let setElapsedTimeFunction {
+            setElapsedTimeFunction(safePosition)
+            return true
+        }
+        return fallbackProvider?.seek(to: safePosition) ?? false
+    }
+
     private func beginObservingNotifications() {
         endObservingNotifications()
         notificationObserver = NotificationCenter.default.addObserver(
@@ -105,7 +159,9 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.publishCurrentSnapshot()
+            self?.eventQueue.async { [weak self] in
+                self?.publishCurrentSnapshot()
+            }
         }
 
         let distributedCenter = DistributedNotificationCenter.default()
@@ -118,7 +174,9 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
                 object: nil,
                 queue: .main
             ) { [weak self] notification in
-                self?.handleDistributedPlayerInfo(notification)
+                self?.eventQueue.async { [weak self] in
+                    self?.handleDistributedPlayerInfo(notification)
+                }
             }
             distributedNotificationObservers.append(observer)
         }
@@ -144,16 +202,28 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
     }
 
     private func handleDistributedPlayerInfo(_ notification: Notification) {
+        stateLock.lock()
         guard isStarted,
               let info = notification.userInfo,
-              let snapshot = snapshot(fromDistributedPlayerInfo: info) else {
+              let rawSnapshot = snapshot(fromDistributedPlayerInfo: info) else {
+            stateLock.unlock()
             return
         }
+
+        let fallbackSnapshot = rawSnapshot.artworkData == nil
+            ? fallbackProvider?.currentSnapshot()
+            : nil
+        let snapshot = MusicArtworkSnapshotMerger.merge(
+            primary: rawSnapshot,
+            previous: lastSnapshot,
+            fallback: fallbackSnapshot
+        )
 
         lastSnapshot = snapshot
         if snapshot.status == .playing || snapshot.status == .paused {
             lastPlayingSnapshot = snapshot
         }
+        stateLock.unlock()
         onSnapshot?(snapshot)
     }
 
@@ -214,7 +284,7 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
                 "elapsedTime",
                 "Elapsed Time"
             ]
-        ) ?? 0
+        ) ?? matchingLastPosition(title: title, artist: artist)
         let playbackRate = firstNumber(
             in: info,
             keys: [
@@ -232,6 +302,15 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
                 "Artwork Data"
             ]
         )
+        let sourceBundleIdentifier = firstString(
+            in: info,
+            keys: [
+                "kMRMediaRemoteNowPlayingInfoClientBundleIdentifier",
+                "kMRMediaRemoteNowPlayingInfoBundleIdentifier",
+                "clientBundleIdentifier",
+                "bundleIdentifier"
+            ]
+        ) ?? currentNowPlayingBundleIdentifier()
 
         return MusicTrackSnapshot(
             title: title,
@@ -240,13 +319,25 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             status: status,
             isPlaying: status == .playing,
             position: max(0, elapsed),
-            duration: duration,
+            duration: duration ?? matchingLastDuration(title: title, artist: artist),
             artworkData: artworkData,
             themeColorHex: "#22d3ee",
+            themePalette: .fallback,
             source: sourceName,
+            sourceBundleIdentifier: sourceBundleIdentifier,
             updatedAt: Date(),
-            capabilities: .transport
+            capabilities: setElapsedTimeFunction == nil ? .transport : [.transport, .seek]
         )
+    }
+
+    private func matchingLastPosition(title: String, artist: String) -> TimeInterval {
+        guard lastSnapshot.title == title, lastSnapshot.artist == artist else { return 0 }
+        return lastSnapshot.position
+    }
+
+    private func matchingLastDuration(title: String, artist: String) -> TimeInterval? {
+        guard lastSnapshot.title == title, lastSnapshot.artist == artist else { return nil }
+        return lastSnapshot.duration
     }
 
     private func snapshot(fromDistributedPlayerInfo info: [AnyHashable: Any]) -> MusicTrackSnapshot? {
@@ -278,9 +369,17 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             inAnyHashable: info,
             keys: ["Player Position", "Elapsed Time", "elapsedTime", "kMRMediaRemoteNowPlayingInfoElapsedTime"]
         ) ?? lastSnapshot.position
-        let duration = firstNumber(
+        let durationSeconds = firstNumber(
             inAnyHashable: info,
-            keys: ["Total Time", "Duration", "duration", "kMRMediaRemoteNowPlayingInfoDuration"]
+            keys: ["Duration", "duration", "kMRMediaRemoteNowPlayingInfoDuration"]
+        )
+        let totalTimeMilliseconds = firstNumber(
+            inAnyHashable: info,
+            keys: ["Total Time"]
+        )
+        let duration = Self.normalizedDistributedDuration(
+            durationSeconds: durationSeconds,
+            totalTimeMilliseconds: totalTimeMilliseconds
         )
 
         return MusicTrackSnapshot(
@@ -293,10 +392,25 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             duration: duration,
             artworkData: nil,
             themeColorHex: "#22d3ee",
+            themePalette: .fallback,
             source: "Apple Music",
+            sourceBundleIdentifier: "com.apple.Music",
             updatedAt: Date(),
-            capabilities: .transport
+            capabilities: [.transport, .seek]
         )
+    }
+
+    static func normalizedDistributedDuration(
+        durationSeconds: TimeInterval?,
+        totalTimeMilliseconds: TimeInterval?
+    ) -> TimeInterval? {
+        if let durationSeconds, durationSeconds > 0 {
+            return durationSeconds
+        }
+        guard let totalTimeMilliseconds, totalTimeMilliseconds > 0 else {
+            return nil
+        }
+        return totalTimeMilliseconds / 1_000
     }
 
     private func normalizedStatus(
@@ -333,6 +447,21 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
         }
 
         return .playing
+    }
+
+    private func currentNowPlayingBundleIdentifier() -> String? {
+        guard let getNowPlayingApplicationPID else { return nil }
+        var receivedPID: Int32 = 0
+        let semaphore = DispatchSemaphore(value: 0)
+        getNowPlayingApplicationPID(callbackQueue) { pid in
+            receivedPID = pid
+            semaphore.signal()
+        }
+        guard semaphore.wait(timeout: .now() + 0.3) == .success,
+              receivedPID > 0 else { return nil }
+        return NSRunningApplication(
+            processIdentifier: pid_t(receivedPID)
+        )?.bundleIdentifier
     }
 
     private func normalizedDistributedStatus(
