@@ -112,6 +112,7 @@ final class SceneCoordinator {
     private let windowController: IslandWindowControlling
     private let preferencesWindowController: PreferencesWindowControlling
     private let menuBarController: MenuBarControlling
+    private let statusBarController: StatusBarController?
     private let languageSettings: AppLanguageSettings
     private let advancedFeaturesSettings: AdvancedFeaturesSettings
     private let settingsAccountState: SettingsAccountState
@@ -131,7 +132,7 @@ final class SceneCoordinator {
     private let updateCoordinator: UpdateCoordinator
     private var updateStateCancellable: AnyCancellable?
 
-    init() {
+    init(menuBarStateDidChange: @escaping (MenuBarPresentationState) -> Void = { _ in }) {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
         let languageSettings = AppLanguageSettings()
         let advancedFeaturesSettings = AdvancedFeaturesSettings()
@@ -260,14 +261,17 @@ final class SceneCoordinator {
         windowController.onTodoModeActivityChanged = { [weak todoLiveSyncOrchestrator] isActive in
             todoLiveSyncOrchestrator?.setTodoModeActive(isActive)
         }
-        self.menuBarController = StatusBarController(
+        let statusBarController = StatusBarController(
             windowController: windowController,
             preferencesWindowController: preferencesWindowController,
             languageSettings: languageSettings,
             logoutHandler: { [weak authCoordinator] in
                 Task { await authCoordinator?.logout() }
-            }
+            },
+            stateDidChange: menuBarStateDidChange
         )
+        self.statusBarController = statusBarController
+        self.menuBarController = statusBarController
         configureUpdatePromptBridge()
     }
 
@@ -344,11 +348,18 @@ final class SceneCoordinator {
         self.todoMutationController.onCompletionSucceeded = { [weak todoLiveSyncOrchestrator = self.todoLiveSyncOrchestrator] snapshot in
             todoLiveSyncOrchestrator?.acceptCompletionRefresh(snapshot)
         }
-        self.menuBarController = menuBarController ?? StatusBarController(
-            windowController: windowController,
-            preferencesWindowController: preferencesWindowController,
-            languageSettings: languageSettings
-        )
+        if let menuBarController {
+            self.menuBarController = menuBarController
+            self.statusBarController = menuBarController as? StatusBarController
+        } else {
+            let statusBarController = StatusBarController(
+                windowController: windowController,
+                preferencesWindowController: preferencesWindowController,
+                languageSettings: languageSettings
+            )
+            self.menuBarController = statusBarController
+            self.statusBarController = statusBarController
+        }
         configureUpdatePromptBridge()
     }
 
@@ -423,6 +434,22 @@ final class SceneCoordinator {
                 await MainActor.run { self.windowController.applyLoggedOutState() }
             }
         }
+    }
+
+    func toggleIslandFromMenuBar() {
+        statusBarController?.toggleIslandMenuItemClicked(nil)
+    }
+
+    func showSettingsFromMenuBar() {
+        statusBarController?.preferencesMenuItemClicked(nil)
+    }
+
+    func logoutFromMenuBar() {
+        statusBarController?.logoutMenuItemClicked(nil)
+    }
+
+    func quitFromMenuBar() {
+        statusBarController?.quitMenuItemClicked(nil)
     }
 
     private func applyCapabilityPolicy() {

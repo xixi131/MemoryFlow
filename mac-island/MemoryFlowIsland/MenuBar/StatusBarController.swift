@@ -9,6 +9,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
     private let menuBuilder: StatusMenuBuilding
     private let quitHandler: () -> Void
     private let logoutHandler: () -> Void
+    private let stateDidChange: (MenuBarPresentationState) -> Void
     private var isIslandVisible: Bool
     private var languageObserver: NSObjectProtocol?
 
@@ -19,7 +20,8 @@ final class StatusBarController: NSObject, MenuBarControlling {
         menuBuilder: StatusMenuBuilding = StatusMenuBuilder(),
         isIslandVisible: Bool = true,
         logoutHandler: @escaping () -> Void = {},
-        quitHandler: @escaping () -> Void = { NSApp.terminate(nil) }
+        quitHandler: @escaping () -> Void = { NSApp.terminate(nil) },
+        stateDidChange: @escaping (MenuBarPresentationState) -> Void = { _ in }
     ) {
         self.windowController = windowController
         self.phase5ScenarioController = windowController as? IslandPhase5ScenarioControlling
@@ -29,6 +31,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
         self.isIslandVisible = isIslandVisible
         self.quitHandler = quitHandler
         self.logoutHandler = logoutHandler
+        self.stateDidChange = stateDidChange
         super.init()
         languageObserver = NotificationCenter.default.addObserver(
             forName: AppLanguageSettings.didChangeNotification,
@@ -37,16 +40,23 @@ final class StatusBarController: NSObject, MenuBarControlling {
         ) { [weak self] _ in
             self?.configureButton(self?.statusItem?.button)
             self?.refreshMenu()
+            self?.publishState()
         }
     }
 
     func install() {
+        if #available(macOS 26.0, *) {
+            publishState()
+            return
+        }
+
         guard statusItem == nil else { return }
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         configureButton(item.button)
         statusItem = item
         refreshMenu()
+        publishState()
     }
 
     func uninstall() {
@@ -70,6 +80,7 @@ final class StatusBarController: NSObject, MenuBarControlling {
 
         isIslandVisible.toggle()
         refreshMenu()
+        publishState()
     }
 
     @objc func preferencesMenuItemClicked(_ sender: Any?) {
@@ -116,10 +127,8 @@ final class StatusBarController: NSObject, MenuBarControlling {
     }
 
     private func refreshMenu() {
-        guard let statusItem else { return }
-
         let phase5Scenarios = phase5ScenarioController?.availablePhase5Scenarios ?? []
-        statusItem.menu = menuBuilder.buildMenu(
+        statusItem?.menu = menuBuilder.buildMenu(
             target: self,
             isIslandVisible: isIslandVisible,
             language: languageSettings.language,
@@ -129,6 +138,15 @@ final class StatusBarController: NSObject, MenuBarControlling {
             preferencesAction: #selector(preferencesMenuItemClicked(_:)),
             logoutAction: #selector(logoutMenuItemClicked(_:)),
             quitAction: #selector(quitMenuItemClicked(_:))
+        )
+    }
+
+    private func publishState() {
+        stateDidChange(
+            MenuBarPresentationState(
+                language: languageSettings.language,
+                isIslandVisible: isIslandVisible
+            )
         )
     }
 }

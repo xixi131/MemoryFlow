@@ -1,13 +1,21 @@
 import AppKit
+import Combine
 import OSLog
 
+struct MenuBarPresentationState: Equatable {
+    var language: AppLanguage = .english
+    var isIslandVisible = true
+}
+
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    @Published private(set) var menuBarState = MenuBarPresentationState()
     private let callbackLogger = Logger(subsystem: "com.memoryflow.island", category: "LoginCallback")
     private var sceneCoordinator: SceneCoordinator?
     private var pendingIncomingURLs: [URL] = []
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        BundleIdentityMigration.run()
         NSAppleEventManager.shared().setEventHandler(
             self,
             andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
@@ -75,8 +83,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
-        sceneCoordinator = SceneCoordinator()
+        sceneCoordinator = SceneCoordinator { [weak self] state in
+            self?.menuBarState = state
+        }
         sceneCoordinator?.start()
+        if #available(macOS 26.0, *) {
+            perform(#selector(configureNativeMenuBarExtra), with: nil, afterDelay: 1)
+        }
         let pendingURLs = pendingIncomingURLs
         pendingIncomingURLs.removeAll()
         pendingURLs.forEach { sceneCoordinator?.handleIncomingURL($0) }
@@ -94,6 +107,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for url in urls {
             routeIncomingURL(url, source: "application-open")
         }
+    }
+
+    func toggleIslandFromMenuBar() {
+        sceneCoordinator?.toggleIslandFromMenuBar()
+    }
+
+    func showSettingsFromMenuBar() {
+        sceneCoordinator?.showSettingsFromMenuBar()
+    }
+
+    func logoutFromMenuBar() {
+        sceneCoordinator?.logoutFromMenuBar()
+    }
+
+    func quitFromMenuBar() {
+        sceneCoordinator?.quitFromMenuBar()
+    }
+
+    @objc
+    private func configureNativeMenuBarExtra() {
+        guard
+            let items = NSStatusBar.system.value(forKey: "_statusItems") as? NSPointerArray,
+            let item = items.allObjects.last as? NSStatusItem
+        else {
+            return
+        }
+
+        let selector = NSSelectorFromString("_setDropPriority:")
+        if item.responds(to: selector), let implementation = item.method(for: selector) {
+            typealias SetDropPriority = @convention(c) (AnyObject, Selector, Float) -> Void
+            unsafeBitCast(implementation, to: SetDropPriority.self)(item, selector, 1_000)
+        }
+        item.isVisible = true
     }
 
     @objc
@@ -116,5 +162,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             pendingIncomingURLs.append(url)
         }
+    }
+}
+
+private enum BundleIdentityMigration {
+    private static let oldBundleID = "com.memoryflow.island"
+    private static let marker = "bundleIdentityMigrationV1Completed"
+    private static let migratedKeys = [
+        "com.memoryflow.island.settings.language",
+        "com.memoryflow.island.settings.advancedFeaturesEnabled",
+        "SUEnableAutomaticChecks",
+        "SUSendProfileInfo"
+    ]
+
+    static func run() {
+        let current = UserDefaults.standard
+        guard current.bool(forKey: marker) == false else { return }
+
+        let oldDomain = current.persistentDomain(forName: oldBundleID) ?? [:]
+        for key in migratedKeys where current.object(forKey: key) == nil {
+            if let value = oldDomain[key] {
+                current.set(value, forKey: key)
+            }
+        }
+
+        current.set(true, forKey: marker)
     }
 }
