@@ -290,6 +290,6 @@
       "Run the web build, backend tests, native probes, Swift source typecheck, and native build, then confirm the implementation changed no Windows or Electron files."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   }
 ]

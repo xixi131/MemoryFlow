@@ -1,11 +1,11 @@
 # agent-state.md
 
 ## Current phase
-Phase 7 settings, login-required, updater, unsigned release/install, native Todo fidelity/detail/sync, and the complete web Todo/Statistics surface with adaptive synchronization are complete. The remaining queue contains only cross-surface acceptance. Windows/Electron is out of scope.
+Phase 7 settings, login-required, updater, unsigned release/install, native Todo fidelity/detail/sync, the complete web Todo/Statistics surface, and cross-surface acceptance are complete. Windows/Electron remained out of scope.
 
 ## Queue status
-- Active queue: 22 tasks, 21 complete, 1 pending.
-- First pending: `todo-cross-surface-acceptance`.
+- Active queue: 22 tasks, 22 complete, 0 pending.
+- First pending: none.
 
 ## Recommended next reads
 1. `AGENTS.md`

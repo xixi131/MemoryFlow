@@ -50,3 +50,6 @@
 
 ### 2026-07-16 - Adaptive web Todo synchronization
 - Centralized task, summary, and trend refresh with 10/60-second cadence, lifecycle/mutation triggers, cancellation, coalescing, and stale guards. Web build and 13 policy probes passed; live UI observation was user-waived.
+
+### 2026-07-16 - Todo cross-surface acceptance
+- Web build, JDK 17 backend tests, 92-file Swift typecheck, unsigned Release build, and Todo sync/fidelity/detail probes passed. No Windows/Electron files changed; live visual acceptance was user-waived.
