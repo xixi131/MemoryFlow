@@ -4,7 +4,6 @@ import { message } from '../components/Message';
 import { ModalWrapper } from '../components/Modals';
 import todoApis, {
     CreateTodoTaskPayload,
-    TodoListDTO,
     TodoPriority,
     TodoSortBy,
     TodoSortOrder,
@@ -19,7 +18,6 @@ type TodoQueryState = {
     status: 'all' | 'todo' | 'completed';
     timeFilter: TodoTimeFilter;
     priority: 'all' | TodoPriority;
-    listId?: number;
     tagId?: number;
     sortBy: TodoSortBy;
     sortOrder: TodoSortOrder;
@@ -375,7 +373,6 @@ const buildDueLabel = (task: TodoTaskDTO) => {
 };
 
 const TodoPage: React.FC = () => {
-    const [lists, setLists] = useState<TodoListDTO[]>([]);
     const [tags, setTags] = useState<TodoTagDTO[]>([]);
     const [tasks, setTasks] = useState<TodoTaskDTO[]>([]);
     const [stats, setStats] = useState<TodoStatsDTO>(EMPTY_STATS);
@@ -496,11 +493,6 @@ const TodoPage: React.FC = () => {
         };
     }, []);
 
-    const loadLists = useCallback(async () => {
-        const res: any = await todoApis.getLists();
-        if (res.code === 200) setLists(Array.isArray(res.data) ? res.data : []);
-    }, []);
-
     const loadTags = useCallback(async () => {
         const res: any = await todoApis.getTags();
         if (res.code === 200) setTags(Array.isArray(res.data) ? res.data : []);
@@ -519,7 +511,6 @@ const TodoPage: React.FC = () => {
                 status: query.status,
                 timeFilter: query.timeFilter,
                 priority: query.priority,
-                listId: query.listId,
                 tagId: query.tagId,
                 sortBy: query.sortBy,
                 sortOrder: query.sortOrder
@@ -546,14 +537,14 @@ const TodoPage: React.FC = () => {
     const loadMeta = useCallback(async () => {
         setMetaLoading(true);
         try {
-            await Promise.all([loadLists(), loadTags(), loadStats()]);
+            await Promise.all([loadTags(), loadStats()]);
         } catch (error) {
             console.error(error);
             message.error('基础数据加载失败');
         } finally {
             setMetaLoading(false);
         }
-    }, [loadLists, loadTags, loadStats]);
+    }, [loadTags, loadStats]);
 
     const refreshAfterMutation = useCallback(
         async (refreshMeta = false) => {
@@ -750,23 +741,6 @@ const TodoPage: React.FC = () => {
         }
     };
 
-    const handleDeleteList = async (list: TodoListDTO) => {
-        if (!window.confirm(`确认删除清单「${list.name}」吗？`)) return;
-        try {
-            const res: any = await todoApis.deleteList(list.id);
-            if (res.code === 200) {
-                message.success('清单已删除');
-                setQuery((prev) => ({ ...prev, listId: prev.listId === list.id ? undefined : prev.listId }));
-                await refreshAfterMutation(true);
-            } else {
-                message.error(res.message || '清单删除失败');
-            }
-        } catch (error) {
-            console.error(error);
-            message.error('清单删除失败');
-        }
-    };
-
     const openCreateTagModal = () => {
         setTagNameDraft('');
         setShowTagCreateModal(true);
@@ -912,7 +886,7 @@ const TodoPage: React.FC = () => {
                 <p className="text-slate-500 dark:text-text-secondary text-lg mt-1">更简约的任务工作台，支持侧边抽屉编辑。</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-6 px-2">
+            <div className="flex flex-col gap-6 px-2">
                 <section className="flex flex-col gap-5 min-w-0">
                     <div className="p-0">
                         <div className="flex flex-col gap-3">
@@ -1076,15 +1050,6 @@ const TodoPage: React.FC = () => {
                         </div>
                         <p className="mt-2 text-xs text-slate-500 dark:text-text-secondary">{orderHint}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" onClick={() => setQuery((prev) => ({ ...prev, listId: undefined }))} className={`px-3 py-1 text-xs rounded-full border ${query.listId == null ? 'border-primary text-primary bg-primary/10' : 'border-slate-300 text-slate-500'}`}>全部清单</button>
-                            {lists.map((list) => (
-                                <div key={list.id} className="inline-flex items-center gap-1.5">
-                                    <button type="button" onClick={() => setQuery((prev) => ({ ...prev, listId: list.id }))} className={`px-3 py-1 text-xs rounded-full border ${query.listId === list.id ? 'text-primary border-primary bg-primary/10' : 'text-slate-500 border-slate-300'}`}>
-                                        {list.name}
-                                    </button>
-                                    {!list.isDefault && <button type="button" onClick={() => handleDeleteList(list)} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>}
-                                </div>
-                            ))}
                             <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: undefined }))} className={`px-3 py-1 text-xs rounded-full border ${query.tagId == null ? 'border-primary text-primary bg-primary/10' : 'border-slate-300 text-slate-500'}`}>全部标签</button>
                             {tags.map((tag) => (
                                 <div key={tag.id} className="inline-flex items-center gap-1">
@@ -1098,7 +1063,7 @@ const TodoPage: React.FC = () => {
                     </div>
                 </section>
 
-                <aside className={`${panelClass} p-4 lg:sticky lg:top-24 h-fit`} style={continuous(32)}>
+                <section className={`${panelClass} p-4 w-full`} style={continuous(32)}>
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">任务列表 ({tasks.length})</h3>
                         <label className="text-xs text-slate-500 dark:text-text-secondary inline-flex items-center gap-1.5">
@@ -1180,7 +1145,7 @@ const TodoPage: React.FC = () => {
                             })
                         )}
                     </div>
-                </aside>
+                </section>
             </div>
 
             {isDrawerMounted && drawerDraft && drawerTask && (
@@ -1206,7 +1171,7 @@ const TodoPage: React.FC = () => {
 
                         <div className="space-y-3">
                             <input value={drawerDraft.title} onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))} className={inputClass} placeholder="任务标题" />
-                            <div className="grid grid-cols-2 gap-2">
+                            <div>
                                 <ProjectSelect
                                     className="w-full"
                                     value={drawerDraft.priority}
@@ -1217,24 +1182,6 @@ const TodoPage: React.FC = () => {
                                                 ? {
                                                       ...prev,
                                                       priority: nextValue as TodoPriority
-                                                  }
-                                                : prev
-                                        )
-                                    }
-                                />
-                                <ProjectSelect
-                                    className="w-full"
-                                    value={drawerDraft.listId == null ? '' : String(drawerDraft.listId)}
-                                    options={[
-                                        { value: '', label: '未归类' },
-                                        ...lists.map((list) => ({ value: String(list.id), label: list.name }))
-                                    ]}
-                                    onChange={(nextValue) =>
-                                        setDrawerDraft((prev) =>
-                                            prev
-                                                ? {
-                                                      ...prev,
-                                                      listId: nextValue ? Number(nextValue) : null
                                                   }
                                                 : prev
                                         )

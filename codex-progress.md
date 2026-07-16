@@ -178,3 +178,6 @@
 
 ### 2026-07-16 - Native todo detail and adaptive sync
 - Added reducer-owned read-only detail plus 10s active/60s background synchronization. Detail, data-fidelity, live-sync probes and the unsigned Debug build passed.
+
+### 2026-07-16 - Web todo list cleanup
+- Removed list-loading/filter/management surfaces and widened the task workspace while preserving non-list filters and task actions. Startup, web build, and diff checks passed; visual UI testing was user-waived.
