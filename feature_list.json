@@ -238,7 +238,7 @@
       "Extend native probes and rendered preview scenarios to verify all priority and due combinations without modifying Windows or Electron behavior."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-mac-read-only-detail-view",

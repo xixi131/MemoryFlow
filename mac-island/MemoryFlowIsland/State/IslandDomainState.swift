@@ -59,12 +59,58 @@ struct IslandMockReviewActivity: Codable, Equatable {
     )
 }
 
+enum IslandTodoPriority: String, Codable, CaseIterable, Equatable {
+    case high
+    case medium
+    case low
+    case none
+
+    init(apiValue: String) {
+        self = Self(rawValue: apiValue.lowercased()) ?? .none
+    }
+
+    var title: String {
+        switch self {
+        case .high: return "紧急"
+        case .medium: return "重要"
+        case .low: return "普通"
+        case .none: return "未设置"
+        }
+    }
+}
+
 struct IslandMockTodoTask: Codable, Equatable, Identifiable {
     let id: String
     let title: String
+    let descriptionMd: String?
+    let priority: IslandTodoPriority
+    let dueDate: String?
+    let dueTime: String?
     let isCompleted: Bool
     let isDueToday: Bool
     let isOverdue: Bool
+
+    init(
+        id: String,
+        title: String,
+        descriptionMd: String? = nil,
+        priority: IslandTodoPriority = .none,
+        dueDate: String? = nil,
+        dueTime: String? = nil,
+        isCompleted: Bool,
+        isDueToday: Bool,
+        isOverdue: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.descriptionMd = descriptionMd
+        self.priority = priority
+        self.dueDate = dueDate
+        self.dueTime = dueTime
+        self.isCompleted = isCompleted
+        self.isDueToday = isDueToday
+        self.isOverdue = isOverdue
+    }
 }
 
 struct IslandMockTodoActivity: Codable, Equatable {

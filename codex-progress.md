@@ -164,3 +164,7 @@
 ### 2026-07-16 - Todo priority labels and controls
 - Centralized todo priority presentation as `紧急`, `重要`, `普通`, and `未设置` without changing API enum values, and applied todo-scoped white bordered light controls, restrained dark controls, 8px radii, and consistent focus, placeholder, and disabled styling.
 - The web build and diff checks passed. Chrome verification covered desktop and mobile light/dark layouts, complete priority options, visible focus rings, expected computed colors, and zero horizontal overflow; the temporary local preview gate was fully removed afterward.
+
+### 2026-07-16 - Native todo data fidelity
+- Preserved web todo descriptions, actual priority, due date, and due time through native decoding, snapshots, optimistic completion/rollback, domain presentation, and rendered task slots.
+- Deterministic probes covered all four priority labels and completed, overdue, today, tomorrow, later-date, date-only, and no-date due states. The integrated Xcode build and live todo probes passed, Windows/Electron files remained unchanged, and task-started processes were cleaned up.

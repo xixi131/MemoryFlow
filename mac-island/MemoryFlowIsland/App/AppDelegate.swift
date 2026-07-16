@@ -17,6 +17,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if ProcessInfo.processInfo.environment["MEMORYFLOW_TODO_DATA_FIDELITY_PROBE"] == "1" {
+            Task { @MainActor in
+                do {
+                    let liveSync = try await TodoLiveSyncProbe.run()
+                    print("todo-live-sync-probe: PASS; tasks=\(liveSync.taskIDs.count); paths=\(liveSync.paths.joined(separator: ",")); recovered=\(liveSync.recovered)")
+                    print(try TodoDataFidelityProbe.run())
+                    NSApp.terminate(nil)
+                } catch {
+                    fputs("todo-data-fidelity-probe: FAIL; \(error)\n", stderr)
+                    exit(EXIT_FAILURE)
+                }
+            }
+            return
+        }
         if let fixturePath = ProcessInfo.processInfo.environment["MEMORYFLOW_UPDATE_PROBE_FIXTURES"] {
             Task { @MainActor in
                 do {

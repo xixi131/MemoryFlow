@@ -2047,6 +2047,10 @@ struct IslandLocalTodoToggleState: Equatable {
         todo.tasks[index] = IslandMockTodoTask(
             id: task.id,
             title: task.title,
+            descriptionMd: task.descriptionMd,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            dueTime: task.dueTime,
             isCompleted: task.isCompleted == false,
             isDueToday: task.isDueToday,
             isOverdue: task.isOverdue
@@ -2067,6 +2071,10 @@ struct IslandLocalTodoToggleState: Equatable {
             todo.tasks[index] = IslandMockTodoTask(
                 id: task.id,
                 title: task.title,
+                descriptionMd: task.descriptionMd,
+                priority: task.priority,
+                dueDate: task.dueDate,
+                dueTime: task.dueTime,
                 isCompleted: pending.originalIsCompleted,
                 isDueToday: task.isDueToday,
                 isOverdue: task.isOverdue
@@ -2124,34 +2132,23 @@ enum IslandTodoToggleProbeError: Error {
 }
 
 struct IslandExpandedTodoTaskSlot: Equatable, Identifiable {
-    enum Priority: Equatable {
-        case high
-        case medium
-        case normal
-
-        var title: String {
-            switch self {
-            case .high: return "高"
-            case .medium: return "中"
-            case .normal: return "普通"
-            }
-        }
-
-        var color: Color {
-            switch self {
-            case .high: return .red.opacity(0.94)
-            case .medium: return .orange.opacity(0.92)
-            case .normal: return .white.opacity(0.62)
-            }
-        }
-    }
-
     let id: String
     let title: String
     let dueText: String
-    let priority: Priority
+    let priority: IslandTodoPriority
     let isOverdue: Bool
     let isCompleted: Bool
+}
+
+private extension IslandTodoPriority {
+    var color: Color {
+        switch self {
+        case .high: return .red.opacity(0.94)
+        case .medium: return .orange.opacity(0.92)
+        case .low: return .white.opacity(0.72)
+        case .none: return .white.opacity(0.42)
+        }
+    }
 }
 
 enum IslandExpandedTodoContentLayout {
@@ -2170,17 +2167,62 @@ enum IslandExpandedTodoContentLayout {
     static let rowAnimation = IslandExpandedReviewContentLayout.cardAnimation
     static let toggleAnimation = Animation.spring(response: 0.26, dampingFraction: 0.78)
 
-    static func taskSlots(for todo: IslandMockTodoActivity) -> [IslandExpandedTodoTaskSlot] {
+    static func taskSlots(
+        for todo: IslandMockTodoActivity,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [IslandExpandedTodoTaskSlot] {
         Array(todo.tasks.prefix(maximumVisibleTasks)).map { task in
             IslandExpandedTodoTaskSlot(
                 id: task.id,
                 title: task.title,
-                dueText: task.isCompleted ? "已完成" : (task.isOverdue ? "已逾期" : (task.isDueToday ? "今日到期" : "已安排")),
-                priority: task.isOverdue ? .high : (task.isDueToday ? .medium : .normal),
+                dueText: dueText(for: task, now: now, calendar: calendar),
+                priority: task.priority,
                 isOverdue: task.isOverdue,
                 isCompleted: task.isCompleted
             )
         }
+    }
+
+    static func dueText(
+        for task: IslandMockTodoTask,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        if task.isCompleted { return "已完成" }
+        if task.isOverdue { return "已逾期" }
+        guard let dueDate = localDate(task.dueDate, calendar: calendar) else { return "未设置日期" }
+
+        let timeText = localTime(task.dueTime)
+        if task.isDueToday || calendar.isDate(dueDate, inSameDayAs: now) {
+            return timeText.map { "今日 \($0)" } ?? "今日到期"
+        }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)),
+           calendar.isDate(dueDate, inSameDayAs: tomorrow) {
+            return timeText.map { "明日 \($0)" } ?? "明日到期"
+        }
+
+        let dateText = "\(calendar.component(.month, from: dueDate))月\(calendar.component(.day, from: dueDate))日"
+        return timeText.map { "\(dateText) \($0)" } ?? dateText
+    }
+
+    private static func localDate(_ value: String?, calendar: Calendar) -> Date? {
+        guard let value else { return nil }
+        let parts = value.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]) else { return nil }
+        return calendar.date(from: DateComponents(year: year, month: month, day: day))
+    }
+
+    private static func localTime(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let parts = value.split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count >= 2,
+              let hour = Int(parts[0]), (0...23).contains(hour),
+              let minute = Int(parts[1]), (0...59).contains(minute) else { return nil }
+        return String(format: "%02d:%02d", hour, minute)
     }
 
     static func rowDelay(for index: Int) -> TimeInterval {
