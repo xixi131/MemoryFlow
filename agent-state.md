@@ -3,7 +3,7 @@
 This file is the short handoff for the next agent. Keep it brief, current, and high-signal.
 
 ## Current phase
-The backend-integration phase is complete. The active Phase 7 queue adds a login-free music-only default, opt-in Advanced Features, a notch-safe login-required square presentation, production update checks and island update progress. Windows Electron remains out of scope and must not be modified.
+Phase 7 implementation is complete through unsigned installation from CI artifacts. The active queue now improves the web todo workspace, adds todo statistics trends, aligns web and native todo data, adds a read-only native detail view, and reduces cross-surface synchronization latency. Windows Electron remains out of scope and must not be modified.
 
 ## Completed native modules
 - Motion plans, live animation driver, top-center window anchoring, shell shape morphing, compact/activity/expanded content choreography, hover breathing, Reduce Motion, responsive layout, and rapid-retarget guards.
@@ -18,15 +18,32 @@ The backend-integration phase is complete. The active Phase 7 queue adds a login
 - Performance: `docs/evidence/mac-island-phase6/motion-performance-evidence.{json,md}`.
 
 ## Remaining real-world work
-Phase 7 Settings/menu cleanup, Advanced Features lifecycle, login-required square, Sparkle core/policy/prompt, update download activity, the unsigned GitHub CI/CD release foundation, and real unsigned Sparkle installation from generated artifacts are complete. Remaining work is GitHub release acceptance only. Existing real music-provider work in the current dirty worktree is not part of this queue.
+The todo priority-label and input-treatment foundation is complete. The remaining todo queue continues with composer simplification, list cleanup, statistics, synchronization, native detail work, and cross-surface acceptance. The previous `mac-phase7-github-release-acceptance` task was archived unchanged rather than completed, so it can be restored later without blocking the new queue. Existing real music-provider work and untracked Xcode user data are not part of this queue.
 
 ## Queue status
-`feature_list.json` contains 1 pending Phase 7 task: `mac-phase7-github-release-acceptance`. Do not start it automatically; the user explicitly requested that work stop after completing `mac-phase7-unsigned-install-from-ci`.
+`feature_list.json` preserves 9 completed Phase 7 tasks, completes `todo-web-priority-input-foundation`, and contains 12 pending todo-improvement tasks. Start with `todo-web-create-composer-simplification`.
 
-## Phase 7 task groups
-- Tasks 1-3 deliver Settings and menu cleanup, the basic-versus-advanced lifecycle, and the complete login-required square.
-- Tasks 4-7 delivered the updater engine, check policy, prompt, and download activity.
-- The rewritten Tasks 8-10 deliver GitHub CI/CD release generation first, unsigned Sparkle installation from CI artifacts second, and open-source production acceptance last.
+## Todo improvement task groups
+- Tasks 1-4 simplify the web creation, filtering, and editing workflow while removing all list-related UI and preserving legacy backend list data.
+- Tasks 5-7 add the authenticated daily trend API, route-backed Todo/Statistics sections, and responsive 7-day/30-day charts.
+- Task 8 adds adaptive web synchronization with immediate lifecycle refreshes and guarded polling.
+- Tasks 9-12 preserve native todo metadata, add the read-only detail view and slide motion, and add adaptive native synchronization.
+- Task 13 validates the complete web-to-mac workflow and confirms Windows/Electron files remain untouched.
+
+## Todo layering contract
+- Web page and todo components render route and form state only; a dedicated todo synchronization hook owns polling, request cancellation, stale-response protection, and mutation refreshes.
+- `front-end/src/services/todoApis.ts` owns HTTP request and response contracts but no view state or timers.
+- Backend todo controller/service/DTO code owns the authenticated `GET /todos/stats/trends?days=7|30` aggregation; existing tables, list APIs, and priority enum values remain unchanged.
+- Native `Services/Todo` owns decoding and repository work, `State/` owns selected-task intents and derived presentation, and `UI/Visual` renders list/detail content without network calls.
+- `SceneCoordinator` owns native refresh triggers and capability lifecycle; `TodoPollingController` owns cadence, deduplication, and stale snapshot behavior; window code only adapts input and rendering.
+
+## Todo product decisions
+- Persist priorities as `high`, `medium`, `low`, and `none`; display them consistently as `紧急`, `重要`, `普通`, and `未设置`.
+- Remove every list-related web entry while retaining backend list fields and APIs for legacy compatibility. Web updates must omit `listId` rather than clearing existing associations.
+- Keep title, priority, local date, local time, description, and optional tags in the web creation flow. Time requires a date, and clearing the date clears the time.
+- Use `/todo` and `/stats` as route-backed sections with one shared segmented control. Trends support 7 and 30 days and show created-versus-completed daily counts.
+- Native task detail is read-only, uses the existing expanded shell size, opens from the task body, returns with a chevron button, and leaves the circular checkbox as the only completion target.
+- Normal-network synchronization targets 10 seconds while the relevant surface is active and 60 seconds while inactive or hidden, with immediate refresh on entry, focus, visibility restore, activation, wake, login restoration, and successful mutations.
 
 ## Phase 7 layering contract
 - `Preferences/`: persist language, Advanced Features, and user-issued update commands; views never own auth or update network logic.

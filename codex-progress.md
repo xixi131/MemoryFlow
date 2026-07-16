@@ -160,3 +160,7 @@
 ### 2026-07-13 - Unsigned Sparkle install from CI artifacts
 - Generated real ad-hoc 1.0.0 build 100 and 1.0.1 build 101 candidates through the shared release command and verified a 2,689,109-byte Sparkle download, EdDSA validation, atomic replacement, old-process termination, and same-path relaunch into build 101.
 - Recheck suppression, future checks, tampered-signature, malformed-feed, HTTP, offline, disk, cancellation, explicit retry, duplicate, stale-callback, timer, deferral, and user-approved unsigned launch paths passed; all task-started processes were stopped.
+
+### 2026-07-16 - Todo priority labels and controls
+- Centralized todo priority presentation as `紧急`, `重要`, `普通`, and `未设置` without changing API enum values, and applied todo-scoped white bordered light controls, restrained dark controls, 8px radii, and consistent focus, placeholder, and disabled styling.
+- The web build and diff checks passed. Chrome verification covered desktop and mobile light/dark layouts, complete priority options, visible focus rings, expected computed colors, and zero horizontal overflow; the temporary local preview gate was fully removed afterward.

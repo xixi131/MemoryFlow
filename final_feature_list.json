@@ -1797,5 +1797,18 @@
     ],
     "budget_minutes": 10,
     "passes": false
+  },
+  {
+    "task_id": "mac-phase7-github-release-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the complete open-source macOS experience from GitHub installation through unsigned Sparkle updating.",
+    "steps": [
+      "Document and verify installation from a GitHub Release, including drag-to-Applications and macOS right-click Open or Privacy and Security approval, with a clear warning that the app is not notarized.",
+      "Verify basic mode, music, login-independent checks, Advanced Features, the Login Required square, browser login, review, todo, and saved-session preservation without changing Windows or Electron behavior.",
+      "Use a draft or prerelease candidate to verify Later across relaunch, prompt collapse, blue spinner, white percentage, EdDSA verification, app replacement, and relaunch into the higher version.",
+      "Exercise invalid signature, offline download, insufficient disk, cancelled installation, sleep or wake, rapid clicks, and relaunch, then record CI, release asset, install guidance, appcast, transition, visual, percentage, installed-version, and recovery evidence under docs/evidence/mac-island-phase7."
+    ],
+    "budget_minutes": 10,
+    "passes": false
   }
 ]

@@ -69,11 +69,13 @@ const EMPTY_STATS: TodoStatsDTO = {
 };
 
 const PRIORITY_LABEL: Record<TodoPriority, string> = {
-    high: '高',
-    medium: '中',
-    low: '低',
-    none: '无'
+    high: '紧急',
+    medium: '重要',
+    low: '普通',
+    none: '未设置'
 };
+
+const PRIORITY_VALUES: TodoPriority[] = ['high', 'medium', 'low', 'none'];
 
 const PRIORITY_CLASS: Record<TodoPriority, string> = {
     high: 'bg-red-500/15 text-red-500 border-red-500/25',
@@ -106,18 +108,13 @@ const TASK_STATUS_OPTIONS: SelectOption[] = [
 
 const TASK_PRIORITY_FILTER_OPTIONS: SelectOption[] = [
     { value: 'all', label: '优先级：全部' },
-    { value: 'high', label: '优先级：高' },
-    { value: 'medium', label: '优先级：中' },
-    { value: 'low', label: '优先级：低' },
-    { value: 'none', label: '优先级：无' }
+    ...PRIORITY_VALUES.map((value) => ({ value, label: `优先级：${PRIORITY_LABEL[value]}` }))
 ];
 
-const PRIORITY_PICKER_OPTIONS: SelectOption[] = [
-    { value: 'high', label: '高优先级' },
-    { value: 'medium', label: '中优先级' },
-    { value: 'low', label: '低优先级' },
-    { value: 'none', label: '无优先级' }
-];
+const PRIORITY_PICKER_OPTIONS: SelectOption[] = PRIORITY_VALUES.map((value) => ({
+    value,
+    label: PRIORITY_LABEL[value]
+}));
 
 const SORT_ORDER_OPTIONS: SelectOption[] = [
     { value: 'asc', label: '升序' },
@@ -131,10 +128,13 @@ const softClass =
     'bg-slate-100/75 dark:bg-[#0F172A]/70 border border-slate-200/70 dark:border-white/10';
 
 const inputClass =
-    'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
+    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition-colors placeholder:text-slate-500 hover:border-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-slate-600 dark:bg-[#111827] dark:text-white dark:placeholder:text-slate-400 dark:hover:border-slate-500 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 const selectClass =
-    'px-3 py-2 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
+    'rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-slate-600 dark:bg-[#111827] dark:text-white dark:hover:border-slate-500 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+
+const quickCreateInputClass =
+    'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
 
 type SelectOption = {
     value: string;
@@ -167,6 +167,8 @@ const ProjectSelect: React.FC<{
                 type="button"
                 className={`w-full text-left ${selectClass} inline-flex items-center justify-between`}
                 onClick={() => setOpen((prev) => !prev)}
+                aria-haspopup="listbox"
+                aria-expanded={open}
             >
                 <span className="truncate">{selected?.label || ''}</span>
                 <span className={`material-symbols-outlined text-[20px] text-slate-500 dark:text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}>
@@ -176,7 +178,8 @@ const ProjectSelect: React.FC<{
             {open && (
                 <div
                     className="absolute z-40 mt-2 w-full overflow-hidden bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 shadow-[0_14px_40px_rgba(15,23,42,0.16)]"
-                    style={continuous(24)}
+                    role="listbox"
+                    style={continuous(8)}
                 >
                     {options.map((option) => {
                         const active = option.value === value;
@@ -184,6 +187,8 @@ const ProjectSelect: React.FC<{
                             <button
                                 key={option.value}
                                 type="button"
+                                role="option"
+                                aria-selected={active}
                                 className={`w-full text-left px-4 py-3 text-base transition-colors ${
                                     active
                                         ? 'bg-primary text-white font-bold'
@@ -289,7 +294,7 @@ const QuickCreateModal: React.FC<{
                         }
                     }}
                     placeholder={placeholder}
-                    className={inputClass}
+                    className={quickCreateInputClass}
                 />
                 <div className="flex justify-end gap-2">
                     <button
