@@ -3,6 +3,11 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.1
+
+- 修复在设置中切换语言后，菜单栏菜单未立即同步更新的问题。
+- 恢复菜单栏图标与灵动岛设置的实时语言跟随行为。
+
 ## v1.1.0
 
 - 修复 macOS 26 下菜单栏图标无法显示的问题。

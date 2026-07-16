@@ -95,7 +95,27 @@ enum SettingsAndMenuProbe {
             throw SettingsAndMenuProbeError.failed("Status menu removal changed an unrelated command: \(titles)")
         }
 
-        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=compact-expanded+notch-safe+spring+reverse+reduce-motion; update-prompt=login-shape+modal+capsules+colors+focus+outside-safe+music-underlay; update-download=pure+priority+left-blue-spinner+right-stable-percent+empty-notch+reduce-motion+restore; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved"
+        let languageSettings = AppLanguageSettings(
+            store: UserDefaultsAppLanguageStore(defaults: defaults)
+        )
+        let recordingMenuBuilder = RecordingStatusMenuBuilder()
+        let statusBarController = StatusBarController(
+            windowController: ProbeIslandWindowController(),
+            preferencesWindowController: ProbePreferencesWindowController(),
+            languageSettings: languageSettings,
+            menuBuilder: recordingMenuBuilder
+        )
+        statusBarController.install()
+        defer { statusBarController.uninstall() }
+
+        languageSettings.setLanguage(.simplifiedChinese)
+        guard recordingMenuBuilder.languages == [.english, .simplifiedChinese] else {
+            throw SettingsAndMenuProbeError.failed(
+                "Status menu did not refresh after changing language: \(recordingMenuBuilder.languages)"
+            )
+        }
+
+        return "settings-menu-probe: PASS; default=disabled; persisted=enabled; lifecycle-notifications=deduplicated; basic=music+updates; advanced=auth+review+todo+reminders; login-required=compact-expanded+notch-safe+spring+reverse+reduce-motion; update-prompt=login-shape+modal+capsules+colors+focus+outside-safe+music-underlay; update-download=pure+priority+left-blue-spinner+right-stable-percent+empty-notch+reduce-motion+restore; states=hidden,logged-out,logged-in; interactions=absent; menu=preserved+language-refresh"
     }
 
     private static func validateBundledUpdateConfiguration() throws {
@@ -425,4 +445,57 @@ enum SettingsAndMenuProbe {
 
 private final class ProbeTarget: NSObject {
     @objc func action(_ sender: Any?) {}
+}
+
+private final class RecordingStatusMenuBuilder: StatusMenuBuilding {
+    private(set) var languages: [AppLanguage] = []
+
+    func buildMenu(
+        target: AnyObject,
+        isIslandVisible: Bool,
+        language: AppLanguage,
+        phase5Scenarios: [IslandMockScenario],
+        showHideAction: Selector,
+        phase5ScenarioAction: Selector,
+        preferencesAction: Selector,
+        logoutAction: Selector,
+        quitAction: Selector
+    ) -> NSMenu {
+        languages.append(language)
+        return StatusMenuBuilder().buildMenu(
+            target: target,
+            isIslandVisible: isIslandVisible,
+            language: language,
+            phase5Scenarios: phase5Scenarios,
+            showHideAction: showHideAction,
+            phase5ScenarioAction: phase5ScenarioAction,
+            preferencesAction: preferencesAction,
+            logoutAction: logoutAction,
+            quitAction: quitAction
+        )
+    }
+}
+
+private final class ProbePreferencesWindowController: PreferencesWindowControlling {
+    func show() {}
+}
+
+private final class ProbeIslandWindowController: IslandWindowControlling {
+    var onLoginRequested: (() -> Void)?
+    var onTodoCompletionRequested: ((Int64) -> Void)?
+    var onTodoModeActivityChanged: ((Bool) -> Void)?
+    var onUpdateRequested: (() -> Void)?
+    var onUpdateLaterRequested: (() -> Void)?
+
+    func show() {}
+    func hide() {}
+    func applyAuthenticatedUser(_ user: AuthenticatedUser) {}
+    func applyLoggedOutState() {}
+    func applyBasicCapabilityState() {}
+    func setAdvancedFeaturesEnabled(_ isEnabled: Bool) {}
+    func presentUpdatePrompt(version: String, build: String) {}
+    func applyUpdateDownloadProgress(_ progress: UpdateDownloadProgress) {}
+    func endUpdateDownloadActivity() {}
+    func applyReviewSnapshot(_ snapshot: ReviewSnapshot) {}
+    func applyTodoSnapshot(_ snapshot: TodoSnapshot) {}
 }

@@ -132,7 +132,7 @@ final class SceneCoordinator {
     private let updateCoordinator: UpdateCoordinator
     private var updateStateCancellable: AnyCancellable?
 
-    init(menuBarStateDidChange: @escaping (MenuBarPresentationState) -> Void = { _ in }) {
+    init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
         let languageSettings = AppLanguageSettings()
         let advancedFeaturesSettings = AdvancedFeaturesSettings()
@@ -267,8 +267,7 @@ final class SceneCoordinator {
             languageSettings: languageSettings,
             logoutHandler: { [weak authCoordinator] in
                 Task { await authCoordinator?.logout() }
-            },
-            stateDidChange: menuBarStateDidChange
+            }
         )
         self.statusBarController = statusBarController
         self.menuBarController = statusBarController
