@@ -22,6 +22,7 @@ private enum MemoryFlowRuntimeEndpoints {
 protocol IslandWindowControlling: AnyObject {
     var onLoginRequested: (() -> Void)? { get set }
     var onTodoCompletionRequested: ((Int64) -> Void)? { get set }
+    var onTodoModeActivityChanged: ((Bool) -> Void)? { get set }
     var onUpdateRequested: (() -> Void)? { get set }
     var onUpdateLaterRequested: (() -> Void)? { get set }
     func show()
@@ -35,6 +36,70 @@ protocol IslandWindowControlling: AnyObject {
     func endUpdateDownloadActivity()
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
+}
+
+@MainActor
+final class TodoLiveSyncOrchestrator {
+    private let pollingController: TodoPollingController
+    private var capabilityEnabled = false
+    private var authenticated = false
+    private var todoModeActive = false
+
+    init(pollingController: TodoPollingController) {
+        self.pollingController = pollingController
+    }
+
+    func setCapabilityEnabled(_ isEnabled: Bool) {
+        guard capabilityEnabled != isEnabled else { return }
+        capabilityEnabled = isEnabled
+        synchronizePolling()
+    }
+
+    func setAuthenticated(_ isAuthenticated: Bool) {
+        guard authenticated != isAuthenticated else { return }
+        authenticated = isAuthenticated
+        synchronizePolling()
+    }
+
+    func setTodoModeActive(_ isActive: Bool) {
+        guard todoModeActive != isActive else { return }
+        todoModeActive = isActive
+        guard pollingController.isRunning else { return }
+        pollingController.setCadence(resolvedCadence)
+        if isActive {
+            pollingController.refresh()
+        }
+    }
+
+    func refreshForApplicationActivation() {
+        pollingController.refresh()
+    }
+
+    func refreshForWake() {
+        pollingController.refresh()
+    }
+
+    func acceptCompletionRefresh(_ snapshot: TodoSnapshot) {
+        pollingController.acceptRefreshedSnapshot(snapshot)
+    }
+
+    func stop() {
+        capabilityEnabled = false
+        authenticated = false
+        pollingController.stop()
+    }
+
+    private var resolvedCadence: TodoPollingController.Cadence {
+        todoModeActive ? .activeTodo : .background
+    }
+
+    private func synchronizePolling() {
+        guard capabilityEnabled, authenticated else {
+            pollingController.stop()
+            return
+        }
+        pollingController.start(cadence: resolvedCadence)
+    }
 }
 
 protocol MenuBarControlling {
@@ -51,6 +116,8 @@ final class SceneCoordinator {
     private let advancedFeaturesSettings: AdvancedFeaturesSettings
     private let settingsAccountState: SettingsAccountState
     private var advancedFeaturesObserver: NSObjectProtocol?
+    private var applicationActivationObserver: NSObjectProtocol?
+    private var workspaceWakeObserver: NSObjectProtocol?
     private var capabilityGeneration = 0
     let authCoordinator: AuthCoordinating
     let desktopLoginCoordinator: DesktopLoginCoordinating
@@ -59,6 +126,7 @@ final class SceneCoordinator {
     let todoRepository: TodoRepositoryProtocol
     let todoPollingController: TodoPollingController
     let todoMutationController: TodoMutationController
+    private let todoLiveSyncOrchestrator: TodoLiveSyncOrchestrator
     private let updateCheckPolicy: UpdateCheckPolicy
     private let updateCoordinator: UpdateCoordinator
     private var updateStateCancellable: AnyCancellable?
@@ -105,33 +173,35 @@ final class SceneCoordinator {
             onSnapshot: { [weak todoMutationController] snapshot in todoMutationController?.acceptSnapshot(snapshot) }
         )
         self.todoPollingController = todoPollingController
+        let todoLiveSyncOrchestrator = TodoLiveSyncOrchestrator(pollingController: todoPollingController)
+        self.todoLiveSyncOrchestrator = todoLiveSyncOrchestrator
         let lifecycleHooks = AuthLifecycleHooks()
-        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController, weak todoPollingController, weak todoMutationController] in
+        lifecycleHooks.onCancelAuthenticatedWork = { [weak reviewPollingController, weak todoLiveSyncOrchestrator, weak todoMutationController] in
             Task { @MainActor in
                 reviewPollingController?.stop()
-                todoPollingController?.stop()
+                todoLiveSyncOrchestrator?.setAuthenticated(false)
                 todoMutationController?.cancelAll()
             }
         }
         let authCoordinator = AuthCoordinator(
             apiClient: apiClient,
             sessionStore: sessionStore,
-            onAuthStateChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings] state in
+            onAuthStateChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings, weak todoLiveSyncOrchestrator] state in
                 guard advancedFeaturesSettings?.isEnabled == true else { return }
                 if state == .loggedOut {
                     settingsAccountState?.apply(nil)
                     reviewPollingController.stop()
-                    todoPollingController.stop()
+                    todoLiveSyncOrchestrator?.setAuthenticated(false)
                     windowController?.applyLoggedOutState()
                 }
             },
-            onUserChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings] user in
+            onUserChanged: { [weak windowController, weak settingsAccountState, weak advancedFeaturesSettings, weak todoLiveSyncOrchestrator] user in
                 guard advancedFeaturesSettings?.isEnabled == true else { return }
                 settingsAccountState?.apply(user)
+                todoLiveSyncOrchestrator?.setAuthenticated(user != nil)
                 if let user {
                     windowController?.applyAuthenticatedUser(user)
                     reviewPollingController.start()
-                    todoPollingController.start()
                 }
             },
             lifecycleCleaner: lifecycleHooks
@@ -144,6 +214,9 @@ final class SceneCoordinator {
         }
         todoMutationController.onAuthenticationInvalidated = { [weak authCoordinator] in
             Task { await authCoordinator?.logout() }
+        }
+        todoMutationController.onCompletionSucceeded = { [weak todoLiveSyncOrchestrator] snapshot in
+            todoLiveSyncOrchestrator?.acceptCompletionRefresh(snapshot)
         }
         self.authCoordinator = authCoordinator
         self.desktopLoginCoordinator = DesktopLoginCoordinator(
@@ -183,6 +256,9 @@ final class SceneCoordinator {
         windowController.onTodoCompletionRequested = { [weak todoMutationController, weak advancedFeaturesSettings] taskID in
             guard advancedFeaturesSettings?.isEnabled == true else { return }
             todoMutationController?.complete(taskID: taskID)
+        }
+        windowController.onTodoModeActivityChanged = { [weak todoLiveSyncOrchestrator] isActive in
+            todoLiveSyncOrchestrator?.setTodoModeActive(isActive)
         }
         self.menuBarController = StatusBarController(
             windowController: windowController,
@@ -248,6 +324,9 @@ final class SceneCoordinator {
                 todoMutationController?.acceptSnapshot(snapshot)
             }
         )
+        self.todoLiveSyncOrchestrator = TodoLiveSyncOrchestrator(
+            pollingController: self.todoPollingController
+        )
         self.desktopLoginCoordinator = desktopLoginCoordinator ?? DesktopLoginCoordinator(
             webBaseURL: MemoryFlowRuntimeEndpoints.webBaseURL,
             sessionStore: resolvedSessionStore,
@@ -258,6 +337,12 @@ final class SceneCoordinator {
         }
         self.windowController.onTodoCompletionRequested = { [weak todoMutationController = self.todoMutationController] taskID in
             todoMutationController?.complete(taskID: taskID)
+        }
+        self.windowController.onTodoModeActivityChanged = { [weak todoLiveSyncOrchestrator = self.todoLiveSyncOrchestrator] isActive in
+            todoLiveSyncOrchestrator?.setTodoModeActive(isActive)
+        }
+        self.todoMutationController.onCompletionSucceeded = { [weak todoLiveSyncOrchestrator = self.todoLiveSyncOrchestrator] snapshot in
+            todoLiveSyncOrchestrator?.acceptCompletionRefresh(snapshot)
         }
         self.menuBarController = menuBarController ?? StatusBarController(
             windowController: windowController,
@@ -282,19 +367,41 @@ final class SceneCoordinator {
         ) { [weak self] _ in
             Task { @MainActor in self?.applyCapabilityPolicy() }
         }
+        applicationActivationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: NSApp,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.todoLiveSyncOrchestrator.refreshForApplicationActivation() }
+        }
+        workspaceWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.todoLiveSyncOrchestrator.refreshForWake() }
+        }
         applyCapabilityPolicy()
         updateCheckPolicy.start()
     }
 
     func stop() {
         reviewPollingController.stop()
-        todoPollingController.stop()
+        todoLiveSyncOrchestrator.stop()
         todoMutationController.cancelAll()
         updateCheckPolicy.stop()
         capabilityGeneration += 1
         if let advancedFeaturesObserver {
             NotificationCenter.default.removeObserver(advancedFeaturesObserver)
             self.advancedFeaturesObserver = nil
+        }
+        if let applicationActivationObserver {
+            NotificationCenter.default.removeObserver(applicationActivationObserver)
+            self.applicationActivationObserver = nil
+        }
+        if let workspaceWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(workspaceWakeObserver)
+            self.workspaceWakeObserver = nil
         }
         windowController.hide()
         menuBarController.uninstall()
@@ -306,7 +413,10 @@ final class SceneCoordinator {
             guard advancedFeaturesSettings.isEnabled else { return }
             do {
                 let user = try await desktopLoginCoordinator.handleCallback(url)
-                await MainActor.run { self.windowController.applyAuthenticatedUser(user) }
+                await MainActor.run {
+                    self.todoLiveSyncOrchestrator.setAuthenticated(true)
+                    self.windowController.applyAuthenticatedUser(user)
+                }
             } catch DesktopLoginCallbackError.duplicate {
                 return
             } catch {
@@ -320,10 +430,10 @@ final class SceneCoordinator {
         let generation = capabilityGeneration
         let policy = AdvancedCapabilityPolicy(advancedFeaturesEnabled: advancedFeaturesSettings.isEnabled)
         windowController.setAdvancedFeaturesEnabled(policy.allowsAuthentication)
+        todoLiveSyncOrchestrator.setCapabilityEnabled(policy.allowsProtectedStudyData)
 
         guard policy.allowsProtectedStudyData else {
             reviewPollingController.stop()
-            todoPollingController.stop()
             todoMutationController.cancelAll()
             settingsAccountState.apply(nil)
             windowController.applyBasicCapabilityState()
@@ -332,9 +442,13 @@ final class SceneCoordinator {
 
         Task { [weak self] in
             guard let self else { return }
-            _ = try? await authCoordinator.restoreAndVerifySession()
+            let restoredUser = try? await authCoordinator.restoreAndVerifySession()
             guard generation == capabilityGeneration,
                   advancedFeaturesSettings.isEnabled else { return }
+            todoLiveSyncOrchestrator.setAuthenticated(restoredUser != nil)
+            if restoredUser != nil {
+                reviewPollingController.start()
+            }
         }
     }
 

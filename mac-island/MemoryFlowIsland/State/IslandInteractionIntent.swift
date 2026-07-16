@@ -74,6 +74,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     case pausedMusicTimeout
     case greetingLifecycleCompleted
     case greetingFastForward
+    case todoDetailRequested(String)
+    case todoDetailDismissed
     case mockScenarioSelect(String)
     case retargetPresentation(IslandPresentationRetargetTarget)
     case transitionComplete(String?)

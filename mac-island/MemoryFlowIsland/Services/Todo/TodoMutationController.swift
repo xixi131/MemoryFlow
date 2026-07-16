@@ -7,6 +7,7 @@ final class TodoMutationController {
     private var snapshot: TodoSnapshot?
     private var inFlightTaskIDs = Set<Int64>()
     var onAuthenticationInvalidated: @MainActor () -> Void = {}
+    var onCompletionSucceeded: @MainActor (TodoSnapshot) -> Void = { _ in }
 
     init(repository: TodoRepositoryProtocol, onSnapshot: @escaping @MainActor (TodoSnapshot) -> Void) {
         self.repository = repository
@@ -32,6 +33,7 @@ final class TodoMutationController {
                 let reconciled = try await repository.fetchSnapshot()
                 snapshot = reconciled
                 onSnapshot(reconciled)
+                onCompletionSucceeded(reconciled)
             } catch {
                 snapshot = original
                 onSnapshot(original)

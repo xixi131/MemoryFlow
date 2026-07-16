@@ -18,10 +18,10 @@ Phase 7 implementation is complete through unsigned installation from CI artifac
 - Performance: `docs/evidence/mac-island-phase6/motion-performance-evidence.{json,md}`.
 
 ## Remaining real-world work
-The todo priority-label and input-treatment foundation, composer simplification, authenticated daily trend API, and native todo data fidelity are complete. The remaining todo queue continues with list cleanup, statistics UI, synchronization, native detail work, and cross-surface acceptance. The previous `mac-phase7-github-release-acceptance` task was archived unchanged rather than completed, so it can be restored later without blocking the new queue. Existing real music-provider work and untracked Xcode user data are not part of this queue.
+The todo priority/input foundation, composer simplification, trend API, native data fidelity, read-only native detail, and adaptive native synchronization are complete. The remaining queue continues with web list/editor cleanup, statistics UI, web synchronization, native detail motion, and cross-surface acceptance. The previous `mac-phase7-github-release-acceptance` task remains archived unchanged. Existing real music-provider work and untracked Xcode user data are not part of this queue.
 
 ## Queue status
-`feature_list.json` preserves 9 completed Phase 7 tasks, completes four todo-improvement slices, and contains 9 pending todo-improvement tasks. Start with `todo-web-list-filter-cleanup`.
+`feature_list.json` preserves 9 completed Phase 7 tasks, completes six todo-improvement slices, and contains 7 pending todo-improvement tasks. Start with `todo-web-list-filter-cleanup`.
 
 ## Todo improvement task groups
 - Tasks 1-4 simplify the web creation, filtering, and editing workflow while removing all list-related UI and preserving legacy backend list data.

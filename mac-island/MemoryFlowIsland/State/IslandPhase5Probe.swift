@@ -941,6 +941,10 @@ enum IslandPhase5Probe {
             return "greetingLifecycleCompleted"
         case .greetingFastForward:
             return "greetingFastForward"
+        case let .todoDetailRequested(taskID):
+            return "todoDetailRequested(\(taskID))"
+        case .todoDetailDismissed:
+            return "todoDetailDismissed"
         case let .mockScenarioSelect(scenarioID):
             return "mockScenarioSelect(\(scenarioID))"
         case .retargetPresentation:

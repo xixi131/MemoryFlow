@@ -251,7 +251,7 @@
       "Verify reducer transitions, row-versus-checkbox hit regions, long content, missing metadata, deleted selected tasks, and return to the list."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-mac-detail-slide-motion",
@@ -277,7 +277,7 @@
       "Verify cadence changes, focus and wake refreshes, failure recovery, completion refresh, relaunch, and timer cleanup with deterministic clocks and native probes."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-cross-surface-acceptance",

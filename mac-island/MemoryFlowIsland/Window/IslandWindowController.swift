@@ -70,6 +70,7 @@ private extension IslandPreviewContent.Kind {
              .reminderActivity,
              .expandedReview,
              .expandedTodo,
+             .expandedTodoDetail,
              .expandedMusic,
              .gestureLock:
             return false
@@ -82,6 +83,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         didSet { renderModel.onLoginRequested = onLoginRequested }
     }
     var onTodoCompletionRequested: ((Int64) -> Void)?
+    var onTodoModeActivityChanged: ((Bool) -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
     private var advancedFeaturesEnabled = false
@@ -342,10 +344,18 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             self.cancelPendingModeSwitchHold()
             self.resetPointerFeedbackImmediately()
         }
-        renderModel.onTodoTaskInteraction = { [weak self] taskID in
+        renderModel.onTodoCompletionRequested = { [weak self] taskID in
             self?.hostingView.consumeNextPointerTap()
             guard let id = Int64(taskID) else { return }
             self?.onTodoCompletionRequested?(id)
+        }
+        renderModel.onTodoDetailRequested = { [weak self] taskID in
+            self?.hostingView.consumeNextPointerTap()
+            _ = self?.dispatchPhase5Intent(.todoDetailRequested(taskID))
+        }
+        renderModel.onTodoDetailDismissed = { [weak self] in
+            self?.hostingView.consumeNextPointerTap()
+            _ = self?.dispatchPhase5Intent(.todoDetailDismissed)
         }
         hostingView.onPointerDown = { [weak self] input in
             self?.handlePointerDown(input)
@@ -1657,6 +1667,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             print("[IslandInteraction] intent=\(String(describing: intent)) before=\(phase5PreviewStateContainer.derivedState.visualState)")
         }
         var update = phase5PreviewStateContainer.dispatch(intent: intent)
+        if update.previousState.appDisplayMode != update.currentState.appDisplayMode {
+            onTodoModeActivityChanged?(update.currentState.appDisplayMode == .todo)
+        }
         if interactionDiagnosticsEnabled {
             print("[IslandInteraction] reason=\(update.reducerResult.reason.rawValue) after=\(update.currentDerivedState.visualState)")
         }

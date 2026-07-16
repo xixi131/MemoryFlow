@@ -61,7 +61,9 @@ final class IslandRenderModel: ObservableObject {
     var onMusicCommand: ((MusicCommand) -> Void)?
     var onMusicSeek: ((TimeInterval) -> Void)?
     var onMusicSeekInteractionStarted: (() -> Void)?
-    var onTodoTaskInteraction: ((String) -> Void)?
+    var onTodoCompletionRequested: ((String) -> Void)?
+    var onTodoDetailRequested: ((String) -> Void)?
+    var onTodoDetailDismissed: (() -> Void)?
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
@@ -102,7 +104,9 @@ struct IslandRootView: View {
             onMusicCommand: model.onMusicCommand,
             onMusicSeek: model.onMusicSeek,
             onMusicSeekInteractionStarted: model.onMusicSeekInteractionStarted,
-            onTodoTaskInteraction: model.onTodoTaskInteraction,
+            onTodoCompletionRequested: model.onTodoCompletionRequested,
+            onTodoDetailRequested: model.onTodoDetailRequested,
+            onTodoDetailDismissed: model.onTodoDetailDismissed,
             onLoginRequested: model.onLoginRequested,
             onUpdateRequested: model.onUpdateRequested,
             onUpdateLaterRequested: model.onUpdateLaterRequested

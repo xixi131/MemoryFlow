@@ -17,6 +17,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if ProcessInfo.processInfo.environment["MEMORYFLOW_TODO_LIVE_SYNC_PROBE"] == "1" {
+            Task { @MainActor in
+                do {
+                    print(try await TodoLiveSyncProbe.run())
+                    NSApp.terminate(nil)
+                } catch {
+                    fputs("todo-live-sync-probe: FAIL; \(error)\n", stderr)
+                    exit(EXIT_FAILURE)
+                }
+            }
+            return
+        }
+        if ProcessInfo.processInfo.environment["MEMORYFLOW_TODO_DETAIL_PROBE"] == "1" {
+            do {
+                print(try TodoDetailProbe.run())
+                NSApp.terminate(nil)
+            } catch {
+                fputs("todo-detail-probe: FAIL; \(error)\n", stderr)
+                exit(EXIT_FAILURE)
+            }
+            return
+        }
         if ProcessInfo.processInfo.environment["MEMORYFLOW_TODO_DATA_FIDELITY_PROBE"] == "1" {
             Task { @MainActor in
                 do {

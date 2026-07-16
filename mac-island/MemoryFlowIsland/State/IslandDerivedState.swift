@@ -447,6 +447,7 @@ struct IslandPreviewContent: Equatable {
         case reminderActivity
         case expandedReview
         case expandedTodo
+        case expandedTodoDetail
         case expandedMusic
         case gestureLock
     }
@@ -461,6 +462,7 @@ struct IslandPreviewContent: Equatable {
     let todo: IslandMockTodoActivity?
     let music: IslandMockMusicActivity?
     let contentWidthRequirement: IslandContentWidthRequirement
+    var todoDetail: IslandTodoDetailPresentation? = nil
 
     static func derive(
         from state: IslandDomainState,
@@ -582,8 +584,11 @@ struct IslandPreviewContent: Equatable {
 
         if showTodoActivity || state.appDisplayMode == .todo {
             let todo = state.todoSnapshot?.presentationActivity ?? state.mockSources.todo ?? .empty
-            return IslandPreviewContent(
-                kind: derivedVisualState.isExpanded ? .expandedTodo : (showTodoActivity ? .todoActivity : .todoCompact),
+            let selectedTask = derivedVisualState.isExpanded
+                ? todo.tasks.first(where: { $0.id == state.selectedTodoTaskID })
+                : nil
+            var content = IslandPreviewContent(
+                kind: selectedTask != nil ? .expandedTodoDetail : (derivedVisualState.isExpanded ? .expandedTodo : (showTodoActivity ? .todoActivity : .todoCompact)),
                 eyebrow: "待办",
                 title: todo.pendingCount > 0 ? "待办 \(todo.pendingCount) 项" : "待办模式",
                 subtitle: todo.nextTaskTitle ?? "今日待办",
@@ -596,6 +601,8 @@ struct IslandPreviewContent: Equatable {
                     ? width(leading: 120, trailing: 230, padding: 28)
                     : IslandActivityContentWidthProfile.requirement(for: .todo)
             )
+            content.todoDetail = selectedTask.map(IslandTodoDetailPresentation.init)
+            return content
         }
 
         let review = state.reviewSnapshot?.presentationActivity ?? state.mockSources.review ?? .empty
@@ -633,5 +640,40 @@ struct IslandPreviewContent: Equatable {
             trailingContentWidth: trailing,
             horizontalPadding: padding
         )
+    }
+}
+
+struct IslandTodoDetailPresentation: Equatable {
+    let taskID: String
+    let title: String
+    let descriptionText: String
+    let hasDescription: Bool
+    let priorityText: String
+    let dateText: String
+    let timeText: String
+    let statusText: String
+
+    init(task: IslandMockTodoTask) {
+        taskID = task.id
+        title = task.title
+
+        let description = task.descriptionMd?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        hasDescription = description.isEmpty == false
+        descriptionText = hasDescription ? description : "暂无描述"
+        priorityText = task.priority.title
+        dateText = Self.metadataText(task.dueDate)
+        timeText = Self.timeText(task.dueTime)
+        statusText = task.isCompleted ? "已完成" : "待完成"
+    }
+
+    private static func metadataText(_ value: String?) -> String {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "未设置" : trimmed
+    }
+
+    private static func timeText(_ value: String?) -> String {
+        let normalized = metadataText(value)
+        guard normalized != "未设置", normalized.count >= 5 else { return normalized }
+        return String(normalized.prefix(5))
     }
 }

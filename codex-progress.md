@@ -175,3 +175,6 @@
 
 ### 2026-07-16 - Web todo composer simplification
 - Removed list controls and `listId` from task creation, preserved priority/description/tags, and enforced date-before-time behavior. Web build, authenticated minimal/metadata creates, API refreshes, and persisted field checks passed; native picker UI testing was user-waived.
+
+### 2026-07-16 - Native todo detail and adaptive sync
+- Added reducer-owned read-only detail plus 10s active/60s background synchronization. Detail, data-fidelity, live-sync probes and the unsigned Debug build passed.

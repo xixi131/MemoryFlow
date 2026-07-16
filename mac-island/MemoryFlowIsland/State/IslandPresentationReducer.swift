@@ -49,6 +49,8 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case outsideCollapsedToCompact
     case outsideCollapsedToActivity
     case presentationRetargeted
+    case todoDetailPresented
+    case todoDetailDismissed
 }
 
 struct IslandPresentationReducerMetadata: Codable, Equatable {
@@ -82,6 +84,28 @@ enum IslandPresentationReducer {
         }
 
         switch intent {
+        case let .todoDetailRequested(taskID):
+            let todo = state.todoSnapshot?.presentationActivity ?? state.mockSources.todo
+            guard state.authState == .loggedIn,
+                  state.primaryMode == .app,
+                  state.appDisplayMode == .todo,
+                  state.presentationState == .expanded,
+                  todo?.tasks.contains(where: { $0.id == taskID }) == true else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            guard state.selectedTodoTaskID != taskID else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .todoDetailPresented) {
+                $0.selectedTodoTaskID = taskID
+            }
+        case .todoDetailDismissed:
+            guard state.selectedTodoTaskID != nil else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .todoDetailDismissed) {
+                $0.selectedTodoTaskID = nil
+            }
         case let .updateDownloadStarted(progress):
             guard state.updateDownloadProgress == nil else {
                 return unchanged(state, reason: .noChange)
@@ -199,7 +223,8 @@ enum IslandPresentationReducer {
         switch intent {
         case .loginRequiredRequested, .loginRequiredDismissed,
              .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested,
-             .updateDownloadStarted, .updateDownloadProgressed, .updateDownloadEnded:
+             .updateDownloadStarted, .updateDownloadProgressed, .updateDownloadEnded,
+             .todoDetailRequested, .todoDetailDismissed:
             return unchanged(state, reason: .noChange)
         case .outsideCollapse:
             if state.updatePrompt != nil {
@@ -440,6 +465,8 @@ enum IslandPresentationReducer {
         case .transitionComplete,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .todoDetailRequested,
+             .todoDetailDismissed,
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
@@ -675,6 +702,8 @@ enum IslandPresentationReducer {
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .todoDetailRequested,
+             .todoDetailDismissed,
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
@@ -702,6 +731,8 @@ enum IslandPresentationReducer {
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .todoDetailRequested,
+             .todoDetailDismissed,
              .updatePromptAvailable,
              .updatePromptUpdateRequested,
              .updatePromptLaterRequested,
@@ -742,6 +773,8 @@ enum IslandPresentationReducer {
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
+             .todoDetailRequested,
+             .todoDetailDismissed,
              .mockScenarioSelect,
              .retargetPresentation,
              .transitionComplete:

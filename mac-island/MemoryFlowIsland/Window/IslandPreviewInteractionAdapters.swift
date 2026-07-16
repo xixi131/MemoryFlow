@@ -818,6 +818,10 @@ enum IslandPreviewInteractionProbe {
             return "greetingLifecycleCompleted"
         case .greetingFastForward:
             return "greetingFastForward"
+        case let .todoDetailRequested(taskID):
+            return "todoDetailRequested(\(taskID))"
+        case .todoDetailDismissed:
+            return "todoDetailDismissed"
         case let .mockScenarioSelect(identifier):
             return "mockScenarioSelect(\(identifier))"
         case .retargetPresentation:

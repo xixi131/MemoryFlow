@@ -22,6 +22,11 @@ struct DispatchTodoPollingClock: TodoPollingClock {
 
 @MainActor
 final class TodoPollingController {
+    enum Cadence: TimeInterval, Equatable {
+        case activeTodo = 10
+        case background = 60
+    }
+
     private let repository: TodoRepositoryProtocol
     private let clock: TodoPollingClock
     private let onSnapshot: @MainActor (TodoSnapshot) -> Void
@@ -30,6 +35,7 @@ final class TodoPollingController {
     private var lastSuccessfulSnapshot: TodoSnapshot?
     private(set) var isRunning = false
     private(set) var isFetching = false
+    private(set) var cadence: Cadence = .background
     var onAuthenticationInvalidated: @MainActor () -> Void = {}
 
     init(
@@ -42,13 +48,24 @@ final class TodoPollingController {
         self.onSnapshot = onSnapshot
     }
 
-    func start() {
-        guard isRunning == false else { return }
+    func start(cadence: Cadence = .background) {
+        let wasRunning = isRunning
         isRunning = true
-        timer = clock.schedule(every: 60) { [weak self] in
+        setCadence(cadence)
+        if wasRunning == false {
+            fetchIfIdle()
+        }
+    }
+
+    func setCadence(_ cadence: Cadence) {
+        guard self.cadence != cadence || timer == nil else { return }
+        self.cadence = cadence
+        timer?.cancel()
+        timer = nil
+        guard isRunning else { return }
+        timer = clock.schedule(every: cadence.rawValue) { [weak self] in
             Task { @MainActor in self?.fetchIfIdle() }
         }
-        fetchIfIdle()
     }
 
     func stop() {
@@ -66,6 +83,10 @@ final class TodoPollingController {
         isFetching = true
         fetchTask = Task { [weak self] in
             guard let self else { return }
+            defer {
+                isFetching = false
+                fetchTask = nil
+            }
             do {
                 let snapshot = try await repository.fetchSnapshot()
                 guard Task.isCancelled == false, isRunning else { return }
@@ -79,8 +100,15 @@ final class TodoPollingController {
                     onSnapshot(lastSuccessfulSnapshot.markingStale())
                 }
             }
-            isFetching = false
-            fetchTask = nil
         }
+    }
+
+    func refresh() {
+        fetchIfIdle()
+    }
+
+    func acceptRefreshedSnapshot(_ snapshot: TodoSnapshot) {
+        guard isRunning else { return }
+        lastSuccessfulSnapshot = snapshot
     }
 }

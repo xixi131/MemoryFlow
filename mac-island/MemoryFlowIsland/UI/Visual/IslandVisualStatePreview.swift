@@ -31,7 +31,9 @@ struct IslandVisualStatePreview: View {
     var onMusicCommand: ((MusicCommand) -> Void)?
     var onMusicSeek: ((TimeInterval) -> Void)?
     var onMusicSeekInteractionStarted: (() -> Void)?
-    var onTodoTaskInteraction: ((String) -> Void)?
+    var onTodoCompletionRequested: ((String) -> Void)?
+    var onTodoDetailRequested: ((String) -> Void)?
+    var onTodoDetailDismissed: (() -> Void)?
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
@@ -172,7 +174,9 @@ struct IslandVisualStatePreview: View {
             onMusicSeek: onMusicSeek,
             onMusicSeekInteractionStarted: onMusicSeekInteractionStarted,
             todoToggleScenarioRequest: todoToggleScenarioRequest,
-            onTodoTaskInteraction: onTodoTaskInteraction,
+            onTodoCompletionRequested: onTodoCompletionRequested,
+            onTodoDetailRequested: onTodoDetailRequested,
+            onTodoDetailDismissed: onTodoDetailDismissed,
             onLoginRequested: onLoginRequested,
             onUpdateRequested: onUpdateRequested,
             onUpdateLaterRequested: onUpdateLaterRequested
@@ -352,7 +356,9 @@ private struct IslandPreviewContentOverlay: View {
     var onMusicSeek: ((TimeInterval) -> Void)?
     var onMusicSeekInteractionStarted: (() -> Void)?
     let todoToggleScenarioRequest: IslandTodoToggleScenarioRequest?
-    var onTodoTaskInteraction: ((String) -> Void)?
+    var onTodoCompletionRequested: ((String) -> Void)?
+    var onTodoDetailRequested: ((String) -> Void)?
+    var onTodoDetailDismissed: (() -> Void)?
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
@@ -629,10 +635,10 @@ private struct IslandPreviewContentOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(
             IslandExpandedContentClipShape(
-                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedMusic
+                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic
                     ? 0
                     : expandedInnerCornerRadius,
-                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedMusic
+                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic
                     ? 0
                     : expandedInnerCornerRadius
             )
@@ -699,13 +705,16 @@ private struct IslandPreviewContentOverlay: View {
                 tint: tintColor,
                 contentPhase: contentPhase
             )
+        } else if content.kind == .expandedTodoDetail, let detail = content.todoDetail {
+            IslandExpandedTodoDetailContent(detail: detail, onDismiss: onTodoDetailDismissed)
         } else if content.kind == .expandedTodo, let todo = content.todo {
             IslandExpandedTodoContent(
                 todo: todo,
                 tint: tintColor,
                 contentPhase: contentPhase,
                 scenarioRequest: todoToggleScenarioRequest,
-                onTaskInteraction: onTodoTaskInteraction
+                onCompletionRequested: onTodoCompletionRequested,
+                onDetailRequested: onTodoDetailRequested
             )
         } else {
             genericExpandedAppContent
@@ -1723,7 +1732,8 @@ private struct IslandExpandedTodoContent: View {
     let tint: Color
     let contentPhase: IslandContentPhase
     let scenarioRequest: IslandTodoToggleScenarioRequest?
-    var onTaskInteraction: ((String) -> Void)?
+    var onCompletionRequested: ((String) -> Void)?
+    var onDetailRequested: ((String) -> Void)?
     @State private var summaryIsVisible = false
     @State private var rowsAreVisible = false
     @State private var localToggleState: IslandLocalTodoToggleState?
@@ -1939,8 +1949,7 @@ private struct IslandExpandedTodoContent: View {
     private func taskRow(_ task: IslandExpandedTodoTaskSlot) -> some View {
         HStack(spacing: 7) {
             Button {
-                onTaskInteraction?(task.id)
-                toggleTask(id: task.id)
+                performRowAction(target: .checkbox, taskID: task.id)
             } label: {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 15, weight: .semibold))
@@ -1952,26 +1961,35 @@ private struct IslandExpandedTodoContent: View {
             .disabled(isTaskLocked(task.id))
             .opacity(isTaskLocked(task.id) ? 0.48 : 1)
             .accessibilityLabel(task.isCompleted ? "Mark \(task.title) incomplete" : "Mark \(task.title) complete")
+            .accessibilityIdentifier("island-todo-checkbox-\(task.id)")
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(task.title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(task.isCompleted ? .white.opacity(0.42) : .white.opacity(0.9))
-                    .strikethrough(task.isCompleted, color: .white.opacity(0.35))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.64)
-                Text(task.dueText)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(task.isOverdue ? Color.red.opacity(0.92) : .white.opacity(0.48))
-                    .lineLimit(1)
+            Button {
+                performRowAction(target: .body, taskID: task.id)
+            } label: {
+                HStack(spacing: 7) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(task.title)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(task.isCompleted ? .white.opacity(0.42) : .white.opacity(0.9))
+                            .strikethrough(task.isCompleted, color: .white.opacity(0.35))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.64)
+                        Text(task.dueText)
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(task.isOverdue ? Color.red.opacity(0.92) : .white.opacity(0.48))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    Text(task.priority.title)
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(task.priority.color)
+                        .lineLimit(1)
+                }
+                .contentShape(Rectangle())
             }
-
-            Spacer(minLength: 4)
-
-            Text(task.priority.title)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(task.priority.color)
-                .lineLimit(1)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("island-todo-detail-target-\(task.id)")
+            .accessibilityLabel("Open details for \(task.title)")
         }
         .padding(.horizontal, 2)
         .frame(height: IslandExpandedTodoContentLayout.rowHeight)
@@ -2010,10 +2028,90 @@ private struct IslandExpandedTodoContent: View {
         }
     }
 
+    private func performRowAction(target: IslandTodoRowHitTarget, taskID: String) {
+        switch IslandTodoRowHitRegion.action(for: target) {
+        case .completion:
+            onCompletionRequested?(taskID)
+            toggleTask(id: taskID)
+        case .detail:
+            onDetailRequested?(taskID)
+        }
+    }
+
     private func resolveScenarioRequest(_ request: IslandTodoToggleScenarioRequest) {
         withAnimation(IslandExpandedTodoContentLayout.toggleAnimation) {
             // A rollback changes only the affected task, preserving the current presentation of every other row.
             _ = localToggleState?.resolveMostRecent(outcome: request.outcome)
+        }
+    }
+}
+
+private struct IslandExpandedTodoDetailContent: View {
+    let detail: IslandTodoDetailPresentation
+    var onDismiss: (() -> Void)?
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                Button(action: { onDismiss?() }) {
+                    Label("返回", systemImage: "chevron.left")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(IslandTodoVisualStyle.accent)
+                .accessibilityIdentifier("island-todo-detail-back")
+
+                Text(detail.title)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(detail.descriptionText)
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundStyle(detail.hasDescription ? .white.opacity(0.72) : .white.opacity(0.42))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    metadataRow("优先级", detail.priorityText)
+                    metadataRow("日期", detail.dateText)
+                    metadataRow("时间", detail.timeText)
+                    metadataRow("状态", detail.statusText)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 12)
+        }
+        .accessibilityIdentifier("island-todo-detail")
+    }
+
+    private func metadataRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(label)
+                .foregroundStyle(.white.opacity(0.44))
+                .frame(width: 44, alignment: .leading)
+            Text(value)
+                .foregroundStyle(.white.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.system(size: 11, weight: .medium, design: .rounded))
+    }
+}
+
+enum IslandTodoRowHitTarget: Equatable {
+    case checkbox
+    case body
+}
+
+enum IslandTodoRowAction: Equatable {
+    case completion
+    case detail
+}
+
+enum IslandTodoRowHitRegion {
+    static func action(for target: IslandTodoRowHitTarget) -> IslandTodoRowAction {
+        switch target {
+        case .checkbox: return .completion
+        case .body: return .detail
         }
     }
 }

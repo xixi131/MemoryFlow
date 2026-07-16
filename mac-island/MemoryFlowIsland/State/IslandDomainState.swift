@@ -279,6 +279,7 @@ struct IslandDomainState: Codable, Equatable {
     var updateDownloadProgress: UpdateDownloadProgress? = nil
     var reviewSnapshot: ReviewSnapshot? = nil
     var todoSnapshot: TodoSnapshot? = nil
+    var selectedTodoTaskID: String? = nil
     var musicReturnState: IslandMusicReturnState? = nil
     var mockSources: IslandMockActivitySources
 
