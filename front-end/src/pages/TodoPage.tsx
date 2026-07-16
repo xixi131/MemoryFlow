@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom';
 import { message } from '../components/Message';
 import { ModalWrapper } from '../components/Modals';
+import TodoTrendChart from '../components/todo/TodoTrendChart';
 import todoApis, {
     CreateTodoTaskPayload,
     TodoPriority,
@@ -959,6 +960,7 @@ const TodoPage: React.FC = () => {
                                 ))}
                             </div>
                         )}
+                        <TodoTrendChart />
                     </section>
                 ) : (
                     <>

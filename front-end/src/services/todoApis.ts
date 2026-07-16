@@ -66,6 +66,31 @@ export interface TodoStatsDTO {
     weekCompletionRate: number;
 }
 
+export type TodoTrendDays = 7 | 30;
+
+export interface TodoTrendQuery {
+    days: TodoTrendDays;
+}
+
+export interface TodoTrendPointDTO {
+    date: string;
+    createdTasks: number;
+    completedTasks: number;
+}
+
+export interface TodoTrendsDTO {
+    days: TodoTrendDays;
+    startDate: string;
+    endDate: string;
+    points: TodoTrendPointDTO[];
+}
+
+export interface TodoApiResponse<T> {
+    code: number;
+    message?: string;
+    data: T;
+}
+
 export interface TodoTaskQuery {
     keyword?: string;
     status?: 'all' | TodoTaskStatus;
@@ -170,7 +195,12 @@ const todoApis = {
     reorderSubtasks: (taskId: number, ids: number[]) =>
         request({ url: `/todos/tasks/${taskId}/subtasks/reorder`, method: 'post', data: { ids } }),
 
-    getStats: () => request({ url: '/todos/stats', method: 'get' })
+    getStats: () => request({ url: '/todos/stats', method: 'get' }),
+
+    getTrends: ({ days }: TodoTrendQuery) =>
+        request({ url: '/todos/stats/trends', method: 'get', params: { days } }) as unknown as Promise<
+            TodoApiResponse<TodoTrendsDTO>
+        >
 };
 
 export default todoApis;

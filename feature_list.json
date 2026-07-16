@@ -212,7 +212,7 @@
       "Compare both chart ranges with authenticated API responses and verify desktop, mobile, light-theme, and dark-theme rendering in the browser."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-web-adaptive-live-sync",

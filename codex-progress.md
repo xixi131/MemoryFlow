@@ -44,3 +44,6 @@
 
 ### 2026-07-16 - Route-backed Todo statistics shell
 - Added shared `/todo` and `/stats` routing, history-aware segments, route-aware navigation, and statistics-only metrics. Web build and 8 route/auth/structure assertions passed; visual testing was user-waived.
+
+### 2026-07-16 - Web Todo trend chart
+- Added typed 7/30-day Recharts trends with fixed loading/error/empty states. Web build, backend tests, source checks, and authenticated 7/30 range loading passed; visual testing was user-waived.
