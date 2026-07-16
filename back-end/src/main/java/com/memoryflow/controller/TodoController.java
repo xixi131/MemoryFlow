@@ -13,6 +13,7 @@ import com.memoryflow.dto.todo.TodoStatsDTO;
 import com.memoryflow.dto.todo.TodoSubtaskDTO;
 import com.memoryflow.dto.todo.TodoTagDTO;
 import com.memoryflow.dto.todo.TodoTaskDTO;
+import com.memoryflow.dto.todo.TodoTrendsDTO;
 import com.memoryflow.dto.todo.UpdateTodoListRequest;
 import com.memoryflow.dto.todo.UpdateTodoSubtaskRequest;
 import com.memoryflow.dto.todo.UpdateTodoSubtaskStatusRequest;
@@ -195,5 +196,10 @@ public class TodoController {
         Long userId = securityUtils.getCurrentUserId();
         return ApiResponse.success(todoService.getStats(userId));
     }
-}
 
+    @GetMapping("/stats/trends")
+    public ApiResponse<TodoTrendsDTO> getTodoTrends(@RequestParam int days) {
+        Long userId = securityUtils.getCurrentUserId();
+        return ApiResponse.success(todoService.getTrends(userId, days));
+    }
+}

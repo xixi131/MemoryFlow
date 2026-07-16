@@ -13,6 +13,9 @@ import com.memoryflow.dto.todo.TodoStatsDTO;
 import com.memoryflow.dto.todo.TodoSubtaskDTO;
 import com.memoryflow.dto.todo.TodoTagDTO;
 import com.memoryflow.dto.todo.TodoTaskDTO;
+import com.memoryflow.dto.todo.TodoTrendCountDTO;
+import com.memoryflow.dto.todo.TodoTrendPointDTO;
+import com.memoryflow.dto.todo.TodoTrendsDTO;
 import com.memoryflow.dto.todo.UpdateTodoListRequest;
 import com.memoryflow.dto.todo.UpdateTodoSubtaskRequest;
 import com.memoryflow.dto.todo.UpdateTodoSubtaskStatusRequest;
@@ -515,6 +518,52 @@ public class TodoService {
                 .completedThisWeek(completedThisWeek)
                 .weekCompletionRate(Math.round(weekRate * 100.0) / 100.0)
                 .build();
+    }
+
+    public TodoTrendsDTO getTrends(Long userId, int days) {
+        return getTrends(userId, days, LocalDate.now());
+    }
+
+    TodoTrendsDTO getTrends(Long userId, int days, LocalDate endDate) {
+        if (days != 7 && days != 30) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "days 仅支持 7 或 30");
+        }
+
+        LocalDate startDate = endDate.minusDays(days - 1L);
+        LocalDateTime startInclusive = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
+
+        Map<LocalDate, Integer> createdCounts = toTrendCountMap(
+                todoTaskMapper.countCreatedTasksByDate(userId, startInclusive, endExclusive));
+        Map<LocalDate, Integer> completedCounts = toTrendCountMap(
+                todoTaskMapper.countCompletedTasksByDate(userId, startInclusive, endExclusive));
+
+        List<TodoTrendPointDTO> points = new ArrayList<>(days);
+        for (int offset = 0; offset < days; offset++) {
+            LocalDate date = startDate.plusDays(offset);
+            points.add(TodoTrendPointDTO.builder()
+                    .date(date)
+                    .createdTasks(createdCounts.getOrDefault(date, 0))
+                    .completedTasks(completedCounts.getOrDefault(date, 0))
+                    .build());
+        }
+
+        return TodoTrendsDTO.builder()
+                .days(days)
+                .startDate(startDate)
+                .endDate(endDate)
+                .points(points)
+                .build();
+    }
+
+    private Map<LocalDate, Integer> toTrendCountMap(List<TodoTrendCountDTO> counts) {
+        if (counts == null || counts.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return counts.stream().collect(Collectors.toMap(
+                TodoTrendCountDTO::getDate,
+                count -> count.getTaskCount() == null ? 0 : count.getTaskCount(),
+                Integer::sum));
     }
 
     private int countTasks(Long userId,

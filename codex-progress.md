@@ -168,3 +168,7 @@
 ### 2026-07-16 - Native todo data fidelity
 - Preserved web todo descriptions, actual priority, due date, and due time through native decoding, snapshots, optimistic completion/rollback, domain presentation, and rendered task slots.
 - Deterministic probes covered all four priority labels and completed, overdue, today, tomorrow, later-date, date-only, and no-date due states. The integrated Xcode build and live todo probes passed, Windows/Electron files remained unchanged, and task-started processes were cleaned up.
+
+### 2026-07-16 - Authenticated todo daily trends
+- Added authenticated 7-day and 30-day todo creation/completion trends with user-isolated MySQL date aggregation, local-calendar half-open boundaries, ascending ISO dates, and zero-filled missing days.
+- Five service/controller tests passed. Live authenticated requests returned 7 and 30 points, invalid ranges returned HTTP 400, unauthenticated access was rejected, and three-user database verification confirmed aggregation remained scoped by `user_id`.

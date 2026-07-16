@@ -186,7 +186,7 @@
       "Verify 7-day, 30-day, invalid-range, empty-data, boundary-date, and cross-user isolation behavior with backend tests and authenticated API requests."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-web-route-backed-segmented-shell",
