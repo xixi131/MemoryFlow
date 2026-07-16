@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { message } from '../components/Message';
 import { ModalWrapper } from '../components/Modals';
 import todoApis, {
@@ -372,6 +373,8 @@ const buildDueLabel = (task: TodoTaskDTO) => {
 };
 
 const TodoPage: React.FC = () => {
+    const location = useLocation();
+    const isStatisticsRoute = location.pathname === '/stats';
     const [tags, setTags] = useState<TodoTagDTO[]>([]);
     const [tasks, setTasks] = useState<TodoTaskDTO[]>([]);
     const [stats, setStats] = useState<TodoStatsDTO>(EMPTY_STATS);
@@ -459,6 +462,11 @@ const TodoPage: React.FC = () => {
             setDrawerTaskId(null);
         }, 260);
     }, []);
+    useEffect(() => {
+        if (!isStatisticsRoute) return;
+        if (isDrawerMounted) closeDrawer();
+        setShowTagCreateModal(false);
+    }, [closeDrawer, isDrawerMounted, isStatisticsRoute]);
     const orderHint =
         query.sortBy === 'created'
             ? query.sortOrder === 'asc'
@@ -878,12 +886,82 @@ const TodoPage: React.FC = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full animate-fade-in">
-            <header className="px-2">
-                <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">待办事项</h2>
-                <p className="text-slate-500 dark:text-text-secondary text-lg mt-1">更简约的任务工作台，支持侧边抽屉编辑。</p>
+            <header className="flex flex-col gap-5 px-2">
+                <div>
+                    <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">待办工作台</h2>
+                    <p className="text-slate-500 dark:text-text-secondary text-lg mt-1">
+                        {isStatisticsRoute ? '查看任务进度、到期风险与本周完成情况。' : '管理任务、标签、优先级与完成状态。'}
+                    </p>
+                </div>
+                <nav
+                    aria-label="待办工作区视图"
+                    className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-200/70 p-1 dark:bg-white/10 sm:w-[360px]"
+                >
+                    <Link
+                        to="/todo"
+                        aria-current={!isStatisticsRoute ? 'page' : undefined}
+                        className={`flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-bold transition-colors ${
+                            !isStatisticsRoute
+                                ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
+                                : 'text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white'
+                        }`}
+                    >
+                        待办
+                    </Link>
+                    <Link
+                        to="/stats"
+                        aria-current={isStatisticsRoute ? 'page' : undefined}
+                        className={`flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-bold transition-colors ${
+                            isStatisticsRoute
+                                ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
+                                : 'text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white'
+                        }`}
+                    >
+                        统计
+                    </Link>
+                </nav>
             </header>
 
             <div className="flex flex-col gap-6 px-2">
+                {isStatisticsRoute ? (
+                    <section aria-labelledby="todo-statistics-heading" className="flex flex-col gap-5 min-w-0">
+                        <div>
+                            <h3 id="todo-statistics-heading" className="text-xl font-bold text-slate-900 dark:text-white">任务概览</h3>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-text-secondary">统计数据来自当前账户的全部任务。</p>
+                        </div>
+                        {metaLoading ? (
+                            <div className="min-h-[132px] py-10 text-center text-sm text-slate-500 dark:text-text-secondary">统计加载中...</div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                {[
+                                    { label: '总任务', value: stats.totalTasks, detail: '全部已创建任务', tone: 'text-slate-900 dark:text-white' },
+                                    { label: '进行中', value: stats.pendingTasks, detail: '尚未完成', tone: 'text-blue-500' },
+                                    { label: '已完成', value: stats.completedTasks, detail: '累计完成', tone: 'text-emerald-500' },
+                                    { label: '今日到期', value: stats.dueToday, detail: '需要今日处理', tone: 'text-amber-500' },
+                                    { label: '明日到期', value: stats.dueTomorrow, detail: '即将到期', tone: 'text-cyan-500' },
+                                    { label: '已经逾期', value: stats.overdueTasks, detail: '待处理的逾期任务', tone: 'text-red-500' },
+                                    { label: '紧急任务', value: stats.highPriorityPending, detail: '未完成的紧急任务', tone: 'text-orange-500' },
+                                    {
+                                        label: '本周完成率',
+                                        value: `${stats.weekCompletionRate}%`,
+                                        detail: `创建 ${stats.createdThisWeek} · 完成 ${stats.completedThisWeek}`,
+                                        tone: 'text-purple-500'
+                                    }
+                                ].map((metric) => (
+                                    <article
+                                        key={metric.label}
+                                        className="flex min-h-[132px] flex-col justify-between rounded-lg border border-slate-200 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+                                    >
+                                        <p className="text-sm font-bold text-slate-500 dark:text-text-secondary">{metric.label}</p>
+                                        <p className={`text-3xl font-extrabold ${metric.tone}`}>{metric.value}</p>
+                                        <p className="text-xs text-slate-400 dark:text-text-secondary/80">{metric.detail}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                ) : (
+                    <>
                 <section className="flex flex-col gap-5 min-w-0">
                     <div className="p-0">
                         <div className="flex flex-col gap-3">
@@ -972,16 +1050,6 @@ const TodoPage: React.FC = () => {
                                     );
                                 })}
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="px-1">
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                            <span className="text-slate-500 dark:text-text-secondary">总任务 <b className="text-slate-900 dark:text-white ml-1">{stats.totalTasks}</b></span>
-                            <span className="text-slate-500 dark:text-text-secondary">进行中 <b className="text-blue-500 ml-1">{stats.pendingTasks}</b></span>
-                            <span className="text-slate-500 dark:text-text-secondary">已完成 <b className="text-green-500 ml-1">{stats.completedTasks}</b></span>
-                            <span className="text-slate-500 dark:text-text-secondary">今日到期 <b className="text-amber-500 ml-1">{stats.dueToday}</b></span>
-                            <span className="text-slate-500 dark:text-text-secondary">本周完成率 <b className="text-purple-500 ml-1">{stats.weekCompletionRate}%</b></span>
                         </div>
                     </div>
 
@@ -1143,9 +1211,11 @@ const TodoPage: React.FC = () => {
                         )}
                     </div>
                 </section>
+                    </>
+                )}
             </div>
 
-            {isDrawerMounted && drawerDraft && drawerTask && (
+            {!isStatisticsRoute && isDrawerMounted && drawerDraft && drawerTask && (
                 <div className="fixed inset-0 z-50">
                     <button
                         type="button"
@@ -1267,7 +1337,7 @@ const TodoPage: React.FC = () => {
                 </div>
             )}
 
-            {showTagCreateModal && (
+            {!isStatisticsRoute && showTagCreateModal && (
                 <QuickCreateModal
                     title="新建标签"
                     placeholder="请输入标签名称"

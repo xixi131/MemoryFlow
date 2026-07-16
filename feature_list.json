@@ -199,7 +199,7 @@
       "Verify direct links, segment switching, Back and Forward navigation, authentication routing, and responsive layout on both routes."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-web-trend-chart",

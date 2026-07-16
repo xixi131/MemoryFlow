@@ -41,3 +41,6 @@
 
 ### 2026-07-16 - Web todo editor list removal
 - Removed `listId` from editor drafts/updates and enforced date-before-time behavior, preserving legacy associations by omission. Web build, isolated startup, and contract checks passed; UI testing was user-waived.
+
+### 2026-07-16 - Route-backed Todo statistics shell
+- Added shared `/todo` and `/stats` routing, history-aware segments, route-aware navigation, and statistics-only metrics. Web build and 8 route/auth/structure assertions passed; visual testing was user-waived.

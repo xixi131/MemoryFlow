@@ -71,6 +71,10 @@ export const Navigation: React.FC = () => {
 
     // “首页”按钮在 /、/detail、/subject 下都高亮
     const isDashboardActive = pathname === '/home' || pathname === '/detail' || pathname === '/subject';
+    const isNavItemActive = (item: (typeof navItems)[number]) =>
+        (item.id === 'dashboard' && isDashboardActive) ||
+        (item.id === 'todo' && (pathname === '/todo' || pathname === '/stats')) ||
+        (item.id !== 'dashboard' && item.id !== 'todo' && pathname === item.path);
 
     return (
         <>
@@ -138,8 +142,7 @@ export const Navigation: React.FC = () => {
                                     key={item.id}
                                     to={item.path}
                                     className={`px-7 py-3 rounded-full text-base font-bold transition-all whitespace-nowrap ${
-                                        (item.id === 'dashboard' && isDashboardActive) ||
-                                        (item.id !== 'dashboard' && pathname === item.path)
+                                        isNavItemActive(item)
                                             ? 'bg-primary text-white shadow-glow'
                                             : 'text-slate-500 hover:text-slate-900 hover:bg-white/50 dark:text-text-secondary dark:hover:text-white dark:hover:bg-white/5'
                                     }`}
@@ -178,9 +181,7 @@ export const Navigation: React.FC = () => {
                             <div className="glass-panel !border-0 rounded-3xl p-3 shadow-[0_12px_30px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.06)] dark:shadow-[0_14px_44px_rgba(0,0,0,0.55),0_4px_14px_rgba(0,0,0,0.30)] mx-4">
                                 <div className="flex flex-col gap-2">
                                     {navItems.map((item) => {
-                                        const isActive =
-                                            (item.id === 'dashboard' && isDashboardActive) ||
-                                            (item.id !== 'dashboard' && pathname === item.path);
+                                        const isActive = isNavItemActive(item);
                                         return (
                                             <Link
                                                 key={item.id}
