@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { message } from '../components/Message';
 import { ModalWrapper } from '../components/Modals';
 import TodoTrendChart from '../components/todo/TodoTrendChart';
+import { useTodoSynchronization } from '../hooks/useTodoSynchronization';
 import todoApis, {
     CreateTodoTaskPayload,
     TodoPriority,
@@ -12,7 +13,8 @@ import todoApis, {
     TodoStatsDTO,
     TodoTagDTO,
     TodoTaskDTO,
-    TodoTimeFilter
+    TodoTimeFilter,
+    TodoTrendDays
 } from '../services/todoApis';
 
 type TodoQueryState = {
@@ -377,13 +379,40 @@ const TodoPage: React.FC = () => {
     const location = useLocation();
     const isStatisticsRoute = location.pathname === '/stats';
     const [tags, setTags] = useState<TodoTagDTO[]>([]);
-    const [tasks, setTasks] = useState<TodoTaskDTO[]>([]);
-    const [stats, setStats] = useState<TodoStatsDTO>(EMPTY_STATS);
     const [query, setQuery] = useState<TodoQueryState>(DEFAULT_QUERY);
     const [searchInput, setSearchInput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [metaLoading, setMetaLoading] = useState(false);
+    const [tagsLoading, setTagsLoading] = useState(true);
+    const [trendDays, setTrendDays] = useState<TodoTrendDays>(7);
     const [saving, setSaving] = useState(false);
+
+    const taskQuery = useMemo(
+        () => ({
+            keyword: query.keyword || undefined,
+            status: query.status,
+            timeFilter: query.timeFilter,
+            priority: query.priority,
+            tagId: query.tagId,
+            sortBy: query.sortBy,
+            sortOrder: query.sortOrder
+        }),
+        [query]
+    );
+    const {
+        tasks,
+        setTasks,
+        stats,
+        statsLoadState,
+        trend,
+        trendLoadState,
+        trendError,
+        tasksLoading,
+        refreshNow
+    } = useTodoSynchronization({
+        routeKey: location.pathname,
+        taskQuery,
+        trendDays,
+        initialStats: EMPTY_STATS
+    });
 
     const [createDraft, setCreateDraft] = useState<CreateDraft>({
         title: '',
@@ -501,73 +530,37 @@ const TodoPage: React.FC = () => {
     }, []);
 
     const loadTags = useCallback(async () => {
-        const res: any = await todoApis.getTags();
-        if (res.code === 200) setTags(Array.isArray(res.data) ? res.data : []);
-    }, []);
-
-    const loadStats = useCallback(async () => {
-        const res: any = await todoApis.getStats();
-        if (res.code === 200 && res.data) setStats(res.data);
-    }, []);
-
-    const loadTasks = useCallback(async (showLoading = true) => {
-        if (showLoading) setLoading(true);
+        setTagsLoading(true);
         try {
-            const res: any = await todoApis.getTasks({
-                keyword: query.keyword || undefined,
-                status: query.status,
-                timeFilter: query.timeFilter,
-                priority: query.priority,
-                tagId: query.tagId,
-                sortBy: query.sortBy,
-                sortOrder: query.sortOrder
-            });
-            if (res.code !== 200) {
-                message.error(res.message || '任务加载失败');
-                return;
-            }
-            const next: TodoTaskDTO[] = Array.isArray(res.data) ? res.data : [];
-            setTasks(next);
-            setSelectedTaskIds((prev) => prev.filter((id) => next.some((task) => task.id === id)));
-            const activeDrawerTaskId = drawerTaskIdRef.current;
-            if (activeDrawerTaskId && !next.some((task) => task.id === activeDrawerTaskId)) {
-                closeDrawer();
-            }
+            const res: any = await todoApis.getTags();
+            if (res.code === 200) setTags(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error(error);
-            message.error('任务加载失败');
+            message.error('标签加载失败');
         } finally {
-            if (showLoading) setLoading(false);
+            setTagsLoading(false);
         }
-    }, [query, closeDrawer]);
-
-    const loadMeta = useCallback(async () => {
-        setMetaLoading(true);
-        try {
-            await Promise.all([loadTags(), loadStats()]);
-        } catch (error) {
-            console.error(error);
-            message.error('基础数据加载失败');
-        } finally {
-            setMetaLoading(false);
-        }
-    }, [loadTags, loadStats]);
+    }, []);
 
     const refreshAfterMutation = useCallback(
-        async (refreshMeta = false) => {
-            if (refreshMeta) await loadMeta();
-            await Promise.all([loadTasks(), loadStats()]);
+        async (refreshTags = false) => {
+            if (refreshTags) await loadTags();
+            await refreshNow();
         },
-        [loadMeta, loadStats, loadTasks]
+        [loadTags, refreshNow]
     );
 
     useEffect(() => {
-        loadMeta();
-    }, [loadMeta]);
+        void loadTags();
+    }, [loadTags]);
 
     useEffect(() => {
-        loadTasks();
-    }, [loadTasks]);
+        setSelectedTaskIds((prev) => prev.filter((id) => tasks.some((task) => task.id === id)));
+        const activeDrawerTaskId = drawerTaskIdRef.current;
+        if (activeDrawerTaskId && !tasks.some((task) => task.id === activeDrawerTaskId)) {
+            closeDrawer();
+        }
+    }, [closeDrawer, tasks]);
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -675,7 +668,7 @@ const TodoPage: React.FC = () => {
                 }
             }
 
-            await loadStats();
+            await refreshNow();
         } catch (error) {
             console.error(error);
             setTasks((prev) =>
@@ -739,12 +732,14 @@ const TodoPage: React.FC = () => {
             const res: any = await todoApis.reorderTasks(reordered.map((task) => task.id));
             if (res.code !== 200) {
                 message.error(res.message || '排序失败，已恢复');
-                await loadTasks();
+                await refreshNow();
+            } else {
+                await refreshNow();
             }
         } catch (error) {
             console.error(error);
             message.error('排序失败，已恢复');
-            await loadTasks();
+            await refreshNow();
         }
     };
 
@@ -930,7 +925,7 @@ const TodoPage: React.FC = () => {
                             <h3 id="todo-statistics-heading" className="text-xl font-bold text-slate-900 dark:text-white">任务概览</h3>
                             <p className="mt-1 text-sm text-slate-500 dark:text-text-secondary">统计数据来自当前账户的全部任务。</p>
                         </div>
-                        {metaLoading ? (
+                        {statsLoadState === 'loading' ? (
                             <div className="min-h-[132px] py-10 text-center text-sm text-slate-500 dark:text-text-secondary">统计加载中...</div>
                         ) : (
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -960,7 +955,16 @@ const TodoPage: React.FC = () => {
                                 ))}
                             </div>
                         )}
-                        <TodoTrendChart />
+                        <TodoTrendChart
+                            days={trendDays}
+                            trend={trend}
+                            loadState={trendLoadState}
+                            errorMessage={trendError}
+                            onDaysChange={setTrendDays}
+                            onRetry={() => {
+                                void refreshNow();
+                            }}
+                        />
                     </section>
                 ) : (
                     <>
@@ -1148,7 +1152,7 @@ const TodoPage: React.FC = () => {
                     )}
 
                     <div className="flex flex-col gap-2 max-h-[70vh] overflow-y-auto pr-1">
-                        {loading || metaLoading ? (
+                        {tasksLoading || tagsLoading ? (
                             <div className="text-sm text-slate-500 py-10 text-center">加载中...</div>
                         ) : tasks.length === 0 ? (
                             <div className="text-sm text-slate-400 py-10 text-center">暂无任务</div>

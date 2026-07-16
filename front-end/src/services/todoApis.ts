@@ -161,8 +161,10 @@ const todoApis = {
 
     deleteTag: (id: number) => request({ url: `/todos/tags/${id}`, method: 'delete' }),
 
-    getTasks: (params: TodoTaskQuery = {}) =>
-        request({ url: '/todos/tasks', method: 'get', params: cleanParams(params as Record<string, unknown>) }),
+    getTasks: (params: TodoTaskQuery = {}, signal?: AbortSignal) =>
+        request({ url: '/todos/tasks', method: 'get', params: cleanParams(params as Record<string, unknown>), signal }) as unknown as Promise<
+            TodoApiResponse<TodoTaskDTO[]>
+        >,
 
     getTaskById: (id: number) => request({ url: `/todos/tasks/${id}`, method: 'get' }),
 
@@ -195,10 +197,11 @@ const todoApis = {
     reorderSubtasks: (taskId: number, ids: number[]) =>
         request({ url: `/todos/tasks/${taskId}/subtasks/reorder`, method: 'post', data: { ids } }),
 
-    getStats: () => request({ url: '/todos/stats', method: 'get' }),
+    getStats: (signal?: AbortSignal) =>
+        request({ url: '/todos/stats', method: 'get', signal }) as unknown as Promise<TodoApiResponse<TodoStatsDTO>>,
 
-    getTrends: ({ days }: TodoTrendQuery) =>
-        request({ url: '/todos/stats/trends', method: 'get', params: { days } }) as unknown as Promise<
+    getTrends: ({ days }: TodoTrendQuery, signal?: AbortSignal) =>
+        request({ url: '/todos/stats/trends', method: 'get', params: { days }, signal }) as unknown as Promise<
             TodoApiResponse<TodoTrendsDTO>
         >
 };

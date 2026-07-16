@@ -1,12 +1,11 @@
 # agent-state.md
 
 ## Current phase
-Phase 7 settings, login-required, updater, unsigned release/install, native Todo fidelity/detail/sync, and the web Todo/Statistics shell with trend charting are complete. The remaining queue adds adaptive web synchronization, then validates the web-to-mac workflow. Windows/Electron is out of scope.
+Phase 7 settings, login-required, updater, unsigned release/install, native Todo fidelity/detail/sync, and the complete web Todo/Statistics surface with adaptive synchronization are complete. The remaining queue contains only cross-surface acceptance. Windows/Electron is out of scope.
 
 ## Queue status
-- Active queue: 22 tasks, 20 complete, 2 pending.
-- First pending: `todo-web-adaptive-live-sync`.
-- Then: `todo-cross-surface-acceptance`.
+- Active queue: 22 tasks, 21 complete, 1 pending.
+- First pending: `todo-cross-surface-acceptance`.
 
 ## Recommended next reads
 1. `AGENTS.md`

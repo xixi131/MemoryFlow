@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
     CartesianGrid,
     Legend,
@@ -9,11 +9,7 @@ import {
     XAxis,
     YAxis
 } from 'recharts';
-import todoApis, {
-    TodoTrendDays,
-    TodoTrendPointDTO,
-    TodoTrendsDTO
-} from '../../services/todoApis';
+import { TodoTrendDays, TodoTrendPointDTO, TodoTrendsDTO } from '../../services/todoApis';
 
 type TrendLoadState = 'loading' | 'ready' | 'error';
 
@@ -29,38 +25,23 @@ const formatAxisDate = (value: string) => {
 
 const formatFullDate = (value: string) => value.replace(/-/g, '/');
 
-const TodoTrendChart: React.FC = () => {
-    const [days, setDays] = useState<TodoTrendDays>(7);
-    const [trend, setTrend] = useState<TodoTrendsDTO | null>(null);
-    const [loadState, setLoadState] = useState<TrendLoadState>('loading');
-    const [errorMessage, setErrorMessage] = useState('');
-    const requestSequence = useRef(0);
+type TodoTrendChartProps = {
+    days: TodoTrendDays;
+    trend: TodoTrendsDTO | null;
+    loadState: TrendLoadState;
+    errorMessage: string;
+    onDaysChange: (days: TodoTrendDays) => void;
+    onRetry: () => void;
+};
 
-    const loadTrend = useCallback(async () => {
-        const sequence = ++requestSequence.current;
-        setLoadState('loading');
-        setErrorMessage('');
-        try {
-            const response = await todoApis.getTrends({ days });
-            if (response.code !== 200 || !response.data) {
-                throw new Error(response.message || '趋势加载失败');
-            }
-            if (sequence !== requestSequence.current) return;
-            setTrend(response.data);
-            setLoadState('ready');
-        } catch (error) {
-            if (sequence !== requestSequence.current) return;
-            setErrorMessage(error instanceof Error ? error.message : '趋势加载失败');
-            setLoadState('error');
-        }
-    }, [days]);
-
-    useEffect(() => {
-        loadTrend();
-        return () => {
-            requestSequence.current += 1;
-        };
-    }, [loadTrend]);
+const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
+    days,
+    trend,
+    loadState,
+    errorMessage,
+    onDaysChange,
+    onRetry
+}) => {
 
     const points = trend?.points ?? [];
     const isEmpty = loadState === 'ready' && points.length === 0;
@@ -150,7 +131,7 @@ const TodoTrendChart: React.FC = () => {
                             key={option.value}
                             type="button"
                             aria-pressed={days === option.value}
-                            onClick={() => setDays(option.value)}
+                            onClick={() => onDaysChange(option.value)}
                             className={`min-h-9 rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
                                 days === option.value
                                     ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
@@ -177,7 +158,7 @@ const TodoTrendChart: React.FC = () => {
                         </div>
                         <button
                             type="button"
-                            onClick={loadTrend}
+                            onClick={onRetry}
                             className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-600"
                         >
                             重试

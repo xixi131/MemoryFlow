@@ -225,7 +225,7 @@
       "Keep the web page open, complete a task through the macOS API path, and verify tasks, statistics, and the selected trend refresh without a page reload."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-mac-data-fidelity",

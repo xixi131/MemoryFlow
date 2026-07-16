@@ -47,3 +47,6 @@
 
 ### 2026-07-16 - Web Todo trend chart
 - Added typed 7/30-day Recharts trends with fixed loading/error/empty states. Web build, backend tests, source checks, and authenticated 7/30 range loading passed; visual testing was user-waived.
+
+### 2026-07-16 - Adaptive web Todo synchronization
+- Centralized task, summary, and trend refresh with 10/60-second cadence, lifecycle/mutation triggers, cancellation, coalescing, and stale guards. Web build and 13 policy probes passed; live UI observation was user-waived.
