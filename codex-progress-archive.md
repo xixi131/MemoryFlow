@@ -1041,3 +1041,20 @@ The following was moved from codex-progress.md to keep default startup context s
     - Probes cover app/music expansion plus activity/compact recovery.
 - Validation note:
   - The rollover preserved project history in this archive while returning the default startup path to `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
+
+## 2026-07-16 - Main-log rollover through Phase 7 and backend integration
+
+- Reason for rollover:
+  - `codex-progress.md` exceeded the 18 KB default-startup threshold during the Todo/web/macOS execution queue.
+  - The first pending task after rollover is `todo-web-route-backed-segmented-shell`.
+- Phase 6 native motion history moved from the main log:
+  - Window sizing and duplicate-panel prevention, compact/activity/expanded motion, collapse recovery, greeting, reminder, review/todo long press, music takeover/release/waveform/artwork, shared Apple spring integration, and notch-clear activity geometry all passed their focused probes and unsigned native builds.
+  - Deterministic Phase 6 evidence remains under `docs/mac-island-phase6-mock-animation-acceptance.md` and `docs/evidence/mac-island-phase6/`; physical GUI capture was explicitly separate from fallback probe evidence.
+- Native backend integration history moved from the main log:
+  - Added the native API transport, Keychain session storage, reused browser login callback, verified restore/refresh/logout lifecycle, live review summary with 30-second polling, live todo preview with 60-second polling, persisted completion, and controlled integration acceptance.
+  - These slices passed focused transport, reducer, lifecycle, polling, mutation, typecheck, and unsigned build validation without changing Windows/Electron behavior.
+- Phase 7 settings and updater history moved from the main log:
+  - Advanced Features settings/lifecycle, login-required square, Sparkle updater core, scheduled checks and deferral, update prompt/download activity, unsigned GitHub release packaging, and CI-artifact installation/recovery were completed.
+  - Release/update evidence covered signed appcasts, monotonic versions, progress/failure/retry paths, ad-hoc builds, EdDSA validation, atomic replacement, relaunch, and unsigned-user approval boundaries.
+- Recent Todo improvement records remain in `codex-progress.md` because they directly support the four remaining tasks.
+- Default startup order remains `AGENTS.md` -> `agent-state.md` -> `feature_list.json` -> `codex-progress.md`.
