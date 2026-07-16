@@ -39,7 +39,6 @@ type TaskEditorDraft = {
 type CreateDraft = {
     title: string;
     descriptionMd: string;
-    listId?: number;
     priority: TodoPriority;
     dueDate: string;
     dueTime: string;
@@ -214,11 +213,13 @@ const ProjectNativePicker: React.FC<{
     value: string;
     placeholder: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
     className?: string;
-}> = ({ type, value, placeholder, onChange, className }) => {
+}> = ({ type, value, placeholder, onChange, disabled = false, className }) => {
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     const openPicker = () => {
+        if (disabled) return;
         const input = inputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
         if (!input) return;
         if (typeof input.showPicker === 'function') {
@@ -242,12 +243,14 @@ const ProjectNativePicker: React.FC<{
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
                 className="absolute inset-0 opacity-0 pointer-events-none"
                 tabIndex={-1}
             />
             <button
                 type="button"
                 onClick={openPicker}
+                disabled={disabled}
                 className={`w-full ${selectClass} inline-flex items-center justify-between`}
             >
                 <span className={`${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-text-secondary'}`}>
@@ -385,7 +388,6 @@ const TodoPage: React.FC = () => {
     const [createDraft, setCreateDraft] = useState<CreateDraft>({
         title: '',
         descriptionMd: '',
-        listId: undefined,
         priority: 'medium',
         dueDate: '',
         dueTime: '',
@@ -403,9 +405,7 @@ const TodoPage: React.FC = () => {
     const drawerOpenRafRef = useRef<number | null>(null);
     const drawerTaskIdRef = useRef<number | null>(null);
 
-    const [showListCreateModal, setShowListCreateModal] = useState(false);
     const [showTagCreateModal, setShowTagCreateModal] = useState(false);
-    const [listNameDraft, setListNameDraft] = useState('');
     const [tagNameDraft, setTagNameDraft] = useState('');
 
     const drawerTask = useMemo(
@@ -593,10 +593,9 @@ const TodoPage: React.FC = () => {
         const payload: CreateTodoTaskPayload = {
             title,
             descriptionMd: createDraft.descriptionMd,
-            listId: createDraft.listId ?? null,
             priority: createDraft.priority,
             dueDate: createDraft.dueDate || undefined,
-            dueTime: createDraft.dueTime || undefined,
+            dueTime: createDraft.dueDate ? createDraft.dueTime || undefined : undefined,
             tagIds: createDraft.tagIds
         };
         setSaving(true);
@@ -748,36 +747,6 @@ const TodoPage: React.FC = () => {
             console.error(error);
             message.error('排序失败，已恢复');
             await loadTasks();
-        }
-    };
-
-    const openCreateListModal = () => {
-        setListNameDraft('');
-        setShowListCreateModal(true);
-    };
-
-    const handleCreateList = async () => {
-        const name = listNameDraft.trim();
-        if (!name) {
-            message.warning('请输入清单名称');
-            return;
-        }
-        try {
-            const res: any = await todoApis.createList({
-                name,
-                color: colorByText(name),
-                icon: 'checklist'
-            });
-            if (res.code === 200) {
-                message.success('清单已创建');
-                setShowListCreateModal(false);
-                await refreshAfterMutation(true);
-            } else {
-                message.error(res.message || '清单创建失败');
-            }
-        } catch (error) {
-            console.error(error);
-            message.error('清单创建失败');
         }
     };
 
@@ -969,21 +938,7 @@ const TodoPage: React.FC = () => {
                                     创建
                                 </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                                <ProjectSelect
-                                    className="w-full"
-                                    value={createDraft.listId == null ? '' : String(createDraft.listId)}
-                                    options={[
-                                        { value: '', label: '所属清单' },
-                                        ...lists.map((list) => ({ value: String(list.id), label: list.name }))
-                                    ]}
-                                    onChange={(nextValue) =>
-                                        setCreateDraft((prev) => ({
-                                            ...prev,
-                                            listId: nextValue ? Number(nextValue) : undefined
-                                        }))
-                                    }
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3">
                                 <ProjectSelect
                                     className="w-full"
                                     value={createDraft.priority}
@@ -1000,19 +955,23 @@ const TodoPage: React.FC = () => {
                                     value={createDraft.dueDate}
                                     placeholder="选择日期"
                                     onChange={(nextValue) =>
-                                        setCreateDraft((prev) => ({ ...prev, dueDate: nextValue }))
+                                        setCreateDraft((prev) => ({
+                                            ...prev,
+                                            dueDate: nextValue,
+                                            dueTime: nextValue ? prev.dueTime : ''
+                                        }))
                                     }
                                 />
                                 <ProjectNativePicker
                                     type="time"
                                     value={createDraft.dueTime}
-                                    placeholder="选择时间"
+                                    placeholder={createDraft.dueDate ? '选择时间' : '请先选择日期'}
+                                    disabled={!createDraft.dueDate}
                                     onChange={(nextValue) =>
                                         setCreateDraft((prev) => ({ ...prev, dueTime: nextValue }))
                                     }
                                 />
-                                <div className="flex items-center justify-end gap-2">
-                                    <button type="button" onClick={openCreateListModal} className="text-xs font-bold text-primary">+ 清单</button>
+                                <div className="flex items-center justify-end">
                                     <button type="button" onClick={openCreateTagModal} className="text-xs font-bold text-primary">+ 标签</button>
                                 </div>
                             </div>
@@ -1355,18 +1314,6 @@ const TodoPage: React.FC = () => {
                         </div>
                     </aside>
                 </div>
-            )}
-
-            {showListCreateModal && (
-                <QuickCreateModal
-                    title="新建清单"
-                    placeholder="请输入清单名称"
-                    value={listNameDraft}
-                    confirmText="创建清单"
-                    onChange={setListNameDraft}
-                    onCancel={() => setShowListCreateModal(false)}
-                    onConfirm={handleCreateList}
-                />
             )}
 
             {showTagCreateModal && (

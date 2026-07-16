@@ -147,7 +147,7 @@
       "Create tasks with and without optional metadata in the browser, inspect the API response, and verify the persisted title, priority, local date, local time, description, and tags."
     ],
     "budget_minutes": 10,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-web-list-filter-cleanup",

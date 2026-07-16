@@ -80,7 +80,6 @@ export interface TodoTaskQuery {
 export interface CreateTodoTaskPayload {
     title: string;
     descriptionMd?: string;
-    listId?: number | null;
     priority?: TodoPriority;
     dueDate?: string;
     dueTime?: string;
