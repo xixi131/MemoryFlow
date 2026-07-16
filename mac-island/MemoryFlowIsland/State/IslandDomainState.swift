@@ -5,6 +5,13 @@ enum IslandAuthState: String, Codable, Equatable {
     case loggedIn
 }
 
+enum IslandTodoDetailSelectionPolicy {
+    static func reconcile(selectedTaskID: String?, availableTaskIDs: some Sequence<String>) -> String? {
+        guard let selectedTaskID else { return nil }
+        return availableTaskIDs.contains(selectedTaskID) ? selectedTaskID : nil
+    }
+}
+
 enum IslandPrimaryMode: String, Codable, Equatable {
     case app
     case music

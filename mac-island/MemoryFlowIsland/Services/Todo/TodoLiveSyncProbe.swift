@@ -36,9 +36,13 @@ struct TodoDetailProbeResult: Equatable, CustomStringConvertible {
     let deletedFallback: Bool
     let longDescriptionLength: Int
     let missingFallbacks: [String]
+    let rapidSequenceCount: Int
+    let clearedPaths: [String]
+    let motionDuration: TimeInterval
+    let reduceMotionOpacityOnly: Bool
 
     var description: String {
-        "todo-detail-probe: PASS; opened=\(opened); returned=\(returned); deleted-fallback=\(deletedFallback); long-description=\(longDescriptionLength); missing=\(missingFallbacks.joined(separator: ",")); hit-regions=checkbox-only-completion+body-detail"
+        "todo-detail-probe: PASS; opened=\(opened); returned=\(returned); deleted-fallback=\(deletedFallback); rapid=\(rapidSequenceCount); cleared=\(clearedPaths.joined(separator: ",")); motion=\(motionDuration)s; reduce-motion-opacity-only=\(reduceMotionOpacityOnly); long-description=\(longDescriptionLength); missing=\(missingFallbacks.joined(separator: ",")); hit-regions=checkbox-only-completion+body-detail"
     }
 }
 
@@ -116,7 +120,75 @@ enum TodoDetailProbe {
         var deletedState = opened.state
         deletedState.mockSources.todo?.tasks.removeAll { $0.id == "long" }
         let deletedFallback = IslandDerivedState.derive(from: deletedState).previewContent.kind == .expandedTodo
-        guard deletedFallback else { throw TodoDetailProbeError.deletedFallbackFailed }
+        let remainingTaskIDs = deletedState.mockSources.todo?.tasks.map(\.id) ?? []
+        let deletedSelection = IslandTodoDetailSelectionPolicy.reconcile(
+            selectedTaskID: deletedState.selectedTodoTaskID,
+            availableTaskIDs: remainingTaskIDs
+        )
+        guard deletedFallback, deletedSelection == nil else { throw TodoDetailProbeError.deletedFallbackFailed }
+
+        var rapidState = state
+        for _ in 0..<20 {
+            rapidState = IslandPresentationReducer.reduce(current: rapidState, intent: .todoDetailRequested("long")).state
+            guard rapidState.selectedTodoTaskID == "long" else { throw TodoDetailProbeError.rapidSequenceFailed }
+            rapidState = IslandPresentationReducer.reduce(current: rapidState, intent: .todoDetailDismissed).state
+            guard rapidState.selectedTodoTaskID == nil else { throw TodoDetailProbeError.rapidSequenceFailed }
+        }
+
+        let collapsed = IslandPresentationReducer.reduce(current: opened.state, intent: .outsideCollapse).state
+
+        var switchableState = opened.state
+        switchableState.presentationState = .activity
+        let switched = IslandPresentationReducer.reduce(current: switchableState, intent: .modeSwitchToggle).state
+
+        let updatePrompt = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .updatePromptAvailable(IslandUpdatePrompt(version: "9.9.9", build: "999"))
+        ).state
+        let updateDownload = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .updateDownloadStarted(UpdateDownloadProgress(receivedBytes: 1, totalBytes: 2))
+        ).state
+        let music = IslandPresentationReducer.reduce(
+            current: opened.state,
+            intent: .musicSnapshotUpdated(MusicTrackSnapshot(
+                title: "Motion probe",
+                artist: "MemoryFlow",
+                album: nil,
+                status: .playing,
+                isPlaying: true,
+                position: 10,
+                duration: 120,
+                artworkData: nil,
+                themeColorHex: "#22d3ee",
+                themePalette: .fallback,
+                source: "Probe",
+                updatedAt: Date(timeIntervalSince1970: 0),
+                capabilities: .transport
+            ))
+        ).state
+        let clearedPaths = [
+            ("outside", collapsed.selectedTodoTaskID),
+            ("mode", switched.selectedTodoTaskID),
+            ("update-prompt", updatePrompt.selectedTodoTaskID),
+            ("update-download", updateDownload.selectedTodoTaskID),
+            ("music", music.selectedTodoTaskID),
+            ("logout", IslandDomainState.loggedOutCompact.selectedTodoTaskID)
+        ]
+        guard clearedPaths.allSatisfy({ $0.1 == nil }) else {
+            throw TodoDetailProbeError.selectionCleanupFailed
+        }
+
+        let motion = IslandMotionTokens.todoDetailContent
+        guard motion.duration == 0.28,
+              motion.listEdge == .leading,
+              motion.detailEdge == .trailing,
+              motion.reduceMotionUsesOpacityOnly,
+              motion.clipsToExpandedBounds,
+              motion.preservesShellGeometry,
+              opened.derivedState.visualState == returned.derivedState.visualState else {
+            throw TodoDetailProbeError.motionContractFailed
+        }
 
         return TodoDetailProbeResult(
             opened: true,
@@ -128,7 +200,11 @@ enum TodoDetailProbe {
                 missingPresentation.priorityText,
                 missingPresentation.dateText,
                 missingPresentation.timeText
-            ]
+            ],
+            rapidSequenceCount: 20,
+            clearedPaths: clearedPaths.map(\.0),
+            motionDuration: motion.duration,
+            reduceMotionOpacityOnly: motion.reduceMotionUsesOpacityOnly
         )
     }
 }
@@ -138,6 +214,9 @@ enum TodoDetailProbeError: Error, CustomStringConvertible {
     case returnFailed(reason: String, selectedID: String?, kind: String)
     case missingMetadataFailed
     case deletedFallbackFailed
+    case rapidSequenceFailed
+    case selectionCleanupFailed
+    case motionContractFailed
 
     var description: String {
         switch self {
@@ -149,6 +228,12 @@ enum TodoDetailProbeError: Error, CustomStringConvertible {
             return "missing metadata or hit-region validation failed"
         case .deletedFallbackFailed:
             return "deleted selected task did not fall back to list"
+        case .rapidSequenceFailed:
+            return "rapid open and Back sequence left stale detail selection"
+        case .selectionCleanupFailed:
+            return "one or more takeover or exit paths retained detail selection"
+        case .motionContractFailed:
+            return "detail motion did not preserve the 0.28-second directional stable-shell contract"
         }
     }
 }

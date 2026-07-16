@@ -1306,6 +1306,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         state.isGreetingActive = false
         state.greetingText = nil
         state.isLoginRequiredPresented = false
+        state.selectedTodoTaskID = nil
         applyPhase5PreviewUpdate(
             phase5PreviewStateContainer.replaceDomainState(state),
             using: nil,
@@ -1338,6 +1339,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         state.isGreetingActive = false
         state.greetingText = nil
         state.isLoginRequiredPresented = false
+        state.selectedTodoTaskID = nil
         if preservesMusicPresentation == false {
             state.primaryMode = .app
             state.appDisplayMode = .review
@@ -1400,6 +1402,10 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         guard state.authState == .loggedIn else { return }
         state.todoSnapshot = snapshot
         state.mockSources.todo = nil
+        state.selectedTodoTaskID = IslandTodoDetailSelectionPolicy.reconcile(
+            selectedTaskID: state.selectedTodoTaskID,
+            availableTaskIDs: snapshot.tasks.lazy.map { String($0.id) }
+        )
         applyPhase5PreviewUpdate(
             phase5PreviewStateContainer.replaceDomainState(state),
             using: nil,

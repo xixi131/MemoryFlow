@@ -264,7 +264,7 @@
       "Clear detail selection on outside collapse, app-mode change, update or music takeover, logout, and removal of the selected task, then verify rapid open and Back sequences."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-mac-adaptive-live-sync",

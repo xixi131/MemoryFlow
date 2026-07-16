@@ -181,3 +181,6 @@
 
 ### 2026-07-16 - Web todo list cleanup
 - Removed list-loading/filter/management surfaces and widened the task workspace while preserving non-list filters and task actions. Startup, web build, and diff checks passed; visual UI testing was user-waived.
+
+### 2026-07-16 - Native todo detail motion
+- Added clipped 0.28s bidirectional detail motion, Reduce Motion fallback, and selection cleanup. Unsigned build and 20-cycle deterministic probe passed; visual testing was user-waived.

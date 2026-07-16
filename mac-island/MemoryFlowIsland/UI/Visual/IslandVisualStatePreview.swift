@@ -705,20 +705,51 @@ private struct IslandPreviewContentOverlay: View {
                 tint: tintColor,
                 contentPhase: contentPhase
             )
-        } else if content.kind == .expandedTodoDetail, let detail = content.todoDetail {
-            IslandExpandedTodoDetailContent(detail: detail, onDismiss: onTodoDetailDismissed)
-        } else if content.kind == .expandedTodo, let todo = content.todo {
-            IslandExpandedTodoContent(
-                todo: todo,
-                tint: tintColor,
-                contentPhase: contentPhase,
-                scenarioRequest: todoToggleScenarioRequest,
-                onCompletionRequested: onTodoCompletionRequested,
-                onDetailRequested: onTodoDetailRequested
-            )
+        } else if content.kind == .expandedTodoDetail || content.kind == .expandedTodo {
+            todoNavigationContent
         } else {
             genericExpandedAppContent
         }
+    }
+
+    @ViewBuilder
+    private var todoNavigationContent: some View {
+        ZStack(alignment: .topLeading) {
+            if content.kind == .expandedTodoDetail, let detail = content.todoDetail {
+                IslandExpandedTodoDetailContent(detail: detail, onDismiss: onTodoDetailDismissed)
+                    .transition(todoDetailTransition(edge: IslandMotionTokens.todoDetailContent.detailEdge))
+            } else if let todo = content.todo {
+                IslandExpandedTodoContent(
+                    todo: todo,
+                    tint: tintColor,
+                    contentPhase: contentPhase,
+                    scenarioRequest: todoToggleScenarioRequest,
+                    onCompletionRequested: onTodoCompletionRequested,
+                    onDetailRequested: onTodoDetailRequested
+                )
+                .transition(todoDetailTransition(edge: IslandMotionTokens.todoDetailContent.listEdge))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
+        .animation(todoDetailAnimation, value: content.kind)
+    }
+
+    private var todoDetailAnimation: Animation {
+        if reduceMotion {
+            return .linear(duration: IslandMotionTokens.reduceMotionDuration)
+        }
+        let token = IslandMotionTokens.todoDetailContent
+        return .spring(response: token.duration, dampingFraction: token.dampingFraction)
+    }
+
+    private func todoDetailTransition(edge: IslandTodoDetailMotionEdge) -> AnyTransition {
+        guard reduceMotion == false else { return .opacity }
+        let swiftUIEdge: Edge = edge == .leading ? .leading : .trailing
+        return .asymmetric(
+            insertion: .move(edge: swiftUIEdge).combined(with: .opacity),
+            removal: .move(edge: swiftUIEdge).combined(with: .opacity)
+        )
     }
 
     private var updatePromptContent: some View {

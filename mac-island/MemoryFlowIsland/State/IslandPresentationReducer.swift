@@ -114,6 +114,7 @@ enum IslandPresentationReducer {
                 $0.updatePrompt = nil
                 $0.updateDownloadProgress = progress
                 $0.isHovered = false
+                $0.selectedTodoTaskID = nil
             }
         case let .updateDownloadProgressed(progress):
             guard let previous = state.updateDownloadProgress else {
@@ -141,6 +142,7 @@ enum IslandPresentationReducer {
             return transition(state, reason: .updatePromptPresented) {
                 $0.updatePrompt = prompt
                 $0.isHovered = false
+                $0.selectedTodoTaskID = nil
             }
         case .updatePromptUpdateRequested:
             guard state.updatePrompt != nil else {
@@ -426,6 +428,7 @@ enum IslandPresentationReducer {
             ) { nextState in
                 nextState.appDisplayMode = nextMode
                 nextState.primaryMode = .app
+                nextState.selectedTodoTaskID = nil
                 if intent == .modeSwitchToggle {
                     nextState.presentationState = .activity
                     nextState.forceCompactMode = false
@@ -547,6 +550,7 @@ enum IslandPresentationReducer {
             nextState.isGreetingActive = false
             nextState.greetingText = nil
             nextState.mockSources.music = IslandMockMusicActivity(snapshot: snapshot)
+            nextState.selectedTodoTaskID = nil
             if nextState.presentationLockState.isForceCompactLocked == false,
                isAlreadyInMusic == false || state.forceCompactMode {
                 lockForceCompactTransition(&nextState)
@@ -593,6 +597,7 @@ enum IslandPresentationReducer {
             reason: compactReason
         ) {
             $0.presentationState = .collapsed
+            $0.selectedTodoTaskID = nil
             if stageActivityRecovery {
                 $0.presentationLockState.transitionID = "expandedCollapseRecovery"
             }
