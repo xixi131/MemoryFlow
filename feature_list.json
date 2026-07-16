@@ -173,7 +173,7 @@
       "Edit a legacy task through the browser and verify through the task API that its original listId remains unchanged while requested fields persist."
     ],
     "budget_minutes": 8,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "todo-stats-daily-trend-api",

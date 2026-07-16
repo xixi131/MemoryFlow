@@ -90,7 +90,6 @@ export interface CreateTodoTaskPayload {
 export interface UpdateTodoTaskPayload {
     title?: string;
     descriptionMd?: string;
-    listId?: number | null;
     status?: TodoTaskStatus;
     priority?: TodoPriority;
     dueDate?: string;

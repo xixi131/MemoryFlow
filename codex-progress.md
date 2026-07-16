@@ -184,3 +184,6 @@
 
 ### 2026-07-16 - Native todo detail motion
 - Added clipped 0.28s bidirectional detail motion, Reduce Motion fallback, and selection cleanup. Unsigned build and 20-cycle deterministic probe passed; visual testing was user-waived.
+
+### 2026-07-16 - Web todo editor list removal
+- Removed `listId` from editor drafts/updates and enforced date-before-time behavior, preserving legacy associations by omission. Web build, isolated startup, and contract checks passed; UI testing was user-waived.

@@ -27,7 +27,6 @@ type TaskEditorDraft = {
     id: number;
     title: string;
     descriptionMd: string;
-    listId: number | null;
     priority: TodoPriority;
     dueDate: string;
     dueTime: string;
@@ -417,7 +416,6 @@ const TodoPage: React.FC = () => {
             id: task.id,
             title: task.title,
             descriptionMd: task.descriptionMd || '',
-            listId: task.listId ?? null,
             priority: task.priority || 'none',
             dueDate: toDateInput(task.dueDate),
             dueTime: toTimeInput(task.dueTime),
@@ -814,10 +812,9 @@ const TodoPage: React.FC = () => {
             const res: any = await todoApis.updateTask(drawerDraft.id, {
                 title,
                 descriptionMd: drawerDraft.descriptionMd || '',
-                listId: drawerDraft.listId,
                 priority: drawerDraft.priority,
                 dueDate: drawerDraft.dueDate || '',
-                dueTime: drawerDraft.dueTime || '',
+                dueTime: drawerDraft.dueDate ? drawerDraft.dueTime || '' : '',
                 tagIds: drawerDraft.tagIds
             });
             if (res.code === 200) {
@@ -1195,14 +1192,21 @@ const TodoPage: React.FC = () => {
                                     placeholder="选择日期"
                                     onChange={(nextValue) =>
                                         setDrawerDraft((prev) =>
-                                            prev ? { ...prev, dueDate: nextValue } : prev
+                                            prev
+                                                ? {
+                                                      ...prev,
+                                                      dueDate: nextValue,
+                                                      dueTime: nextValue ? prev.dueTime : ''
+                                                  }
+                                                : prev
                                         )
                                     }
                                 />
                                 <ProjectNativePicker
                                     type="time"
                                     value={drawerDraft.dueTime}
-                                    placeholder="选择时间"
+                                    placeholder={drawerDraft.dueDate ? '选择时间' : '请先选择日期'}
+                                    disabled={!drawerDraft.dueDate}
                                     onChange={(nextValue) =>
                                         setDrawerDraft((prev) =>
                                             prev ? { ...prev, dueTime: nextValue } : prev
