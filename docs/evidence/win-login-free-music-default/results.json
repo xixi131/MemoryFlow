@@ -1,0 +1,42 @@
+{
+  "loggedOutBodyText": "待复习\n0\n项\n今日完成\n0\n项\n复习计划\n星期五\n已显示全部",
+  "hasLoginText": false,
+  "loggedOutSize": {
+    "w": 160,
+    "h": 36
+  },
+  "afterClickSize": {
+    "w": 164,
+    "h": 37
+  },
+  "openExternalCalls": [],
+  "musicSize": {
+    "w": 240,
+    "h": 36
+  },
+  "expandedSize": {
+    "w": 460,
+    "h": 210
+  },
+  "expandedShowsSong": true,
+  "afterStopSize": {
+    "w": 160,
+    "h": 36
+  },
+  "afterStopText": "待复习\n0\n项\n今日完成\n0\n项\n复习计划\n星期五\n已显示全部",
+  "loggedOutProtectedApiCalls": [],
+  "loggedInGreetingSize": {
+    "w": 220,
+    "h": 36
+  },
+  "loggedInHasGreeting": true,
+  "loggedInShowsReviewActivity": true,
+  "loggedInRestSize": {
+    "w": 160,
+    "h": 36
+  },
+  "loggedInActivitySize": {
+    "w": 240,
+    "h": 36
+  }
+}

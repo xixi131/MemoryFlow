@@ -681,13 +681,7 @@ const DynamicIslandWidget: React.FC = () => {
                 }
 
                 if (data && (data.status === 'Playing' || data.status === 'Paused')) {
-                    // 只有登录状态才允许首次接管音乐（从 app 模式切换到 music 模式）
-                    // 如果已经在 music 模式，则始终允许数据更新（保持歌曲切换、播放状态、进度同步）
-                    if (!isLoggedInRef.current && modeRef.current !== 'music') {
-                        musicDebugLog('[DynamicIsland] 🔒 Music detected but user not logged in, ignoring.');
-                        return;
-                    }
-
+                    // 音乐接管不依赖登录状态：免登录默认即为音乐挂件（与 macOS 基础模式对齐）
                     setMusicData(data);
                     // Position sync is handled by the dedicated sync useEffect
                     // Do NOT set localPosition here — for apps like NetEase Cloud Music
@@ -708,12 +702,20 @@ const DynamicIslandWidget: React.FC = () => {
                         musicTimeoutRef.current = setTimeout(() => {
                             setMode('app');
                             setMusicData(null);
+                            // 未登录时 app 模式没有可展开内容，退出音乐时同步收起展开态
+                            if (!isLoggedInRef.current && isExpandedRef.current) {
+                                collapseExpanded();
+                            }
                         }, 30000);
                     }
                 } else if (data && data.status === 'Stopped') {
                     // Music stopped, switch back to app mode
                     setMode('app');
                     setMusicData(null);
+                    // 未登录时 app 模式没有可展开内容，退出音乐时同步收起展开态
+                    if (!isLoggedInRef.current && isExpandedRef.current) {
+                        collapseExpanded();
+                    }
                 }
             };
 
@@ -1136,20 +1138,6 @@ const DynamicIslandWidget: React.FC = () => {
         finalizeGesture(e.currentTarget);
     };
 
-    // Helper to open login
-    const openLogin = () => {
-        try {
-            const { shell } = (window as any).require('electron');
-            const envUrl = (window as any)?.process?.env?.ELECTRON_START_URL;
-            const defaultWebUrl = 'https://memoryflow.tanxhub.com';
-            const baseUrl = (envUrl && typeof envUrl === 'string') ? envUrl : defaultWebUrl;
-            const normalizedBaseUrl = baseUrl.split('#')[0].replace(/\/$/, '');
-            shell.openExternal(`${normalizedBaseUrl}/#/login?callback=desktop`);
-        } catch (e) {
-            console.error('Cannot open external link', e);
-        }
-    };
-
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
         const pick = (items: string[]) => items[Math.floor(Math.random() * items.length)];
@@ -1179,8 +1167,9 @@ const DynamicIslandWidget: React.FC = () => {
 
     // Toggle expansion
     const toggleExpand = () => {
+        // 未登录的 app 模式没有可展开内容：保持安静外壳，不再跳转浏览器登录
+        //（登录入口在 win-advanced-capability-lifecycle 中移入托盘菜单）
         if (!isLoggedIn && mode === 'app') {
-            openLogin();
             return;
         }
         setIsExpanded(!isExpanded);
@@ -1494,7 +1483,8 @@ const DynamicIslandWidget: React.FC = () => {
         if (mode === 'app' && isLoggedIn && appDisplayMode === 'todo' && !hasAppActivitySource) {
             return 230;
         }
-        return isLoggedIn ? 160 : 180;
+        // 登录与否共用同一基础宽度：未登录时是等宽的安静外壳
+        return 160;
     };
     const collapsedWidth = getCollapsedWidth();
 
@@ -2052,11 +2042,6 @@ const DynamicIslandWidget: React.FC = () => {
                                         </div>
                                     </div>
                                 </motion.div>
-                            ) : !isLoggedIn ? (
-                                <div className="flex items-center justify-center w-full h-full gap-2 px-3">
-                                    <span className="material-symbols-outlined text-sm">login</span>
-                                    <span className="text-sm font-bold">点击登录</span>
-                                </div>
                             ) : isGreetingActive && greetingText ? (
                                 <div className="flex items-center justify-center w-full h-full px-3">
                                     <motion.div

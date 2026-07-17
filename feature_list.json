@@ -23,7 +23,7 @@
       "Verify logged-out launch shows no login UI and issues no protected API requests, music takeover and release still work, and logged-in behavior is unchanged."
     ],
     "budget_minutes": 20,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "win-advanced-capability-lifecycle",

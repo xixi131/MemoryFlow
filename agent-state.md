@@ -9,7 +9,10 @@ The `MemoryFlow_Windows` branch was bootstrapped from `master` on 2026-07-17 as 
 Keep the Windows island behavior-equivalent to the macOS native island (maintained on `master`), then build new features on top. The immediate queue back-ports the macOS Phase 7 capabilities that Windows lacks.
 
 ## Queue status
-`win-parity-gap-audit` is complete: `docs/windows-parity-gap.md` records 10 gaps (G1-G10) with code citations, 7 intentional divergences (D1-D7), and n/a items. The audit added `win-reduce-motion-support` to the queue and confirmed the other task scopes. Next task: `win-login-free-music-default` (gaps G1+G2; the only G1 blocker is the renderer-side login gate at `DynamicIslandWidget.tsx:686`). No task is in progress.
+`win-parity-gap-audit` and `win-login-free-music-default` are complete. The island is now a login-free music widget by default (gaps G1+G2 closed): the music login gate is removed, the logged-out `点击登录` compact entry is gone (quiet 160-wide shell, tap is a no-op), and a logged-out expanded music card collapses on music exit instead of exposing the app panel. Evidence: `docs/evidence/win-login-free-music-default/`. The parity contract rows for logged-out compact, music activity, and music stopped were updated accordingly. Next task: `win-advanced-capability-lifecycle` (gaps G3+G9; adds the tray Advanced Features toggle and the tray login entry that replaces the removed island login). No task is in progress.
+
+## Verification harness note
+`docs/evidence/win-login-free-music-default/verify-widget.mjs` drives `#/widget` in headless Chromium with a shimmed `window.require('electron')` (IPC emit + `shell.openExternal` capture) against `npx vite --port 3000`. Reuse it for widget-behavior tasks; extend the shim if new IPC methods are consumed. Pre-existing `tsc --noEmit` errors (23 lines in `fetchData`/`TodoPage`) are not from this branch's work — compare error lists, don't expect zero.
 
 ## Key entry files
 - `front-end/src/components/DynamicIslandWidget.tsx`: all island states, timings, and interactions.
