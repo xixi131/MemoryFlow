@@ -9,3 +9,8 @@ Current summary and recent high-signal records for the `MemoryFlow_Windows` bran
 
 ## Records
 (append newest first)
+
+### 2026-07-17 - win-parity-gap-audit
+- Produced `docs/windows-parity-gap.md`: 10 gaps (login-free music, compact login entry removal, Advanced Features, login-required square, island update prompt/download, 24h checks, Reduce Motion, summary 30s polling, collapse continuity), 7 kept divergences (NSIS engine, gh-proxy sources, skip-version, SMTC, tray settings surface, non-always-on-top, localStorage tokens), and n/a items (notch, Gatekeeper, Sparkle).
+- Evidence gathered by direct code inspection with line citations; key findings: music gate is renderer-only (`DynamicIslandWidget.tsx:686`), update UX is dialog+data-URL windows with a one-shot 5s startup check and 6h reminder, widget has no reduced-motion handling.
+- Queue updated: audit marked passed, `win-reduce-motion-support` added, update-task scope extended to remove native dialogs while keeping D2/D3.

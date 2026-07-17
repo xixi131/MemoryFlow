@@ -10,7 +10,7 @@
       "Write the result to docs/windows-parity-gap.md with per-gap acceptance criteria, and update the task scopes below if the audit contradicts them."
     ],
     "budget_minutes": 15,
-    "passes": false
+    "passes": true
   },
   {
     "task_id": "win-login-free-music-default",
@@ -58,10 +58,22 @@
     "steps": [
       "Bridge electron-updater states (checking, available, download progress, ready, failed) from main.cjs to the widget over IPC as typed events; keep region-aware feed selection (GitHub + gh-proxy mirrors) unchanged in the main process.",
       "Reuse the login-required square geometry for the update prompt with a solid blue Update capsule and solid gray Later capsule; Later defers the same version for four hours and persists the deferral in app-config.json.",
-      "Render download progress as an island activity with a rotating blue left indicator and stable-width white right percentage, clamped monotonic progress, and unknown-length support; remove the standalone update progress/checking BrowserWindows.",
+      "Render download progress as an island activity with a rotating blue left indicator and stable-width white right percentage, clamped monotonic progress, and unknown-length support; remove the standalone update progress/checking BrowserWindows and the native promptUpdateAvailable/promptUpdateDownloaded dialogs while keeping the skip-version capability (gap doc D3) and region-aware update sources (D2).",
       "Schedule checks shortly after launch and every 24 hours alongside the existing manual check path; verify prompt precedence against music takeover, deferral across relaunch, 0-100% progress, failure recovery with manual retry, and install-on-quit behavior."
     ],
     "budget_minutes": 30,
+    "passes": false
+  },
+  {
+    "task_id": "win-reduce-motion-support",
+    "task_type": "frontend",
+    "description": "Honor the OS reduced-motion preference across all island widget motion, matching the macOS Reduce Motion behavior (gap G8).",
+    "steps": [
+      "Observe prefers-reduced-motion in DynamicIslandWidget.tsx (framer-motion useReducedMotion or a media-query hook) and thread it through shell morphs, activity open/collapse, greeting entry, and hover transitions.",
+      "Provide visibly active non-animated fallbacks where motion carries meaning, including the update download indicator from win-update-prompt-and-download-in-island.",
+      "Verify with the Windows 'animation effects' setting toggled: reduced mode renders instant or minimal transitions with no layout breakage, and normal mode is unchanged."
+    ],
+    "budget_minutes": 15,
     "passes": false
   },
   {

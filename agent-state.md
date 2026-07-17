@@ -9,7 +9,7 @@ The `MemoryFlow_Windows` branch was bootstrapped from `master` on 2026-07-17 as 
 Keep the Windows island behavior-equivalent to the macOS native island (maintained on `master`), then build new features on top. The immediate queue back-ports the macOS Phase 7 capabilities that Windows lacks.
 
 ## Queue status
-`feature_list.json` contains the Windows parity queue. Start with `win-parity-gap-audit`; it produces the gap evidence that scopes the later tasks. No task is in progress.
+`win-parity-gap-audit` is complete: `docs/windows-parity-gap.md` records 10 gaps (G1-G10) with code citations, 7 intentional divergences (D1-D7), and n/a items. The audit added `win-reduce-motion-support` to the queue and confirmed the other task scopes. Next task: `win-login-free-music-default` (gaps G1+G2; the only G1 blocker is the renderer-side login gate at `DynamicIslandWidget.tsx:686`). No task is in progress.
 
 ## Key entry files
 - `front-end/src/components/DynamicIslandWidget.tsx`: all island states, timings, and interactions.
