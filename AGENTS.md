@@ -1,61 +1,59 @@
 # AGENTS.md
 
-This file is the project-memory entry point for MemoryFlow. Keep it focused on project facts, module routing, and durable constraints. Generic parent-child automation SOP lives in the global [$Auto_dev](/Users/tangxitao/.codex/skills/Auto_dev/SKILL.md) and [$Task_init](/Users/tangxitao/.codex/skills/Task_init/SKILL.md) skills.
+This file is the project-memory entry point for the **MemoryFlow_Windows** branch. Keep it focused on project facts, module routing, and durable constraints. Generic parent-child automation SOP lives in the global `$Auto_dev` and `$Task_init` skills when available.
 
 ## 1. Project Summary
-* **Project:** MemoryFlow
-* **Domain:** An AI-assisted study planning and memory-flow system with web, Electron, and macOS native Dynamic Island surfaces.
-* **Goal:** Deliver the macOS native Dynamic Island migration without losing clarity about current Windows Electron behavior or breaking the broader learning workflow product.
-* **Tech stack:** React 19, Vite, Electron, Spring Boot 3, MySQL, Redis, Swift/AppKit helper in `mac-island/`
+* **Project:** MemoryFlow (Windows product line, branch `MemoryFlow_Windows`)
+* **Domain:** An AI-assisted study planning and memory-flow system with a browser web app, a Spring Boot backend, and a Windows Electron Dynamic Island desktop widget.
+* **Goal:** Evolve the Windows Electron island as a first-class product line: keep behavior parity with the macOS native island (maintained on `master`) unless a divergence is explicitly approved, and ship new features on top of that parity baseline.
+* **Tech stack:** React 19, Vite, Electron 40 (NSIS/`electron-updater`), Spring Boot 3, MySQL, Redis. There is no macOS native code on this branch; `mac-island/` lives on `master` only.
 
 ## 2. Minimal Read Order
 Use the smallest context that can safely start the task:
 1. Read `AGENTS.md`.
 2. Read `agent-state.md` for the current phase, next focus, and recommended entry files.
 3. Read `feature_list.json` and select the assigned task.
-4. Read `init.sh` only when the task needs runtime startup.
-5. Read `codex-progress.md` only if `agent-state.md` is not enough, or when you need audit detail for a specific recent task.
-6. Read `project_DS/` only for the task-specific doc you actually need.
+4. Read `docs/windows-parity-contract.md` when the task touches island states, constants, or transition sequences.
+5. Read `init.sh` only when the task needs runtime startup.
+6. Read `codex-progress.md` only if `agent-state.md` is not enough.
 
 ## 3. Coordination Files
 Treat these files as the durable coordination layer:
 * `AGENTS.md`: stable project facts and read-routing.
 * `agent-state.md`: short current-state handoff for the next agent.
-* `feature_list.json`: ordered task queue and completion state.
-* `codex-progress.md`: current summary plus recent high-signal records for default startup.
-* `codex-progress-archive.md`: older detailed history and audit trail, read only when you need deeper implementation context.
+* `feature_list.json`: ordered task queue and completion state for this branch.
+* `codex-progress.md`: current summary plus recent high-signal records.
+* `codex-progress-archive.md`: stub on this branch; the macOS migration history lives on `master`.
 * `init.sh`: repository bootstrap and runtime safety line.
 
 ## 4. Project Map
 Read only the slice that matches the task:
-* `front-end/src/`: React UI, widget logic, browser-visible behavior.
-* `front-end/electron/`: Electron main-process and bridge logic, including Windows desktop integration and music takeover paths.
-* `mac-island/MemoryFlowIsland/`: macOS native helper, windows, menu wiring, and migration work for the native island experience.
+* `front-end/src/`: React UI, widget logic (`components/DynamicIslandWidget.tsx`), browser-visible behavior.
+* `front-end/electron/`: Electron main-process and bridge logic — widget window, tray, `memoryflow://` protocol, SMTC music takeover (`MusicService.cjs`), `electron-updater` flow, release config.
 * `back-end/`: Spring Boot APIs, persistence, scheduling, and supporting services.
-* `docs/`: migration evidence docs, state specs, interaction specs, animation specs, and checklist artifacts.
-* `灵动岛迁移方案.md`: migration architecture reference for the Dynamic Island effort.
+* `docs/windows-parity-contract.md`: the state/constant/sequence contract shared with the macOS island.
+* `project_DS/`: repository standards, UI design system, core architecture, workflow docs.
 
 ## 5. Critical Project Memory
-Keep these project-specific constraints in mind before changing behavior:
-* **Phase separation matters:** Phase 0 docs capture current Windows Electron behavior before macOS-native implementation. Do not mix future-state assumptions into baseline evidence.
-* **Behavior parity is intentional:** macOS migration tasks should preserve documented user-visible behavior unless the task explicitly introduces an approved divergence.
-* **Cross-layer island behavior is real:** state, reminders, hover, music takeover, and window behavior can span React widget code, Electron bridge code, and native helper code. Pick the minimum correct layer for tracing and validation.
+Keep these branch-specific constraints in mind before changing behavior:
+* **Parity first:** the macOS island (on `master`) and the Windows island must stay behavior-equivalent. Before changing island states, timings, or interaction sequences, check `docs/windows-parity-contract.md`; divergences require explicit approval and a documented contract update.
+* **Shared code belongs on master:** changes to `front-end/src/` (non-widget) and `back-end/` that both platforms need should be made on `master` and merged into this branch. This branch carries Windows-specific work: `front-end/electron/`, packaging, Windows CI, and widget behavior work scheduled in `feature_list.json`.
+* **Release channel is separate:** this branch releases via `win-v*` tags (e.g. `win-v1.0.9`). CI builds an NSIS installer and publishes to the `xixi131/MemoryFlow.exe` GitHub repository, which is also the `electron-updater` feed for existing users — do not change `appId`, the publish repository, or the artifact naming without an explicit migration plan, or existing installs lose auto-update.
+* **Auth reuse boundary:** the desktop widget reuses the browser login page, `POST /auth/login`, JWT, and the `memoryflow://callback?token=...` contract. Do not build a native credentials form in the widget.
 * **Evidence quality matters:** do not present runtime claims without evidence from browser/runtime observation or directly cited code paths.
 
 ## 6. Task Routing
 Use the right reference file for the task instead of rereading everything:
 * **Task planning / queue regeneration:** `agent-state.md`, `feature_list.json`, `project_DS/workflows/task_init_loop.md`
 * **General repository standards:** `project_DS/specification/project_standards.md`
-* **Frontend/UI/widget behavior:** `project_DS/specification/ui_design_system.md`
+* **Frontend/UI/widget behavior:** `project_DS/specification/ui_design_system.md`, `docs/windows-parity-contract.md`
 * **Architecture / backend / module boundaries:** `project_DS/specification/project_core_architecture.md`
-* **Dynamic Island migration / native helper boundaries / parity decisions:** `灵动岛迁移方案.md`
-* **Detailed automation flow questions:** use the global skills, then fall back to `project_DS/workflows/auto_dev_loop.md` or `project_DS/workflows/task_init_loop.md` only if needed
+* **Release / update flow:** `.github/workflows/release.yml`, `front-end/electron/release-config.cjs`, `front-end/electron-builder.config.cjs`
 
 ## 7. Working Style
 * Prefer targeted reads over repository-wide scanning.
 * Keep `agent-state.md` short and current so future agents do not need to reread the full progress log.
-* Use `codex-progress.md` as the lightweight recent log and `codex-progress-archive.md` for older detail.
 * Preserve project-specific content; when slimming context, remove duplicated process text before removing project facts.
 
-## 8. Migration Note
-`灵动岛迁移方案.md` is a task-scoped architecture reference for the macOS native Dynamic Island effort only. It supplements project understanding for relevant tasks, but it does not replace the execution contracts defined by the global automation skills.
+## 8. Branch Note
+This branch was cut from `master` on 2026-07-17. `master` continues to carry the macOS native island (`mac-island/`, its docs and release workflow), which were removed here. When porting a macOS Phase 7 behavior to Windows, read the corresponding implementation on `master` for reference; do not re-add macOS build artifacts to this branch.

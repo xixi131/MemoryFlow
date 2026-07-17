@@ -3,8 +3,7 @@
 *.iml
 *.iws
 
-# AI .md
-AGENTS.md
+# AI .md (AGENTS.md is tracked on this branch)
 CLAUDE.md
 
 # Node
@@ -28,6 +27,9 @@ Thumbs.db
 # Build Artifacts (Large Files)
 front-end/release/
 front-end/release_v2/
+front-end/release_new/
+front-end/dist-dev/
+front-end/node_modules_old/
 *.exe
 *.dmg
 *.zip

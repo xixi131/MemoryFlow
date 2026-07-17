@@ -1,139 +1,91 @@
 [
   {
-    "task_id": "mac-phase7-settings-and-menu",
+    "task_id": "win-parity-gap-audit",
+    "task_type": "docs",
+    "description": "Produce a source-backed gap list between the current Windows Electron island and the macOS Phase 7 behavior so later parity tasks have exact scope.",
+    "steps": [
+      "Read docs/windows-parity-contract.md and the macOS Phase 7 implementation summaries on master (agent-state.md, codex-progress.md at the branch point) to enumerate candidate gaps.",
+      "For each candidate gap, cite the Windows code path (DynamicIslandWidget.tsx / main.cjs) and the mac behavior it diverges from: login-free music default, Advanced Features toggle, login-required square, island update prompt, island download activity, Reduce Motion handling.",
+      "Classify each gap as back-port, intentional Windows divergence, or not-applicable (e.g. notch-specific geometry), with a one-line rationale.",
+      "Write the result to docs/windows-parity-gap.md with per-gap acceptance criteria, and update the task scopes below if the audit contradicts them."
+    ],
+    "budget_minutes": 15,
+    "passes": false
+  },
+  {
+    "task_id": "win-login-free-music-default",
     "task_type": "frontend",
-    "description": "Give users one clean Settings surface for Advanced Features while removing the obsolete Phase 5 Interactions menu.",
+    "description": "Run the Windows island as a login-free music-only widget by default, matching the macOS basic mode.",
     "steps": [
-      "Add a namespaced UserDefaults-backed AdvancedFeaturesSettings model that defaults to disabled, publishes changes, and restores its value after relaunch.",
-      "Add a localized Advanced Features toggle to PreferencesView and show account login or logout controls only while the toggle is enabled, without duplicating auth state in SwiftUI.",
-      "Remove the Phase 5 Interactions submenu, selectors, and production controller wiring while preserving reusable probe fixtures and every unrelated status menu command.",
-      "Verify setting persistence and the disabled, enabled-logged-out, and enabled-logged-in Settings states, then open the menu and confirm the obsolete interaction entry is absent.",
-      "Run the settings and menu probes plus the full native Swift source typecheck without changing Windows or Electron files."
+      "Remove the logged-out '点击登录' compact presentation as the default entry; the logged-out compact island stays visually quiet and music takeover works without any session.",
+      "Allow music takeover, expanded music card, and playback controls with no auth session; review/todo/reminder features remain hidden while logged out.",
+      "Persist the mode through the existing Electron config (app-config.json) so relaunch restores the same presentation.",
+      "Verify logged-out launch shows no login UI and issues no protected API requests, music takeover and release still work, and logged-in behavior is unchanged."
     ],
-    "budget_minutes": 10,
-    "passes": true
+    "budget_minutes": 20,
+    "passes": false
   },
   {
-    "task_id": "mac-phase7-advanced-capability-lifecycle",
+    "task_id": "win-advanced-capability-lifecycle",
     "task_type": "e2e",
-    "description": "Run music without login by default and activate authenticated study features only when Advanced Features is enabled.",
+    "description": "Add an Advanced Features toggle that gates auth, review, todo, and reminder work, matching the macOS capability policy.",
     "steps": [
-      "Add a capability policy owned by SceneCoordinator: music and update services are always available, while authentication, review, todo, and reminder data require Advanced Features.",
-      "When disabled, skip Keychain session verification and protected pollers, hide review and todo interaction paths, clear user snapshots or pending mutations, and preserve any saved Keychain session without sending logout.",
-      "When enabled, reuse the existing AuthCoordinator, browser login callback, Keychain session, repositories, and polling controllers; do not add native credentials UI or duplicate service logic in Preferences or Window layers.",
-      "Verify default disabled launch has no login UI or protected requests, music takeover still works, enabling restores valid sessions or reaches logged-out state, and disabling stops protected work without duplicate timers.",
-      "Relaunch through disabled, enabled-logged-out, and enabled-logged-in configurations and record deterministic lifecycle evidence."
+      "Add an Advanced Features setting (default disabled) surfaced from the tray menu and persisted in app-config.json; login entry appears only while enabled.",
+      "When disabled: skip session verification, stop review/todo/reminder pollers, hide protected interaction paths, and preserve any stored session without sending logout.",
+      "When enabled: reuse the existing browser login + memoryflow://callback flow, token storage, and polling (GET /widget/summary every 30s, GET /todos/... every 60s); do not duplicate service logic.",
+      "Verify disabled launch, enable-then-login, disable-preserves-session, and re-enable-restores-session lifecycles with no duplicate timers or protected requests while disabled."
+    ],
+    "budget_minutes": 25,
+    "passes": false
+  },
+  {
+    "task_id": "win-login-required-square",
+    "task_type": "frontend",
+    "description": "Show the square Login Required presentation when an Advanced-enabled logged-out user clicks the island, matching the macOS Phase 7 presentation adapted to a notch-less screen.",
+    "steps": [
+      "Add a loginRequired presentation to DynamicIslandWidget.tsx: expanded visible width equals height, anchored top-center, entered through the existing shell spring (stiffness 280, damping 30, mass 1.2).",
+      "Render only the localized four-character Simplified Chinese Login Required message and route taps into this presentation only when Advanced Features is enabled and auth is logged out; browser login stays reachable from the tray/settings entry.",
+      "Support outside-click collapse, repeated taps, music takeover and return, and reduced-motion rendering.",
+      "Verify square geometry, tap routing, collapse behavior, and that basic (Advanced-disabled) mode never shows this presentation."
+    ],
+    "budget_minutes": 20,
+    "passes": false
+  },
+  {
+    "task_id": "win-update-prompt-and-download-in-island",
+    "task_type": "e2e",
+    "description": "Move the update experience into the island: a square prompt with Update/Later capsules and a download activity with left spinner and right percentage, replacing the separate data-URL update windows.",
+    "steps": [
+      "Bridge electron-updater states (checking, available, download progress, ready, failed) from main.cjs to the widget over IPC as typed events; keep region-aware feed selection (GitHub + gh-proxy mirrors) unchanged in the main process.",
+      "Reuse the login-required square geometry for the update prompt with a solid blue Update capsule and solid gray Later capsule; Later defers the same version for four hours and persists the deferral in app-config.json.",
+      "Render download progress as an island activity with a rotating blue left indicator and stable-width white right percentage, clamped monotonic progress, and unknown-length support; remove the standalone update progress/checking BrowserWindows.",
+      "Schedule checks shortly after launch and every 24 hours alongside the existing manual check path; verify prompt precedence against music takeover, deferral across relaunch, 0-100% progress, failure recovery with manual retry, and install-on-quit behavior."
+    ],
+    "budget_minutes": 30,
+    "passes": false
+  },
+  {
+    "task_id": "win-main-process-modularization",
+    "task_type": "refactor",
+    "description": "Split the 1802-line main.cjs into focused modules with no behavior change.",
+    "steps": [
+      "Extract updater + update-source/region logic, tray menu, widget window creation/anchoring, protocol (memoryflow://) handling, and config persistence into separate .cjs modules under front-end/electron/.",
+      "Keep main.cjs as composition-only wiring; preserve every IPC channel name, config key, and startup sequence exactly.",
+      "Verify electron:dev launches, widget loads #/widget, tray menu entries work, protocol callback still routes auth data, and a packaged build starts."
+    ],
+    "budget_minutes": 25,
+    "passes": false
+  },
+  {
+    "task_id": "win-release-pipeline-acceptance",
+    "task_type": "e2e",
+    "description": "Prove the win-v* release pipeline end to end: tag, CI build, publish to MemoryFlow.exe, and auto-update from an older installed version.",
+    "steps": [
+      "Push a win-v prerelease tag and verify release.yml validates the tag, syncs package.json version, builds the NSIS installer, and publishes to xixi131/MemoryFlow.exe.",
+      "Install the previous public release on a Windows machine, launch it, and verify it discovers and installs the new version through electron-updater, including the gh-proxy fallback path.",
+      "Record CI run, release asset, and update-flow evidence under docs/evidence/windows-release/, and confirm v* tags no longer trigger this workflow."
     ],
     "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-login-required-square",
-    "task_type": "e2e",
-    "description": "Show a notch-safe spring-driven square Login Required presentation when an advanced logged-out user clicks the island.",
-    "steps": [
-      "Remove the compact Login label, logo, button, and accessibility action so the notch-covered center remains visually and interactively empty in basic and advanced logged-out compact states.",
-      "Add pure reducer intents, derived content, and a dedicated visual state for loginRequired; State files must not read settings, open the browser, or call AuthCoordinator.",
-      "Make the expanded visible width equal its height, keep the top-center notch anchor fixed, grow downward through the existing Apple spring and single motion driver, and support reverse retargeting plus Reduce Motion.",
-      "Render only the localized four-character Simplified Chinese Login Required message below the notch and route taps into this presentation only when Advanced Features is enabled and auth is logged out; browser login remains in Settings.",
-      "Verify square geometry, notch clearance, repeated taps, outside collapse, logged-in behavior, music takeover and return, narrow layouts, and deterministic visual frames."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-updater-core",
-    "task_type": "e2e",
-    "description": "Discover trusted MemoryFlow releases through one login-independent production update service.",
-    "steps": [
-      "Add Sparkle 2 through Swift Package Manager and configure an HTTPS appcast URL plus public EdDSA key from build configuration, keeping private signing material outside the repository.",
-      "Create Services/Update protocols, a Sparkle adapter, a custom user driver, and an UpdateCoordinator whose typed states cover idle, checking, available, deferred, downloading, ready, installing, and failed.",
-      "Keep Sparkle types and callbacks inside Services/Update, publish state on the main actor, and prevent duplicate checks, downloads, recursive callbacks, or stale session updates.",
-      "Use signed local appcast fixtures to verify current, newer, malformed, non-HTTPS, and invalid-signature outcomes without importing island presentation types into the updater.",
-      "Run coordinator probes, the native build, and the full Swift source typecheck."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-update-check-policy",
-    "task_type": "e2e",
-    "description": "Check for updates manually and on schedule while honoring a persistent Later choice.",
-    "steps": [
-      "Add a localized Settings update section driven by UpdateCoordinator with Check for Updates, checking, up-to-date, available, and recoverable-error states independent from login and Advanced Features.",
-      "Add one injectable schedule owner that checks shortly after launch and every 24 hours, persists the last successful check, catches up after sleep or wake, and never creates duplicate timers.",
-      "Add a persistent prompt policy that defers the same version for four hours after Later, still permits manual checks, and clears stale deferral when a newer or installed version supersedes it.",
-      "Verify launch, relaunch, manual retry, offline recovery, 24-hour cadence, sleep or wake, four-hour deferral, newer-version replacement, and app termination with a deterministic clock.",
-      "Confirm update checks never start AuthCoordinator or protected API traffic."
-    ],
-    "budget_minutes": 10,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-update-prompt-square",
-    "task_type": "e2e",
-    "description": "Present an available update in the reusable square island with Update and Later capsule actions.",
-    "steps": [
-      "Adapt UpdateCoordinator availability into pure reducer intents through SceneCoordinator and define prompt precedence and return state alongside basic, advanced, login-required, app activity, and music presentations.",
-      "Reuse the login-required square geometry and shared spring while rendering separate update content with a solid blue Update Capsule and solid gray Later Capsule, no border, and no rounded-rectangle button shape.",
-      "Keep both actions below the notch with stable sizing, accessibility labels, keyboard focus, and no clipping; SwiftUI sends commands through the render model and never accesses persistence or Sparkle directly.",
-      "Route Later through the prompt policy, collapse through the reverse spring, restore compact or music state, suppress the prompt until eligible, and allow a manual Settings check during deferral.",
-      "Verify visual frames, hit regions, colors, capsule geometry, notch clearance, Reduce Motion, repeated callbacks, outside clicks, relaunch deferral, and music takeover or return."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-update-download-activity",
-    "task_type": "e2e",
-    "description": "Download a selected update while the island shows a blue left spinner and white right percentage.",
-    "steps": [
-      "Route Update through SceneCoordinator to UpdateCoordinator, prevent duplicate activation, collapse the square first, and enter update activity only after Sparkle confirms download start.",
-      "Convert expected and received byte callbacks into clamped monotonic progress, support unknown length, throttle redundant updates, reset correctly on retry, and ignore stale callbacks.",
-      "Render update progress through the existing left-and-right activity layout with a continuously rotating blue indicator on the left, stable-width white percentage on the right, and an empty notch center.",
-      "Keep update download activity above login-required and app activity without adding a second motion driver; provide a visibly active nonrotating fallback under Reduce Motion.",
-      "Run a signed controlled download covering setup failure, unknown length, retry, 0 to 100 percent progress, layout stability, duplicate clicks, and restoration of the prior presentation."
-    ],
-    "budget_minutes": 15,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-github-cicd-release-foundation",
-    "task_type": "e2e",
-    "description": "Produce repeatable unsigned MemoryFlow Island release candidates through GitHub Actions and GitHub Releases.",
-    "steps": [
-      "Add one local release command used by both developers and CI to validate a v-prefixed tag, enforce increasing marketing and build versions, build the macOS app, apply ad-hoc signing, and package the app as a Sparkle-compatible archive without Developer ID or notarization steps.",
-      "Add a GitHub Actions workflow for tag pushes and manual dispatch that uses GITHUB_TOKEN plus a Sparkle EdDSA private-key secret, generates release notes, checksum, content length, minimum macOS, phased-rollout metadata, and an appcast containing xixi131/MemoryFlow GitHub Release HTTPS URLs.",
-      "Upload the immutable app archive and checksum before the signed appcast, publish manual runs as draft or prerelease candidates, and fail before publication when versions, assets, secrets, or signatures are invalid.",
-      "Run the local dry-run and workflow validation path, verify the generated archive opens as an app bundle, verify the appcast signature and download URL contract, and scan artifacts and logs to confirm the private EdDSA key is absent."
-    ],
-    "budget_minutes": 10,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-unsigned-install-from-ci",
-    "task_type": "e2e",
-    "description": "Install and recover an EdDSA-verified unsigned update using artifacts produced by the GitHub CI/CD pipeline.",
-    "steps": [
-      "Finish the existing Sparkle verification, ready, installation, relaunch, recoverable failure, and explicit retry lifecycle without requiring Developer ID, notarization, or a Team ID.",
-      "Generate older and higher-version draft release candidates through the shared release command, serve or download the exact CI artifacts and signed appcast, and launch the older app through the documented unsigned-app approval path.",
-      "Install the higher build through Sparkle, then verify changed CFBundleVersion, relaunch, no repeated offer, retained app launchability, and correct timers, deferral, duplicate-operation, stale-callback, and future-check state.",
-      "Verify offline, HTTP, malformed feed, insufficient disk, cancelled installation, and invalid EdDSA signature recovery with explicit Settings retry and no automatic retry loop."
-    ],
-    "budget_minutes": 10,
-    "passes": true
-  },
-  {
-    "task_id": "mac-phase7-github-release-acceptance",
-    "task_type": "e2e",
-    "description": "Prove the complete open-source macOS experience from GitHub installation through unsigned Sparkle updating.",
-    "steps": [
-      "Document and verify installation from a GitHub Release, including drag-to-Applications and macOS right-click Open or Privacy and Security approval, with a clear warning that the app is not notarized.",
-      "Verify basic mode, music, login-independent checks, Advanced Features, the Login Required square, browser login, review, todo, and saved-session preservation without changing Windows or Electron behavior.",
-      "Use a draft or prerelease candidate to verify Later across relaunch, prompt collapse, blue spinner, white percentage, EdDSA verification, app replacement, and relaunch into the higher version.",
-      "Exercise invalid signature, offline download, insufficient disk, cancelled installation, sleep or wake, rapid clicks, and relaunch, then record CI, release asset, install guidance, appcast, transition, visual, percentage, installed-version, and recovery evidence under docs/evidence/mac-island-phase7."
-    ],
-    "budget_minutes": 10,
     "passes": false
   }
 ]

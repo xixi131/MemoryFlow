@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'win-v*'
 
 permissions:
   contents: write
@@ -56,7 +56,7 @@ jobs:
 
             if (!pattern.test(tag)) {
               console.error(\`Invalid release tag: \${tag}\`);
-              console.error('Expected format: vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-prerelease');
+              console.error('Expected format: win-vMAJOR.MINOR.PATCH or win-vMAJOR.MINOR.PATCH-prerelease');
               process.exit(1);
             }
           "
@@ -66,7 +66,7 @@ jobs:
         working-directory: front-end
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          NORMALIZED_TAG="${TAG_NAME#v}"
+          NORMALIZED_TAG="${TAG_NAME#win-v}"
 
           if [ -z "$NORMALIZED_TAG" ]; then
             echo "NORMALIZED_TAG is empty; cannot set package.json version" >&2
