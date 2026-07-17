@@ -1,6 +1,8 @@
 import AppKit
 
 final class StatusBarController: NSObject, MenuBarControlling {
+    private static let statusItemAutosaveName = "MemoryFlowIslandStatusItem"
+
     private var statusItem: NSStatusItem?
     private let windowController: IslandWindowControlling
     private let phase5ScenarioController: IslandPhase5ScenarioControlling?
@@ -44,9 +46,11 @@ final class StatusBarController: NSObject, MenuBarControlling {
         guard statusItem == nil else { return }
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = Self.statusItemAutosaveName
         configureButton(item.button)
         statusItem = item
         refreshMenu()
+        restoreStatusItemVisibility()
     }
 
     func uninstall() {
@@ -130,4 +134,10 @@ final class StatusBarController: NSObject, MenuBarControlling {
         )
     }
 
+    private func restoreStatusItemVisibility() {
+        statusItem?.isVisible = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.statusItem?.isVisible = true
+        }
+    }
 }
