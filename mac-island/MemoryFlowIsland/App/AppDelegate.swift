@@ -120,9 +120,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// Carries user defaults across the app's bundle-identifier history. macOS 26 Tahoe
+/// permanently blocks a status item once its bundle identifier is culled from the menu
+/// bar, and the block cannot be cleared (Control Center resets do not touch it), so the
+/// app moved to a fresh `com.memoryflow.islandapp` identifier that Tahoe has never
+/// blocked. Because a bundle-identifier change starts a new preferences domain, this
+/// copies settings forward from either prior identifier — `com.memoryflow.island`
+/// (≤v1.0.12) or `com.memoryflow.island.native` (v1.1.x) — so a one-time reinstall does
+/// not lose the user's language, feature, or update preferences.
 private enum BundleIdentityMigration {
-    private static let oldBundleID = "com.memoryflow.island"
-    private static let marker = "bundleIdentityMigrationV1Completed"
+    private static let priorBundleIDs = [
+        "com.memoryflow.island.native",
+        "com.memoryflow.island"
+    ]
+    private static let marker = "bundleIdentityMigrationV3Completed"
     private static let migratedKeys = [
         "com.memoryflow.island.settings.language",
         "com.memoryflow.island.settings.advancedFeaturesEnabled",
@@ -134,10 +145,13 @@ private enum BundleIdentityMigration {
         let current = UserDefaults.standard
         guard current.bool(forKey: marker) == false else { return }
 
-        let oldDomain = current.persistentDomain(forName: oldBundleID) ?? [:]
-        for key in migratedKeys where current.object(forKey: key) == nil {
-            if let value = oldDomain[key] {
-                current.set(value, forKey: key)
+        // Newest prior identifier wins, so iterate .native before the original .island.
+        for bundleID in priorBundleIDs {
+            let domain = current.persistentDomain(forName: bundleID) ?? [:]
+            for key in migratedKeys where current.object(forKey: key) == nil {
+                if let value = domain[key] {
+                    current.set(value, forKey: key)
+                }
             }
         }
 

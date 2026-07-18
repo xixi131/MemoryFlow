@@ -3,6 +3,13 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.3
+
+- 彻底修复 macOS 26 (Tahoe) 下菜单栏图标始终无法显示的问题：系统会按应用身份永久屏蔽被隐藏过的菜单栏图标，且无法通过重置控制中心清除，因此本版本改用全新应用身份绕过该屏蔽。
+- 自动迁移并保留原有语言、功能与更新偏好设置。
+- 若菜单栏图标仍被系统隐藏，应用会自动检测并引导你前往「系统设置 › 控制中心 › 允许在菜单栏中显示」重新开启。
+- 因更换了应用身份，**本版本需从 DMG 手动重新安装一次**；完成后即可照常自动更新。
+
 ## v1.1.2
 
 - 修复更新后 macOS 26 将菜单栏图标状态项恢复为隐藏的问题。

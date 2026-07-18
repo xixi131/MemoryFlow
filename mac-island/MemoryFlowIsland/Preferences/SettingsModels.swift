@@ -169,6 +169,10 @@ enum AppCopy {
         case updateInsufficientDisk
         case updateAuthorizationCancelled
         case updateFailed
+        case menuBarBlockedTitle
+        case menuBarBlockedMessage
+        case menuBarBlockedOpenSettings
+        case menuBarBlockedDismiss
     }
 
     static func text(_ key: Key, language: AppLanguage) -> String {
@@ -216,7 +220,11 @@ enum AppCopy {
         .updateSignatureFailed: "Update signature verification failed.",
         .updateInsufficientDisk: "Not enough disk space for the update.",
         .updateAuthorizationCancelled: "Installation authorization was cancelled.",
-        .updateFailed: "Update failed. Try again."
+        .updateFailed: "Update failed. Try again.",
+        .menuBarBlockedTitle: "Menu Bar Icon Hidden by macOS",
+        .menuBarBlockedMessage: "macOS Tahoe is preventing MemoryFlow Island's menu bar icon from appearing. Open System Settings › Control Center, scroll to \"Allow in the Menu Bar,\" and turn MemoryFlow Island on. The floating island stays available in the meantime.",
+        .menuBarBlockedOpenSettings: "Open Control Center Settings",
+        .menuBarBlockedDismiss: "Later"
     ]
 
     private static let simplifiedChinese: [Key: String] = [
@@ -255,6 +263,10 @@ enum AppCopy {
         .updateSignatureFailed: "更新签名验证失败。",
         .updateInsufficientDisk: "磁盘空间不足，无法完成更新。",
         .updateAuthorizationCancelled: "已取消安装授权。",
-        .updateFailed: "更新失败，请重试。"
+        .updateFailed: "更新失败，请重试。",
+        .menuBarBlockedTitle: "菜单栏图标被 macOS 隐藏",
+        .menuBarBlockedMessage: "macOS Tahoe 阻止了 MemoryFlow 灵动岛的菜单栏图标显示。请打开「系统设置 › 控制中心」，滚动到「允许在菜单栏中显示」，将 MemoryFlow 灵动岛开关打开。在此期间，屏幕上的悬浮灵动岛仍可正常使用。",
+        .menuBarBlockedOpenSettings: "打开控制中心设置",
+        .menuBarBlockedDismiss: "稍后"
     ]
 }
