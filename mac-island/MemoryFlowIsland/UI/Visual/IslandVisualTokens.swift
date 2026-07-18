@@ -14,10 +14,18 @@ enum IslandUpdatePromptLayout {
 
 enum IslandUpdateDownloadLayout {
     static let indicatorColorHex = "#0A84FF"
-    static let indicatorSize: CGFloat = 20
+    static let indicatorSize: CGFloat = 14
+    static let indicatorLineWidth: CGFloat = 3.5
     static let percentageWidth: CGFloat = 40
-    static let percentageFontSize: CGFloat = 10
-    static let rotationDuration: TimeInterval = 1.5
+    static let percentageFontSize: CGFloat = 9
+    // Google Material 风格加载圈:弧线一边匀速绕圈(rotationDuration),
+    // 一边平滑地伸长/缩短(sweepDuration),在 min/max 弧长之间“呼吸”。
+    static let rotationDuration: TimeInterval = 2.5
+    static let sweepDuration: TimeInterval = 1.5
+    static let minArcFraction: CGFloat = 0.06
+    static let maxArcFraction: CGFloat = 0.72
+    // 静态弧长(reduce motion 或无障碍时使用)。
+    static let reducedArcFraction: CGFloat = 0.25
 }
 import Foundation
 

@@ -3,6 +3,12 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.5
+
+- 优化更新时灵动岛的动效：点击「更新」后立即收起为下载活动态。
+- 全新 Material 风格加载圆环，转动更顺滑、更有节奏。
+- 下载进度百分比改为居中显示并调整字号。
+
 ## v1.1.4
 
 - 改进了复习模式图标。

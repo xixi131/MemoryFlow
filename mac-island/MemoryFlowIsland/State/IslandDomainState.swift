@@ -746,4 +746,16 @@ extension IslandDomainState {
         state.mockSources.review?.nextSubjectTitle = IslandMockScenarioMarkerText.pausedMusicTimeout
         return state
     }
+
+    static var mockUpdateDownloadActivity: IslandDomainState {
+        var state = loggedInReviewCompact
+        state.updateDownloadProgress = UpdateDownloadProgress(receivedBytes: 42, totalBytes: 100)
+        return state
+    }
+
+    static var mockUpdateDownloadIndeterminate: IslandDomainState {
+        var state = loggedInReviewCompact
+        state.updateDownloadProgress = .indeterminate
+        return state
+    }
 }

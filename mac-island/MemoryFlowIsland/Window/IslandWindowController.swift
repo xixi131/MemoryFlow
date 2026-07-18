@@ -167,7 +167,15 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         previewSizingDiagnosticsEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_SIZING_DIAGNOSTICS"] == "1",
         interactionDiagnosticsEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_INTERACTION_DIAGNOSTICS"] == "1",
         phase5PreviewModeEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_PHASE5_PREVIEW"] != "0",
-        phase5ScenarioMenuEnabled: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_PHASE5_SCENARIOS"] == "1",
+        phase5ScenarioMenuEnabled: Bool = {
+            // Debug 构建默认显示「第五阶段场景」调试菜单(设 =0 可关);
+            // Release 构建默认隐藏,避免调试菜单泄露给正式用户(设 =1 可临时开)。
+            #if DEBUG
+            return ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_PHASE5_SCENARIOS"] != "0"
+            #else
+            return ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_PHASE5_SCENARIOS"] == "1"
+            #endif
+        }(),
         legacyPreviewInteractionRoutingRequested: Bool = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_LEGACY_PREVIEW_INTERACTIONS"] == "1",
         initialPhase5PreviewState: IslandDomainState = .loggedInReviewCompact,
         screenMetricsResolver: ((NSWindow?, ScreenMetrics.DisplayIdentity?) -> ScreenMetrics?)? = nil

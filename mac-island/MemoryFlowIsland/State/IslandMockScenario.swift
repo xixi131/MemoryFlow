@@ -85,6 +85,18 @@ struct IslandMockScenario: Equatable, Identifiable {
             menuTitle: "Music Stopped Fallback",
             initialState: .mockMusicStoppedFallback,
             expectedDerivedVisualState: .compactCollapsed
+        ),
+        IslandMockScenario(
+            id: "update-download-activity",
+            menuTitle: "Update Download (42%)",
+            initialState: .mockUpdateDownloadActivity,
+            expectedDerivedVisualState: .activityCollapsed
+        ),
+        IslandMockScenario(
+            id: "update-download-indeterminate",
+            menuTitle: "Update Download (--%%)",
+            initialState: .mockUpdateDownloadIndeterminate,
+            expectedDerivedVisualState: .activityCollapsed
         )
     ]
 

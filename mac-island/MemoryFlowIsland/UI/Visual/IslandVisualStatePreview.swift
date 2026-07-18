@@ -576,7 +576,7 @@ private struct IslandPreviewContentOverlay: View {
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .frame(width: IslandUpdateDownloadLayout.percentageWidth, alignment: .trailing)
+                        .frame(width: IslandUpdateDownloadLayout.percentageWidth, alignment: .center)
                         .accessibilityLabel("Update download \(content.badge)")
                 } else if let music = content.music {
                     MusicWaveformMark(
@@ -2531,25 +2531,22 @@ private struct UpdateDownloadIndicator: View {
     let reduceMotion: Bool
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
-                .truncatingRemainder(dividingBy: IslandUpdateDownloadLayout.rotationDuration)
-                / IslandUpdateDownloadLayout.rotationDuration
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let arcLength = reduceMotion
+                ? IslandUpdateDownloadLayout.reducedArcFraction
+                : arcFraction(at: time)
+            let startAngle = reduceMotion ? -90 : orbitAngle(at: time)
             ZStack {
                 Circle()
-                    .stroke(indicatorColor.opacity(0.24), lineWidth: 2.4)
+                    .stroke(indicatorColor.opacity(0.18), lineWidth: IslandUpdateDownloadLayout.indicatorLineWidth)
                 Circle()
-                    .trim(from: 0.08, to: 0.72)
+                    .trim(from: 0, to: arcLength)
                     .stroke(
                         indicatorColor,
-                        style: StrokeStyle(lineWidth: 2.4, lineCap: .round)
+                        style: StrokeStyle(lineWidth: IslandUpdateDownloadLayout.indicatorLineWidth, lineCap: .round)
                     )
-                    .rotationEffect(.degrees(reduceMotion ? -35 : phase * 360 - 90))
-                if reduceMotion {
-                    Circle()
-                        .fill(indicatorColor)
-                        .frame(width: 4, height: 4)
-                }
+                    .rotationEffect(.degrees(startAngle))
             }
         }
         .frame(
@@ -2558,6 +2555,23 @@ private struct UpdateDownloadIndicator: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Downloading update")
+    }
+
+    /// 弧线起点的匀速绕圈角度(-90 让起点从 12 点方向开始)。
+    private func orbitAngle(at time: TimeInterval) -> Double {
+        let period = IslandUpdateDownloadLayout.rotationDuration
+        let phase = time.truncatingRemainder(dividingBy: period) / period
+        return phase * 360 - 90
+    }
+
+    /// 弧长在 min/max 之间用余弦缓动平滑“呼吸”,营造 Material 风格的伸缩感。
+    private func arcFraction(at time: TimeInterval) -> CGFloat {
+        let period = IslandUpdateDownloadLayout.sweepDuration
+        let phase = time.truncatingRemainder(dividingBy: period) / period
+        let eased = 0.5 - 0.5 * cos(phase * 2 * .pi)
+        let minArc = IslandUpdateDownloadLayout.minArcFraction
+        let maxArc = IslandUpdateDownloadLayout.maxArcFraction
+        return minArc + (maxArc - minArc) * CGFloat(eased)
     }
 
     private var indicatorColor: Color {

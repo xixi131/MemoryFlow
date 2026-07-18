@@ -506,8 +506,12 @@ final class SceneCoordinator {
                     return
                 }
                 self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
+            case .downloadRequested:
+                self.windowController.applyUpdateDownloadProgress(.indeterminate)
             case .downloading(_, let progress):
                 self.windowController.applyUpdateDownloadProgress(progress)
+            case .verifying, .awaitingAuthorization, .installing:
+                self.windowController.applyUpdateDownloadProgress(.indeterminate)
             case .ready:
                 self.windowController.endUpdateDownloadActivity()
                 Task { @MainActor [weak self] in
@@ -521,8 +525,7 @@ final class SceneCoordinator {
             case .installed(let release, _):
                 self.updateCheckPolicy.markInstalled(build: release.build)
                 self.windowController.endUpdateDownloadActivity()
-            case .idle, .checking, .deferred, .downloadRequested, .verifying,
-                 .awaitingAuthorization, .installing:
+            case .idle, .checking, .deferred:
                 break
             }
             }
