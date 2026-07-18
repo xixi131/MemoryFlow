@@ -179,17 +179,17 @@ jobs:
           if gh release view "${TAG}" --repo "${REPOSITORY}" >/dev/null 2>&1; then
             gh release edit "${TAG}" \
               --repo "${REPOSITORY}" \
-              --title "MemoryFlow Island ${TAG}" \
+              --title "${TAG} MemoryFlow Island for mac" \
               --notes-file "${OUTPUT_DIR}/release-notes.md"
           elif ! gh release create "${TAG}" \
             --repo "${REPOSITORY}" \
             --target "${GITHUB_SHA}" \
-            --title "MemoryFlow Island ${TAG}" \
+            --title "${TAG} MemoryFlow Island for mac" \
             --notes-file "${OUTPUT_DIR}/release-notes.md" \
             "${FLAGS[@]}"; then
             gh release edit "${TAG}" \
               --repo "${REPOSITORY}" \
-              --title "MemoryFlow Island ${TAG}" \
+              --title "${TAG} MemoryFlow Island for mac" \
               --notes-file "${OUTPUT_DIR}/release-notes.md"
           fi
 

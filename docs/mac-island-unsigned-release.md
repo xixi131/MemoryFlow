@@ -37,6 +37,18 @@ The `MemoryFlow Island Release` workflow supports:
 
 Both tag and manual runs read the matching user-facing section from `RELEASE_NOTES.md`; the workflow does not publish raw commit history. It resolves the previous version and build from the latest stable signed appcast, enforces increasing versions, uploads the immutable DMG and app ZIP, and publishes the signed appcast last. The macOS workflow can update the release description if the Windows workflow creates the shared GitHub Release concurrently, but it never replaces an uploaded release asset.
 
+## One-command publish
+
+For normal development releases, run this once from the repository root:
+
+```bash
+./publish.sh
+```
+
+The script fetches the remote branch and tags, rejects an unsafe or diverged Git state, selects the next semantic version, collects release-note bullets when the matching section is missing, stages all repository changes, blocks machine-local, secret-like, and oversized files, validates the release contract, creates the commit and annotated tag, and atomically pushes both. The tag push triggers the Windows and macOS release workflows. If the network push fails after the local commit and tag are created, running the script again resumes that unpublished tag instead of creating another version.
+
+Use `./publish.sh --dry-run` to inspect the calculated version without changing Git. Automated callers can use repeated `--notes`, an explicit `--version`, and `--yes`; `--wait` also watches the resulting GitHub Actions runs when GitHub CLI is installed and authenticated.
+
 For the normal no-browser release flow, update the release notes and code, then run:
 
 ```bash

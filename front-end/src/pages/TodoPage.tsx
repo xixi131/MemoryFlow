@@ -1,6 +1,22 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import {
+    BarChart3,
+    CalendarDays,
+    Check,
+    ChevronRight,
+    CirclePlus,
+    Clock3,
+    GripVertical,
+    ListFilter,
+    ListTodo,
+    Minus,
+    Search,
+    SlidersHorizontal,
+    Tags,
+    Trash2
+} from 'lucide-react';
 import { message } from '../components/Message';
 import { ModalWrapper } from '../components/Modals';
 import TodoTrendChart from '../components/todo/TodoTrendChart';
@@ -128,10 +144,10 @@ const softClass =
     'bg-slate-100/75 dark:bg-[#0F172A]/70 border border-slate-200/70 dark:border-white/10';
 
 const inputClass =
-    'w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition-colors placeholder:text-slate-500 hover:border-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-slate-600 dark:bg-[#111827] dark:text-white dark:placeholder:text-slate-400 dark:hover:border-slate-500 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+    'w-full border border-slate-200/90 bg-white px-4 py-3 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] placeholder:text-slate-400 hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 const selectClass =
-    'rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-slate-600 dark:bg-[#111827] dark:text-white dark:hover:border-slate-500 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+    'border border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 const quickCreateInputClass =
     'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
@@ -166,6 +182,7 @@ const ProjectSelect: React.FC<{
             <button
                 type="button"
                 className={`w-full text-left ${selectClass} inline-flex items-center justify-between`}
+                style={continuous(16)}
                 onClick={() => setOpen((prev) => !prev)}
                 aria-haspopup="listbox"
                 aria-expanded={open}
@@ -253,6 +270,7 @@ const ProjectNativePicker: React.FC<{
                 onClick={openPicker}
                 disabled={disabled}
                 className={`w-full ${selectClass} inline-flex items-center justify-between`}
+                style={continuous(16)}
             >
                 <span className={`${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-text-secondary'}`}>
                     {displayValue}
@@ -299,6 +317,7 @@ const QuickCreateModal: React.FC<{
                     }}
                     placeholder={placeholder}
                     className={quickCreateInputClass}
+                    style={continuous(18)}
                 />
                 <div className="flex justify-end gap-2">
                     <button
@@ -331,6 +350,44 @@ const continuousLeft = (radius = 32) => ({
     borderBottomLeftRadius: radius,
     borderCurve: 'continuous'
 } as React.CSSProperties & Record<string, string>);
+
+const AppleCheckbox: React.FC<{
+    checked: boolean;
+    indeterminate?: boolean;
+    ariaLabel: string;
+    label?: string;
+    className?: string;
+    onChange: (checked: boolean) => void;
+}> = ({ checked, indeterminate = false, ariaLabel, label, className, onChange }) => {
+    const active = checked || indeterminate;
+
+    return (
+        <button
+            type="button"
+            role="checkbox"
+            aria-checked={indeterminate ? 'mixed' : checked}
+            aria-label={ariaLabel}
+            onClick={(event) => {
+                event.stopPropagation();
+                onChange(!checked);
+            }}
+            className={`inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-500 dark:text-text-secondary ${className || ''}`}
+        >
+            <span
+                aria-hidden="true"
+                className={`relative flex size-5 items-center justify-center border transition-[background-color,border-color,box-shadow] ${
+                    active
+                        ? 'border-[#0A84FF] bg-[#0A84FF] text-white shadow-[0_1px_3px_rgba(10,132,255,0.3)]'
+                        : 'border-slate-300 bg-white text-transparent hover:border-slate-400 dark:border-slate-500 dark:bg-[#101725] dark:hover:border-slate-400'
+                }`}
+                style={continuous(6)}
+            >
+                {indeterminate ? <Minus size={14} strokeWidth={2.8} /> : <Check size={14} strokeWidth={2.8} />}
+            </span>
+            {label && <span>{label}</span>}
+        </button>
+    );
+};
 
 const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 10) : '');
 
@@ -370,9 +427,7 @@ const reorderById = <T extends { id: number }>(items: T[], fromId: number, toId:
 
 const buildDueLabel = (task: TodoTaskDTO) => {
     if (!task.dueDate) return '无日期';
-    const date = String(task.dueDate).slice(0, 10);
-    const time = toTimeInput(task.dueTime);
-    return time ? `${date} ${time}` : date;
+    return String(task.dueDate).slice(0, 10);
 };
 
 const TodoPage: React.FC = () => {
@@ -443,6 +498,7 @@ const TodoPage: React.FC = () => {
     );
 
     const allVisibleSelected = tasks.length > 0 && tasks.every((task) => selectedTaskIds.includes(task.id));
+    const someVisibleSelected = selectedTaskIds.length > 0 && !allVisibleSelected;
     const canDragSort = query.sortBy === 'custom';
     const toEditorDraft = useCallback(
         (task: TodoTaskDTO): TaskEditorDraft => ({
@@ -881,38 +937,49 @@ const TodoPage: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6 w-full animate-fade-in">
-            <header className="flex flex-col gap-5 px-2">
+        <div className="flex w-full flex-col gap-6 animate-fade-in">
+            <header className="flex flex-col gap-5 px-2 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">待办工作台</h2>
-                    <p className="text-slate-500 dark:text-text-secondary text-lg mt-1">
-                        {isStatisticsRoute ? '查看任务进度、到期风险与本周完成情况。' : '管理任务、标签、优先级与完成状态。'}
+                    <p className="mb-2 text-sm font-semibold text-primary">专注与进度</p>
+                    <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">待办工作台</h2>
+                    <p className="mt-2 max-w-2xl text-base text-slate-500 dark:text-text-secondary">
+                        {isStatisticsRoute ? '查看任务进度、到期风险与本周完成情况。' : '清晰安排任务，专注处理此刻最重要的事情。'}
                     </p>
                 </div>
                 <nav
                     aria-label="待办工作区视图"
-                    className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-200/70 p-1 dark:bg-white/10 sm:w-[360px]"
+                    className="relative grid h-12 w-full grid-cols-2 bg-slate-200/80 p-1 dark:bg-white/10 sm:w-[300px]"
+                    style={continuous(999)}
                 >
+                    <span
+                        aria-hidden="true"
+                        className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.12),0_6px_16px_rgba(15,23,42,0.08)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#202938] dark:shadow-[0_8px_18px_rgba(0,0,0,0.28)]"
+                        style={{ ...continuous(999), transform: `translateX(${isStatisticsRoute ? '100%' : '0'})` }}
+                    />
                     <Link
                         to="/todo"
                         aria-current={!isStatisticsRoute ? 'page' : undefined}
-                        className={`flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-bold transition-colors ${
+                        className={`relative z-10 flex min-h-10 items-center justify-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
                             !isStatisticsRoute
-                                ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
-                                : 'text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white'
+                                ? 'text-slate-900 dark:text-white'
+                                : 'text-slate-500 hover:text-slate-800 dark:text-text-secondary dark:hover:text-white'
                         }`}
+                        style={continuous(999)}
                     >
+                        <ListTodo size={17} strokeWidth={2.2} />
                         待办
                     </Link>
                     <Link
                         to="/stats"
                         aria-current={isStatisticsRoute ? 'page' : undefined}
-                        className={`flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-bold transition-colors ${
+                        className={`relative z-10 flex min-h-10 items-center justify-center gap-2 px-4 py-2 text-sm font-bold transition-colors ${
                             isStatisticsRoute
-                                ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
-                                : 'text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white'
+                                ? 'text-slate-900 dark:text-white'
+                                : 'text-slate-500 hover:text-slate-800 dark:text-text-secondary dark:hover:text-white'
                         }`}
+                        style={continuous(999)}
                     >
+                        <BarChart3 size={17} strokeWidth={2.2} />
                         统计
                     </Link>
                 </nav>
@@ -946,7 +1013,8 @@ const TodoPage: React.FC = () => {
                                 ].map((metric) => (
                                     <article
                                         key={metric.label}
-                                        className="flex min-h-[132px] flex-col justify-between rounded-lg border border-slate-200 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+                                        className="flex min-h-[132px] flex-col justify-between border border-slate-200 bg-white/80 p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/5"
+                                        style={continuous(24)}
                                     >
                                         <p className="text-sm font-bold text-slate-500 dark:text-text-secondary">{metric.label}</p>
                                         <p className={`text-3xl font-extrabold ${metric.tone}`}>{metric.value}</p>
@@ -968,10 +1036,22 @@ const TodoPage: React.FC = () => {
                     </section>
                 ) : (
                     <>
-                <section className="flex flex-col gap-5 min-w-0">
-                    <div className="p-0">
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-3">
+                <section
+                    aria-labelledby="todo-create-heading"
+                    className="min-w-0 border border-slate-200/90 bg-slate-50/80 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.035] sm:p-5"
+                    style={continuous(28)}
+                >
+                    <div className="mb-4 flex items-center gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center bg-primary/10 text-primary" style={continuous(14)}>
+                            <CirclePlus size={21} strokeWidth={2.1} />
+                        </span>
+                        <div>
+                            <h3 id="todo-create-heading" className="text-base font-bold text-slate-900 dark:text-white">新建任务</h3>
+                            <p className="mt-0.5 text-sm text-slate-500 dark:text-text-secondary">快速记录，再补充时间与优先级。</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                                 <input
                                     value={createDraft.title}
                                     onChange={(e) => setCreateDraft((prev) => ({ ...prev, title: e.target.value }))}
@@ -982,14 +1062,17 @@ const TodoPage: React.FC = () => {
                                         }
                                     }}
                                     className={`${inputClass} flex-1`}
+                                    style={continuous(18)}
                                     placeholder="任务标题（回车可创建）"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleCreateTask}
                                     disabled={saving}
-                                    className="px-5 py-3 bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-glow transition-colors disabled:opacity-60 rounded-2xl"
+                                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-sm font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.22)] transition-[background-color,transform,box-shadow] hover:bg-blue-600 hover:shadow-[0_10px_24px_rgba(37,99,235,0.28)] active:scale-[0.98] disabled:opacity-60"
+                                    style={continuous(18)}
                                 >
+                                    <CirclePlus size={18} />
                                     创建
                                 </button>
                             </div>
@@ -1027,7 +1110,10 @@ const TodoPage: React.FC = () => {
                                     }
                                 />
                                 <div className="flex items-center justify-end">
-                                    <button type="button" onClick={openCreateTagModal} className="text-xs font-bold text-primary">+ 标签</button>
+                                    <button type="button" onClick={openCreateTagModal} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10" style={continuous(999)}>
+                                        <Tags size={15} />
+                                        新建标签
+                                    </button>
                                 </div>
                             </div>
                             <div>
@@ -1038,6 +1124,7 @@ const TodoPage: React.FC = () => {
                                     placeholder="输入任务描述或备注..."
                                     rows={4}
                                     className={`${inputClass} resize-y`}
+                                    style={continuous(18)}
                                 />
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -1048,20 +1135,53 @@ const TodoPage: React.FC = () => {
                                             key={tag.id}
                                             type="button"
                                             onClick={() => toggleCreateTag(tag.id)}
-                                            className={`px-2.5 py-1 text-xs border rounded-full ${active ? 'ring-1' : ''}`}
-                                            style={{ color: tag.color, borderColor: `${tag.color}88`, backgroundColor: active ? `${tag.color}22` : `${tag.color}10` }}
+                                            className={`border px-2.5 py-1 text-xs ${active ? 'ring-1' : ''}`}
+                                            style={{ ...continuous(999), color: tag.color, borderColor: `${tag.color}88`, backgroundColor: active ? `${tag.color}22` : `${tag.color}10` }}
                                         >
                                             #{tag.name}
                                         </button>
                                     );
                                 })}
                             </div>
-                        </div>
                     </div>
+                </section>
 
-                    <div className="px-1 pb-1">
-                        <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
-                            <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className={`md:col-span-2 ${inputClass}`} placeholder="搜索任务" />
+                <section
+                    aria-labelledby="todo-filter-heading"
+                    className="min-w-0 border border-slate-200/90 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.025] sm:p-5"
+                    style={continuous(28)}
+                >
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(14)}>
+                                <ListFilter size={20} strokeWidth={2.1} />
+                            </span>
+                            <div>
+                                <h3 id="todo-filter-heading" className="text-base font-bold text-slate-900 dark:text-white">查询与筛选</h3>
+                                <p className="mt-0.5 text-sm text-slate-500 dark:text-text-secondary">组合条件，快速定位需要处理的任务。</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setQuery(DEFAULT_QUERY); setSearchInput(''); }}
+                            className="inline-flex items-center justify-center gap-1.5 self-start bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15 sm:self-auto"
+                            style={continuous(999)}
+                        >
+                            <SlidersHorizontal size={14} />
+                            重置筛选
+                        </button>
+                    </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-7">
+                            <label className="relative sm:col-span-2 xl:col-span-2">
+                                <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    className={`${inputClass} py-2.5 pl-11`}
+                                    style={continuous(16)}
+                                    placeholder="搜索任务标题或描述"
+                                />
+                            </label>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.status}
@@ -1117,45 +1237,57 @@ const TodoPage: React.FC = () => {
                                     }))
                                 }
                             />
-                            <button type="button" onClick={() => { setQuery(DEFAULT_QUERY); setSearchInput(''); }} className="px-3 py-2 text-xs font-bold bg-slate-200 dark:bg-white/10 rounded-2xl">重置</button>
                         </div>
-                        <p className="mt-2 text-xs text-slate-500 dark:text-text-secondary">{orderHint}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: undefined }))} className={`px-3 py-1 text-xs rounded-full border ${query.tagId == null ? 'border-primary text-primary bg-primary/10' : 'border-slate-300 text-slate-500'}`}>全部标签</button>
+                        <p className="mt-3 text-xs text-slate-500 dark:text-text-secondary">{orderHint}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-text-secondary"><Tags size={14} />标签</span>
+                            <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: undefined }))} className={`border px-3 py-1.5 text-xs font-semibold ${query.tagId == null ? 'border-primary/40 text-primary bg-primary/10' : 'border-slate-200 text-slate-500 dark:border-white/10'}`} style={continuous(999)}>全部</button>
                             {tags.map((tag) => (
                                 <div key={tag.id} className="inline-flex items-center gap-1">
-                                    <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: tag.id }))} className="px-3 py-1 text-xs rounded-full border" style={{ color: tag.color, borderColor: `${tag.color}88`, backgroundColor: query.tagId === tag.id ? `${tag.color}22` : `${tag.color}10` }}>
+                                    <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: tag.id }))} className="border px-3 py-1.5 text-xs font-semibold" style={{ ...continuous(999), color: tag.color, borderColor: `${tag.color}88`, backgroundColor: query.tagId === tag.id ? `${tag.color}22` : `${tag.color}10` }}>
                                         #{tag.name}
                                     </button>
-                                    <button type="button" onClick={() => handleDeleteTag(tag)} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                                    <button type="button" onClick={() => handleDeleteTag(tag)} aria-label={`删除标签 ${tag.name}`} className="flex size-7 items-center justify-center text-slate-400 hover:text-red-500" style={continuous(999)}><Trash2 size={13} /></button>
                                 </div>
                             ))}
                         </div>
-                    </div>
                 </section>
 
-                <section className={`${panelClass} p-4 w-full`} style={continuous(32)}>
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">任务列表 ({tasks.length})</h3>
-                        <label className="text-xs text-slate-500 dark:text-text-secondary inline-flex items-center gap-1.5">
-                            <input type="checkbox" checked={allVisibleSelected} onChange={(e) => setSelectedTaskIds(e.target.checked ? tasks.map((task) => task.id) : [])} />
-                            全选
-                        </label>
+                <section aria-labelledby="todo-list-heading" className="w-full min-w-0 pt-1">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <h3 id="todo-list-heading" className="text-xl font-bold text-slate-900 dark:text-white">任务列表</h3>
+                            <span className="bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(999)}>{tasks.length}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                            {selectedTaskIds.length > 0 && (
+                                <>
+                                    <span className="px-2 text-xs font-bold text-slate-500 dark:text-slate-300">已选 {selectedTaskIds.length} 项</span>
+                                    <button type="button" onClick={() => runBatchAction('complete')} className="px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-500/10" style={continuous(999)}>标记完成</button>
+                                    <button type="button" onClick={() => runBatchAction('uncomplete')} className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-500/10" style={continuous(999)}>恢复待办</button>
+                                    <button type="button" onClick={() => runBatchAction('delete')} className="px-3 py-1.5 text-xs font-bold text-red-500 hover:bg-red-500/10" style={continuous(999)}>删除</button>
+                                    <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-white/10" aria-hidden="true" />
+                                </>
+                            )}
+                            <AppleCheckbox
+                                checked={allVisibleSelected}
+                                indeterminate={someVisibleSelected}
+                                ariaLabel="全选可见任务"
+                                label="全选"
+                                onChange={(checked) => setSelectedTaskIds(checked ? tasks.map((task) => task.id) : [])}
+                            />
+                        </div>
                     </div>
 
-                    {selectedTaskIds.length > 0 && (
-                        <div className="flex gap-2 mb-3">
-                            <button type="button" onClick={() => runBatchAction('complete')} className="px-2.5 py-1.5 text-xs rounded-xl bg-green-500/20 text-green-500">完成</button>
-                            <button type="button" onClick={() => runBatchAction('uncomplete')} className="px-2.5 py-1.5 text-xs rounded-xl bg-blue-500/20 text-blue-500">未完成</button>
-                            <button type="button" onClick={() => runBatchAction('delete')} className="px-2.5 py-1.5 text-xs rounded-xl bg-red-500 text-white">删除</button>
-                        </div>
-                    )}
-
-                    <div className="flex flex-col gap-2 max-h-[70vh] overflow-y-auto pr-1">
+                    <div className="-m-3 flex max-h-[70vh] flex-col gap-3 overflow-y-auto p-3">
                         {tasksLoading || tagsLoading ? (
-                            <div className="text-sm text-slate-500 py-10 text-center">加载中...</div>
+                            <div className="border border-slate-200 bg-white/70 py-14 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.03]" style={continuous(24)}>加载中...</div>
                         ) : tasks.length === 0 ? (
-                            <div className="text-sm text-slate-400 py-10 text-center">暂无任务</div>
+                            <div className="flex flex-col items-center border border-dashed border-slate-300 bg-white/50 px-6 py-14 text-center dark:border-white/15 dark:bg-white/[0.02]" style={continuous(28)}>
+                                <span className="mb-3 flex size-12 items-center justify-center bg-slate-100 text-slate-400 dark:bg-white/10" style={continuous(18)}><ListTodo size={23} /></span>
+                                <p className="font-bold text-slate-700 dark:text-slate-200">没有符合条件的任务</p>
+                                <p className="mt-1 text-sm text-slate-400">新建一个任务，或调整上方筛选条件。</p>
+                            </div>
                         ) : (
                             tasks.map((task) => {
                                 const done = task.status === 'completed';
@@ -1168,48 +1300,65 @@ const TodoPage: React.FC = () => {
                                             if (canDragSort) e.preventDefault();
                                         }}
                                         onDrop={() => handleDragDrop(task.id)}
-                                        className={`${softClass} p-3 cursor-pointer transition-colors ${done ? 'opacity-75' : ''}`}
-                                        style={continuous(22)}
+                                        className={`group cursor-pointer p-4 shadow-[0_5px_16px_rgba(15,23,42,0.08),0_1px_3px_rgba(15,23,42,0.04)] dark:shadow-[0_7px_20px_rgba(0,0,0,0.24),0_1px_3px_rgba(0,0,0,0.16)] ${
+                                            done
+                                                ? 'bg-slate-50/75 dark:bg-white/[0.025]'
+                                                : 'bg-white dark:bg-[#101725]'
+                                        }`}
+                                        style={continuous(24)}
                                         onClick={() => openDrawer(task)}
                                     >
-                                        <div className="flex items-start gap-2">
-                                            <input type="checkbox" checked={selectedTaskIds.includes(task.id)} onChange={(e) => setSelectedTaskIds((prev) => (e.target.checked ? [...prev, task.id] : prev.filter((id) => id !== task.id)))} onClick={(e) => e.stopPropagation()} className="mt-1.5" />
+                                        <div className="flex items-start gap-3">
+                                            {canDragSort && <GripVertical className="mt-1.5 hidden shrink-0 text-slate-300 transition-colors group-hover:text-slate-400 sm:block" size={17} aria-hidden="true" />}
+                                            <AppleCheckbox
+                                                checked={selectedTaskIds.includes(task.id)}
+                                                ariaLabel={`选择任务 ${task.title}`}
+                                                className="mt-1"
+                                                onChange={(checked) =>
+                                                    setSelectedTaskIds((prev) =>
+                                                        checked ? [...prev, task.id] : prev.filter((id) => id !== task.id)
+                                                    )
+                                                }
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleToggleTask(task);
                                                 }}
-                                                className={`group/check mt-0.5 relative size-6 rounded-full border-2 transition-colors ${
+                                                className={`group/check relative mt-0.5 size-7 shrink-0 border-2 transition-[border-color,background-color,transform] active:scale-90 ${
                                                     done
                                                         ? 'bg-emerald-500 border-emerald-500'
                                                         : 'bg-white/80 dark:bg-[#0F172A] border-slate-300 dark:border-slate-500 hover:border-emerald-400'
                                                 }`}
+                                                style={continuous(999)}
                                                 aria-label={done ? '标记为未完成' : '标记为完成'}
                                             >
-                                                <svg
-                                                    viewBox="0 0 24 24"
-                                                    className={`absolute inset-0 m-auto h-3.5 w-3.5 transition-opacity ${
-                                                        done ? 'opacity-100 text-white' : 'opacity-0 text-emerald-500 group-hover/check:opacity-100'
-                                                    }`}
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.6"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                >
-                                                    <path d="M20 6 9 17l-5-5" />
-                                                </svg>
+                                                <Check className={`absolute inset-0 m-auto size-4 transition-opacity ${done ? 'opacity-100 text-white' : 'opacity-0 text-emerald-500 group-hover/check:opacity-100'}`} strokeWidth={2.8} />
                                             </button>
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <p className={`text-sm font-bold truncate ${done ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>{task.title}</p>
-                                                    <span className={`px-2 py-0.5 text-[10px] border rounded-full ${PRIORITY_CLASS[task.priority]}`}>{PRIORITY_LABEL[task.priority]}</span>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className={`min-w-0 truncate text-[15px] font-bold ${done ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>{task.title}</p>
+                                                    <span className={`border px-2.5 py-1 text-[10px] font-bold ${PRIORITY_CLASS[task.priority]}`} style={continuous(999)}>{PRIORITY_LABEL[task.priority]}</span>
                                                 </div>
-                                                <div className="mt-1 text-[11px] text-slate-500 dark:text-text-secondary">{buildDueLabel(task)} · 子任务 {task.subtaskCompleted || 0}/{task.subtaskTotal || 0}</div>
-                                                {!!task.descriptionMd && <div className="mt-1 text-[11px] text-slate-500 line-clamp-1">{compactMarkdown(task.descriptionMd)}</div>}
+                                                {!!task.descriptionMd && <p className="mt-1.5 line-clamp-1 text-sm text-slate-500 dark:text-text-secondary">{compactMarkdown(task.descriptionMd)}</p>}
+                                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                                                    <span className="inline-flex items-center gap-1.5"><CalendarDays size={14} />{buildDueLabel(task)}</span>
+                                                    {(task.subtaskTotal || 0) > 0 && <span className="inline-flex items-center gap-1.5"><Check size={14} />子任务 {task.subtaskCompleted || 0}/{task.subtaskTotal || 0}</span>}
+                                                    {!!task.dueTime && <span className="inline-flex items-center gap-1.5"><Clock3 size={14} />{toTimeInput(task.dueTime)}</span>}
+                                                </div>
+                                                {!!task.tags?.length && (
+                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                        {task.tags.slice(0, 4).map((tag) => (
+                                                            <span key={tag.id} className="px-2 py-1 text-[10px] font-semibold" style={{ ...continuous(999), color: tag.color, backgroundColor: `${tag.color}12` }}>#{tag.name}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                                            <div className="flex shrink-0 items-center gap-1">
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} aria-label={`删除任务 ${task.title}`} className="flex size-9 items-center justify-center text-slate-300 opacity-100 transition-[color,background-color,opacity] hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100" style={continuous(999)}><Trash2 size={16} /></button>
+                                                <ChevronRight className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" size={19} aria-hidden="true" />
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -1243,7 +1392,7 @@ const TodoPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-3">
-                            <input value={drawerDraft.title} onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))} className={inputClass} placeholder="任务标题" />
+                            <input value={drawerDraft.title} onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))} className={inputClass} style={continuous(18)} placeholder="任务标题" />
                             <div>
                                 <ProjectSelect
                                     className="w-full"
@@ -1308,6 +1457,7 @@ const TodoPage: React.FC = () => {
                                     rows={5}
                                     placeholder="可编辑任务描述"
                                     className={`${inputClass} resize-y`}
+                                    style={continuous(18)}
                                 />
                             </div>
 
@@ -1323,7 +1473,7 @@ const TodoPage: React.FC = () => {
                                     {(drawerTask.subtasks || []).map((subtask) => {
                                         const done = subtask.status === 'completed';
                                         return (
-                                            <div key={subtask.id} className={`${softClass} px-2.5 py-2 rounded-xl flex items-center gap-2`}>
+                                            <div key={subtask.id} className={`${softClass} flex items-center gap-2 px-2.5 py-2`} style={continuous(14)}>
                                                 <button type="button" onClick={() => handleToggleSubtask(subtask.id, done)} className={`size-4 rounded-full border-2 ${done ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-slate-500'}`} />
                                                 <span className={`flex-1 text-xs ${done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-white'}`}>{subtask.title}</span>
                                                 <button type="button" onClick={() => handleDeleteSubtask(subtask.id)} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-[16px]">delete</span></button>
@@ -1332,7 +1482,7 @@ const TodoPage: React.FC = () => {
                                     })}
                                 </div>
                                 <div className="mt-2 flex gap-2">
-                                    <input value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateSubtask())} className={`${inputClass} text-sm`} placeholder="输入子任务并回车" />
+                                    <input value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateSubtask())} className={`${inputClass} text-sm`} style={continuous(16)} placeholder="输入子任务并回车" />
                                     <button type="button" onClick={handleCreateSubtask} className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-200 dark:bg-white/10">添加</button>
                                 </div>
                             </div>

@@ -336,6 +336,40 @@ private struct IslandSquircleShape: Shape {
     }
 }
 
+/// A minimal open-book glyph for the review activity icon, drawn as a single
+/// stroked line so it reads at the same weight as the todo `checklist` symbol.
+/// Coordinates live in a 24×24 viewBox and scale uniformly into the frame.
+private struct IslandReviewOpenBookGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 24
+        let originX = rect.minX + (rect.width - 24 * scale) / 2
+        let originY = rect.minY + (rect.height - 24 * scale) / 2
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: originX + x * scale, y: originY + y * scale)
+        }
+
+        var path = Path()
+
+        // Left page: spine → fanned top edge → outer edge → back to spine.
+        path.move(to: p(12, 5.2))
+        path.addCurve(to: p(2.4, 4.4), control1: p(8.6, 2.9), control2: p(5.2, 2.9))
+        path.addLine(to: p(2.4, 17.8))
+        path.addCurve(to: p(12, 18.6), control1: p(5.2, 16.6), control2: p(8.6, 16.6))
+
+        // Right page: mirror of the left half.
+        path.move(to: p(12, 5.2))
+        path.addCurve(to: p(21.6, 4.4), control1: p(15.4, 2.9), control2: p(18.8, 2.9))
+        path.addLine(to: p(21.6, 17.8))
+        path.addCurve(to: p(12, 18.6), control1: p(18.8, 16.6), control2: p(15.4, 16.6))
+
+        // Center spine.
+        path.move(to: p(12, 5.2))
+        path.addLine(to: p(12, 18.6))
+
+        return path
+    }
+}
+
 private struct IslandPreviewContentOverlay: View {
     let content: IslandPreviewContent
     let state: IslandVisualState
@@ -580,10 +614,20 @@ private struct IslandPreviewContentOverlay: View {
                 presentation: IslandVisualTokens.activityMusicArtwork,
                 isExpanded: false
             )
-        } else {
-            Image(systemName: content.todo != nil ? "checklist" : "books.vertical.fill")
+        } else if content.todo != nil {
+            Image(systemName: "checklist")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(content.todo != nil ? IslandTodoVisualStyle.accent : compactAccentColor.opacity(0.96))
+                .foregroundStyle(IslandTodoVisualStyle.accent)
+                .frame(
+                    width: IslandActivityContentWidthProfile.iconSize,
+                    height: IslandActivityContentWidthProfile.iconSize
+                )
+        } else {
+            IslandReviewOpenBookGlyph()
+                .stroke(
+                    compactAccentColor.opacity(0.96),
+                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+                )
                 .frame(
                     width: IslandActivityContentWidthProfile.iconSize,
                     height: IslandActivityContentWidthProfile.iconSize
@@ -1516,12 +1560,12 @@ private struct IslandExpandedReviewContent: View {
 
     private func subjectCard(_ slot: IslandExpandedReviewSubjectSlot) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: slot.isPlaceholder ? "rectangle.dashed" : "book.closed.fill")
+            Image(systemName: "book.closed.fill")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(slot.isPlaceholder ? .white.opacity(0.28) : tint.opacity(0.92))
+                .foregroundStyle(tint.opacity(0.92))
             Text(slot.title)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(slot.isPlaceholder ? .white.opacity(0.28) : .white.opacity(0.86))
+                .foregroundStyle(.white.opacity(0.86))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
             Spacer(minLength: 0)
@@ -1530,14 +1574,10 @@ private struct IslandExpandedReviewContent: View {
         .frame(height: 42)
         .background(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(slot.isPlaceholder ? .white.opacity(0.045) : .white.opacity(0.10))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(.white.opacity(slot.isPlaceholder ? 0.10 : 0.14), style: StrokeStyle(lineWidth: 1, dash: slot.isPlaceholder ? [3, 3] : []))
+                .fill(.white.opacity(0.10))
         )
         .accessibilityIdentifier("island-review-subject-\(slot.id)")
-        .accessibilityLabel(slot.isPlaceholder ? "Empty review subject slot" : "Review subject \(slot.title)")
+        .accessibilityLabel("Review subject \(slot.title)")
     }
 
     private var topGlassFade: some View {
@@ -1677,18 +1717,9 @@ enum IslandExpandedReviewContentLayout {
     static let bottomGlassFadeHeight: CGFloat = 20
 
     static func subjectSlots(for review: IslandMockReviewActivity) -> [IslandExpandedReviewSubjectSlot] {
-        let realSlots = review.subjectTitles.enumerated().map { index, title in
+        review.subjectTitles.enumerated().map { index, title in
             IslandExpandedReviewSubjectSlot(id: "subject-\(index)", title: title, isPlaceholder: false)
         }
-        let placeholderCount = max(minimumGridSlots - realSlots.count, 0)
-        let placeholders = (0..<placeholderCount).map { offset in
-            IslandExpandedReviewSubjectSlot(
-                id: "placeholder-\(realSlots.count + offset)",
-                title: "暂无科目",
-                isPlaceholder: true
-            )
-        }
-        return realSlots + placeholders
     }
 
     static func cardDelay(for index: Int) -> TimeInterval {
@@ -1743,9 +1774,9 @@ enum IslandExpandedReviewContentProbe {
         let rows = rows()
         guard rows.map(\.scenario) == ["zero", "partial", "four", "more"],
               rows.map(\.realCardCount) == [0, 2, 4, 6],
-              rows.map(\.placeholderCount) == [8, 6, 4, 2],
+              rows.map(\.placeholderCount) == [0, 0, 0, 0],
               rows.map(\.extraSubjectCount) == [0, 0, 0, 0],
-              rows.map(\.lastCardDelay) == [0.45, 0.45, 0.45, 0.45],
+              rows.map(\.lastCardDelay) == [0.10, 0.15, 0.25, 0.35],
               rows.allSatisfy({ $0.firstCardDelay == 0.10 }),
               rows.allSatisfy(\.startsInsideContentPhase),
               IslandExpandedReviewContentLayout.initialCardScale == 0.9 else {

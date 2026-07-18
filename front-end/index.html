@@ -32,8 +32,8 @@
               "accent-green": "#4CAF50",
             },
             fontFamily: {
-              "display": ["Plus Jakarta Sans", "Noto Sans SC", "sans-serif"],
-              "body": ["Plus Jakarta Sans", "Noto Sans SC", "sans-serif"],
+              "display": ["SF Pro Display", "SF Pro Text", "-apple-system", "BlinkMacSystemFont", "Plus Jakarta Sans", "PingFang SC", "Noto Sans SC", "Segoe UI", "sans-serif"],
+              "body": ["SF Pro Text", "SF Pro Display", "-apple-system", "BlinkMacSystemFont", "Plus Jakarta Sans", "PingFang SC", "Noto Sans SC", "Segoe UI", "sans-serif"],
               "mono": ["JetBrains Mono", "monospace"],
             },
             borderRadius: {
@@ -52,7 +52,10 @@
     </script>
     <style>
       body {
-        font-family: 'Plus Jakarta Sans', 'Noto Sans SC', sans-serif;
+        font-family: 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'PingFang SC', 'Noto Sans SC', 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
         /* Global smooth transition for theme switching */
         transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         background-color: transparent !important;
@@ -129,4 +132,3 @@
   <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>
-

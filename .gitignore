@@ -25,6 +25,10 @@ target/
 .DS_Store
 Thumbs.db
 
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
 # Build Artifacts (Large Files)
 front-end/release/
 front-end/release_v2/

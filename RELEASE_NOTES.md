@@ -3,6 +3,11 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.4
+
+- 改进了复习模式图标。
+- 修复 Tag 问题。
+
 ## v1.1.3
 
 - 彻底修复 macOS 26 (Tahoe) 下菜单栏图标始终无法显示的问题：系统会按应用身份永久屏蔽被隐藏过的菜单栏图标，且无法通过重置控制中心清除，因此本版本改用全新应用身份绕过该屏蔽。

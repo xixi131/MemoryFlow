@@ -25,6 +25,11 @@ const formatAxisDate = (value: string) => {
 
 const formatFullDate = (value: string) => value.replace(/-/g, '/');
 
+const continuous = (radius: number) => ({
+    borderRadius: radius,
+    borderCurve: 'continuous'
+} as React.CSSProperties & Record<string, string | number>);
+
 type TodoTrendChartProps = {
     days: TodoTrendDays;
     trend: TodoTrendsDTO | null;
@@ -76,7 +81,7 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                     labelFormatter={(label) => formatFullDate(String(label))}
                     formatter={(value, name) => [Number(value), name === 'createdTasks' ? '创建任务' : '完成任务']}
                     contentStyle={{
-                        borderRadius: 8,
+                        ...continuous(16),
                         border: '1px solid rgb(203 213 225)',
                         backgroundColor: 'rgba(255, 255, 255, 0.96)',
                         color: '#0f172a'
@@ -115,7 +120,8 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
     return (
         <section
             aria-labelledby="todo-trend-heading"
-            className="rounded-lg border border-slate-200 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5 sm:p-5"
+            className="border border-slate-200 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5 sm:p-5"
+            style={continuous(28)}
         >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -124,7 +130,8 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                 </div>
                 <div
                     aria-label="趋势日期范围"
-                    className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-200/70 p-1 dark:bg-white/10 sm:w-[220px]"
+                    className="grid w-full grid-cols-2 gap-1 bg-slate-200/70 p-1 dark:bg-white/10 sm:w-[220px]"
+                    style={continuous(999)}
                 >
                     {RANGE_OPTIONS.map((option) => (
                         <button
@@ -132,11 +139,12 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                             type="button"
                             aria-pressed={days === option.value}
                             onClick={() => onDaysChange(option.value)}
-                            className={`min-h-9 rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
+                            className={`min-h-9 px-3 py-1.5 text-sm font-bold transition-colors ${
                                 days === option.value
                                     ? 'bg-white text-slate-900 shadow-sm dark:bg-surface-dark dark:text-white'
                                     : 'text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white'
                             }`}
+                            style={continuous(999)}
                         >
                             {option.label}
                         </button>
@@ -159,7 +167,8 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-600"
+                            className="bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-600"
+                            style={continuous(16)}
                         >
                             重试
                         </button>
@@ -174,7 +183,7 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                     <>
                         {renderChart(points)}
                         {isAllZero && (
-                            <p className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 rounded-md bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm dark:bg-surface-dark/90 dark:text-text-secondary">
+                            <p className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm dark:bg-surface-dark/90 dark:text-text-secondary" style={continuous(999)}>
                                 当前范围暂无任务变化
                             </p>
                         )}
