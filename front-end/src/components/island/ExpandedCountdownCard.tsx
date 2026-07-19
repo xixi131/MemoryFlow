@@ -120,6 +120,95 @@ const CountdownListPage: React.FC<ExpandedCountdownCardProps> = ({ countdownEven
 
                         const dateLabel = event.countMode === 'countup' ? '起始日' : '目标日';
 
+                        // Background-image rendering (task 018). bgImageUrl already
+                        // holds a resolved absolute URL — use it directly. Older
+                        // events may lack bgImageOffset/textColor, so default them.
+                        const hasImage = event.bgImageUrl != null && event.bgImageUrl !== '';
+                        const offset = event.bgImageOffset ?? BG_OFFSET_DEFAULT;
+                        const textColor = event.textColor ?? TEXT_COLOR_DEFAULT;
+
+                        if (hasImage) {
+                            // Three-layer treatment: absolute image → frosted-glass
+                            // overlay (blur 6, rgba(0,0,0,0.38), pointerEvents:none so
+                            // it never blocks the row's navigation) → relative z-10 text
+                            // in the event's textColor. Row keeps its onClick navigation.
+                            return (
+                                <div
+                                    key={event.id}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        dispatch({ type: 'SET_COUNTDOWN_SELECTED_ID', payload: event.id });
+                                        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'detail' });
+                                    }}
+                                    className="relative flex items-center gap-3 px-3 py-2 cursor-pointer"
+                                    style={{ borderRadius: 12, overflow: 'hidden' }}
+                                >
+                                    {/* Image layer */}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            backgroundImage: `url('${event.bgImageUrl}')`,
+                                            backgroundPosition: `${offset.x}% ${offset.y}%`,
+                                            backgroundSize: 'cover',
+                                            backgroundRepeat: 'no-repeat',
+                                        }}
+                                    />
+                                    {/* Frosted-glass overlay */}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            backdropFilter: 'blur(6px)',
+                                            WebkitBackdropFilter: 'blur(6px)',
+                                            background: 'rgba(0,0,0,0.38)',
+                                            pointerEvents: 'none',
+                                        }}
+                                    />
+
+                                    <span className="relative z-10 text-[22px] leading-none shrink-0">
+                                        {TYPE_ICON[event.type] ?? '⭐'}
+                                    </span>
+
+                                    <div className="relative z-10 flex flex-col flex-1 min-w-0 gap-px">
+                                        <span
+                                            className="text-[13px] font-medium truncate"
+                                            style={{ color: textColor }}
+                                        >
+                                            {event.name || '未命名'}
+                                        </span>
+                                        <span
+                                            className="text-[10px] font-medium truncate"
+                                            style={{ color: textColor, opacity: 0.75 }}
+                                        >
+                                            {statusLabel}
+                                        </span>
+                                        <span
+                                            className="text-[10px] font-medium truncate"
+                                            style={{ color: textColor, opacity: 0.6 }}
+                                        >
+                                            {dateLabel} {formatCnDate(event.date)}
+                                        </span>
+                                    </div>
+
+                                    <div className="relative z-10 flex items-baseline gap-0.5 shrink-0">
+                                        <span
+                                            className="text-[22px] font-bold leading-none tracking-tight"
+                                            style={{ color: textColor }}
+                                        >
+                                            {Math.abs(days)}
+                                        </span>
+                                        <span
+                                            className="text-[11px] font-semibold"
+                                            style={{ color: textColor }}
+                                        >
+                                            天
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        }
+
                         return (
                             <div
                                 key={event.id}
@@ -1132,6 +1221,12 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 
     const dateRowLabel = isCountup ? '起始日' : '目标日';
 
+    // Background-image rendering (task 018). bgImageUrl holds a resolved absolute
+    // URL; guard the optional offset/textColor for older events.
+    const hasImage = currentEvent.bgImageUrl != null && currentEvent.bgImageUrl !== '';
+    const offset = currentEvent.bgImageOffset ?? BG_OFFSET_DEFAULT;
+    const textColor = currentEvent.textColor ?? TEXT_COLOR_DEFAULT;
+
     const handleBack = (e: React.MouseEvent) => {
         e.stopPropagation();
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
@@ -1169,75 +1264,161 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
             {/* Centered squircle card. Squircle fallback (border-radius + clip) matches
                 the list page — rows/cards have no measured width at render time. */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
-                <div
-                    style={{
-                        width: '100%',
-                        maxWidth: 260,
-                        height: 200,
-                        borderRadius: 24,
-                        overflow: 'hidden',
-                        background: 'rgba(255,255,255,0.06)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}
-                >
-                    {/* Colored top band with the title in white. Reduced per Bug 5
-                        so the card stays within the standard expanded height. */}
+                {hasImage ? (
+                    // Three-layer treatment (task 018): the whole card becomes image +
+                    // frosted-glass; the colored top band is removed. Dimensions are
+                    // preserved (height 200 / day-number 56px per task 015). The outer
+                    // div carries borderRadius + overflow:hidden BEFORE the absolute
+                    // image/overlay layers so all three are clipped to the squircle.
                     <div
-                        className="flex items-center px-4 shrink-0"
-                        style={{ height: 32, background: currentEvent.color }}
+                        style={{
+                            position: 'relative',
+                            width: '100%',
+                            maxWidth: 260,
+                            height: 200,
+                            borderRadius: 24,
+                            overflow: 'hidden',
+                        }}
                     >
-                        <span
-                            className="text-[14px] font-semibold truncate"
-                            style={{ color: '#fff' }}
+                        {/* Image layer */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundImage: `url('${currentEvent.bgImageUrl}')`,
+                                backgroundPosition: `${offset.x}% ${offset.y}%`,
+                                backgroundSize: 'cover',
+                                backgroundRepeat: 'no-repeat',
+                            }}
+                        />
+                        {/* Frosted-glass overlay (blur 8, rgba(0,0,0,0.40)). */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                background: 'rgba(0,0,0,0.40)',
+                                pointerEvents: 'none',
+                            }}
+                        />
+
+                        {/* Text content — all in the event's textColor. */}
+                        <div
+                            className="relative z-10 h-full flex flex-col"
+                            style={{ color: textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
                         >
-                            {currentEvent.name || '未命名'}
-                        </span>
-                    </div>
-
-                    {/* Body: big day number (or 就是今天) + unit + date row. */}
-                    <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
-                        {showPastPrefix && (
-                            <span
-                                className="text-[13px] font-medium"
-                                style={{ color: 'rgba(255,255,255,0.6)' }}
-                            >
-                                已过去
-                            </span>
-                        )}
-
-                        {showTodayText ? (
-                            <span
-                                className="font-bold leading-none tracking-tight"
-                                style={{ fontSize: 40, color: currentEvent.color }}
-                            >
-                                就是今天
-                            </span>
-                        ) : (
-                            <div className="flex flex-col items-center">
-                                <span
-                                    className="font-bold leading-none tracking-tight"
-                                    style={{ fontSize: 56, color: currentEvent.color }}
-                                >
-                                    {bigNumber}
-                                </span>
-                                <span
-                                    className="text-[13px] font-semibold mt-1"
-                                    style={{ color: 'rgba(255,255,255,0.7)' }}
-                                >
-                                    天
+                            <div className="flex items-center px-4 shrink-0" style={{ height: 32 }}>
+                                <span className="text-[14px] font-semibold truncate">
+                                    {currentEvent.name || '未命名'}
                                 </span>
                             </div>
-                        )}
 
-                        <span
-                            className="text-[11px] font-medium mt-1"
-                            style={{ color: 'rgba(255,255,255,0.5)' }}
-                        >
-                            {dateRowLabel}：{formatCnDate(currentEvent.date)}
-                        </span>
+                            <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
+                                {showPastPrefix && (
+                                    <span className="text-[13px] font-medium" style={{ opacity: 0.85 }}>
+                                        已过去
+                                    </span>
+                                )}
+
+                                {showTodayText ? (
+                                    <span
+                                        className="font-bold leading-none tracking-tight"
+                                        style={{ fontSize: 40 }}
+                                    >
+                                        就是今天
+                                    </span>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <span
+                                            className="font-bold leading-none tracking-tight"
+                                            style={{ fontSize: 56 }}
+                                        >
+                                            {bigNumber}
+                                        </span>
+                                        <span className="text-[13px] font-semibold mt-1" style={{ opacity: 0.9 }}>
+                                            天
+                                        </span>
+                                    </div>
+                                )}
+
+                                <span className="text-[11px] font-medium mt-1" style={{ opacity: 0.85 }}>
+                                    {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div
+                        style={{
+                            width: '100%',
+                            maxWidth: 260,
+                            height: 200,
+                            borderRadius: 24,
+                            overflow: 'hidden',
+                            background: 'rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                        }}
+                    >
+                        {/* Colored top band with the title in white. Reduced per Bug 5
+                            so the card stays within the standard expanded height. */}
+                        <div
+                            className="flex items-center px-4 shrink-0"
+                            style={{ height: 32, background: currentEvent.color }}
+                        >
+                            <span
+                                className="text-[14px] font-semibold truncate"
+                                style={{ color: '#fff' }}
+                            >
+                                {currentEvent.name || '未命名'}
+                            </span>
+                        </div>
+
+                        {/* Body: big day number (or 就是今天) + unit + date row. */}
+                        <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
+                            {showPastPrefix && (
+                                <span
+                                    className="text-[13px] font-medium"
+                                    style={{ color: 'rgba(255,255,255,0.6)' }}
+                                >
+                                    已过去
+                                </span>
+                            )}
+
+                            {showTodayText ? (
+                                <span
+                                    className="font-bold leading-none tracking-tight"
+                                    style={{ fontSize: 40, color: currentEvent.color }}
+                                >
+                                    就是今天
+                                </span>
+                            ) : (
+                                <div className="flex flex-col items-center">
+                                    <span
+                                        className="font-bold leading-none tracking-tight"
+                                        style={{ fontSize: 56, color: currentEvent.color }}
+                                    >
+                                        {bigNumber}
+                                    </span>
+                                    <span
+                                        className="text-[13px] font-semibold mt-1"
+                                        style={{ color: 'rgba(255,255,255,0.7)' }}
+                                    >
+                                        天
+                                    </span>
+                                </div>
+                            )}
+
+                            <span
+                                className="text-[11px] font-medium mt-1"
+                                style={{ color: 'rgba(255,255,255,0.5)' }}
+                            >
+                                {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
