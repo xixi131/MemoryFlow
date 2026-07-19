@@ -606,6 +606,212 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     );
 };
 
+// ── Detail page ──────────────────────────────────────────────────
+interface CountdownDetailPageProps {
+    countdownEvents: CountdownEvent[];
+    countdownSelectedId?: string | null;
+    dispatch: React.Dispatch<CountdownAction>;
+}
+
+const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
+    countdownEvents,
+    countdownSelectedId,
+    dispatch,
+}) => {
+    const todayStr = localTodayStr();
+    // Two-step delete confirmation lives in local state (not the reducer) per step 5.
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    const currentEvent =
+        countdownEvents.find((e) => e.id === countdownSelectedId) ?? null;
+
+    // Guard against a stale selected id (event deleted elsewhere): bounce to list.
+    // Done in an effect so we don't dispatch during render.
+    useEffect(() => {
+        if (!currentEvent) {
+            dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
+        }
+    }, [currentEvent, dispatch]);
+
+    if (!currentEvent) return null;
+
+    const { days, status } = calcEventDays(currentEvent, todayStr);
+    const isCountup = currentEvent.countMode === 'countup';
+
+    // Display-state derivation (step 3):
+    // - status 'today'      → big "就是今天" text, no number
+    // - countdown 'past'    → "已过去" prefix above, number = |days|
+    // - otherwise (upcoming / countup) → number = |days| (countup is always positive)
+    const showTodayText = status === 'today';
+    const showPastPrefix = !isCountup && status === 'past';
+    const bigNumber = Math.abs(days);
+
+    const dateRowLabel = isCountup ? '起始日' : '目标日';
+
+    const handleBack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
+        dispatch({ type: 'SET_COUNTDOWN_SELECTED_ID', payload: null });
+    };
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        dispatch({ type: 'SET_COUNTDOWN_FORM_DRAFT', payload: currentEvent });
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
+    };
+
+    const handleConfirmDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const next = countdownEvents.filter((ev) => ev.id !== currentEvent.id);
+        await saveCountdownEvents(next);
+        dispatch({ type: 'SET_COUNTDOWN_EVENTS', payload: next });
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
+        dispatch({ type: 'SET_COUNTDOWN_SELECTED_ID', payload: null });
+    };
+
+    return (
+        <div className="h-full flex flex-col">
+            {/* Top bar: back (←) · edit (✏) */}
+            <div className="flex items-center justify-between shrink-0 pb-2">
+                <button
+                    onClick={handleBack}
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+                >
+                    <span className="material-symbols-outlined text-[18px] leading-none">
+                        chevron_left
+                    </span>
+                </button>
+                <button
+                    onClick={handleEdit}
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+                >
+                    <span className="material-symbols-outlined text-[18px] leading-none">edit</span>
+                </button>
+            </div>
+
+            {/* Centered squircle card. Squircle fallback (border-radius + clip) matches
+                the list page — rows/cards have no measured width at render time. */}
+            <div className="flex-1 min-h-0 flex items-center justify-center">
+                <div
+                    style={{
+                        width: '100%',
+                        maxWidth: 260,
+                        height: 220,
+                        borderRadius: 24,
+                        overflow: 'hidden',
+                        background: 'rgba(255,255,255,0.06)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
+                >
+                    {/* Colored top band (~20% of card height) with the title in white. */}
+                    <div
+                        className="flex items-center px-4 shrink-0"
+                        style={{ height: 44, background: currentEvent.color }}
+                    >
+                        <span
+                            className="text-[14px] font-semibold truncate"
+                            style={{ color: '#fff' }}
+                        >
+                            {currentEvent.name || '未命名'}
+                        </span>
+                    </div>
+
+                    {/* Body: big day number (or 就是今天) + unit + date row. */}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
+                        {showPastPrefix && (
+                            <span
+                                className="text-[13px] font-medium"
+                                style={{ color: 'rgba(255,255,255,0.6)' }}
+                            >
+                                已过去
+                            </span>
+                        )}
+
+                        {showTodayText ? (
+                            <span
+                                className="font-bold leading-none tracking-tight"
+                                style={{ fontSize: 40, color: currentEvent.color }}
+                            >
+                                就是今天
+                            </span>
+                        ) : (
+                            <div className="flex flex-col items-center">
+                                <span
+                                    className="font-bold leading-none tracking-tight"
+                                    style={{ fontSize: 72, color: currentEvent.color }}
+                                >
+                                    {bigNumber}
+                                </span>
+                                <span
+                                    className="text-[13px] font-semibold mt-1"
+                                    style={{ color: 'rgba(255,255,255,0.7)' }}
+                                >
+                                    天
+                                </span>
+                            </div>
+                        )}
+
+                        <span
+                            className="text-[11px] font-medium mt-1"
+                            style={{ color: 'rgba(255,255,255,0.5)' }}
+                        >
+                            {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Delete: plain trash button → two-step inline confirmation. */}
+            <div className="flex items-center justify-center shrink-0 pt-2">
+                {confirmDelete ? (
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="text-[12px] font-semibold"
+                            style={{ color: 'rgba(255,255,255,0.85)' }}
+                        >
+                            确认删除此事件？
+                        </span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDelete(false);
+                            }}
+                            className="px-3 py-1 rounded-full text-[12px] font-semibold"
+                            style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}
+                        >
+                            取消
+                        </button>
+                        <button
+                            onClick={handleConfirmDelete}
+                            className="px-3 py-1 rounded-full text-[12px] font-semibold"
+                            style={{ background: '#FF5A5F', color: '#fff' }}
+                        >
+                            确认删除
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete(true);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,90,95,0.95)' }}
+                    >
+                        <span className="material-symbols-outlined text-[16px] leading-none">
+                            delete
+                        </span>
+                        删除
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const ExpandedCountdownCard: React.FC<ExpandedCountdownCardProps> = (props) => {
     // Exhaustive page switch. 'detail' | 'add' | 'edit' are owned by tasks 013/012;
     // render minimal placeholders for now so the switch stays type-safe.
@@ -624,8 +830,13 @@ const ExpandedCountdownCard: React.FC<ExpandedCountdownCardProps> = (props) => {
                 />
             );
         case 'detail':
-            // TODO(013): detail page.
-            return null;
+            return (
+                <CountdownDetailPage
+                    countdownEvents={props.countdownEvents}
+                    countdownSelectedId={props.countdownSelectedId}
+                    dispatch={props.dispatch}
+                />
+            );
         default: {
             // Exhaustiveness guard — compile error if a CountdownPage is unhandled.
             const _exhaustive: never = props.countdownPage;
