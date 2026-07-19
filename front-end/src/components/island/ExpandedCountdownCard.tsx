@@ -813,14 +813,15 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 };
 
 const ExpandedCountdownCard: React.FC<ExpandedCountdownCardProps> = (props) => {
-    // Exhaustive page switch. 'detail' | 'add' | 'edit' are owned by tasks 013/012;
-    // render minimal placeholders for now so the switch stays type-safe.
+    // Exhaustive page switch.
+    let content: React.ReactNode;
     switch (props.countdownPage) {
         case 'list':
-            return <CountdownListPage {...props} />;
+            content = <CountdownListPage {...props} />;
+            break;
         case 'add':
         case 'edit':
-            return (
+            content = (
                 <CountdownFormPage
                     mode={props.countdownPage}
                     countdownEvents={props.countdownEvents}
@@ -829,20 +830,35 @@ const ExpandedCountdownCard: React.FC<ExpandedCountdownCardProps> = (props) => {
                     dispatch={props.dispatch}
                 />
             );
+            break;
         case 'detail':
-            return (
+            content = (
                 <CountdownDetailPage
                     countdownEvents={props.countdownEvents}
                     countdownSelectedId={props.countdownSelectedId}
                     dispatch={props.dispatch}
                 />
             );
+            break;
         default: {
             // Exhaustiveness guard — compile error if a CountdownPage is unhandled.
             const _exhaustive: never = props.countdownPage;
-            return _exhaustive;
+            content = _exhaustive;
         }
     }
+
+    // The island's gesture handler (DynamicIslandWidget handlePointerDown) captures
+    // the pointer on any pointerdown that reaches it and collapses on release —
+    // it only bails when the target is inside a <button> (`closest('button')`).
+    // Countdown rows and several controls are <div>s, so a bubble-phase onClick
+    // stopPropagation is too late. Stop pointerdown at the countdown root so the
+    // ENTIRE content area (list rows, form fields, detail buttons) can be tapped
+    // without collapsing the island. Interactive elements still receive their click.
+    return (
+        <div className="w-full h-full" onPointerDown={(e) => e.stopPropagation()}>
+            {content}
+        </div>
+    );
 };
 
 export default ExpandedCountdownCard;
