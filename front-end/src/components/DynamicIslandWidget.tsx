@@ -43,6 +43,7 @@ import AppActivityContent from './island/AppActivityContent';
 import ExpandedMusicCard from './island/ExpandedMusicCard';
 import ExpandedReviewCard from './island/ExpandedReviewCard';
 import ExpandedTodoCard from './island/ExpandedTodoCard';
+import ExpandedCountdownCard from './island/ExpandedCountdownCard';
 
 // ── Gesture constants ────────────────────────────────────────
 const GESTURE_SWITCH_THRESHOLD = 26;
@@ -742,6 +743,13 @@ const DynamicIslandWidget: React.FC = () => {
                                 />
                             ) : appDisplayMode === 'review' ? (
                                 <ExpandedReviewCard data={data} isExpanded={isExpanded} />
+                            ) : appDisplayMode === 'countdown' ? (
+                                <ExpandedCountdownCard
+                                    countdownPage={state.countdownPage}
+                                    countdownEvents={state.countdownEvents}
+                                    countdownSelectedId={state.countdownSelectedId}
+                                    dispatch={dispatch}
+                                />
                             ) : null}
                         </motion.div>
                     </motion.div>
