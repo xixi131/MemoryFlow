@@ -467,7 +467,7 @@ const DynamicIslandWidget: React.FC = () => {
     return (
         <div className="flex items-start justify-center w-full h-auto bg-transparent pointer-events-none" style={{ background: 'transparent' }}>
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
                 body, html { overflow: hidden !important; }
                 html, body, #root { height: 100% !important; }
                 ::-webkit-scrollbar { display: none !important; }
@@ -653,7 +653,7 @@ const DynamicIslandWidget: React.FC = () => {
                                         transition={{ duration: 0.35, ease: 'easeOut' }}
                                         className="w-full min-w-0"
                                     >
-                                        <div className="text-[13px] font-semibold text-white/90 truncate text-center" style={{ fontFamily: '"Noto Sans SC", sans-serif' }}>
+                                        <div className="text-[13px] font-semibold text-white/90 truncate text-center" style={{ fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", sans-serif' }}>
                                             {greetingText}
                                         </div>
                                     </motion.div>
