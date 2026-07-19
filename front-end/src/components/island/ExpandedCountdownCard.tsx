@@ -148,7 +148,7 @@ const CountdownListPage: React.FC<ExpandedCountdownCardProps> = ({ countdownEven
                                         style={{
                                             position: 'absolute',
                                             inset: 0,
-                                            backgroundImage: `url('${event.bgImageUrl}')`,
+                                            backgroundImage: `url('${resolveApiAssetUrl(event.bgImageUrl)}')`,
                                             backgroundPosition: `${offset.x}% ${offset.y}%`,
                                             backgroundSize: 'cover',
                                             backgroundRepeat: 'no-repeat',
@@ -427,7 +427,7 @@ const CountdownPreviewCard: React.FC<{
                     borderRadius: 16,
                     overflow: 'hidden',
                     position: 'relative',
-                    backgroundImage: `url('${form.bgImageUrl}')`,
+                    backgroundImage: `url('${resolveApiAssetUrl(form.bgImageUrl)}')`,
                     backgroundSize: 'cover',
                     backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
                     backgroundRepeat: 'no-repeat',
@@ -1288,7 +1288,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                             style={{
                                 position: 'absolute',
                                 inset: 0,
-                                backgroundImage: `url('${currentEvent.bgImageUrl}')`,
+                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
                                 backgroundPosition: `${offset.x}% ${offset.y}%`,
                                 backgroundSize: 'cover',
                                 backgroundRepeat: 'no-repeat',
