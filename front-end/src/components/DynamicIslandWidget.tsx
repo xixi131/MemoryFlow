@@ -152,68 +152,19 @@ const DynamicIslandWidget: React.FC = () => {
     const isOpenShellTransition = isActivityOpenTransition || isExpandedToActivityTransition;
 
     // Keyframe stops from the profile (null → the sensible per-direction default).
-    // Spread into mutable arrays — framer-motion's `times` expects number[].
-    const openShellTimes = [...(profile.shellTimes ?? ACTIVITY_OPEN_TIMES)];         // [0, 0.2, 0.34, 1]
+    // Only activity→compact keeps the segmented 155px squish keyframes. Every other
+    // direction (open, expand, expanded→compact) now springs continuously so the
+    // width, the drawn paths and the ears all morph together on one spring — matching
+    // the (correct) normal expand. framer-motion's `times` expects a mutable number[].
     const collapseShellTimes = [...(profile.shellTimes ?? ACTIVITY_COLLAPSE_TIMES)]; // [0, 0.45, 0.55, 1]
     const shellDuration = profile.shellDuration;
-
-    // Reusable per-property transition configs (width / height / d share timing
-    // so the layout box and the drawn shape stay in sync through the morph).
-    const openShellTransition = { times: openShellTimes, duration: shellDuration, ease: 'easeInOut' as const };
     const collapseShellTransition = { times: collapseShellTimes, duration: shellDuration, ease: 'easeInOut' as const };
 
     const collapseMidWidth = isCollapseShellTransition ? 155 : baseWidth;
     // Collapse (squish): current → 155 → 155 → collapsed target.
     const segmentedWidthKeyframes = [null, collapseMidWidth, collapseMidWidth, collapsedWidth];
     const segmentedHeightKeyframes = [null, 36, 36, 36];
-    // Open (hold): current → target (reached at t=0.2·duration) → hold → hold.
-    const openWidthKeyframes = [null, collapsedWidth, collapsedWidth, collapsedWidth];
-    const openHeightKeyframes = [null, hoverCollapsedHeight, hoverCollapsedHeight, hoverCollapsedHeight];
 
-    // ── Activity → expanded width latch (task 007 FIX B) ──────────────────
-    // `transitionKind` is only 'activityToExpanded' on the single trigger render;
-    // `prevVisualStateRef` then resets to 'expanded', so a later re-render (e.g.
-    // the music 1s position tick) would otherwise re-read a scalar width and
-    // RESTART the expand. Latch the 4-keyframe OPEN width intent for the expand's
-    // duration so the width prop SHAPE (keyframe array) stays stable across
-    // re-renders. `fromWidth` is the activity collapsed width the expand starts
-    // from; keeping it a concrete constant makes the target array byte-identical
-    // across re-renders so framer-motion does not re-fire mid-animation.
-    const [activityExpandLatch, setActivityExpandLatch] = useState<{ fromWidth: number } | null>(null);
-    const activityExpandLatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEffect(() => {
-        if (transitionKind !== 'activityToExpanded') return;
-        setActivityExpandLatch({ fromWidth: ACTIVITY_COLLAPSED_WIDTH });
-        if (activityExpandLatchTimerRef.current) clearTimeout(activityExpandLatchTimerRef.current);
-        activityExpandLatchTimerRef.current = setTimeout(() => {
-            setActivityExpandLatch(null);
-            activityExpandLatchTimerRef.current = null;
-        }, ACTIVITY_OPEN_DURATION * 1000);
-    }, [transitionKind]);
-    useEffect(() => () => {
-        if (activityExpandLatchTimerRef.current) clearTimeout(activityExpandLatchTimerRef.current);
-    }, []);
-
-    // Gate the expanded-state 4-keyframe OPEN width. True on the trigger render
-    // (transitionKind correct, before the latch effect commits) AND for every
-    // latched re-render after. compact→expanded never sets this ⇒ stays a pure
-    // APPLE_SPRING scalar.
-    const isActivityExpandWidth =
-        isExpanded && (transitionKind === 'activityToExpanded' || activityExpandLatch !== null);
-    const activityExpandFromWidth = activityExpandLatch?.fromWidth ?? ACTIVITY_COLLAPSED_WIDTH;
-
-    const leftCapCollapsedPath = [
-        null,
-        generateLeftCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
-        generateLeftCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
-        generateLeftCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
-    ];
-    const rightCapCollapsedPath = [
-        null,
-        generateRightCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
-        generateRightCapPath(36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
-        generateRightCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness),
-    ];
     const squircleCollapsedPath = [
         null,
         generateSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
@@ -226,17 +177,6 @@ const DynamicIslandWidget: React.FC = () => {
         generateOpenSquirclePath(collapseMidWidth, 36, COLLAPSED_RADIUS_DEFAULT, collapsedCornerSmoothness),
         generateOpenSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness),
     ];
-
-    // Open (hold) path forms — reach the collapsed target early (t=0.2), then
-    // hold, so the drawn shape tracks the open width keyframes.
-    const leftCapTargetPath = generateLeftCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness);
-    const rightCapTargetPath = generateRightCapPath(36, collapsedCornerRadius, collapsedCornerSmoothness);
-    const squircleTargetPath = generateSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness);
-    const openSquircleTargetPath = generateOpenSquirclePath(collapsedWidth, 36, collapsedCornerRadius, collapsedCornerSmoothness);
-    const leftCapOpenPath = [null, leftCapTargetPath, leftCapTargetPath, leftCapTargetPath];
-    const rightCapOpenPath = [null, rightCapTargetPath, rightCapTargetPath, rightCapTargetPath];
-    const squircleOpenPath = [null, squircleTargetPath, squircleTargetPath, squircleTargetPath];
-    const openSquircleOpenPath = [null, openSquircleTargetPath, openSquircleTargetPath, openSquircleTargetPath];
 
     // ── Content enter/exit choreography (task 006) ───────────────────────
     // Matches the Mac IslandContentChoreographyPlan: the layer that is
@@ -515,22 +455,19 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? 'expanded' : 'collapsed'}
                 variants={{
                     collapsed: {
-                        width: isCollapseShellTransition ? segmentedWidthKeyframes
-                            : isOpenShellTransition ? openWidthKeyframes
-                            : hoverCollapsedWidth,
-                        height: isCollapseShellTransition ? segmentedHeightKeyframes
-                            : isOpenShellTransition ? openHeightKeyframes
-                            : hoverCollapsedHeight,
+                        // Only activity→compact keeps the segmented 155 squish; every other
+                        // direction springs the scalar target so width, paths and ears
+                        // morph together (no snap-to-size-then-catch-up).
+                        width: isCollapseShellTransition ? segmentedWidthKeyframes : hoverCollapsedWidth,
+                        height: isCollapseShellTransition ? segmentedHeightKeyframes : hoverCollapsedHeight,
                         scale: 1,
                         originY: 0,
-                        transition: isOpenShellTransition ? {
-                            width: openShellTransition,
-                            height: openShellTransition,
-                        } : isCollapseShellTransition ? {
+                        transition: isCollapseShellTransition ? {
                             width: collapseShellTransition,
                             height: collapseShellTransition,
-                        } : isExpandedToCompactTransition ? {
-                            // Direct COLLAPSE_SPRING to the compact target — no 155 waist.
+                        } : (isOpenShellTransition || isExpandedToCompactTransition) ? {
+                            // Open (compact/expanded→activity) and expanded→compact:
+                            // one continuous spring, no keyframe stops.
                             width: profile.shellSpring,
                             height: profile.shellSpring,
                         } : {
@@ -539,72 +476,22 @@ const DynamicIslandWidget: React.FC = () => {
                         },
                     },
                     expanded: {
-                        // activity→expanded uses the 4-keyframe OPEN width profile
-                        // (latched); compact→expanded stays a pure APPLE_SPRING scalar.
-                        width: isActivityExpandWidth
-                            ? [activityExpandFromWidth, expandedWidth, expandedWidth, expandedWidth]
-                            : expandedWidth,
+                        // Both compact→expanded and activity→expanded expand as a pure
+                        // APPLE_SPRING scalar so the box, corners and ears grow together.
+                        width: expandedWidth,
                         height: expandedContentHeight,
                         scale: 1,
                         y: 0,
                         originY: 0,
-                        transition: isActivityExpandWidth
-                            ? { width: { times: [...ACTIVITY_OPEN_TIMES], duration: ACTIVITY_OPEN_DURATION, ease: 'easeInOut' as const } }
-                            : undefined,
                     },
                 }}
                 transition={profile.shellSpring}
             >
-                {/* ── Cap backgrounds ── */}
-                <div className="absolute inset-0 w-full h-full z-40 pointer-events-none flex">
-                    <div className="relative w-[60px] h-full flex-shrink-0">
-                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
-                            <motion.path
-                                fill="#000000"
-                                initial={false}
-                                animate={isExpanded ? 'expanded' : 'collapsed'}
-                                variants={{
-                                    collapsed: {
-                                        d: isCollapseShellTransition ? leftCapCollapsedPath
-                                            : isOpenShellTransition ? leftCapOpenPath
-                                            : generateLeftCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isOpenShellTransition
-                                            ? { d: openShellTransition }
-                                            : isCollapseShellTransition
-                                                ? { d: collapseShellTransition }
-                                                : undefined,
-                                    },
-                                    expanded: { d: generateLeftCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
-                                }}
-                                transition={profile.shellSpring}
-                            />
-                        </motion.svg>
-                    </div>
-                    <div className="flex-1 bg-black h-full" />
-                    <div className="relative w-[60px] h-full flex-shrink-0">
-                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
-                            <motion.path
-                                fill="#000000"
-                                initial={false}
-                                animate={isExpanded ? 'expanded' : 'collapsed'}
-                                variants={{
-                                    collapsed: {
-                                        d: isCollapseShellTransition ? rightCapCollapsedPath
-                                            : isOpenShellTransition ? rightCapOpenPath
-                                            : generateRightCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isOpenShellTransition
-                                            ? { d: openShellTransition }
-                                            : isCollapseShellTransition
-                                                ? { d: collapseShellTransition }
-                                                : undefined,
-                                    },
-                                    expanded: { d: generateRightCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
-                                }}
-                                transition={profile.shellSpring}
-                            />
-                        </motion.svg>
-                    </div>
-                </div>
+                {/* Cap-background layer removed: it was a redundant black shell (two
+                    fixed 60px cap paths + a flat middle rect) sitting BEHIND the
+                    body squircle, which is the frontmost visible shape (its hit-area
+                    parent is zIndex 9999). Under the springier APPLE_SPRING overshoot
+                    its flat middle peeked out below the rounded body as a black nub. */}
 
                 {/* ── Liquid ears ── */}
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ left: '-40px' }}>
@@ -661,13 +548,8 @@ const DynamicIslandWidget: React.FC = () => {
                                 variants={{
                                     collapsed: {
                                         d: isCollapseShellTransition ? squircleCollapsedPath
-                                            : isOpenShellTransition ? squircleOpenPath
                                             : generateSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isOpenShellTransition
-                                            ? { d: openShellTransition }
-                                            : isCollapseShellTransition
-                                                ? { d: collapseShellTransition }
-                                                : undefined,
+                                        transition: isCollapseShellTransition ? { d: collapseShellTransition } : undefined,
                                     },
                                     expanded: { d: generateSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
@@ -695,13 +577,8 @@ const DynamicIslandWidget: React.FC = () => {
                                 variants={{
                                     collapsed: {
                                         d: isCollapseShellTransition ? openSquircleCollapsedPath
-                                            : isOpenShellTransition ? openSquircleOpenPath
                                             : generateOpenSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isOpenShellTransition
-                                            ? { d: openShellTransition }
-                                            : isCollapseShellTransition
-                                                ? { d: collapseShellTransition }
-                                                : undefined,
+                                        transition: isCollapseShellTransition ? { d: collapseShellTransition } : undefined,
                                     },
                                     expanded: { d: generateOpenSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
