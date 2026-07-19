@@ -748,6 +748,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     countdownPage={state.countdownPage}
                                     countdownEvents={state.countdownEvents}
                                     countdownSelectedId={state.countdownSelectedId}
+                                    countdownFormDraft={state.countdownFormDraft}
                                     dispatch={dispatch}
                                 />
                             ) : null}
