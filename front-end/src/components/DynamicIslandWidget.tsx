@@ -17,7 +17,6 @@ import {
     EXPANDED_RADIUS,
     HOVER_WIDTH_SCALE,
     HOVER_HEIGHT,
-    ACTIVITY_COLLAPSE_CONTENT_DELAY_SECONDS,
     ACTIVITY_COLLAPSED_WIDTH,
     EXPANDED_WIDTH,
     EXPANDED_MUSIC_HEIGHT,
@@ -124,14 +123,10 @@ const DynamicIslandWidget: React.FC = () => {
     const hoverCollapsedWidth = isInitialHoverState ? collapsedWidth * HOVER_WIDTH_SCALE : collapsedWidth;
     const hoverCollapsedHeight = isInitialHoverState ? HOVER_HEIGHT : 36;
 
-    const justCollapsedFromExpanded = !isExpanded && showAnyActivity;
-
-    // ── Content-choreography flags (unchanged — content timing is task 006's
-    //    scope). Kept exactly as before so collapsed-content fade behavior and
-    //    the activity-content props are untouched by this shell refactor. ──
-    const isActivitySegmentedTransition = isReminderCollapsing
-        || (justCollapsedFromExpanded && isReminderCollapsing)
-        || (isForceCompactTransitioning && forceCompactMode && hasAnyActivitySource);
+    // ── Content-choreography flag (task 006) ─────────────────────────────
+    //    Whether the collapsed activity content is entering via the OPEN
+    //    (force-compact → activity) transition — passed to activity content
+    //    so it can stagger its own inner reveal.
     const isActivityOpenTransition = isForceCompactTransitioning && !forceCompactMode && hasAnyActivitySource;
 
     // ── Per-transition shell motion profile (islandMotionTokens) ──────────
@@ -207,9 +202,20 @@ const DynamicIslandWidget: React.FC = () => {
     const squircleOpenPath = [null, squircleTargetPath, squircleTargetPath, squircleTargetPath];
     const openSquircleOpenPath = [null, openSquircleTargetPath, openSquircleTargetPath, openSquircleTargetPath];
 
-    const collapsedContentDelay = !isExpanded && isActivitySegmentedTransition
-        ? ACTIVITY_COLLAPSE_CONTENT_DELAY_SECONDS : 0;
-    const expandedContentFadeDuration = isExpanded ? 0.3 : 0.15;
+    // ── Content enter/exit choreography (task 006) ───────────────────────
+    // Matches the Mac IslandContentChoreographyPlan: the layer that is
+    // ENTERING (revealing into view) uses easeOut + the per-transition
+    // enter delay from `profile`; the layer that is EXITING fades out fast
+    // with `profile.contentExitDuration` and no delay. Direction is read from
+    // STABLE `isExpanded` — expanded content enters when isExpanded is true,
+    // collapsed content enters when isExpanded is false.
+    // Activity/collapsed content reveals over 0.26s; expanded content over 0.30s.
+    const collapsedContentTransition = !isExpanded
+        ? { duration: 0.26, delay: profile.contentEnterDelay, ease: 'easeOut' as const }
+        : { duration: profile.contentExitDuration, delay: 0, ease: 'easeOut' as const };
+    const expandedContentTransition = isExpanded
+        ? { duration: 0.30, delay: profile.contentEnterDelay, ease: 'easeOut' as const }
+        : { duration: profile.contentExitDuration, delay: 0, ease: 'easeOut' as const };
 
     const islandDropShadow = isExpanded
         ? 'drop-shadow(0px 10px 25px rgba(0,0,0,0.22)) drop-shadow(0px 6px 14px rgba(0,0,0,0.18)) drop-shadow(0px 2px 6px rgba(0,0,0,0.12))'
@@ -662,8 +668,8 @@ const DynamicIslandWidget: React.FC = () => {
                         {/* Collapsed content */}
                         <motion.div
                             initial={false}
-                            animate={{ opacity: isExpanded ? 0 : 1, filter: isExpanded ? 'blur(5px)' : 'blur(0px)', pointerEvents: isExpanded ? 'none' : 'auto' }}
-                            transition={{ duration: 0.38, delay: collapsedContentDelay }}
+                            animate={{ opacity: isExpanded ? 0 : 1, filter: isExpanded ? 'blur(5px)' : 'blur(0px)', scale: isExpanded ? 0.96 : 1, y: isExpanded ? -4 : 0, pointerEvents: isExpanded ? 'none' : 'auto' }}
+                            transition={collapsedContentTransition}
                             className="absolute inset-0 w-full h-full z-20"
                         >
                             {showMusicActivity && musicData ? (
@@ -720,8 +726,8 @@ const DynamicIslandWidget: React.FC = () => {
                         {/* Expanded content */}
                         <motion.div
                             initial={false}
-                            animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', pointerEvents: isExpanded ? 'auto' : 'none' }}
-                            transition={{ duration: expandedContentFadeDuration }}
+                            animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
+                            transition={expandedContentTransition}
                             className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
                             style={{ width: expandedWidth, minWidth: expandedWidth }}
                         >
