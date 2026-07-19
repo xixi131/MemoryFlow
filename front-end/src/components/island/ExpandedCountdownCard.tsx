@@ -638,10 +638,13 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     };
 
     // Upload the picked image to the cloud server via the shared axios HTTP
-    // infra (userApis.uploadAvatar → POST /upload/avatar). The response payload
-    // (see services/api.ts response interceptor: returns response.data directly)
-    // carries the stored path in `res.url`; resolve it to a renderable absolute
-    // URL and stash it in the draft.
+    // infra (userApis.uploadImage → POST /upload/image). This dedicated image
+    // endpoint only stores the file and returns its URL — unlike /upload/avatar
+    // it does NOT touch the user's profile avatar. We pass the current
+    // bgImageUrl as `oldUrl` so the server deletes the replaced image and does
+    // not accumulate orphaned files. The response payload (see services/api.ts
+    // response interceptor: returns response.data directly) carries the stored
+    // path in `res.url`; resolve it to a renderable absolute URL and stash it.
     const handleBgFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         // Reset so re-picking the SAME file still fires onChange.
@@ -650,7 +653,7 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
         setUploadError(false);
         setUploading(true);
         try {
-            const res: any = await userApis.uploadAvatar(file);
+            const res: any = await userApis.uploadImage(file, form.bgImageUrl || undefined);
             if (res && res.url) {
                 update({
                     bgImageUrl: resolveApiAssetUrl(res.url),

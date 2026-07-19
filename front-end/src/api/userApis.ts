@@ -51,6 +51,22 @@ const userApis = {
         })
     },
 
+    // 上传通用图片（如倒数日背景图）：只存文件返回 URL，不会改动用户头像。
+    // 传 oldUrl 时，后端会删掉被替换的旧图，避免服务器堆积无用文件。
+    uploadImage: (file: File, oldUrl?: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (oldUrl) formData.append('oldUrl', oldUrl);
+        return request({
+            url: '/upload/image',
+            method: 'post',
+            data: formData,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+    },
+
     // 更新用户信息
     updateProfile: (data: any) => {
         return request({
