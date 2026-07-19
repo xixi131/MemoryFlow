@@ -3,6 +3,14 @@ import type { CountdownEvent, CountdownEventType, CountdownMode } from '../../ty
 import { calcEventDays } from '../../utils/countdownCalc';
 import DatePicker from '../DatePicker';
 import { saveCountdownEvents } from '../../api/countdownApi';
+import userApis from '../../api/userApis';
+import { resolveApiAssetUrl } from '../../utils/resolveApiAssetUrl';
+
+// Schema defaults for the background-image fields added in task 016. Older
+// persisted events (and freshly constructed ones) may lack these, so reads fall
+// back to these values.
+const BG_OFFSET_DEFAULT = { x: 50, y: 50 };
+const TEXT_COLOR_DEFAULT = '#FFFFFF';
 // generateSquirclePath is imported to keep the squircle vocabulary available for
 // tasks 012/013 (detail/add cards render at measured sizes). The list rows here
 // have no measured width at render time, so per task 011 step 5 we intentionally
@@ -211,6 +219,9 @@ interface CountdownFormState {
     date: string;
     repeat: boolean;
     color: string;
+    bgImageUrl: string | null;
+    bgImageOffset: { x: number; y: number };
+    textColor: string;
 }
 
 const ADD_DEFAULTS: CountdownFormState = {
@@ -220,6 +231,9 @@ const ADD_DEFAULTS: CountdownFormState = {
     date: '',
     repeat: false,
     color: DEFAULT_COLOR,
+    bgImageUrl: null,
+    bgImageOffset: { ...BG_OFFSET_DEFAULT },
+    textColor: TEXT_COLOR_DEFAULT,
 };
 
 /** Seed the local form: edit → selected event (draft overrides); add → draft or defaults. */
@@ -239,12 +253,126 @@ function seedForm(
                   date: evt.date,
                   repeat: evt.repeat,
                   color: evt.color,
+                  bgImageUrl: evt.bgImageUrl ?? null,
+                  bgImageOffset: evt.bgImageOffset ?? { ...BG_OFFSET_DEFAULT },
+                  textColor: evt.textColor ?? TEXT_COLOR_DEFAULT,
               }
             : { ...ADD_DEFAULTS };
         return draft ? ({ ...base, ...draft } as CountdownFormState) : base;
     }
     return draft ? ({ ...ADD_DEFAULTS, ...draft } as CountdownFormState) : { ...ADD_DEFAULTS };
 }
+
+// ── Live preview card (task 016) ─────────────────────────────────
+// Renders at ~200×110 in the edit/add form's left column. Mirrors the detail
+// card: color band + dark body when no bg image; full-bleed image with custom
+// text color when an image is set.
+const CountdownPreviewCard: React.FC<{ form: CountdownFormState; todayStr: string }> = ({
+    form,
+    todayStr,
+}) => {
+    // Reuse the shared day-count helper; guard the empty-date case (form not yet
+    // filled) so parseUtcDate never sees NaN.
+    const dayNumber =
+        form.date === ''
+            ? null
+            : Math.abs(
+                  calcEventDays(
+                      {
+                          id: '',
+                          name: form.name,
+                          type: form.type,
+                          countMode: form.countMode,
+                          date: form.date,
+                          repeat: form.repeat,
+                          color: form.color,
+                      },
+                      todayStr,
+                  ).days,
+              );
+
+    const dateStr = form.date === '' ? '选择日期' : formatCnDate(form.date);
+    const title = form.name.trim() === '' ? '事件名称' : form.name;
+    const hasImage = form.bgImageUrl != null && form.bgImageUrl !== '';
+
+    if (hasImage) {
+        return (
+            <div
+                style={{
+                    width: 200,
+                    height: 110,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    backgroundImage: `url('${form.bgImageUrl}')`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
+                    backgroundRepeat: 'no-repeat',
+                }}
+            >
+                {/* No color band. Text color is user-chosen; a soft shadow keeps it
+                    legible over arbitrary imagery without introducing a band. */}
+                <div
+                    className="flex flex-col justify-between h-full px-3 py-2"
+                    style={{ color: form.textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+                >
+                    <span className="text-[12px] font-semibold truncate">{title}</span>
+                    <div className="flex items-baseline gap-0.5">
+                        <span className="text-[36px] font-bold leading-none tracking-tight">
+                            {dayNumber ?? '—'}
+                        </span>
+                        <span className="text-[12px] font-semibold">天</span>
+                    </div>
+                    <span className="text-[10px] font-medium truncate">{dateStr}</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            style={{
+                width: 200,
+                height: 110,
+                borderRadius: 16,
+                overflow: 'hidden',
+                background: 'rgba(255,255,255,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+            }}
+        >
+            {/* Color band with title. */}
+            <div
+                className="flex items-center px-3 shrink-0"
+                style={{ height: 26, background: form.color }}
+            >
+                <span className="text-[12px] font-semibold truncate" style={{ color: '#fff' }}>
+                    {title}
+                </span>
+            </div>
+            {/* Dark body: big day number + unit, date at the bottom. */}
+            <div className="flex-1 flex flex-col items-center justify-center px-3">
+                <div className="flex items-baseline gap-0.5">
+                    <span
+                        className="text-[36px] font-bold leading-none tracking-tight"
+                        style={{ color: form.color }}
+                    >
+                        {dayNumber ?? '—'}
+                    </span>
+                    <span className="text-[12px] font-semibold" style={{ color: form.color }}>
+                        天
+                    </span>
+                </div>
+                <span
+                    className="text-[10px] font-medium mt-1 truncate"
+                    style={{ color: 'rgba(255,255,255,0.5)' }}
+                >
+                    {dateStr}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 interface CountdownFormPageProps {
     mode: 'add' | 'edit';
@@ -269,6 +397,10 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     );
     const [showErrors, setShowErrors] = useState(false);
     const [confirmDiscard, setConfirmDiscard] = useState(false);
+    // Background-image upload (task 016).
+    const bgFileRef = useRef<HTMLInputElement>(null);
+    const [uploadError, setUploadError] = useState(false);
+    const [uploading, setUploading] = useState(false);
     // Two-step delete confirmation (edit mode only), moved here from the detail
     // page per Bug 5. Local state, not the reducer.
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -286,6 +418,43 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
             dispatch({ type: 'SET_COUNTDOWN_FORM_DRAFT', payload: next });
             return next;
         });
+    };
+
+    // Trigger the hidden file input (must be a real <button> so the island's
+    // pointerdown gesture handler — which only bails on closest('button') — does
+    // not collapse the expanded island).
+    const handleBgUploadClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        bgFileRef.current?.click();
+    };
+
+    // Upload the picked image to the cloud server via the shared axios HTTP
+    // infra (userApis.uploadAvatar → POST /upload/avatar). The response payload
+    // (see services/api.ts response interceptor: returns response.data directly)
+    // carries the stored path in `res.url`; resolve it to a renderable absolute
+    // URL and stash it in the draft.
+    const handleBgFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        // Reset so re-picking the SAME file still fires onChange.
+        e.target.value = '';
+        if (!file) return;
+        setUploadError(false);
+        setUploading(true);
+        try {
+            const res: any = await userApis.uploadAvatar(file);
+            if (res && res.url) {
+                update({
+                    bgImageUrl: resolveApiAssetUrl(res.url),
+                    bgImageOffset: { ...BG_OFFSET_DEFAULT },
+                });
+            } else {
+                setUploadError(true);
+            }
+        } catch {
+            setUploadError(true);
+        } finally {
+            setUploading(false);
+        }
     };
 
     // Smart defaults on TYPE change (step 2).
@@ -327,6 +496,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 date: form.date,
                 repeat: form.repeat,
                 color: form.color,
+                bgImageUrl: form.bgImageUrl,
+                bgImageOffset: form.bgImageOffset,
+                textColor: form.textColor,
             };
             const next = [...countdownEvents, newEvent];
             await saveCountdownEvents(next);
@@ -350,6 +522,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
             date: form.date,
             repeat: form.repeat,
             color: form.color,
+            bgImageUrl: form.bgImageUrl,
+            bgImageOffset: form.bgImageOffset,
+            textColor: form.textColor,
         };
         const next = countdownEvents.map((ev) => (ev.id === targetId ? updated : ev));
         await saveCountdownEvents(next);
@@ -368,7 +543,11 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 form.countMode !== savedEvent.countMode ||
                 form.date !== savedEvent.date ||
                 form.repeat !== savedEvent.repeat ||
-                form.color !== savedEvent.color
+                form.color !== savedEvent.color ||
+                (form.bgImageUrl ?? null) !== (savedEvent.bgImageUrl ?? null) ||
+                form.textColor !== (savedEvent.textColor ?? TEXT_COLOR_DEFAULT) ||
+                form.bgImageOffset.x !== (savedEvent.bgImageOffset?.x ?? BG_OFFSET_DEFAULT.x) ||
+                form.bgImageOffset.y !== (savedEvent.bgImageOffset?.y ?? BG_OFFSET_DEFAULT.y)
             );
         }
         return (
@@ -377,7 +556,8 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
             form.type !== ADD_DEFAULTS.type ||
             form.countMode !== ADD_DEFAULTS.countMode ||
             form.repeat !== ADD_DEFAULTS.repeat ||
-            form.color !== ADD_DEFAULTS.color
+            form.color !== ADD_DEFAULTS.color ||
+            form.bgImageUrl !== null
         );
     })();
 
@@ -441,14 +621,62 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 </button>
             </div>
 
-            {/* Scrollable form column — no outer padding, hidden scrollbar.
-                pt-2 spacer + scrollPaddingTop keep the name input clear of the
-                scroll container's top edge (Bug 1); pl-1/pb-6 keep left-edge and
-                bottom content (color swatches, delete) from clipping (Bug 4). */}
-            <div
-                className="flex-1 min-h-0 overflow-y-auto pr-1 pl-1 pt-2 pb-6 flex flex-col gap-3"
-                style={{ scrollbarWidth: 'none', scrollPaddingTop: 8 }}
-            >
+            {/* Two-column body (task 016): live preview + bg-image upload on the
+                LEFT, the scrollable form fields on the RIGHT. Fits inside the now
+                540px-wide island (task 014). */}
+            <div className="flex-1 min-h-0 flex gap-3 pt-2">
+                {/* Left column: preview card + upload control. */}
+                <div className="shrink-0 flex flex-col gap-2" style={{ width: 200 }}>
+                    <CountdownPreviewCard form={form} todayStr={todayStr} />
+
+                    {/* Hidden native file input, triggered by the button below. */}
+                    <input
+                        ref={bgFileRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBgFileChange}
+                        style={{ display: 'none' }}
+                    />
+                    <button
+                        onClick={handleBgUploadClick}
+                        disabled={uploading}
+                        className="flex items-center justify-center gap-1 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }}
+                    >
+                        <span className="material-symbols-outlined text-[16px] leading-none">
+                            image
+                        </span>
+                        {uploading ? '上传中…' : form.bgImageUrl ? '更换背景图' : '添加背景图'}
+                    </button>
+
+                    {form.bgImageUrl && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                update({ bgImageUrl: null });
+                            }}
+                            className="text-[11px] font-medium"
+                            style={{ color: 'rgba(255,255,255,0.55)', background: 'transparent' }}
+                        >
+                            移除背景图
+                        </button>
+                    )}
+
+                    {uploadError && (
+                        <span className="text-[11px] font-medium" style={{ color: '#FF5A5F' }}>
+                            上传失败，请重试
+                        </span>
+                    )}
+                </div>
+
+                {/* Right column: scrollable form fields — no outer padding, hidden
+                    scrollbar. scrollPaddingTop keeps the name input clear of the
+                    scroll container's top edge (Bug 1); pl-1/pb-6 keep left-edge and
+                    bottom content (color swatches, delete) from clipping (Bug 4). */}
+                <div
+                    className="flex-1 min-h-0 overflow-y-auto pr-1 pl-1 pb-6 flex flex-col gap-3"
+                    style={{ scrollbarWidth: 'none', scrollPaddingTop: 8 }}
+                >
                 {/* Name */}
                 <input
                     ref={nameRef}
@@ -663,6 +891,7 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         )}
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Discard-confirmation row (dirty back/cancel) */}
