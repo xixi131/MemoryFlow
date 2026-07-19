@@ -160,12 +160,24 @@ const DynamicIslandWidget: React.FC = () => {
     const shellDuration = profile.shellDuration;
     const collapseShellTransition = { times: collapseShellTimes, duration: shellDuration, ease: 'easeInOut' as const };
 
-    // The shell body path and the ears MUST share one timeline. The right ear's
-    // x-anchor (right:-40px) tracks the animated container width, so if its `d`
-    // morphs on a different curve it separates from the body during the spring
-    // overshoot at settle ("right ear detaches last, then returns"). Driving the
-    // ear `d` with this exact transition welds it to the body edge.
-    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : profile.shellSpring;
+    // The whole shell — container width/height, body squircle `d`, inner stroke `d`
+    // and the two ears — shares ONE timeline, and it must be an explicit TWEEN, not
+    // a spring. The right ear's x-anchor (right:-40px) tracks the framer-animated
+    // container WIDTH (a number), while the body's right edge is the framer path
+    // `d` (a string). framer animates a number-spring and a path-spring on subtly
+    // different trajectories, so at the spring overshoot/settle they diverged and
+    // the right ear separated from the body ("detaches last, then returns"); the
+    // left ear can't, since the body path is pinned at M 0 0. A shared tween drives
+    // the width number and the path strings on the identical monotonic curve (no
+    // overshoot), keeping the ear welded. Only activity→compact keeps the segmented
+    // squish keyframes — its width and paths already share those exact keyframes.
+    const SHELL_EASE = [0.22, 1, 0.36, 1] as const; // snappy but monotonic — no overshoot
+    const SHELL_TWEEN = { duration: 0.5, ease: SHELL_EASE };
+    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : SHELL_TWEEN;
+    // Ears animate a single `d` target, so they can't take the squish's 4-stop
+    // `times`; a plain matched-duration tween morphs the ear shape while its POSITION
+    // tracks the width — that positional lockstep is what prevents the separation.
+    const earTransition = { duration: isCollapseShellTransition ? shellDuration : 0.5, ease: SHELL_EASE };
 
     const collapseMidWidth = isCollapseShellTransition ? 155 : baseWidth;
     // Collapse (squish): current → 155 → 155 → collapsed target.
@@ -462,29 +474,16 @@ const DynamicIslandWidget: React.FC = () => {
                 animate={isExpanded ? 'expanded' : 'collapsed'}
                 variants={{
                     collapsed: {
-                        // Only activity→compact keeps the segmented 155 squish; every other
-                        // direction springs the scalar target so width, paths and ears
-                        // morph together (no snap-to-size-then-catch-up).
+                        // Only activity→compact keeps the segmented 155 squish; every
+                        // other direction tweens the scalar target so the width, the
+                        // paths and the ears morph together (no snap, and no spring
+                        // overshoot that could separate the right ear).
                         width: isCollapseShellTransition ? segmentedWidthKeyframes : hoverCollapsedWidth,
                         height: isCollapseShellTransition ? segmentedHeightKeyframes : hoverCollapsedHeight,
                         scale: 1,
                         originY: 0,
-                        transition: isCollapseShellTransition ? {
-                            width: collapseShellTransition,
-                            height: collapseShellTransition,
-                        } : (isOpenShellTransition || isExpandedToCompactTransition) ? {
-                            // Open (compact/expanded→activity) and expanded→compact:
-                            // one continuous spring, no keyframe stops.
-                            width: profile.shellSpring,
-                            height: profile.shellSpring,
-                        } : {
-                            width: { duration: 0.16, ease: 'easeOut' },
-                            height: { duration: 0.16, ease: 'easeOut' },
-                        },
                     },
                     expanded: {
-                        // Both compact→expanded and activity→expanded expand as a pure
-                        // APPLE_SPRING scalar so the box, corners and ears grow together.
                         width: expandedWidth,
                         height: expandedContentHeight,
                         scale: 1,
@@ -492,7 +491,7 @@ const DynamicIslandWidget: React.FC = () => {
                         originY: 0,
                     },
                 }}
-                transition={profile.shellSpring}
+                transition={shellPathTransition}
             >
                 {/* Cap-background layer removed: it was a redundant black shell (two
                     fixed 60px cap paths + a flat middle rect) sitting BEHIND the
@@ -506,7 +505,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
-                            transition={shellPathTransition}
+                            transition={earTransition}
                         />
                     </motion.svg>
                 </div>
@@ -515,7 +514,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
-                            transition={shellPathTransition}
+                            transition={earTransition}
                         />
                     </motion.svg>
                 </div>
@@ -556,11 +555,10 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isCollapseShellTransition ? squircleCollapsedPath
                                             : generateSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isCollapseShellTransition ? { d: collapseShellTransition } : undefined,
                                     },
                                     expanded: { d: generateSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
-                                transition={profile.shellSpring}
+                                transition={shellPathTransition}
                             />
                         </motion.svg>
                     </div>
@@ -585,11 +583,10 @@ const DynamicIslandWidget: React.FC = () => {
                                     collapsed: {
                                         d: isCollapseShellTransition ? openSquircleCollapsedPath
                                             : generateOpenSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                        transition: isCollapseShellTransition ? { d: collapseShellTransition } : undefined,
                                     },
                                     expanded: { d: generateOpenSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
-                                transition={profile.shellSpring}
+                                transition={shellPathTransition}
                             />
                         </motion.svg>
                     </div>
