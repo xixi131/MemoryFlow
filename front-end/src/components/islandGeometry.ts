@@ -81,6 +81,15 @@ export const EXPANDED_WIDTH        = 460;
 export const EXPANDED_MUSIC_HEIGHT = 210;
 export const EXPANDED_APP_HEIGHT   = 320;
 
+// ── Countdown add/edit form dimensions ────────────────────────
+// When the countdown card is in its add/edit form page it needs a larger box
+// than the standard expanded size (460×320) — both wider and taller — to fit
+// the form fields. These scale by the same computeExpandedIslandScale() factor
+// as the other expanded dimensions so they shrink proportionally on smaller
+// displays (see countdownFormWidth/countdownFormHeight in DynamicIslandWidget).
+export const COUNTDOWN_FORM_WIDTH  = 540;
+export const COUNTDOWN_FORM_HEIGHT = 420;
+
 // ── Window canvas ─────────────────────────────────────────────
 export const WINDOW_WIDTH   = 620;
 export const SHADOW_BUFFER  = 120;

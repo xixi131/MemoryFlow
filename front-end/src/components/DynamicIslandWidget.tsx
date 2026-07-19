@@ -21,6 +21,8 @@ import {
     EXPANDED_WIDTH,
     EXPANDED_MUSIC_HEIGHT,
     EXPANDED_APP_HEIGHT,
+    COUNTDOWN_FORM_WIDTH,
+    COUNTDOWN_FORM_HEIGHT,
     WINDOW_WIDTH,
     SHADOW_BUFFER,
     computeExpandedIslandScale,
@@ -256,20 +258,36 @@ const DynamicIslandWidget: React.FC = () => {
         return () => window.removeEventListener('resize', recompute);
     }, []);
 
+    // ── Countdown add/edit form: larger expanded box (540×420 base) ─────────
+    // When the countdown card is on its add/edit page the expanded shell grows to
+    // a proportionally larger form — both wider and taller than the standard box —
+    // then animates back when navigating away. Scaled by the SAME expandedScale
+    // factor as the other expanded dimensions so it shrinks on smaller displays.
+    // Declared here (before the resize effect) so the effect can size the window
+    // to the form height without a second, racing resize effect.
+    const isCountdownFormMode = appDisplayMode === 'countdown'
+        && (state.countdownPage === 'add' || state.countdownPage === 'edit');
+    const countdownFormWidth  = COUNTDOWN_FORM_WIDTH * expandedScale;
+    const countdownFormHeight = COUNTDOWN_FORM_HEIGHT * expandedScale;
+
     // ── Electron window resize ────────────────────────────────
     // The window canvas width is fixed; only the expanded height follows the shrunk
     // box height so there's no dead space below it. Collapsed keeps its fixed size.
+    // In the countdown add/edit form the window grows to the larger form height and
+    // animates back to the standard expanded height when navigating away.
     useEffect(() => {
         try {
             const ipc = (window as any).require('electron').ipcRenderer;
             const baseVisual = mode === 'music' ? EXPANDED_MUSIC_HEIGHT : EXPANDED_APP_HEIGHT;
-            const visualHeight = isExpanded ? baseVisual * expandedScale : 36;
+            const visualHeight = isExpanded
+                ? (isCountdownFormMode ? countdownFormHeight : baseVisual * expandedScale)
+                : 36;
             ipc.send('resize-widget', {
                 width: WINDOW_WIDTH,
                 height: isExpanded ? Math.ceil(visualHeight + SHADOW_BUFFER) : 300,
             });
         } catch { }
-    }, [isExpanded, mode, expandedScale]);
+    }, [isExpanded, mode, expandedScale, isCountdownFormMode, countdownFormHeight]);
 
     // ── Outside click collapse ────────────────────────────────
     useEffect(() => {
@@ -496,6 +514,14 @@ const DynamicIslandWidget: React.FC = () => {
     const expandedMusicHeight = EXPANDED_MUSIC_HEIGHT * expandedScale;
     const expandedContentHeight = mode === 'music' ? expandedMusicHeight : expandedAppHeight;
 
+    // Effective expanded-shell dimensions: swap in the larger countdown add/edit
+    // form box (isCountdownFormMode / countdownFormWidth / countdownFormHeight are
+    // derived above, before the resize effect) so the caps, ears, open-squircle
+    // stroke, motion variant and content wrapper all read the SAME conditional
+    // width/height and stay welded.
+    const shellExpandedWidth  = isCountdownFormMode ? countdownFormWidth  : expandedWidth;
+    const shellExpandedHeight = isCountdownFormMode ? countdownFormHeight : expandedContentHeight;
+
     // ─────────────────────────────────────────────────────────
     // Render
     // ─────────────────────────────────────────────────────────
@@ -531,8 +557,8 @@ const DynamicIslandWidget: React.FC = () => {
                         originY: 0,
                     },
                     expanded: {
-                        width: expandedWidth,
-                        height: expandedContentHeight,
+                        width: shellExpandedWidth,
+                        height: shellExpandedHeight,
                         scale: 1,
                         y: 0,
                         originY: 0,
@@ -556,7 +582,7 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? 'expanded' : 'collapsed'}
                                 variants={{
                                     collapsed: { d: generateLeftCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness) },
-                                    expanded: { d: generateLeftCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
+                                    expanded: { d: generateLeftCapPath(shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
                                 transition={capEarTransition}
                             />
@@ -571,7 +597,7 @@ const DynamicIslandWidget: React.FC = () => {
                                 animate={isExpanded ? 'expanded' : 'collapsed'}
                                 variants={{
                                     collapsed: { d: generateRightCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness) },
-                                    expanded: { d: generateRightCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
+                                    expanded: { d: generateRightCapPath(shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
                                 transition={capEarTransition}
                             />
@@ -650,7 +676,7 @@ const DynamicIslandWidget: React.FC = () => {
                                         d: isCollapseShellTransition ? openSquircleCollapsedPath
                                             : generateOpenSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
                                     },
-                                    expanded: { d: generateOpenSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
+                                    expanded: { d: generateOpenSquirclePath(shellExpandedWidth, shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
                                 }}
                                 transition={shellPathTransition}
                             />
@@ -724,7 +750,7 @@ const DynamicIslandWidget: React.FC = () => {
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
                             className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
-                            style={{ width: expandedWidth, minWidth: expandedWidth }}
+                            style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
                                 <ExpandedMusicCard
