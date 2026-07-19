@@ -1554,7 +1554,9 @@ function sendLogoutToRenderer() {
 function getWidgetDisplayMode() {
     const config = getConfigOrEmpty();
     const mode = config[WIDGET_DISPLAY_MODE_KEY];
-    return mode === 'todo' ? 'todo' : 'review';
+    if (mode === 'todo') return 'todo';
+    if (mode === 'countdown') return 'countdown';
+    return 'review';
 }
 
 function sendWidgetDisplayModeToRenderer(targetWebContents) {
@@ -1566,7 +1568,7 @@ function sendWidgetDisplayModeToRenderer(targetWebContents) {
 }
 
 function setWidgetDisplayMode(mode) {
-    const normalizedMode = mode === 'todo' ? 'todo' : 'review';
+    const normalizedMode = mode === 'todo' ? 'todo' : mode === 'countdown' ? 'countdown' : 'review';
     saveConfigPatch({ [WIDGET_DISPLAY_MODE_KEY]: normalizedMode });
     sendWidgetDisplayModeToRenderer();
     refreshTrayMenu();
@@ -1603,6 +1605,12 @@ function refreshTrayMenu() {
                     type: 'radio',
                     checked: currentMode === 'todo',
                     click: () => setWidgetDisplayMode('todo')
+                },
+                {
+                    label: '倒数日模式',
+                    type: 'radio',
+                    checked: currentMode === 'countdown',
+                    click: () => setWidgetDisplayMode('countdown')
                 }
             ]
         },
@@ -1738,7 +1746,7 @@ function createWidgetWindow() {
     ipcMain.removeAllListeners('set-widget-display-mode');
     ipcMain.on('set-widget-display-mode', (_event, mode) => {
         try {
-            setWidgetDisplayMode(mode === 'todo' ? 'todo' : 'review');
+            setWidgetDisplayMode(mode === 'todo' ? 'todo' : mode === 'countdown' ? 'countdown' : 'review');
         } catch (e) { }
     });
 

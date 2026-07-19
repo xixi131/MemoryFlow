@@ -5,6 +5,8 @@ import {
     ACTIVITY_OPEN_DURATION_SECONDS,
 } from './islandGeometry';
 import type { IslandTransitionKind } from './islandMotionTokens';
+import type { CountdownEvent } from '../types/countdown';
+import { getCountdownEvents } from '../api/countdownApi';
 
 // ============================================================
 // Types
@@ -74,6 +76,10 @@ const createEmptyTodoPreview = (): TodoPreviewData => ({
 // State shape
 // ============================================================
 
+export type AppDisplayMode = 'review' | 'todo' | 'countdown';
+
+export type CountdownPage = 'list' | 'detail' | 'add' | 'edit';
+
 interface IslandState {
     isExpanded: boolean;
     isLoggedIn: boolean;
@@ -83,7 +89,11 @@ interface IslandState {
     greetingText: string | null;
     isGreetingActive: boolean;
     mode: 'app' | 'music';
-    appDisplayMode: 'review' | 'todo';
+    appDisplayMode: AppDisplayMode;
+    countdownPage: CountdownPage;
+    countdownSelectedId: string | null;
+    countdownFormDraft: Partial<CountdownEvent> | null;
+    countdownEvents: CountdownEvent[];
     musicData: MusicData | null;
     localPosition: number;
     data: WidgetData;
@@ -108,6 +118,10 @@ const initialState: IslandState = {
     isGreetingActive: false,
     mode: 'app',
     appDisplayMode: 'review',
+    countdownPage: 'list',
+    countdownSelectedId: null,
+    countdownFormDraft: null,
+    countdownEvents: [],
     musicData: null,
     localPosition: 0,
     data: { totalPendingReviews: 0, totalCompletedToday: 0, subjects: [] },
@@ -132,7 +146,11 @@ type IslandAction =
     | { type: 'SET_HOVERED'; payload: boolean }
     | { type: 'SET_GREETING'; payload: { text: string | null; active: boolean } }
     | { type: 'SET_MODE'; payload: 'app' | 'music' }
-    | { type: 'SET_APP_DISPLAY_MODE'; payload: 'review' | 'todo' }
+    | { type: 'SET_APP_DISPLAY_MODE'; payload: AppDisplayMode }
+    | { type: 'SET_COUNTDOWN_PAGE'; payload: CountdownPage }
+    | { type: 'SET_COUNTDOWN_SELECTED_ID'; payload: string | null }
+    | { type: 'SET_COUNTDOWN_FORM_DRAFT'; payload: Partial<CountdownEvent> | null }
+    | { type: 'SET_COUNTDOWN_EVENTS'; payload: CountdownEvent[] }
     | { type: 'SET_MUSIC_DATA'; payload: MusicData | null }
     | { type: 'SET_LOCAL_POSITION'; payload: number }
     | { type: 'SET_DATA'; payload: WidgetData }
@@ -180,6 +198,14 @@ function islandReducer(state: IslandState, action: IslandAction): IslandState {
             };
         case 'SET_APP_DISPLAY_MODE':
             return { ...state, appDisplayMode: action.payload };
+        case 'SET_COUNTDOWN_PAGE':
+            return { ...state, countdownPage: action.payload };
+        case 'SET_COUNTDOWN_SELECTED_ID':
+            return { ...state, countdownSelectedId: action.payload };
+        case 'SET_COUNTDOWN_FORM_DRAFT':
+            return { ...state, countdownFormDraft: action.payload };
+        case 'SET_COUNTDOWN_EVENTS':
+            return { ...state, countdownEvents: action.payload };
         case 'SET_MUSIC_DATA':
             return { ...state, musicData: action.payload };
         case 'SET_LOCAL_POSITION':
@@ -442,6 +468,15 @@ export function useIslandState() {
         }
     }, []);
 
+    const loadCountdownEvents = useCallback(async () => {
+        try {
+            const events = await getCountdownEvents();
+            dispatch({ type: 'SET_COUNTDOWN_EVENTS', payload: events });
+        } catch (error) {
+            console.error('Countdown events fetch error', error);
+        }
+    }, []);
+
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
         const pick = (items: string[]) => items[Math.floor(Math.random() * items.length)];
@@ -494,6 +529,9 @@ export function useIslandState() {
 
         window.addEventListener('auth:logout', handleLogout);
 
+        // Countdown events live in local Electron config (not auth-gated).
+        loadCountdownEvents();
+
         const token = localStorage.getItem('token');
         const refreshToken = localStorage.getItem('refreshToken');
         if (token || refreshToken) {
@@ -535,7 +573,7 @@ export function useIslandState() {
             ipc?.removeAllListeners('auth-token');
             ipc?.removeAllListeners('auth-logout');
         };
-    }, [fetchData, fetchUserName, handleLogout]);
+    }, [fetchData, fetchUserName, handleLogout, loadCountdownEvents]);
 
     // ── IPC: music data ──────────────────────────────────────────────────
     useEffect(() => {
@@ -579,8 +617,10 @@ export function useIslandState() {
         const ipc = getIpc();
         if (!ipc) return;
 
-        const handleDisplayModeChange = (_event: any, nextMode: 'review' | 'todo') => {
-            dispatch({ type: 'SET_APP_DISPLAY_MODE', payload: nextMode === 'todo' ? 'todo' : 'review' });
+        const handleDisplayModeChange = (_event: any, nextMode: AppDisplayMode) => {
+            const resolvedMode: AppDisplayMode =
+                nextMode === 'todo' ? 'todo' : nextMode === 'countdown' ? 'countdown' : 'review';
+            dispatch({ type: 'SET_APP_DISPLAY_MODE', payload: resolvedMode });
             dispatch({ type: 'SET_EXPANDED', payload: false });
             if (!isModeSwitchAnimatingRef.current) {
                 forceCompactModeRef.current = false;

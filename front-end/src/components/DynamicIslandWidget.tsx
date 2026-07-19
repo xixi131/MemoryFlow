@@ -705,9 +705,9 @@ const DynamicIslandWidget: React.FC = () => {
                                     todoPendingOps={todoPendingOps}
                                     onToggleTask={handleToggleTodoTask}
                                 />
-                            ) : (
+                            ) : appDisplayMode === 'review' ? (
                                 <ExpandedReviewCard data={data} isExpanded={isExpanded} />
-                            )}
+                            ) : null}
                         </motion.div>
                     </motion.div>
                 </motion.div>
