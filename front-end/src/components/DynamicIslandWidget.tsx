@@ -37,6 +37,7 @@ import {
     ACTIVITY_COLLAPSE_TIMES,
 } from './islandMotionTokens';
 import { useIslandState } from './useIslandState';
+import { getCountdownEvents } from '../api/countdownApi';
 import MusicActivityContent from './island/MusicActivityContent';
 import AppActivityContent from './island/AppActivityContent';
 import ExpandedMusicCard from './island/ExpandedMusicCard';
@@ -281,6 +282,39 @@ const DynamicIslandWidget: React.FC = () => {
         document.addEventListener('pointerdown', handlePointerDownCapture, true);
         return () => document.removeEventListener('pointerdown', handlePointerDownCapture, true);
     }, [collapseExpanded, isExpandedRef]);
+
+    // ── Local-midnight countdown refresh (task 010) ──────────────────────
+    // Day counts are computed relative to the local calendar day, so they go
+    // stale at midnight. Schedule a one-shot timer for the next local 00:00,
+    // re-fetch events + dispatch, then re-arm for the following midnight. One
+    // live timer at a time; cleared on unmount.
+    useEffect(() => {
+        let timerId: ReturnType<typeof setTimeout> | null = null;
+        let cancelled = false;
+
+        const msUntilNextMidnight = () => {
+            const now = new Date();
+            const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+            return next.getTime() - now.getTime();
+        };
+
+        const arm = () => {
+            timerId = setTimeout(async () => {
+                if (cancelled) return;
+                try {
+                    const events = await getCountdownEvents();
+                    if (!cancelled) dispatch({ type: 'SET_COUNTDOWN_EVENTS', payload: events });
+                } catch { }
+                if (!cancelled) arm();
+            }, msUntilNextMidnight());
+        };
+
+        arm();
+        return () => {
+            cancelled = true;
+            if (timerId) clearTimeout(timerId);
+        };
+    }, [dispatch]);
 
     // ── Trackpad helpers ──────────────────────────────────────
     const clearTrackpadGestureState = useCallback(() => {
@@ -663,6 +697,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     appDisplayMode={appDisplayMode}
                                     data={data}
                                     todoPreview={todoPreview}
+                                    countdownEvents={state.countdownEvents}
                                     activityOpenAnimToken={activityOpenAnimToken}
                                     isActivityOpenTransition={isActivityOpenTransition}
                                     onIconPointerDown={handleActivityLeftIconPointerDown}
