@@ -1,5 +1,10 @@
 const getApiOrigin = (): string | null => {
-    const raw = (import.meta as any)?.env?.VITE_API_BASE_URL;
+    // NOTE: must be a DIRECT `import.meta.env.VITE_API_BASE_URL` access so Vite
+    // statically inlines it at build time. Wrapping it in optional chaining
+    // (`(import.meta as any)?.env?.…`) defeats Vite's replacement, leaving a bare
+    // runtime `import.meta` whose `.env` is undefined in the packaged (file://)
+    // app — apiOrigin then stays null and asset URLs never resolve to the domain.
+    const raw = import.meta.env.VITE_API_BASE_URL as string | undefined;
     if (typeof raw !== 'string' || raw.trim() === '') return null;
     const normalized = raw.trim().replace(/\/+$/, '');
     try {
