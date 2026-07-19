@@ -160,24 +160,22 @@ const DynamicIslandWidget: React.FC = () => {
     const shellDuration = profile.shellDuration;
     const collapseShellTransition = { times: collapseShellTimes, duration: shellDuration, ease: 'easeInOut' as const };
 
-    // The whole shell — container width/height, body squircle `d`, inner stroke `d`
-    // and the two ears — shares ONE timeline, and it must be an explicit TWEEN, not
-    // a spring. The right ear's x-anchor (right:-40px) tracks the framer-animated
-    // container WIDTH (a number), while the body's right edge is the framer path
-    // `d` (a string). framer animates a number-spring and a path-spring on subtly
-    // different trajectories, so at the spring overshoot/settle they diverged and
-    // the right ear separated from the body ("detaches last, then returns"); the
-    // left ear can't, since the body path is pinned at M 0 0. A shared tween drives
-    // the width number and the path strings on the identical monotonic curve (no
-    // overshoot), keeping the ear welded. Only activity→compact keeps the segmented
-    // squish keyframes — its width and paths already share those exact keyframes.
-    const SHELL_EASE = [0.22, 1, 0.36, 1] as const; // snappy but monotonic — no overshoot
-    const SHELL_TWEEN = { duration: 0.5, ease: SHELL_EASE };
-    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : SHELL_TWEEN;
-    // Ears animate a single `d` target, so they can't take the squish's 4-stop
-    // `times`; a plain matched-duration tween morphs the ear shape while its POSITION
-    // tracks the width — that positional lockstep is what prevents the separation.
-    const earTransition = { duration: isCollapseShellTransition ? shellDuration : 0.5, ease: SHELL_EASE };
+    // Spring restored. The shell is drawn by the CSS-laid-out cap layer (two fixed
+    // 60px rounded caps + a flex-grow middle), NOT by a path whose right edge is a
+    // separate framer path-spring. The caps' outer edges and the ears (right:-40px)
+    // both track the framer-animated container WIDTH via flexbox each frame, so they
+    // stay welded even through the APPLE_SPRING overshoot. The path-animated body
+    // squircle (which diverged from the width number-spring and caused the right ear
+    // to separate) was removed; the caps are the sole black shell.
+    // shellPathTransition drives width/height + the inner-stroke `d` (these carry the
+    // 4-stop squish keyframe arrays for activity→compact, so they need the `times`).
+    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : profile.shellSpring;
+    // Caps and ears animate a single `d` target (their horizontal weld is CSS, not
+    // path), so they can't take the squish's 4-stop `times`; give them a plain
+    // matched-duration morph on collapse and the spring otherwise.
+    const capEarTransition = isCollapseShellTransition
+        ? { duration: shellDuration, ease: 'easeInOut' as const }
+        : profile.shellSpring;
 
     const collapseMidWidth = isCollapseShellTransition ? 155 : baseWidth;
     // Collapse (squish): current → 155 → 155 → collapsed target.
@@ -493,11 +491,44 @@ const DynamicIslandWidget: React.FC = () => {
                 }}
                 transition={shellPathTransition}
             >
-                {/* Cap-background layer removed: it was a redundant black shell (two
-                    fixed 60px cap paths + a flat middle rect) sitting BEHIND the
-                    body squircle, which is the frontmost visible shape (its hit-area
-                    parent is zIndex 9999). Under the springier APPLE_SPRING overshoot
-                    its flat middle peeked out below the rounded body as a black nub. */}
+                {/* ── Shell: CSS-laid-out caps + flex middle ──────────────────
+                    This is the SOLE black shell. Its outer edges track the container
+                    width via flexbox each frame — exactly like the ears (right:-40px)
+                    — so shell and ears stay welded through the spring overshoot. The
+                    corner radius/height morph via the cap `d` (cosmetic); the middle
+                    is a plain flex-grow rectangle. No path-animated full-width shape,
+                    so there is nothing to diverge from the width and reveal a nub. */}
+                <div className="absolute inset-0 w-full h-full z-0 pointer-events-none flex">
+                    <div className="relative w-[60px] h-full flex-shrink-0">
+                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                initial={false}
+                                animate={isExpanded ? 'expanded' : 'collapsed'}
+                                variants={{
+                                    collapsed: { d: generateLeftCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness) },
+                                    expanded: { d: generateLeftCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
+                                }}
+                                transition={capEarTransition}
+                            />
+                        </motion.svg>
+                    </div>
+                    <div className="flex-1 bg-black h-full" />
+                    <div className="relative w-[60px] h-full flex-shrink-0">
+                        <motion.svg width="60" height="100%" className="w-full h-full overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                initial={false}
+                                animate={isExpanded ? 'expanded' : 'collapsed'}
+                                variants={{
+                                    collapsed: { d: generateRightCapPath(hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness) },
+                                    expanded: { d: generateRightCapPath(expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
+                                }}
+                                transition={capEarTransition}
+                            />
+                        </motion.svg>
+                    </div>
+                </div>
 
                 {/* ── Liquid ears ── */}
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ left: '-40px' }}>
@@ -505,7 +536,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
-                            transition={earTransition}
+                            transition={capEarTransition}
                         />
                     </motion.svg>
                 </div>
@@ -514,7 +545,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
-                            transition={earTransition}
+                            transition={capEarTransition}
                         />
                     </motion.svg>
                 </div>
@@ -544,24 +575,10 @@ const DynamicIslandWidget: React.FC = () => {
                         } catch { }
                     }}
                 >
-                    {/* ── Body squircle ── */}
-                    <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                        <motion.svg className="w-full h-full overflow-visible" width="100%" height="100%">
-                            <motion.path
-                                fill="#000000"
-                                initial={false}
-                                animate={isExpanded ? 'expanded' : 'collapsed'}
-                                variants={{
-                                    collapsed: {
-                                        d: isCollapseShellTransition ? squircleCollapsedPath
-                                            : generateSquirclePath(hoverCollapsedWidth, hoverCollapsedHeight, collapsedCornerRadius, collapsedCornerSmoothness),
-                                    },
-                                    expanded: { d: generateSquirclePath(expandedWidth, expandedContentHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED) },
-                                }}
-                                transition={shellPathTransition}
-                            />
-                        </motion.svg>
-                    </div>
+                    {/* Body squircle removed: it was a full-width path whose right
+                        edge is a framer path-spring, diverging from the width
+                        number-spring and pulling the right ear off the body during
+                        overshoot. The CSS cap layer above is now the sole shell. */}
 
                     {/* ── Inner edge stroke ── */}
                     <div className="absolute inset-0 w-full h-full pointer-events-none z-50">
