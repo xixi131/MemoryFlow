@@ -321,7 +321,13 @@ const DynamicIslandWidget: React.FC = () => {
     // ── Tap → expand/login ────────────────────────────────────
     const toggleExpand = () => {
         if (!isLoggedIn && mode === 'app') { openLogin(); return; }
-        dispatch({ type: 'SET_EXPANDED', payload: !isExpanded });
+        if (isExpanded) {
+            // Route collapse through collapseExpanded so the Mac expanded→activity
+            // two-phase recovery runs (tap-to-collapse previously bypassed it).
+            collapseExpanded();
+        } else {
+            dispatch({ type: 'SET_EXPANDED', payload: true });
+        }
     };
 
     // ── Pointer gesture handlers ──────────────────────────────
