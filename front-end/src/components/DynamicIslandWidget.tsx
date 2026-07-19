@@ -76,7 +76,7 @@ const DynamicIslandWidget: React.FC = () => {
         isExpanded, isLoggedIn, forceCompactMode, isHovered, greetingText, isGreetingActive,
         mode, appDisplayMode, musicData, localPosition, data, todoPreview, todoPendingOps,
         isReminderCollapsing, isModeSwitchAnimating, isForceCompactTransitioning,
-        activityOpenAnimToken,
+        activityOpenAnimToken, isExpandedRecoveryCollapsing,
     } = state;
 
     const islandHitRef = useRef<HTMLDivElement | null>(null);
@@ -169,13 +169,21 @@ const DynamicIslandWidget: React.FC = () => {
     // to separate) was removed; the caps are the sole black shell.
     // shellPathTransition drives width/height + the inner-stroke `d` (these carry the
     // 4-stop squish keyframe arrays for activity→compact, so they need the `times`).
-    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : profile.shellSpring;
+    // Phase 1 of the Mac expanded→activity recovery: a quick eased collapse to the
+    // compact pill (no spring), matching expandedActivityRecoveryCollapseDuration.
+    // Phase 2 (the bloom to activity) then rides the normal open spring.
+    const recoveryCollapseTransition = { duration: 0.32, ease: 'easeInOut' as const };
+    const shellPathTransition = isExpandedRecoveryCollapsing
+        ? recoveryCollapseTransition
+        : isCollapseShellTransition ? collapseShellTransition : profile.shellSpring;
     // Caps and ears animate a single `d` target (their horizontal weld is CSS, not
     // path), so they can't take the squish's 4-stop `times`; give them a plain
     // matched-duration morph on collapse and the spring otherwise.
-    const capEarTransition = isCollapseShellTransition
-        ? { duration: shellDuration, ease: 'easeInOut' as const }
-        : profile.shellSpring;
+    const capEarTransition = isExpandedRecoveryCollapsing
+        ? recoveryCollapseTransition
+        : isCollapseShellTransition
+            ? { duration: shellDuration, ease: 'easeInOut' as const }
+            : profile.shellSpring;
 
     const collapseMidWidth = isCollapseShellTransition ? 155 : baseWidth;
     // Collapse (squish): current → 155 → 155 → collapsed target.

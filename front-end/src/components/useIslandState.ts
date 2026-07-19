@@ -59,6 +59,10 @@ export interface TodoPreviewData {
     tasks: TodoPreviewTask[];
 }
 
+// Mac IslandMotionTokens.expandedActivityRecoveryCollapseDuration (0.32s): the quick
+// eased phase-1 collapse (expanded → compact) before the phase-2 bloom to activity.
+const EXPANDED_RECOVERY_COLLAPSE_MS = 320;
+
 const createEmptyTodoPreview = (): TodoPreviewData => ({
     pending: 0,
     dueToday: 0,
@@ -89,6 +93,9 @@ interface IslandState {
     isModeSwitchAnimating: boolean;
     isForceCompactTransitioning: boolean;
     activityOpenAnimToken: number;
+    // Phase 1 of the Mac "expandedCollapseRecovery": expanded→compact quick eased
+    // collapse, before the compact→activity bloom (phase 2).
+    isExpandedRecoveryCollapsing: boolean;
 }
 
 const initialState: IslandState = {
@@ -110,6 +117,7 @@ const initialState: IslandState = {
     isModeSwitchAnimating: false,
     isForceCompactTransitioning: false,
     activityOpenAnimToken: 0,
+    isExpandedRecoveryCollapsing: false,
 };
 
 // ============================================================
@@ -133,6 +141,7 @@ type IslandAction =
     | { type: 'SET_REMINDER_COLLAPSING'; payload: boolean }
     | { type: 'SET_MODE_SWITCH_ANIMATING'; payload: boolean }
     | { type: 'SET_FORCE_COMPACT_TRANSITIONING'; payload: boolean }
+    | { type: 'SET_EXPANDED_RECOVERY_COLLAPSING'; payload: boolean }
     | { type: 'BUMP_ACTIVITY_ANIM_TOKEN' }
     | { type: 'LOGOUT' };
 
@@ -194,6 +203,8 @@ function islandReducer(state: IslandState, action: IslandAction): IslandState {
             return { ...state, isModeSwitchAnimating: action.payload };
         case 'SET_FORCE_COMPACT_TRANSITIONING':
             return { ...state, isForceCompactTransitioning: action.payload };
+        case 'SET_EXPANDED_RECOVERY_COLLAPSING':
+            return { ...state, isExpandedRecoveryCollapsing: action.payload };
         case 'BUMP_ACTIVITY_ANIM_TOKEN':
             return { ...state, activityOpenAnimToken: state.activityOpenAnimToken + 1 };
         case 'LOGOUT':
@@ -283,6 +294,8 @@ export function useIslandState() {
     const modeSwitchExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const modeSwitchUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const forceCompactTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const expandedRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hasRecoverableActivityRef = useRef(false);
     const musicTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── Music position tracking refs ─────────────────────────────────────
@@ -347,14 +360,42 @@ export function useIslandState() {
 
     // ── Collapse expanded ────────────────────────────────────────────────
     const collapseExpanded = useCallback((options?: { preserveHoverFocus?: boolean }) => {
-        dispatch({ type: 'SET_EXPANDED', payload: false });
+        // Mac parity (IslandPresentationReducer.collapseExpanded): when the expanded
+        // source still has a recoverable activity, DON'T collapse straight to activity.
+        // Run the two-phase "expandedCollapseRecovery": a quick eased collapse to the
+        // compact pill (phase 1, ~0.32s, no spring), then a spring bloom open to the
+        // activity pill (phase 2, driven by setForceCompactModeWithTransition(false)).
+        const shouldRecoverActivity = !forceCompactModeRef.current && hasRecoverableActivityRef.current;
+
+        if (shouldRecoverActivity) {
+            if (expandedRecoveryTimerRef.current) clearTimeout(expandedRecoveryTimerRef.current);
+            dispatch({ type: 'SET_EXPANDED', payload: false });
+            dispatch({ type: 'SET_FORCE_COMPACT', payload: true });      // phase 1 target = compact pill
+            forceCompactModeRef.current = true;
+            dispatch({ type: 'SET_EXPANDED_RECOVERY_COLLAPSING', payload: true });
+            expandedRecoveryTimerRef.current = setTimeout(() => {
+                expandedRecoveryTimerRef.current = null;
+                dispatch({ type: 'SET_EXPANDED_RECOVERY_COLLAPSING', payload: false });
+                if (isExpandedRef.current) {
+                    // Re-expanded during phase 1 — abort the bloom, just restore the
+                    // activity context so the next collapse recovers correctly.
+                    dispatch({ type: 'SET_FORCE_COMPACT', payload: false });
+                    forceCompactModeRef.current = false;
+                    return;
+                }
+                setForceCompactModeWithTransition(false);               // phase 2: bloom compact → activity
+            }, EXPANDED_RECOVERY_COLLAPSE_MS);
+        } else {
+            dispatch({ type: 'SET_EXPANDED', payload: false });
+        }
+
         if (options?.preserveHoverFocus) {
             dispatch({ type: 'SET_HOVERED', payload: true });
             disableClickThrough();
         } else {
             enableClickThrough();
         }
-    }, [disableClickThrough, enableClickThrough]);
+    }, [disableClickThrough, enableClickThrough, setForceCompactModeWithTransition]);
 
     // ── Data fetching ────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
@@ -671,7 +712,7 @@ export function useIslandState() {
         return () => {
             [greetingTimeoutRef, reminderCollapseTimerRef, modeSwitchLongPressTimerRef,
              modeSwitchCompactTimerRef, modeSwitchExpandTimerRef, modeSwitchUnlockTimerRef,
-             forceCompactTransitionTimerRef, musicTimeoutRef].forEach(ref => {
+             forceCompactTransitionTimerRef, expandedRecoveryTimerRef, musicTimeoutRef].forEach(ref => {
                 if (ref.current) { clearTimeout(ref.current); ref.current = null; }
             });
         };
@@ -776,6 +817,9 @@ export function useIslandState() {
     const hasAnyActivitySource =
         (state.mode === 'music' && !!state.musicData) ||
         (state.mode === 'app' && state.isLoggedIn);
+    // Mirror into a ref so collapseExpanded (a stable callback) can read the current
+    // recoverable-activity status without being re-created every render.
+    hasRecoverableActivityRef.current = hasAnyActivitySource;
     const currentVisualState: VisualState = state.isExpanded
         ? 'expanded'
         : (hasAnyActivitySource && !state.forceCompactMode)
