@@ -160,6 +160,13 @@ const DynamicIslandWidget: React.FC = () => {
     const shellDuration = profile.shellDuration;
     const collapseShellTransition = { times: collapseShellTimes, duration: shellDuration, ease: 'easeInOut' as const };
 
+    // The shell body path and the ears MUST share one timeline. The right ear's
+    // x-anchor (right:-40px) tracks the animated container width, so if its `d`
+    // morphs on a different curve it separates from the body during the spring
+    // overshoot at settle ("right ear detaches last, then returns"). Driving the
+    // ear `d` with this exact transition welds it to the body edge.
+    const shellPathTransition = isCollapseShellTransition ? collapseShellTransition : profile.shellSpring;
+
     const collapseMidWidth = isCollapseShellTransition ? 155 : baseWidth;
     // Collapse (squish): current → 155 → 155 → collapsed target.
     const segmentedWidthKeyframes = [null, collapseMidWidth, collapseMidWidth, collapsedWidth];
@@ -499,7 +506,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
-                            transition={{ ...profile.shellSpring, d: { duration: 0.4, ease: 'easeInOut' } }}
+                            transition={shellPathTransition}
                         />
                     </motion.svg>
                 </div>
@@ -508,7 +515,7 @@ const DynamicIslandWidget: React.FC = () => {
                         <motion.path
                             fill="#000000"
                             animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
-                            transition={{ ...profile.shellSpring, d: { duration: 0.4, ease: 'easeInOut' } }}
+                            transition={shellPathTransition}
                         />
                     </motion.svg>
                 </div>
