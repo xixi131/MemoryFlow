@@ -52,10 +52,10 @@ const ExpandedMusicCard: React.FC<ExpandedMusicCardProps> = ({
             <div className="flex-1 flex flex-col justify-center min-w-0">
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-base text-white truncate" style={{ fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", sans-serif' }}>
+                        <span className="text-base text-white truncate" style={{ fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif' }}>
                             {musicData.title}
                         </span>
-                        <span className="text-sm text-white/50 truncate" style={{ fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", sans-serif' }}>
+                        <span className="text-sm text-white/50 truncate" style={{ fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif' }}>
                             {musicData.artist}
                         </span>
                     </div>
@@ -68,7 +68,7 @@ const ExpandedMusicCard: React.FC<ExpandedMusicCardProps> = ({
 
         {/* Progress */}
         <div className="flex items-center gap-2 mt-1">
-            <span className="text-[14px] font-medium tabular-nums leading-none" style={{ color: '#666666', fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", sans-serif' }}>
+            <span className="text-[14px] font-medium tabular-nums leading-none" style={{ color: '#666666', fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif' }}>
                 {formatTime(localPosition)}
             </span>
             <div className="flex-1 relative h-[8px] rounded-full overflow-hidden" style={{ backgroundColor: '#222222' }}>
@@ -80,7 +80,7 @@ const ExpandedMusicCard: React.FC<ExpandedMusicCardProps> = ({
                     }}
                 />
             </div>
-            <span className="text-[14px] font-medium tabular-nums leading-none" style={{ color: '#666666', fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", sans-serif' }}>
+            <span className="text-[14px] font-medium tabular-nums leading-none" style={{ color: '#666666', fontFamily: '"SF Pro Text", "Inter", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif' }}>
                 -{formatTime(Math.max(0, (musicData.duration || 0) - localPosition))}
             </span>
         </div>
