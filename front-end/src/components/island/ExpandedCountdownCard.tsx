@@ -199,6 +199,20 @@ const COLOR_PRESETS = [
 ];
 const DEFAULT_COLOR = COLOR_PRESETS[0];
 
+// Text-color swatches for the '文字颜色' picker (task 017). Same 8-swatch layout
+// as COLOR_PRESETS but leads with white and black — the two most common legible
+// choices over arbitrary imagery — which the event-color palette lacks.
+const TEXT_COLOR_PRESETS = [
+    '#FFFFFF', '#000000', '#FF8800', '#FF5A5F',
+    '#FFC400', '#34C759', '#00B8D9', '#5B6CFF',
+];
+
+// Preview card is a fixed 200×110 box; drag math converts pixel deltas to the
+// same percentage space used by backgroundPosition.
+const CARD_W = 200;
+const CARD_H = 110;
+const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
 const TYPE_OPTIONS: { value: CountdownEventType; label: string }[] = [
     { value: 'birthday', label: '生日' },
     { value: 'anniversary', label: '纪念日' },
@@ -267,9 +281,25 @@ function seedForm(
 // Renders at ~200×110 in the edit/add form's left column. Mirrors the detail
 // card: color band + dark body when no bg image; full-bleed image with custom
 // text color when an image is set.
-const CountdownPreviewCard: React.FC<{ form: CountdownFormState; todayStr: string }> = ({
+const CountdownPreviewCard: React.FC<{
+    form: CountdownFormState;
+    todayStr: string;
+    // Drag-to-pan wiring (task 017). Only meaningful when a bg image is set.
+    onMouseDown?: (e: React.MouseEvent) => void;
+    onMouseMove?: (e: React.MouseEvent) => void;
+    onMouseUp?: (e: React.MouseEvent) => void;
+    onMouseLeave?: (e: React.MouseEvent) => void;
+    isDragging?: boolean;
+    showDragHint?: boolean;
+}> = ({
     form,
     todayStr,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
+    onMouseLeave,
+    isDragging = false,
+    showDragHint = false,
 }) => {
     // Reuse the shared day-count helper; guard the empty-date case (form not yet
     // filled) so parseUtcDate never sees NaN.
@@ -298,6 +328,10 @@ const CountdownPreviewCard: React.FC<{ form: CountdownFormState; todayStr: strin
     if (hasImage) {
         return (
             <div
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseLeave}
                 style={{
                     width: 200,
                     height: 110,
@@ -308,6 +342,9 @@ const CountdownPreviewCard: React.FC<{ form: CountdownFormState; todayStr: strin
                     backgroundSize: 'cover',
                     backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
                     backgroundRepeat: 'no-repeat',
+                    // grab normally, grabbing while a drag is in progress (step 3).
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    userSelect: 'none',
                 }}
             >
                 {/* No color band. Text color is user-chosen; a soft shadow keeps it
@@ -325,6 +362,22 @@ const CountdownPreviewCard: React.FC<{ form: CountdownFormState; todayStr: strin
                     </div>
                     <span className="text-[10px] font-medium truncate">{dateStr}</span>
                 </div>
+
+                {/* First-attachment hint overlay (step 3): shown for 2s, then removed
+                    by the parent's timeout. pointerEvents:none so it never blocks the drag. */}
+                {showDragHint && (
+                    <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{ pointerEvents: 'none', background: 'rgba(0,0,0,0.28)' }}
+                    >
+                        <span
+                            className="text-[11px] font-semibold px-2 py-1 rounded-full"
+                            style={{ color: '#fff', background: 'rgba(0,0,0,0.45)' }}
+                        >
+                            拖动调整显示区域
+                        </span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -404,6 +457,73 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     // Two-step delete confirmation (edit mode only), moved here from the detail
     // page per Bug 5. Local state, not the reducer.
     const [confirmDelete, setConfirmDelete] = useState(false);
+
+    // ── Drag-to-pan the bg image (task 017) ──────────────────────────
+    // Active-tracking + start values live in a ref so mid-drag mousemoves read
+    // stable start values and the handler wiring itself never triggers a
+    // re-render. Only the dispatched bgImageOffset change re-renders (intended,
+    // to move background-position). isDragging is a separate small state, used
+    // ONLY to toggle the grab/grabbing cursor.
+    const dragRef = useRef<{
+        active: boolean;
+        startX: number;
+        startY: number;
+        startOffset: { x: number; y: number };
+    }>({ active: false, startX: 0, startY: 0, startOffset: { ...BG_OFFSET_DEFAULT } });
+    const [isDragging, setIsDragging] = useState(false);
+
+    // First-attachment hint (step 3): show a 2s overlay label the first time an
+    // image is attached. prevHadImage seeds from the initial form so an edit that
+    // opens with a pre-existing image does NOT flash the hint; it only fires on a
+    // no-image → image transition.
+    const [showDragHint, setShowDragHint] = useState(false);
+    const prevHadImage = useRef<boolean>(form.bgImageUrl != null && form.bgImageUrl !== '');
+    useEffect(() => {
+        const has = form.bgImageUrl != null && form.bgImageUrl !== '';
+        if (has && !prevHadImage.current) {
+            setShowDragHint(true);
+            const t = setTimeout(() => setShowDragHint(false), 2000);
+            prevHadImage.current = has;
+            return () => clearTimeout(t);
+        }
+        prevHadImage.current = has;
+    }, [form.bgImageUrl]);
+
+    const hasBgImage = form.bgImageUrl != null && form.bgImageUrl !== '';
+
+    const handlePreviewMouseDown = (e: React.MouseEvent) => {
+        if (!hasBgImage) return;
+        e.stopPropagation();
+        dragRef.current = {
+            active: true,
+            startX: e.clientX,
+            startY: e.clientY,
+            startOffset: { ...form.bgImageOffset },
+        };
+        setIsDragging(true);
+    };
+
+    const handlePreviewMouseMove = (e: React.MouseEvent) => {
+        if (!dragRef.current.active) return;
+        const deltaX = e.clientX - dragRef.current.startX;
+        const deltaY = e.clientY - dragRef.current.startY;
+        const deltaPercentX = (deltaX / CARD_W) * 100;
+        const deltaPercentY = (deltaY / CARD_H) * 100;
+        // Pan convention: dragging the image RIGHT (deltaX > 0) should reveal
+        // content to the LEFT — i.e. move the visible window toward the image's
+        // start. With backgroundPosition percentages, a smaller x% shows more of
+        // the left edge, so we SUBTRACT the delta. Same convention vertically:
+        // dragging DOWN reveals content above → subtract from y%.
+        const nextX = clamp(dragRef.current.startOffset.x - deltaPercentX, 0, 100);
+        const nextY = clamp(dragRef.current.startOffset.y - deltaPercentY, 0, 100);
+        update({ bgImageOffset: { x: nextX, y: nextY } });
+    };
+
+    const endPreviewDrag = () => {
+        if (!dragRef.current.active) return;
+        dragRef.current.active = false;
+        setIsDragging(false);
+    };
 
     // Autofocus the name input on mount (step 1).
     useEffect(() => {
@@ -627,7 +747,16 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
             <div className="flex-1 min-h-0 flex gap-3 pt-2">
                 {/* Left column: preview card + upload control. */}
                 <div className="shrink-0 flex flex-col gap-2" style={{ width: 200 }}>
-                    <CountdownPreviewCard form={form} todayStr={todayStr} />
+                    <CountdownPreviewCard
+                        form={form}
+                        todayStr={todayStr}
+                        onMouseDown={handlePreviewMouseDown}
+                        onMouseMove={handlePreviewMouseMove}
+                        onMouseUp={endPreviewDrag}
+                        onMouseLeave={endPreviewDrag}
+                        isDragging={isDragging}
+                        showDragHint={showDragHint}
+                    />
 
                     {/* Hidden native file input, triggered by the button below. */}
                     <input
@@ -845,6 +974,41 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         />
                     ))}
                 </div>
+
+                {/* Text-color picker (task 017): shown ONLY when a background image
+                    is set. Same swatch markup as the event-color picker, targeting
+                    textColor. The preview title + number reflect it immediately. */}
+                {hasBgImage && (
+                    <div className="flex flex-col gap-1">
+                        <span
+                            className="text-[11px] font-medium"
+                            style={{ color: 'rgba(255,255,255,0.5)' }}
+                        >
+                            文字颜色
+                        </span>
+                        <div className="flex gap-2 flex-wrap">
+                            {TEXT_COLOR_PRESETS.map((c) => (
+                                <button
+                                    key={c}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        update({ textColor: c });
+                                    }}
+                                    className="rounded-full transition-transform"
+                                    style={{
+                                        width: 26,
+                                        height: 26,
+                                        background: c,
+                                        boxShadow:
+                                            form.textColor === c
+                                                ? '0 0 0 2px rgba(255,255,255,0.9)'
+                                                : '0 0 0 1px rgba(255,255,255,0.1)',
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Delete (edit only): red text button → two-step inline confirm.
                     Moved here from the detail page per Bug 5. Both states are real
