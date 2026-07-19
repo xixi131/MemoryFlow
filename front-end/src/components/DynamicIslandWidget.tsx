@@ -33,6 +33,7 @@ import {
 import {
     motionProfile,
     ACTIVITY_OPEN_TIMES,
+    ACTIVITY_OPEN_DURATION,
     ACTIVITY_COLLAPSE_TIMES,
 } from './islandMotionTokens';
 import { useIslandState } from './useIslandState';
@@ -144,7 +145,10 @@ const DynamicIslandWidget: React.FC = () => {
     const isExpandedToCompactTransition = isReminderCollapsing && (forceCompactMode || !hasAnyActivitySource);
     const isActivityToCompactTransition = isForceCompactTransitioning && forceCompactMode && hasAnyActivitySource;
 
-    const isCollapseShellTransition = isActivityToCompactTransition || isExpandedToCompactTransition;
+    // Segmented squish (waist at 155) is ONLY for activity → compact. Expanded →
+    // compact is a DIRECT spring straight to the compact target (scalar targets +
+    // profile.shellSpring below), with NO 155 mid keyframe (task 007 FIX A).
+    const isCollapseShellTransition = isActivityToCompactTransition;
     const isOpenShellTransition = isActivityOpenTransition || isExpandedToActivityTransition;
 
     // Keyframe stops from the profile (null → the sensible per-direction default).
@@ -165,6 +169,38 @@ const DynamicIslandWidget: React.FC = () => {
     // Open (hold): current → target (reached at t=0.2·duration) → hold → hold.
     const openWidthKeyframes = [null, collapsedWidth, collapsedWidth, collapsedWidth];
     const openHeightKeyframes = [null, hoverCollapsedHeight, hoverCollapsedHeight, hoverCollapsedHeight];
+
+    // ── Activity → expanded width latch (task 007 FIX B) ──────────────────
+    // `transitionKind` is only 'activityToExpanded' on the single trigger render;
+    // `prevVisualStateRef` then resets to 'expanded', so a later re-render (e.g.
+    // the music 1s position tick) would otherwise re-read a scalar width and
+    // RESTART the expand. Latch the 4-keyframe OPEN width intent for the expand's
+    // duration so the width prop SHAPE (keyframe array) stays stable across
+    // re-renders. `fromWidth` is the activity collapsed width the expand starts
+    // from; keeping it a concrete constant makes the target array byte-identical
+    // across re-renders so framer-motion does not re-fire mid-animation.
+    const [activityExpandLatch, setActivityExpandLatch] = useState<{ fromWidth: number } | null>(null);
+    const activityExpandLatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (transitionKind !== 'activityToExpanded') return;
+        setActivityExpandLatch({ fromWidth: ACTIVITY_COLLAPSED_WIDTH });
+        if (activityExpandLatchTimerRef.current) clearTimeout(activityExpandLatchTimerRef.current);
+        activityExpandLatchTimerRef.current = setTimeout(() => {
+            setActivityExpandLatch(null);
+            activityExpandLatchTimerRef.current = null;
+        }, ACTIVITY_OPEN_DURATION * 1000);
+    }, [transitionKind]);
+    useEffect(() => () => {
+        if (activityExpandLatchTimerRef.current) clearTimeout(activityExpandLatchTimerRef.current);
+    }, []);
+
+    // Gate the expanded-state 4-keyframe OPEN width. True on the trigger render
+    // (transitionKind correct, before the latch effect commits) AND for every
+    // latched re-render after. compact→expanded never sets this ⇒ stays a pure
+    // APPLE_SPRING scalar.
+    const isActivityExpandWidth =
+        isExpanded && (transitionKind === 'activityToExpanded' || activityExpandLatch !== null);
+    const activityExpandFromWidth = activityExpandLatch?.fromWidth ?? ACTIVITY_COLLAPSED_WIDTH;
 
     const leftCapCollapsedPath = [
         null,
@@ -493,17 +529,28 @@ const DynamicIslandWidget: React.FC = () => {
                         } : isCollapseShellTransition ? {
                             width: collapseShellTransition,
                             height: collapseShellTransition,
+                        } : isExpandedToCompactTransition ? {
+                            // Direct COLLAPSE_SPRING to the compact target — no 155 waist.
+                            width: profile.shellSpring,
+                            height: profile.shellSpring,
                         } : {
                             width: { duration: 0.16, ease: 'easeOut' },
                             height: { duration: 0.16, ease: 'easeOut' },
                         },
                     },
                     expanded: {
-                        width: expandedWidth,
+                        // activity→expanded uses the 4-keyframe OPEN width profile
+                        // (latched); compact→expanded stays a pure APPLE_SPRING scalar.
+                        width: isActivityExpandWidth
+                            ? [activityExpandFromWidth, expandedWidth, expandedWidth, expandedWidth]
+                            : expandedWidth,
                         height: expandedContentHeight,
                         scale: 1,
                         y: 0,
                         originY: 0,
+                        transition: isActivityExpandWidth
+                            ? { width: { times: [...ACTIVITY_OPEN_TIMES], duration: ACTIVITY_OPEN_DURATION, ease: 'easeInOut' as const } }
+                            : undefined,
                     },
                 }}
                 transition={profile.shellSpring}
