@@ -269,6 +269,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     );
     const [showErrors, setShowErrors] = useState(false);
     const [confirmDiscard, setConfirmDiscard] = useState(false);
+    // Two-step delete confirmation (edit mode only), moved here from the detail
+    // page per Bug 5. Local state, not the reducer.
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     // Autofocus the name input on mount (step 1).
     useEffect(() => {
@@ -394,6 +397,20 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
         navigateBack();
     };
 
+    // Bug 5: delete the event from persistence and return to the list. Reuses the
+    // same save/dispatch path the detail page's delete previously used.
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const targetId = countdownSelectedId ?? savedEvent?.id ?? countdownFormDraft?.id ?? null;
+        if (!targetId) return;
+        const next = countdownEvents.filter((ev) => ev.id !== targetId);
+        await saveCountdownEvents(next);
+        dispatch({ type: 'SET_COUNTDOWN_EVENTS', payload: next });
+        dispatch({ type: 'SET_COUNTDOWN_FORM_DRAFT', payload: null });
+        dispatch({ type: 'SET_COUNTDOWN_SELECTED_ID', payload: null });
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
+    };
+
     const pillStyle = (active: boolean): React.CSSProperties =>
         active
             ? { background: 'rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.95)' }
@@ -424,10 +441,13 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 </button>
             </div>
 
-            {/* Scrollable form column — no outer padding, hidden scrollbar. */}
+            {/* Scrollable form column — no outer padding, hidden scrollbar.
+                pt-2 spacer + scrollPaddingTop keep the name input clear of the
+                scroll container's top edge (Bug 1); pl-1/pb-6 keep left-edge and
+                bottom content (color swatches, delete) from clipping (Bug 4). */}
             <div
-                className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-3"
-                style={{ scrollbarWidth: 'none' }}
+                className="flex-1 min-h-0 overflow-y-auto pr-1 pl-1 pt-2 pb-6 flex flex-col gap-3"
+                style={{ scrollbarWidth: 'none', scrollPaddingTop: 8 }}
             >
                 {/* Name */}
                 <input
@@ -439,11 +459,12 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         e.stopPropagation();
                         update({ name: e.target.value });
                     }}
-                    className="w-full px-3 py-2 rounded-xl text-[13px] outline-none"
+                    className={`w-full px-3 py-2 rounded-xl text-[13px] font-semibold outline-none border-2 focus:ring-0 ${
+                        nameError ? 'border-[#FF5A5F]' : 'border-transparent focus:border-blue-500'
+                    }`}
                     style={{
                         background: 'rgba(255,255,255,0.06)',
                         color: 'rgba(255,255,255,0.92)',
-                        border: nameError ? '1px solid #FF5A5F' : '1px solid transparent',
                     }}
                 />
 
@@ -486,16 +507,42 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                     <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
                         {dateLabel}
                     </span>
+                    {/* Bug 3: restyle DatePicker's trigger into a compact dark chip.
+                        DatePicker.tsx exposes no icon-suppression prop and renders a
+                        light bg-white pill, so we override its trigger via scoped CSS.
+                        Selectors target ONLY the trigger (`.relative > button`) so the
+                        popover's own chevron icons stay visible. */}
                     <div
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className="rounded-2xl"
+                        className="cd-datepicker rounded-xl"
                         style={{
                             width: 'fit-content',
                             boxShadow: dateError ? '0 0 0 1px #FF5A5F' : 'none',
-                            borderRadius: 16,
+                            borderRadius: 12,
                         }}
                     >
+                        <style>{`
+                            .cd-datepicker .relative > button {
+                                background: rgba(255,255,255,0.06) !important;
+                                border: none !important;
+                                box-shadow: none !important;
+                                padding: 6px 12px !important;
+                                min-width: 0 !important;
+                                max-height: 36px !important;
+                                border-radius: 12px !important;
+                                gap: 0 !important;
+                            }
+                            .cd-datepicker .relative > button > .material-symbols-outlined {
+                                display: none !important;
+                            }
+                            .cd-datepicker .relative > button > span:last-child {
+                                font-size: 14px !important;
+                                line-height: 1.2 !important;
+                                font-weight: 600 !important;
+                                color: rgba(255,255,255,0.92) !important;
+                            }
+                        `}</style>
                         <DatePicker
                             selectedDate={form.date || todayStr}
                             onChange={(d) => update({ date: d })}
@@ -570,6 +617,52 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         />
                     ))}
                 </div>
+
+                {/* Delete (edit only): red text button → two-step inline confirm.
+                    Moved here from the detail page per Bug 5. Both states are real
+                    <button>s so the island's pointer-capture doesn't collapse it. */}
+                {mode === 'edit' && (
+                    <div className="flex items-center justify-center pt-2 pb-1">
+                        {confirmDelete ? (
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className="text-[12px] font-semibold"
+                                    style={{ color: 'rgba(255,255,255,0.85)' }}
+                                >
+                                    确认删除？
+                                </span>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmDelete(false);
+                                    }}
+                                    className="px-3 py-1 rounded-full text-[12px] font-semibold"
+                                    style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="px-3 py-1 rounded-full text-[12px] font-semibold"
+                                    style={{ background: '#FF5A5F', color: '#fff' }}
+                                >
+                                    确认
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDelete(true);
+                                }}
+                                className="text-[12px] font-semibold"
+                                style={{ color: '#FF5A5F', background: 'transparent' }}
+                            >
+                                删除事件
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Discard-confirmation row (dirty back/cancel) */}
@@ -619,8 +712,6 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     dispatch,
 }) => {
     const todayStr = localTodayStr();
-    // Two-step delete confirmation lives in local state (not the reducer) per step 5.
-    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const currentEvent =
         countdownEvents.find((e) => e.id === countdownSelectedId) ?? null;
@@ -660,15 +751,6 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
-    const handleConfirmDelete = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const next = countdownEvents.filter((ev) => ev.id !== currentEvent.id);
-        await saveCountdownEvents(next);
-        dispatch({ type: 'SET_COUNTDOWN_EVENTS', payload: next });
-        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'list' });
-        dispatch({ type: 'SET_COUNTDOWN_SELECTED_ID', payload: null });
-    };
-
     return (
         <div className="h-full flex flex-col">
             {/* Top bar: back (←) · edit (✏) */}
@@ -698,7 +780,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                     style={{
                         width: '100%',
                         maxWidth: 260,
-                        height: 220,
+                        height: 200,
                         borderRadius: 24,
                         overflow: 'hidden',
                         background: 'rgba(255,255,255,0.06)',
@@ -706,10 +788,11 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                         flexDirection: 'column',
                     }}
                 >
-                    {/* Colored top band (~20% of card height) with the title in white. */}
+                    {/* Colored top band with the title in white. Reduced per Bug 5
+                        so the card stays within the standard expanded height. */}
                     <div
                         className="flex items-center px-4 shrink-0"
-                        style={{ height: 44, background: currentEvent.color }}
+                        style={{ height: 32, background: currentEvent.color }}
                     >
                         <span
                             className="text-[14px] font-semibold truncate"
@@ -741,7 +824,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                             <div className="flex flex-col items-center">
                                 <span
                                     className="font-bold leading-none tracking-tight"
-                                    style={{ fontSize: 72, color: currentEvent.color }}
+                                    style={{ fontSize: 56, color: currentEvent.color }}
                                 >
                                     {bigNumber}
                                 </span>
@@ -762,51 +845,6 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                         </span>
                     </div>
                 </div>
-            </div>
-
-            {/* Delete: plain trash button → two-step inline confirmation. */}
-            <div className="flex items-center justify-center shrink-0 pt-2">
-                {confirmDelete ? (
-                    <div className="flex items-center gap-2">
-                        <span
-                            className="text-[12px] font-semibold"
-                            style={{ color: 'rgba(255,255,255,0.85)' }}
-                        >
-                            确认删除此事件？
-                        </span>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmDelete(false);
-                            }}
-                            className="px-3 py-1 rounded-full text-[12px] font-semibold"
-                            style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)' }}
-                        >
-                            取消
-                        </button>
-                        <button
-                            onClick={handleConfirmDelete}
-                            className="px-3 py-1 rounded-full text-[12px] font-semibold"
-                            style={{ background: '#FF5A5F', color: '#fff' }}
-                        >
-                            确认删除
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDelete(true);
-                        }}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
-                        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,90,95,0.95)' }}
-                    >
-                        <span className="material-symbols-outlined text-[16px] leading-none">
-                            delete
-                        </span>
-                        删除
-                    </button>
-                )}
             </div>
         </div>
     );
