@@ -11,6 +11,7 @@ let tray;
 let pendingAuthData = null;
 let pendingLogout = false;
 const WIDGET_DISPLAY_MODE_KEY = 'widgetDisplayMode';
+const COUNTDOWN_EVENTS_KEY = 'countdownEvents';
 
 app.setName('MemoryFlow');
 if (process.platform === 'win32') {
@@ -75,6 +76,14 @@ function saveConfigPatch(patch) {
     saveConfig(next);
     return next;
 }
+
+// Countdown events persistence (registered once at module scope so the
+// invoke handlers are not double-registered by per-window setup functions).
+ipcMain.handle('get-countdown-events', () => getConfigOrEmpty()[COUNTDOWN_EVENTS_KEY] || []);
+ipcMain.handle('save-countdown-events', (_event, events) => {
+    saveConfigPatch({ [COUNTDOWN_EVENTS_KEY]: events });
+    return true;
+});
 
 function getUpdaterConfig() {
     const config = getConfigOrEmpty();
