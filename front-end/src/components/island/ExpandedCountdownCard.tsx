@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { CountdownEvent, CountdownEventType, CountdownMode } from '../../types/countdown';
 import { calcEventDays } from '../../utils/countdownCalc';
 import { saveCountdownEvents } from '../../api/countdownApi';
@@ -27,19 +27,10 @@ const BG_IMAGE_SCALE_MAX = 3.0;
 function bgSizeForScale(scale?: number): string {
     return !scale || scale === BG_IMAGE_SCALE_DEFAULT ? 'cover' : `${scale * 100}% auto`;
 }
-// generateSquirclePath is imported to keep the squircle vocabulary available for
-// tasks 012/013 (detail/add cards render at measured sizes). The list rows here
-// have no measured width at render time, so per task 011 step 5 we intentionally
-// fall back to CSS `border-radius:12px; overflow:hidden` for the row squircle.
-import {
-    generateSquirclePath,
-    generateFullSquirclePath,
-    SQUIRCLE_SMOOTHNESS_EXPANDED,
-} from '../islandGeometry';
-
-// Keep a reference so the import is not flagged as unused while the measured-size
-// SVG clipPath variant is deferred to later tasks (012/013).
-void generateSquirclePath;
+// List-row squircle corners use CSS border-radius:12px + overflow:hidden (no
+// measured SVG clip-path needed at this layer).
+import { generateSquirclePath } from '../islandGeometry';
+void generateSquirclePath; // referenced by the CountdownPreviewCard below
 
 // ── Dispatch typing ──────────────────────────────────────────────
 // useIslandState's IslandAction union is not exported, so we declare the
@@ -1434,28 +1425,6 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     const currentEvent =
         countdownEvents.find((e) => e.id === countdownSelectedId) ?? null;
 
-    // Squircle clip-path measurement (task 020). The card is width:100% (capped
-    // at 260) × height 200 — not strictly fixed — so we measure the rendered card
-    // with a ResizeObserver (attached via a callback ref so it re-observes when
-    // the image/non-image branch swaps) and regenerate the clip path at the real
-    // pixel size. clipPathUnits='userSpaceOnUse' means the path is expressed in
-    // the card's own pixel coordinate system.
-    const [cardSize, setCardSize] = useState({ width: 200, height: 200 });
-    const roRef = useRef<ResizeObserver | null>(null);
-    const cardRef = useCallback((node: HTMLDivElement | null) => {
-        roRef.current?.disconnect();
-        if (!node) return;
-        const ro = new ResizeObserver((entries) => {
-            const box = entries[0].contentRect;
-            setCardSize({
-                width: Math.round(box.width),
-                height: Math.round(box.height),
-            });
-        });
-        ro.observe(node);
-        roRef.current = ro;
-    }, []);
-
     // Guard against a stale selected id (event deleted elsewhere): bounce to list.
     // Done in an effect so we don't dispatch during render.
     useEffect(() => {
@@ -1497,227 +1466,178 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
+    // Full-bleed redesign: content fills the entire padded content area (h-full
+    // w-full). Background image or event color covers everything; a bottom
+    // gradient ensures text legibility; nav buttons float as glassmorphism pills
+    // in the top corners; typography is bottom-anchored with an ultra-thin large
+    // number for a premium, Apple-adjacent aesthetic.
+    const accentColor = hasImage ? textColor : '#ffffff';
+
     return (
-        <div className="h-full flex flex-col">
-            {/* Top bar: back (←) · edit (✏) */}
-            <div className="flex items-center justify-between shrink-0 pb-2">
-                <button
-                    onClick={handleBack}
-                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
-                >
-                    <span className="material-symbols-outlined text-[18px] leading-none">
-                        chevron_left
+        <div
+            className="h-full w-full relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+        >
+            {/* ── Background layer ── */}
+            {hasImage ? (
+                <>
+                    {/* Blurred fill behind letterbox bars when zoomed out */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            filter: 'blur(22px)',
+                            transform: 'scale(1.18)',
+                        }}
+                    />
+                    {/* Main image: respects pan offset + zoom scale */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                            backgroundPosition: `${offset.x}% ${offset.y}%`,
+                            backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
+                            backgroundRepeat: 'no-repeat',
+                        }}
+                    />
+                    {/* User-controlled frosted glass (详情模糊 slider) */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                            WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                            pointerEvents: 'none',
+                        }}
+                    />
+                </>
+            ) : (
+                /* Solid event color as full background */
+                <div style={{ position: 'absolute', inset: 0, backgroundColor: currentEvent.color }} />
+            )}
+
+            {/* Gradient overlay: transparent at top, dark at bottom for text legibility */}
+            <div
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                        'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.0) 28%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.78) 100%)',
+                    pointerEvents: 'none',
+                }}
+            />
+
+            {/* ── Floating nav buttons (glassmorphism pill style) ── */}
+            <button
+                onClick={handleBack}
+                className="flex items-center justify-center"
+                style={{
+                    position: 'absolute',
+                    top: 10,
+                    left: 10,
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.32)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '0.5px solid rgba(255,255,255,0.20)',
+                    color: 'rgba(255,255,255,0.92)',
+                    cursor: 'pointer',
+                }}
+            >
+                <span className="material-symbols-outlined text-[16px] leading-none">
+                    chevron_left
+                </span>
+            </button>
+            <button
+                onClick={handleEdit}
+                className="flex items-center justify-center"
+                style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.32)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '0.5px solid rgba(255,255,255,0.20)',
+                    color: 'rgba(255,255,255,0.92)',
+                    cursor: 'pointer',
+                }}
+            >
+                <span className="material-symbols-outlined text-[16px] leading-none">edit</span>
+            </button>
+
+            {/* ── Bottom-anchored typography ── */}
+            <div
+                className="absolute inset-x-0 bottom-0 flex flex-col items-center"
+                style={{
+                    padding: '0 20px 18px',
+                    color: accentColor,
+                    textShadow: '0 1px 6px rgba(0,0,0,0.55)',
+                }}
+            >
+                {/* Status prefix — "已过去" shown above the number for past events */}
+                {showPastPrefix && (
+                    <span
+                        style={{
+                            fontSize: 12,
+                            fontWeight: 300,
+                            opacity: 0.72,
+                            letterSpacing: '0.06em',
+                            marginBottom: 2,
+                        }}
+                    >
+                        已过去
                     </span>
-                </button>
-                <button
-                    onClick={handleEdit}
-                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
-                >
-                    <span className="material-symbols-outlined text-[18px] leading-none">edit</span>
-                </button>
-            </div>
-
-            {/* Centered squircle card (task 020). A measured superellipse clip-path
-                replaces the old borderRadius:24 + overflow:hidden so all four corners
-                read as a true squircle; the clip on the container also clips the
-                absolute image/overlay children. Layout: title (top, centered, 16px
-                pt) → day number (vertically centered) → date (absolute bottom, 16px
-                pb). The '天' unit label was removed. */}
-            <div className="flex-1 min-h-0 flex items-center justify-center">
-                {/* Zero-size SVG holding the clipPath def; rendered immediately before
-                    the card. Path is regenerated at the card's measured pixel size. */}
-                <svg width={0} height={0} aria-hidden style={{ position: 'absolute' }}>
-                    <defs>
-                        <clipPath id="cd-detail-card" clipPathUnits="userSpaceOnUse">
-                            <path
-                                d={generateFullSquirclePath(
-                                    cardSize.width,
-                                    cardSize.height,
-                                    24,
-                                    SQUIRCLE_SMOOTHNESS_EXPANDED,
-                                )}
-                            />
-                        </clipPath>
-                    </defs>
-                </svg>
-
-                {hasImage ? (
-                    // Three-layer treatment (task 018): image + frosted-glass. The
-                    // container's clip-path clips all three layers to the squircle.
-                    <div
-                        ref={cardRef}
-                        style={{
-                            position: 'relative',
-                            // Square (1:1) so it matches the edit-preview crop exactly.
-                            width: 200,
-                            height: 200,
-                            clipPath: 'url(#cd-detail-card)',
-                            // Dark base behind the letterbox bars when zoomed out.
-                            backgroundColor: '#0a0a0a',
-                        }}
-                    >
-                        {/* Blurred fill: same photo, cover + heavy blur, filling the
-                            letterbox area with a soft backdrop when the photo is
-                            scaled below cover. Covered by the main image otherwise. */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                filter: 'blur(18px)',
-                                transform: 'scale(1.15)',
-                            }}
-                        />
-                        {/* Main image layer: honours scroll zoom + drag pan. */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                                backgroundPosition: `${offset.x}% ${offset.y}%`,
-                                backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
-                                backgroundRepeat: 'no-repeat',
-                            }}
-                        />
-                        {/* Frosted-glass overlay: blur is user-controlled (详情模糊
-                            slider). Only a whisper-light scrim (0.10) is kept for big-
-                            number legibility so the detail image stays as bright as the
-                            edit preview — the old 0.40 black tint made it look 灰暗. */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                inset: 0,
-                                backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                                WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                                background: 'rgba(0,0,0,0.10)',
-                                pointerEvents: 'none',
-                            }}
-                        />
-
-                        {/* Text content — all in the event's textColor. */}
-                        <div
-                            className="relative z-10 h-full"
-                            style={{ color: textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
-                        >
-                            {/* Title: top, centered, 16px top padding. */}
-                            <div
-                                className="absolute left-0 right-0 top-0 text-center px-4"
-                                style={{ paddingTop: 16 }}
-                            >
-                                <span className="block truncate text-[14px] font-semibold">
-                                    {currentEvent.name || '未命名'}
-                                </span>
-                            </div>
-
-                            {/* Day number: vertically centered in remaining space. */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-                                {showPastPrefix && (
-                                    <span className="text-[13px] font-medium" style={{ opacity: 0.85 }}>
-                                        已过去
-                                    </span>
-                                )}
-
-                                {showTodayText ? (
-                                    <span
-                                        className="font-bold leading-none tracking-tight"
-                                        style={{ fontSize: 40 }}
-                                    >
-                                        就是今天
-                                    </span>
-                                ) : (
-                                    <span
-                                        className="font-bold leading-none tracking-tight"
-                                        style={{ fontSize: 56 }}
-                                    >
-                                        {bigNumber}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
-                            <div
-                                className="absolute left-0 right-0 bottom-0 text-center px-4"
-                                style={{ paddingBottom: 16 }}
-                            >
-                                <span className="block truncate text-[11px] font-medium" style={{ opacity: 0.85 }}>
-                                    {dateRowLabel}：{formatCnDate(currentEvent.date)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div
-                        ref={cardRef}
-                        style={{
-                            position: 'relative',
-                            // Square (1:1) to match the edit preview.
-                            width: 200,
-                            height: 200,
-                            clipPath: 'url(#cd-detail-card)',
-                            background: 'rgba(255,255,255,0.06)',
-                        }}
-                    >
-                        {/* Title: top, centered, 16px top padding. The colored top
-                            band was replaced by the squircle-clipped card; the event
-                            color accent lives on the day number below. */}
-                        <div
-                            className="absolute left-0 right-0 top-0 text-center px-4"
-                            style={{ paddingTop: 16 }}
-                        >
-                            <span
-                                className="block truncate text-[14px] font-semibold"
-                                style={{ color: '#fff' }}
-                            >
-                                {currentEvent.name || '未命名'}
-                            </span>
-                        </div>
-
-                        {/* Day number: vertically centered in remaining space. */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-                            {showPastPrefix && (
-                                <span
-                                    className="text-[13px] font-medium"
-                                    style={{ color: 'rgba(255,255,255,0.6)' }}
-                                >
-                                    已过去
-                                </span>
-                            )}
-
-                            {showTodayText ? (
-                                <span
-                                    className="font-bold leading-none tracking-tight"
-                                    style={{ fontSize: 40, color: currentEvent.color }}
-                                >
-                                    就是今天
-                                </span>
-                            ) : (
-                                <span
-                                    className="font-bold leading-none tracking-tight"
-                                    style={{ fontSize: 56, color: currentEvent.color }}
-                                >
-                                    {bigNumber}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
-                        <div
-                            className="absolute left-0 right-0 bottom-0 text-center px-4"
-                            style={{ paddingBottom: 16 }}
-                        >
-                            <span
-                                className="block truncate text-[11px] font-medium"
-                                style={{ color: 'rgba(255,255,255,0.5)' }}
-                            >
-                                {dateRowLabel}：{formatCnDate(currentEvent.date)}
-                            </span>
-                        </div>
-                    </div>
                 )}
+
+                {/* Primary value: ultra-thin huge number or "就是今天" */}
+                {showTodayText ? (
+                    <span
+                        style={{
+                            fontSize: 46,
+                            fontWeight: 100,
+                            lineHeight: 1,
+                            letterSpacing: '-0.02em',
+                        }}
+                    >
+                        就是今天
+                    </span>
+                ) : (
+                    <span
+                        style={{
+                            fontSize: 96,
+                            fontWeight: 100,
+                            lineHeight: 0.92,
+                            letterSpacing: '-0.04em',
+                        }}
+                    >
+                        {bigNumber}
+                    </span>
+                )}
+
+                {/* Event name — light weight, below the number */}
+                <span
+                    className="max-w-full truncate text-center"
+                    style={{ fontSize: 13, fontWeight: 300, opacity: 0.88, marginTop: 7 }}
+                >
+                    {currentEvent.name}
+                </span>
+
+                {/* Date label — smallest element, most muted */}
+                <span
+                    style={{ fontSize: 11, fontWeight: 300, opacity: 0.58, marginTop: 3 }}
+                >
+                    {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                </span>
             </div>
         </div>
     );
