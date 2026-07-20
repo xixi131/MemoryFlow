@@ -271,6 +271,11 @@ const DynamicIslandWidget: React.FC = () => {
         && (state.countdownPage === 'add'
             || state.countdownPage === 'edit'
             || state.countdownPage === 'datepicker');
+
+    // Detail page gets true full-bleed: the padded content wrapper removes its
+    // inset so the image fills the entire island squircle from edge to edge.
+    const isCountdownDetailMode = appDisplayMode === 'countdown'
+        && state.countdownPage === 'detail';
     const countdownFormWidth  = COUNTDOWN_FORM_WIDTH * expandedScale;
     const countdownFormHeight = COUNTDOWN_FORM_HEIGHT * expandedScale;
 
@@ -753,7 +758,7 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className="flex flex-col w-full flex-1 px-9 py-5 pb-5 z-10 overflow-hidden"
+                            className={`flex flex-col w-full flex-1 z-10 overflow-hidden${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5'}`}
                             style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (

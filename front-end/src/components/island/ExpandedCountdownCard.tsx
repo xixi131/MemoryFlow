@@ -1466,11 +1466,12 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
-    // Full-bleed redesign: content fills the entire padded content area (h-full
-    // w-full). Background image or event color covers everything; a bottom
-    // gradient ensures text legibility; nav buttons float as glassmorphism pills
-    // in the top corners; typography is bottom-anchored with an ultra-thin large
-    // number for a premium, Apple-adjacent aesthetic.
+    // True full-bleed detail page: the DynamicIslandWidget strips the px-9 py-5
+    // padding when isCountdownDetailMode is true, so this container fills the
+    // entire island squircle. No gradient — the image shows at full brightness.
+    // Text legibility is handled entirely by textShadow so the photo stays vivid.
+    // Layout: title + nav row at top / huge number vertically centred / date pinned bottom.
+    const textShadow = '0 1px 8px rgba(0,0,0,0.72), 0 0 2px rgba(0,0,0,0.5)';
     const accentColor = hasImage ? textColor : '#ffffff';
 
     return (
@@ -1478,14 +1479,13 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
             className="h-full w-full relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
         >
-            {/* ── Background layer ── */}
+            {/* ── Layer 1: background (image or solid event color) ── */}
             {hasImage ? (
                 <>
-                    {/* Blurred fill behind letterbox bars when zoomed out */}
+                    {/* Blurred backdrop fills any letterbox gap when zoomed out */}
                     <div
                         style={{
-                            position: 'absolute',
-                            inset: 0,
+                            position: 'absolute', inset: 0,
                             backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
@@ -1493,148 +1493,118 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                             transform: 'scale(1.18)',
                         }}
                     />
-                    {/* Main image: respects pan offset + zoom scale */}
+                    {/* Main image — honours drag-pan offset and scroll-wheel zoom scale */}
                     <div
                         style={{
-                            position: 'absolute',
-                            inset: 0,
+                            position: 'absolute', inset: 0,
                             backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
                             backgroundPosition: `${offset.x}% ${offset.y}%`,
                             backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
                             backgroundRepeat: 'no-repeat',
                         }}
                     />
-                    {/* User-controlled frosted glass (详情模糊 slider) */}
-                    <div
-                        style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                            WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                            pointerEvents: 'none',
-                        }}
-                    />
+                    {/* Optional frosted glass controlled by the 详情模糊 slider (0 = none) */}
+                    {(currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT) > 0 && (
+                        <div
+                            style={{
+                                position: 'absolute', inset: 0,
+                                backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                                WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                                pointerEvents: 'none',
+                            }}
+                        />
+                    )}
                 </>
             ) : (
-                /* Solid event color as full background */
                 <div style={{ position: 'absolute', inset: 0, backgroundColor: currentEvent.color }} />
             )}
 
-            {/* Gradient overlay: transparent at top, dark at bottom for text legibility */}
-            <div
-                style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background:
-                        'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.0) 28%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.78) 100%)',
-                    pointerEvents: 'none',
-                }}
-            />
-
-            {/* ── Floating nav buttons (glassmorphism pill style) ── */}
+            {/* ── Layer 2: nav buttons — float at top corners over the image ── */}
             <button
                 onClick={handleBack}
                 className="flex items-center justify-center"
                 style={{
-                    position: 'absolute',
-                    top: 10,
-                    left: 10,
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.32)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    border: '0.5px solid rgba(255,255,255,0.20)',
-                    color: 'rgba(255,255,255,0.92)',
+                    position: 'absolute', top: 12, left: 12,
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.28)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '0.5px solid rgba(255,255,255,0.22)',
+                    color: 'rgba(255,255,255,0.95)',
                     cursor: 'pointer',
                 }}
             >
-                <span className="material-symbols-outlined text-[16px] leading-none">
-                    chevron_left
-                </span>
+                <span className="material-symbols-outlined text-[16px] leading-none">chevron_left</span>
             </button>
             <button
                 onClick={handleEdit}
                 className="flex items-center justify-center"
                 style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.32)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    border: '0.5px solid rgba(255,255,255,0.20)',
-                    color: 'rgba(255,255,255,0.92)',
+                    position: 'absolute', top: 12, right: 12,
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.28)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '0.5px solid rgba(255,255,255,0.22)',
+                    color: 'rgba(255,255,255,0.95)',
                     cursor: 'pointer',
                 }}
             >
                 <span className="material-symbols-outlined text-[16px] leading-none">edit</span>
             </button>
 
-            {/* ── Bottom-anchored typography ── */}
+            {/* ── Layer 3: title — top-center, between the nav buttons ── */}
             <div
-                className="absolute inset-x-0 bottom-0 flex flex-col items-center"
-                style={{
-                    padding: '0 20px 18px',
-                    color: accentColor,
-                    textShadow: '0 1px 6px rgba(0,0,0,0.55)',
-                }}
+                className="absolute inset-x-0 top-0 flex items-center justify-center"
+                style={{ paddingTop: 14, paddingLeft: 48, paddingRight: 48 }}
             >
-                {/* Status prefix — "已过去" shown above the number for past events */}
-                {showPastPrefix && (
-                    <span
-                        style={{
-                            fontSize: 12,
-                            fontWeight: 300,
-                            opacity: 0.72,
-                            letterSpacing: '0.06em',
-                            marginBottom: 2,
-                        }}
-                    >
-                        已过去
-                    </span>
-                )}
-
-                {/* Primary value: ultra-thin huge number or "就是今天" */}
-                {showTodayText ? (
-                    <span
-                        style={{
-                            fontSize: 46,
-                            fontWeight: 100,
-                            lineHeight: 1,
-                            letterSpacing: '-0.02em',
-                        }}
-                    >
-                        就是今天
-                    </span>
-                ) : (
-                    <span
-                        style={{
-                            fontSize: 96,
-                            fontWeight: 100,
-                            lineHeight: 0.92,
-                            letterSpacing: '-0.04em',
-                        }}
-                    >
-                        {bigNumber}
-                    </span>
-                )}
-
-                {/* Event name — light weight, below the number */}
                 <span
                     className="max-w-full truncate text-center"
-                    style={{ fontSize: 13, fontWeight: 300, opacity: 0.88, marginTop: 7 }}
+                    style={{
+                        color: accentColor,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textShadow,
+                    }}
                 >
                     {currentEvent.name}
                 </span>
+            </div>
 
-                {/* Date label — smallest element, most muted */}
+            {/* ── Layer 4: primary number — vertically centred in the island ── */}
+            <div
+                className="absolute inset-0 flex flex-col items-center justify-center"
+                style={{ color: accentColor, textShadow }}
+            >
+                {showPastPrefix && (
+                    <span style={{ fontSize: 12, fontWeight: 300, opacity: 0.82, letterSpacing: '0.06em', marginBottom: 4 }}>
+                        已过去
+                    </span>
+                )}
+                {showTodayText ? (
+                    <span style={{ fontSize: 44, fontWeight: 100, lineHeight: 1, letterSpacing: '-0.02em' }}>
+                        就是今天
+                    </span>
+                ) : (
+                    <span style={{ fontSize: 100, fontWeight: 100, lineHeight: 0.9, letterSpacing: '-0.04em' }}>
+                        {bigNumber}
+                    </span>
+                )}
+            </div>
+
+            {/* ── Layer 5: date — pinned to the bottom ── */}
+            <div
+                className="absolute inset-x-0 bottom-0 flex justify-center"
+                style={{ paddingBottom: 14 }}
+            >
                 <span
-                    style={{ fontSize: 11, fontWeight: 300, opacity: 0.58, marginTop: 3 }}
+                    style={{
+                        color: accentColor,
+                        fontSize: 11,
+                        fontWeight: 300,
+                        opacity: 0.78,
+                        textShadow,
+                    }}
                 >
                     {dateRowLabel}：{formatCnDate(currentEvent.date)}
                 </span>
