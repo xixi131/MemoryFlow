@@ -173,7 +173,11 @@ const CountdownListPage: React.FC<ExpandedCountdownCardProps> = ({ countdownEven
                                             inset: 0,
                                             backgroundImage: `url('${resolveApiAssetUrl(event.bgImageUrl)}')`,
                                             backgroundPosition: `${offset.x}% ${offset.y}%`,
-                                            backgroundSize: bgSizeForScale(event.bgImageScale),
+                                            // List/home card is a fixed thumbnail: only the
+                                            // display-region pan (backgroundPosition) affects
+                                            // it — bgImageScale (scroll zoom) is intentionally
+                                            // NOT applied here, so 'cover' stays constant.
+                                            backgroundSize: 'cover',
                                             backgroundRepeat: 'no-repeat',
                                         }}
                                     />
@@ -1062,6 +1066,11 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                                             update({ listBlurIntensity: Number(e.target.value) });
                                         }}
                                         className="cd-blur-slider flex-1 min-w-0"
+                                        style={{
+                                            // Filled portion (0 → current) in accent blue so
+                                            // the adjusted amount is clearly visible.
+                                            background: `linear-gradient(to right, #4A9EFF ${(form.listBlurIntensity / 20) * 100}%, rgba(255,255,255,0.16) ${(form.listBlurIntensity / 20) * 100}%)`,
+                                        }}
                                     />
                                     <span
                                         className="text-[11px] font-semibold text-right"
@@ -1092,6 +1101,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                                             update({ detailBlurIntensity: Number(e.target.value) });
                                         }}
                                         className="cd-blur-slider flex-1 min-w-0"
+                                        style={{
+                                            background: `linear-gradient(to right, #4A9EFF ${(form.detailBlurIntensity / 20) * 100}%, rgba(255,255,255,0.16) ${(form.detailBlurIntensity / 20) * 100}%)`,
+                                        }}
                                     />
                                     <span
                                         className="text-[11px] font-semibold text-right"
@@ -1528,14 +1540,17 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                                 backgroundRepeat: 'no-repeat',
                             }}
                         />
-                        {/* Frosted-glass overlay (blur 8, rgba(0,0,0,0.40)). */}
+                        {/* Frosted-glass overlay: blur is user-controlled (详情模糊
+                            slider). Only a whisper-light scrim (0.10) is kept for big-
+                            number legibility so the detail image stays as bright as the
+                            edit preview — the old 0.40 black tint made it look 灰暗. */}
                         <div
                             style={{
                                 position: 'absolute',
                                 inset: 0,
                                 backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
                                 WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                                background: 'rgba(0,0,0,0.40)',
+                                background: 'rgba(0,0,0,0.10)',
                                 pointerEvents: 'none',
                             }}
                         />
