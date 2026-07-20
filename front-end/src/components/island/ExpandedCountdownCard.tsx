@@ -1466,57 +1466,43 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
-    // True full-bleed detail page: the DynamicIslandWidget strips the px-9 py-5
-    // padding when isCountdownDetailMode is true, so this container fills the
-    // entire island squircle. No gradient — the image shows at full brightness.
-    // Text legibility is handled entirely by textShadow so the photo stays vivid.
-    // Layout: title + nav row at top / huge number vertically centred / date pinned bottom.
+    // True full-bleed detail page. DynamicIslandWidget removes its px-9 py-5
+    // padding (isCountdownDetailMode) and applies a squircle clip-path so the
+    // image is clipped to the exact island shape instead of a rectangle.
+    // Non-interactive layers use pointerEvents:'none' so buttons stay hittable
+    // even though later layers (number, title) render above them in z-order.
     const textShadow = '0 1px 8px rgba(0,0,0,0.72), 0 0 2px rgba(0,0,0,0.5)';
     const accentColor = hasImage ? textColor : '#ffffff';
+    const displayOnly: React.CSSProperties = { pointerEvents: 'none' };
 
     return (
         <div
-            className="h-full w-full relative overflow-hidden"
+            className="h-full w-full relative"
             onClick={(e) => e.stopPropagation()}
         >
-            {/* ── Layer 1: background (image or solid event color) ── */}
+            {/* ── Layer 1: background — pointerEvents:none (display only) ── */}
             {hasImage ? (
                 <>
-                    {/* Blurred backdrop fills any letterbox gap when zoomed out */}
-                    <div
-                        style={{
-                            position: 'absolute', inset: 0,
-                            backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            filter: 'blur(22px)',
-                            transform: 'scale(1.18)',
-                        }}
-                    />
-                    {/* Main image — honours drag-pan offset and scroll-wheel zoom scale */}
-                    <div
-                        style={{
-                            position: 'absolute', inset: 0,
-                            backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                            backgroundPosition: `${offset.x}% ${offset.y}%`,
-                            backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
-                            backgroundRepeat: 'no-repeat',
-                        }}
-                    />
-                    {/* Optional frosted glass controlled by the 详情模糊 slider (0 = none) */}
+                    <div style={{ position: 'absolute', inset: 0, ...displayOnly,
+                        backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                        backgroundSize: 'cover', backgroundPosition: 'center',
+                        filter: 'blur(22px)', transform: 'scale(1.18)',
+                    }} />
+                    <div style={{ position: 'absolute', inset: 0, ...displayOnly,
+                        backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                        backgroundPosition: `${offset.x}% ${offset.y}%`,
+                        backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
+                        backgroundRepeat: 'no-repeat',
+                    }} />
                     {(currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT) > 0 && (
-                        <div
-                            style={{
-                                position: 'absolute', inset: 0,
-                                backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                                WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                                pointerEvents: 'none',
-                            }}
-                        />
+                        <div style={{ position: 'absolute', inset: 0, ...displayOnly,
+                            backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                            WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                        }} />
                     )}
                 </>
             ) : (
-                <div style={{ position: 'absolute', inset: 0, backgroundColor: currentEvent.color }} />
+                <div style={{ position: 'absolute', inset: 0, ...displayOnly, backgroundColor: currentEvent.color }} />
             )}
 
             {/* ── Layer 2: nav buttons — float at top corners over the image ── */}
@@ -1553,10 +1539,10 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                 <span className="material-symbols-outlined text-[16px] leading-none">edit</span>
             </button>
 
-            {/* ── Layer 3: title — top-center, between the nav buttons ── */}
+            {/* ── Layer 3: title — pointerEvents:none (display only) ── */}
             <div
                 className="absolute inset-x-0 top-0 flex items-center justify-center"
-                style={{ paddingTop: 14, paddingLeft: 48, paddingRight: 48 }}
+                style={{ paddingTop: 14, paddingLeft: 48, paddingRight: 48, ...displayOnly }}
             >
                 <span
                     className="max-w-full truncate text-center"
@@ -1571,10 +1557,10 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                 </span>
             </div>
 
-            {/* ── Layer 4: primary number — vertically centred in the island ── */}
+            {/* ── Layer 4: primary number — pointerEvents:none (display only) ── */}
             <div
                 className="absolute inset-0 flex flex-col items-center justify-center"
-                style={{ color: accentColor, textShadow }}
+                style={{ color: accentColor, textShadow, ...displayOnly }}
             >
                 {showPastPrefix && (
                     <span style={{ fontSize: 12, fontWeight: 300, opacity: 0.82, letterSpacing: '0.06em', marginBottom: 4 }}>
@@ -1592,10 +1578,10 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                 )}
             </div>
 
-            {/* ── Layer 5: date — pinned to the bottom ── */}
+            {/* ── Layer 5: date — pointerEvents:none (display only) ── */}
             <div
                 className="absolute inset-x-0 bottom-0 flex justify-center"
-                style={{ paddingBottom: 14 }}
+                style={{ paddingBottom: 14, ...displayOnly }}
             >
                 <span
                     style={{

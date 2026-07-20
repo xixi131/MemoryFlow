@@ -28,6 +28,7 @@ import {
     computeExpandedIslandScale,
     generateEarPath,
     generateSquirclePath,
+    generateFullSquirclePath,
     generateOpenSquirclePath,
     generateLeftCapPath,
     generateRightCapPath,
@@ -531,6 +532,14 @@ const DynamicIslandWidget: React.FC = () => {
     const shellExpandedWidth  = isCountdownFormMode ? countdownFormWidth  : expandedWidth;
     const shellExpandedHeight = isCountdownFormMode ? countdownFormHeight : expandedContentHeight;
 
+    // Full-bleed clip-path for the countdown detail page: clips the expanded
+    // content wrapper to exactly the island's squircle shape so the background
+    // image doesn't bleed into the corner regions where the black CSS cap shell
+    // sits at z-0 (below the z-9999 hit area / content).
+    const detailClipPath = isCountdownDetailMode
+        ? `path('${generateFullSquirclePath(shellExpandedWidth, shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED)}')`
+        : undefined;
+
     // ─────────────────────────────────────────────────────────
     // Render
     // ─────────────────────────────────────────────────────────
@@ -758,8 +767,15 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className={`flex flex-col w-full flex-1 z-10 overflow-hidden${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5'}`}
-                            style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
+                            className={`flex flex-col w-full flex-1 z-10${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5 overflow-hidden'}`}
+                            style={{
+                                width: shellExpandedWidth,
+                                minWidth: shellExpandedWidth,
+                                // Clip to the exact island squircle so the full-bleed image
+                                // does not overflow into the corner regions drawn by the
+                                // black CSS cap shell at z-0 (which sits below z-9999 content).
+                                clipPath: detailClipPath,
+                            }}
                         >
                             {mode === 'music' && musicData ? (
                                 <ExpandedMusicCard
