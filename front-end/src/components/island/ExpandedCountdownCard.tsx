@@ -323,10 +323,11 @@ const TEXT_COLOR_PRESETS = [
     '#FFC400', '#34C759', '#00B8D9', '#5B6CFF',
 ];
 
-// Preview card is a fixed 200×110 box; drag math converts pixel deltas to the
-// same percentage space used by backgroundPosition.
-const CARD_W = 200;
-const CARD_H = 110;
+// Preview card is a fixed SQUARE box so it matches the detail card's 1:1 aspect
+// ratio (WYSIWYG — the same photo crops identically in preview and detail). Drag
+// math converts pixel deltas to the same percentage space used by backgroundPosition.
+const CARD_W = 150;
+const CARD_H = 150;
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 const TYPE_OPTIONS: { value: CountdownEventType; label: string }[] = [
@@ -467,24 +468,50 @@ const CountdownPreviewCard: React.FC<{
                 onMouseLeave={onMouseLeave}
                 onWheel={onWheel}
                 style={{
-                    width: 200,
-                    height: 110,
+                    width: CARD_W,
+                    height: CARD_H,
                     borderRadius: 16,
                     overflow: 'hidden',
                     position: 'relative',
-                    backgroundImage: `url('${resolveApiAssetUrl(form.bgImageUrl)}')`,
-                    backgroundSize: bgSizeForScale(form.bgImageScale),
-                    backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
-                    backgroundRepeat: 'no-repeat',
+                    // Dark base shows through the letterbox bars when the photo is
+                    // scaled below cover.
+                    backgroundColor: '#0a0a0a',
                     // grab normally, grabbing while a drag is in progress (step 3).
                     cursor: isDragging ? 'grabbing' : 'grab',
                     userSelect: 'none',
                 }}
             >
+                {/* Blurred fill: same photo, cover + heavy blur, so the letterbox
+                    area reads as an intentional soft backdrop rather than dead space
+                    when the photo is zoomed out. Hidden behind the main image at
+                    scale >= cover. */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: `url('${resolveApiAssetUrl(form.bgImageUrl)}')`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(18px)',
+                        transform: 'scale(1.15)',
+                    }}
+                />
+                {/* Main image layer: honours the scroll zoom (bgImageScale) and the
+                    drag pan (bgImageOffset). */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: `url('${resolveApiAssetUrl(form.bgImageUrl)}')`,
+                        backgroundSize: bgSizeForScale(form.bgImageScale),
+                        backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                />
                 {/* No color band. Text color is user-chosen; a soft shadow keeps it
                     legible over arbitrary imagery without introducing a band. */}
                 <div
-                    className="flex flex-col justify-between h-full px-3 py-2"
+                    className="relative z-10 flex flex-col justify-between h-full px-3 py-2"
                     style={{ color: form.textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
                 >
                     <span className="text-[12px] font-semibold truncate">{title}</span>
@@ -539,8 +566,8 @@ const CountdownPreviewCard: React.FC<{
     return (
         <div
             style={{
-                width: 200,
-                height: 110,
+                width: CARD_W,
+                height: CARD_H,
                 borderRadius: 16,
                 overflow: 'hidden',
                 background: 'rgba(255,255,255,0.06)',
@@ -946,7 +973,7 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 540px-wide island (task 014). */}
             <div className="flex-1 min-h-0 flex gap-3 pt-2">
                 {/* Left column: preview card + upload control. */}
-                <div className="shrink-0 flex flex-col gap-2" style={{ width: 200 }}>
+                <div className="shrink-0 flex flex-col gap-2" style={{ width: 150 }}>
                     <CountdownPreviewCard
                         form={form}
                         todayStr={todayStr}
@@ -1413,7 +1440,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     // the image/non-image branch swaps) and regenerate the clip path at the real
     // pixel size. clipPathUnits='userSpaceOnUse' means the path is expressed in
     // the card's own pixel coordinate system.
-    const [cardSize, setCardSize] = useState({ width: 260, height: 200 });
+    const [cardSize, setCardSize] = useState({ width: 200, height: 200 });
     const roRef = useRef<ResizeObserver | null>(null);
     const cardRef = useCallback((node: HTMLDivElement | null) => {
         roRef.current?.disconnect();
@@ -1523,13 +1550,29 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                         ref={cardRef}
                         style={{
                             position: 'relative',
-                            width: '100%',
-                            maxWidth: 260,
+                            // Square (1:1) so it matches the edit-preview crop exactly.
+                            width: 200,
                             height: 200,
                             clipPath: 'url(#cd-detail-card)',
+                            // Dark base behind the letterbox bars when zoomed out.
+                            backgroundColor: '#0a0a0a',
                         }}
                     >
-                        {/* Image layer */}
+                        {/* Blurred fill: same photo, cover + heavy blur, filling the
+                            letterbox area with a soft backdrop when the photo is
+                            scaled below cover. Covered by the main image otherwise. */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                filter: 'blur(18px)',
+                                transform: 'scale(1.15)',
+                            }}
+                        />
+                        {/* Main image layer: honours scroll zoom + drag pan. */}
                         <div
                             style={{
                                 position: 'absolute',
@@ -1611,8 +1654,8 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                         ref={cardRef}
                         style={{
                             position: 'relative',
-                            width: '100%',
-                            maxWidth: 260,
+                            // Square (1:1) to match the edit preview.
+                            width: 200,
                             height: 200,
                             clipPath: 'url(#cd-detail-card)',
                             background: 'rgba(255,255,255,0.06)',
