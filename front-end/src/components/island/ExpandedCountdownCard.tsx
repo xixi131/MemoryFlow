@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CountdownEvent, CountdownEventType, CountdownMode } from '../../types/countdown';
 import { calcEventDays } from '../../utils/countdownCalc';
-import DatePicker from '../DatePicker';
 import { saveCountdownEvents } from '../../api/countdownApi';
 import userApis from '../../api/userApis';
 import { resolveApiAssetUrl } from '../../utils/resolveApiAssetUrl';
@@ -11,11 +10,32 @@ import { resolveApiAssetUrl } from '../../utils/resolveApiAssetUrl';
 // back to these values.
 const BG_OFFSET_DEFAULT = { x: 50, y: 50 };
 const TEXT_COLOR_DEFAULT = '#FFFFFF';
+// Frosted-glass blur intensity defaults (px) for the list/detail overlays
+// (task 019). Range 0–20. Reads fall back to these for older events.
+const LIST_BLUR_DEFAULT = 6;
+const DETAIL_BLUR_DEFAULT = 8;
+// Background-image zoom/scale default + bounds (task 022). 1.0 → 'cover'.
+// Adjusted via the edit-page preview card's scroll wheel.
+const BG_IMAGE_SCALE_DEFAULT = 1.0;
+const BG_IMAGE_SCALE_MIN = 0.3;
+const BG_IMAGE_SCALE_MAX = 3.0;
+
+// Compute the CSS background-size for an image card given the saved scale.
+// scale === 1.0 (or absent) → 'cover' (preserves the pre-task-022 look);
+// otherwise `${scale * 100}% auto` so <1 shrinks the image (reveals more) and
+// >1 zooms in. Used identically by the preview, list, and detail cards.
+function bgSizeForScale(scale?: number): string {
+    return !scale || scale === BG_IMAGE_SCALE_DEFAULT ? 'cover' : `${scale * 100}% auto`;
+}
 // generateSquirclePath is imported to keep the squircle vocabulary available for
 // tasks 012/013 (detail/add cards render at measured sizes). The list rows here
 // have no measured width at render time, so per task 011 step 5 we intentionally
 // fall back to CSS `border-radius:12px; overflow:hidden` for the row squircle.
-import { generateSquirclePath } from '../islandGeometry';
+import {
+    generateSquirclePath,
+    generateFullSquirclePath,
+    SQUIRCLE_SMOOTHNESS_EXPANDED,
+} from '../islandGeometry';
 
 // Keep a reference so the import is not flagged as unused while the measured-size
 // SVG clipPath variant is deferred to later tasks (012/013).
@@ -26,10 +46,11 @@ void generateSquirclePath;
 // subset of actions this card dispatches. A `Dispatch<IslandAction>` from the
 // parent is assignable to `Dispatch<CountdownAction>` (function params are
 // contravariant), so passing the real dispatch through type-checks cleanly.
-type CountdownPage = 'list' | 'detail' | 'add' | 'edit';
+type CountdownPage = 'list' | 'detail' | 'add' | 'edit' | 'datepicker';
 
 type CountdownAction =
     | { type: 'SET_COUNTDOWN_PAGE'; payload: CountdownPage }
+    | { type: 'SET_COUNTDOWN_DATEPICKER_RETURN'; payload: 'add' | 'edit' | null }
     | { type: 'SET_COUNTDOWN_SELECTED_ID'; payload: string | null }
     | { type: 'SET_COUNTDOWN_FORM_DRAFT'; payload: Partial<CountdownEvent> | null }
     | { type: 'SET_COUNTDOWN_EVENTS'; payload: CountdownEvent[] };
@@ -43,6 +64,8 @@ interface ExpandedCountdownCardProps {
     // pass this yet — see discoveries — so seeding-from-draft is a no-op until
     // `countdownFormDraft={state.countdownFormDraft}` is wired in the parent.
     countdownFormDraft?: Partial<CountdownEvent> | null;
+    // Which form page the dedicated datepicker page returns to (task 021).
+    countdownDatePickerReturn?: 'add' | 'edit' | null;
     dispatch: React.Dispatch<CountdownAction>;
 }
 
@@ -150,7 +173,7 @@ const CountdownListPage: React.FC<ExpandedCountdownCardProps> = ({ countdownEven
                                             inset: 0,
                                             backgroundImage: `url('${resolveApiAssetUrl(event.bgImageUrl)}')`,
                                             backgroundPosition: `${offset.x}% ${offset.y}%`,
-                                            backgroundSize: 'cover',
+                                            backgroundSize: bgSizeForScale(event.bgImageScale),
                                             backgroundRepeat: 'no-repeat',
                                         }}
                                     />
@@ -159,8 +182,8 @@ const CountdownListPage: React.FC<ExpandedCountdownCardProps> = ({ countdownEven
                                         style={{
                                             position: 'absolute',
                                             inset: 0,
-                                            backdropFilter: 'blur(6px)',
-                                            WebkitBackdropFilter: 'blur(6px)',
+                                            backdropFilter: `blur(${event.listBlurIntensity ?? LIST_BLUR_DEFAULT}px)`,
+                                            WebkitBackdropFilter: `blur(${event.listBlurIntensity ?? LIST_BLUR_DEFAULT}px)`,
                                             background: 'rgba(0,0,0,0.38)',
                                             pointerEvents: 'none',
                                         }}
@@ -325,6 +348,9 @@ interface CountdownFormState {
     bgImageUrl: string | null;
     bgImageOffset: { x: number; y: number };
     textColor: string;
+    listBlurIntensity: number;
+    detailBlurIntensity: number;
+    bgImageScale: number;
 }
 
 const ADD_DEFAULTS: CountdownFormState = {
@@ -337,6 +363,9 @@ const ADD_DEFAULTS: CountdownFormState = {
     bgImageUrl: null,
     bgImageOffset: { ...BG_OFFSET_DEFAULT },
     textColor: TEXT_COLOR_DEFAULT,
+    listBlurIntensity: LIST_BLUR_DEFAULT,
+    detailBlurIntensity: DETAIL_BLUR_DEFAULT,
+    bgImageScale: BG_IMAGE_SCALE_DEFAULT,
 };
 
 /** Seed the local form: edit → selected event (draft overrides); add → draft or defaults. */
@@ -359,6 +388,9 @@ function seedForm(
                   bgImageUrl: evt.bgImageUrl ?? null,
                   bgImageOffset: evt.bgImageOffset ?? { ...BG_OFFSET_DEFAULT },
                   textColor: evt.textColor ?? TEXT_COLOR_DEFAULT,
+                  listBlurIntensity: evt.listBlurIntensity ?? LIST_BLUR_DEFAULT,
+                  detailBlurIntensity: evt.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT,
+                  bgImageScale: evt.bgImageScale ?? BG_IMAGE_SCALE_DEFAULT,
               }
             : { ...ADD_DEFAULTS };
         return draft ? ({ ...base, ...draft } as CountdownFormState) : base;
@@ -380,6 +412,11 @@ const CountdownPreviewCard: React.FC<{
     onMouseLeave?: (e: React.MouseEvent) => void;
     isDragging?: boolean;
     showDragHint?: boolean;
+    // Scroll-wheel zoom wiring (task 022). Only meaningful when a bg image is set.
+    onWheel?: (e: React.WheelEvent) => void;
+    // Transient scale-indicator pill: visible flag + the value to show (e.g. 1.2).
+    scaleIndicatorVisible?: boolean;
+    scaleIndicatorValue?: number;
 }> = ({
     form,
     todayStr,
@@ -389,6 +426,9 @@ const CountdownPreviewCard: React.FC<{
     onMouseLeave,
     isDragging = false,
     showDragHint = false,
+    onWheel,
+    scaleIndicatorVisible = false,
+    scaleIndicatorValue = BG_IMAGE_SCALE_DEFAULT,
 }) => {
     // Reuse the shared day-count helper; guard the empty-date case (form not yet
     // filled) so parseUtcDate never sees NaN.
@@ -421,6 +461,7 @@ const CountdownPreviewCard: React.FC<{
                 onMouseMove={onMouseMove}
                 onMouseUp={onMouseUp}
                 onMouseLeave={onMouseLeave}
+                onWheel={onWheel}
                 style={{
                     width: 200,
                     height: 110,
@@ -428,7 +469,7 @@ const CountdownPreviewCard: React.FC<{
                     overflow: 'hidden',
                     position: 'relative',
                     backgroundImage: `url('${resolveApiAssetUrl(form.bgImageUrl)}')`,
-                    backgroundSize: 'cover',
+                    backgroundSize: bgSizeForScale(form.bgImageScale),
                     backgroundPosition: `${form.bgImageOffset.x}% ${form.bgImageOffset.y}%`,
                     backgroundRepeat: 'no-repeat',
                     // grab normally, grabbing while a drag is in progress (step 3).
@@ -467,6 +508,26 @@ const CountdownPreviewCard: React.FC<{
                         </span>
                     </div>
                 )}
+
+                {/* Transient scale indicator (task 022): bottom-right pill showing
+                    the current zoom (e.g. 1.2×). Always mounted so it can fade; the
+                    parent toggles scaleIndicatorVisible on each wheel event and clears
+                    it ~1.2s after scrolling stops. pointerEvents:none so it never
+                    blocks the wheel/drag. */}
+                <div
+                    className="absolute text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                        right: 6,
+                        bottom: 6,
+                        color: '#fff',
+                        background: 'rgba(0,0,0,0.5)',
+                        pointerEvents: 'none',
+                        opacity: scaleIndicatorVisible ? 1 : 0,
+                        transition: 'opacity 0.4s ease',
+                    }}
+                >
+                    {scaleIndicatorValue.toFixed(1)}×
+                </div>
             </div>
         );
     }
@@ -561,6 +622,17 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
     }>({ active: false, startX: 0, startY: 0, startOffset: { ...BG_OFFSET_DEFAULT } });
     const [isDragging, setIsDragging] = useState(false);
 
+    // ── Scroll-wheel zoom of the bg image (task 022) ─────────────────
+    // A transient pill shows the current scale during/just after scrolling. The
+    // visible flag + displayed value are state (so the pill re-renders); a ref
+    // holds the hide timeout so each wheel tick resets the ~1.2s fade-out.
+    const [scaleIndicatorVisible, setScaleIndicatorVisible] = useState(false);
+    const [scaleIndicatorValue, setScaleIndicatorValue] = useState(BG_IMAGE_SCALE_DEFAULT);
+    const scaleHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => {
+        if (scaleHideTimer.current) clearTimeout(scaleHideTimer.current);
+    }, []);
+
     // First-attachment hint (step 3): show a 2s overlay label the first time an
     // image is attached. prevHadImage seeds from the initial form so an edit that
     // opens with a pre-existing image does NOT flash the hint; it only fires on a
@@ -612,6 +684,29 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
         if (!dragRef.current.active) return;
         dragRef.current.active = false;
         setIsDragging(false);
+    };
+
+    // Scroll-wheel zoom over the preview card (task 022). stopPropagation is
+    // required so the island's scroll region does not scroll while scaling;
+    // preventDefault suppresses the page/island scroll for the same gesture.
+    // Scrolling up (deltaY < 0) zooms in, down shrinks the image, clamped to
+    // 0.3–3.0. Reuses update() so the change threads through form state AND the
+    // dispatched SET_COUNTDOWN_FORM_DRAFT (same path as drag-to-pan).
+    const handlePreviewWheel = (e: React.WheelEvent) => {
+        if (!hasBgImage) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const currentScale = form.bgImageScale ?? BG_IMAGE_SCALE_DEFAULT;
+        const delta = -e.deltaY * 0.003;
+        const newScale = Math.min(
+            BG_IMAGE_SCALE_MAX,
+            Math.max(BG_IMAGE_SCALE_MIN, currentScale + delta),
+        );
+        update({ bgImageScale: newScale });
+        setScaleIndicatorValue(newScale);
+        setScaleIndicatorVisible(true);
+        if (scaleHideTimer.current) clearTimeout(scaleHideTimer.current);
+        scaleHideTimer.current = setTimeout(() => setScaleIndicatorVisible(false), 1200);
     };
 
     // Autofocus the name input on mount (step 1).
@@ -711,6 +806,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 bgImageUrl: form.bgImageUrl,
                 bgImageOffset: form.bgImageOffset,
                 textColor: form.textColor,
+                listBlurIntensity: form.listBlurIntensity,
+                detailBlurIntensity: form.detailBlurIntensity,
+                bgImageScale: form.bgImageScale,
             };
             const next = [...countdownEvents, newEvent];
             await saveCountdownEvents(next);
@@ -737,6 +835,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
             bgImageUrl: form.bgImageUrl,
             bgImageOffset: form.bgImageOffset,
             textColor: form.textColor,
+            listBlurIntensity: form.listBlurIntensity,
+            detailBlurIntensity: form.detailBlurIntensity,
+            bgImageScale: form.bgImageScale,
         };
         const next = countdownEvents.map((ev) => (ev.id === targetId ? updated : ev));
         await saveCountdownEvents(next);
@@ -759,7 +860,10 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                 (form.bgImageUrl ?? null) !== (savedEvent.bgImageUrl ?? null) ||
                 form.textColor !== (savedEvent.textColor ?? TEXT_COLOR_DEFAULT) ||
                 form.bgImageOffset.x !== (savedEvent.bgImageOffset?.x ?? BG_OFFSET_DEFAULT.x) ||
-                form.bgImageOffset.y !== (savedEvent.bgImageOffset?.y ?? BG_OFFSET_DEFAULT.y)
+                form.bgImageOffset.y !== (savedEvent.bgImageOffset?.y ?? BG_OFFSET_DEFAULT.y) ||
+                form.listBlurIntensity !== (savedEvent.listBlurIntensity ?? LIST_BLUR_DEFAULT) ||
+                form.detailBlurIntensity !== (savedEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT) ||
+                form.bgImageScale !== (savedEvent.bgImageScale ?? BG_IMAGE_SCALE_DEFAULT)
             );
         }
         return (
@@ -848,6 +952,9 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         onMouseLeave={endPreviewDrag}
                         isDragging={isDragging}
                         showDragHint={showDragHint}
+                        onWheel={handlePreviewWheel}
+                        scaleIndicatorVisible={scaleIndicatorVisible}
+                        scaleIndicatorValue={scaleIndicatorValue}
                     />
 
                     {/* Hidden native file input, triggered by the button below. */}
@@ -887,6 +994,114 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                         <span className="text-[11px] font-medium" style={{ color: '#FF5A5F' }}>
                             上传失败，请重试
                         </span>
+                    )}
+
+                    {/* Frosted-glass blur intensity sliders (task 019). EDIT page only,
+                        and only when a background image is set — the blur is applied to
+                        the image overlay in list/detail rendering. Each is a full-width
+                        native range restyled to a thin dark track + circular thumb via
+                        the scoped .cd-blur-slider CSS below. The current px value sits to
+                        the right of each slider. The countdown root already stops
+                        pointerdown, but we also stop it here so dragging the range never
+                        bubbles to the island's collapse gesture. */}
+                    {mode === 'edit' && hasBgImage && (
+                        <div
+                            className="flex flex-col gap-2 pt-1"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <style>{`
+                                .cd-blur-slider {
+                                    -webkit-appearance: none;
+                                    appearance: none;
+                                    height: 4px;
+                                    border-radius: 9999px;
+                                    background: rgba(255,255,255,0.16);
+                                    outline: none;
+                                    cursor: pointer;
+                                }
+                                .cd-blur-slider::-webkit-slider-thumb {
+                                    -webkit-appearance: none;
+                                    appearance: none;
+                                    width: 14px;
+                                    height: 14px;
+                                    border-radius: 9999px;
+                                    background: #fff;
+                                    border: none;
+                                    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+                                    cursor: pointer;
+                                }
+                                .cd-blur-slider::-moz-range-thumb {
+                                    width: 14px;
+                                    height: 14px;
+                                    border-radius: 9999px;
+                                    background: #fff;
+                                    border: none;
+                                    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+                                    cursor: pointer;
+                                }
+                            `}</style>
+
+                            {/* List-card blur */}
+                            <div className="flex flex-col gap-1">
+                                <span
+                                    className="text-[11px] font-medium"
+                                    style={{ color: 'rgba(255,255,255,0.5)' }}
+                                >
+                                    首页卡片模糊
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="20"
+                                        step="1"
+                                        value={form.listBlurIntensity}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            update({ listBlurIntensity: Number(e.target.value) });
+                                        }}
+                                        className="cd-blur-slider flex-1 min-w-0"
+                                    />
+                                    <span
+                                        className="text-[11px] font-semibold text-right"
+                                        style={{ color: 'rgba(255,255,255,0.7)', minWidth: 30 }}
+                                    >
+                                        {form.listBlurIntensity}px
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Detail-card blur */}
+                            <div className="flex flex-col gap-1">
+                                <span
+                                    className="text-[11px] font-medium"
+                                    style={{ color: 'rgba(255,255,255,0.5)' }}
+                                >
+                                    详情模糊
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="20"
+                                        step="1"
+                                        value={form.detailBlurIntensity}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            update({ detailBlurIntensity: Number(e.target.value) });
+                                        }}
+                                        className="cd-blur-slider flex-1 min-w-0"
+                                    />
+                                    <span
+                                        className="text-[11px] font-semibold text-right"
+                                        style={{ color: 'rgba(255,255,255,0.7)', minWidth: 30 }}
+                                    >
+                                        {form.detailBlurIntensity}px
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -951,52 +1166,31 @@ const CountdownFormPage: React.FC<CountdownFormPageProps> = ({
                     ))}
                 </div>
 
-                {/* Date picker */}
+                {/* Date field (task 021): a plain styled button that navigates to the
+                    dedicated full-island datepicker page instead of opening an overlay
+                    popup. It records which form page to return to, then switches to the
+                    'datepicker' page; the datepicker writes the chosen ISO date back into
+                    the form draft's `date` field and navigates back here. */}
                 <div className="flex flex-col gap-1">
                     <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
                         {dateLabel}
                     </span>
-                    {/* Bug 3: restyle DatePicker's trigger into a compact dark chip.
-                        DatePicker.tsx exposes no icon-suppression prop and renders a
-                        light bg-white pill, so we override its trigger via scoped CSS.
-                        Selectors target ONLY the trigger (`.relative > button`) so the
-                        popover's own chevron icons stay visible. */}
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="cd-datepicker rounded-xl"
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch({ type: 'SET_COUNTDOWN_DATEPICKER_RETURN', payload: mode });
+                            dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'datepicker' });
+                        }}
+                        className="flex items-center px-3 py-2 rounded-xl text-[14px] font-semibold transition-colors"
                         style={{
                             width: 'fit-content',
+                            background: 'rgba(255,255,255,0.06)',
+                            color: form.date === '' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.92)',
                             boxShadow: dateError ? '0 0 0 1px #FF5A5F' : 'none',
-                            borderRadius: 12,
                         }}
                     >
-                        <style>{`
-                            .cd-datepicker .relative > button {
-                                background: rgba(255,255,255,0.06) !important;
-                                border: none !important;
-                                box-shadow: none !important;
-                                padding: 6px 12px !important;
-                                min-width: 0 !important;
-                                max-height: 36px !important;
-                                border-radius: 12px !important;
-                                gap: 0 !important;
-                            }
-                            .cd-datepicker .relative > button > .material-symbols-outlined {
-                                display: none !important;
-                            }
-                            .cd-datepicker .relative > button > span:last-child {
-                                font-size: 14px !important;
-                                line-height: 1.2 !important;
-                                font-weight: 600 !important;
-                                color: rgba(255,255,255,0.92) !important;
-                            }
-                        `}</style>
-                        <DatePicker
-                            selectedDate={form.date || todayStr}
-                            onChange={(d) => update({ date: d })}
-                        />
-                    </div>
+                        {form.date === '' ? '选择日期' : formatCnDate(form.date)}
+                    </button>
                     {dateError && (
                         <span className="text-[11px] font-medium" style={{ color: '#FF5A5F' }}>
                             请选择{dateLabel}
@@ -1201,6 +1395,28 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     const currentEvent =
         countdownEvents.find((e) => e.id === countdownSelectedId) ?? null;
 
+    // Squircle clip-path measurement (task 020). The card is width:100% (capped
+    // at 260) × height 200 — not strictly fixed — so we measure the rendered card
+    // with a ResizeObserver (attached via a callback ref so it re-observes when
+    // the image/non-image branch swaps) and regenerate the clip path at the real
+    // pixel size. clipPathUnits='userSpaceOnUse' means the path is expressed in
+    // the card's own pixel coordinate system.
+    const [cardSize, setCardSize] = useState({ width: 260, height: 200 });
+    const roRef = useRef<ResizeObserver | null>(null);
+    const cardRef = useCallback((node: HTMLDivElement | null) => {
+        roRef.current?.disconnect();
+        if (!node) return;
+        const ro = new ResizeObserver((entries) => {
+            const box = entries[0].contentRect;
+            setCardSize({
+                width: Math.round(box.width),
+                height: Math.round(box.height),
+            });
+        });
+        ro.observe(node);
+        roRef.current = ro;
+    }, []);
+
     // Guard against a stale selected id (event deleted elsewhere): bounce to list.
     // Done in an effect so we don't dispatch during render.
     useEffect(() => {
@@ -1264,23 +1480,41 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                 </button>
             </div>
 
-            {/* Centered squircle card. Squircle fallback (border-radius + clip) matches
-                the list page — rows/cards have no measured width at render time. */}
+            {/* Centered squircle card (task 020). A measured superellipse clip-path
+                replaces the old borderRadius:24 + overflow:hidden so all four corners
+                read as a true squircle; the clip on the container also clips the
+                absolute image/overlay children. Layout: title (top, centered, 16px
+                pt) → day number (vertically centered) → date (absolute bottom, 16px
+                pb). The '天' unit label was removed. */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
+                {/* Zero-size SVG holding the clipPath def; rendered immediately before
+                    the card. Path is regenerated at the card's measured pixel size. */}
+                <svg width={0} height={0} aria-hidden style={{ position: 'absolute' }}>
+                    <defs>
+                        <clipPath id="cd-detail-card" clipPathUnits="userSpaceOnUse">
+                            <path
+                                d={generateFullSquirclePath(
+                                    cardSize.width,
+                                    cardSize.height,
+                                    24,
+                                    SQUIRCLE_SMOOTHNESS_EXPANDED,
+                                )}
+                            />
+                        </clipPath>
+                    </defs>
+                </svg>
+
                 {hasImage ? (
-                    // Three-layer treatment (task 018): the whole card becomes image +
-                    // frosted-glass; the colored top band is removed. Dimensions are
-                    // preserved (height 200 / day-number 56px per task 015). The outer
-                    // div carries borderRadius + overflow:hidden BEFORE the absolute
-                    // image/overlay layers so all three are clipped to the squircle.
+                    // Three-layer treatment (task 018): image + frosted-glass. The
+                    // container's clip-path clips all three layers to the squircle.
                     <div
+                        ref={cardRef}
                         style={{
                             position: 'relative',
                             width: '100%',
                             maxWidth: 260,
                             height: 200,
-                            borderRadius: 24,
-                            overflow: 'hidden',
+                            clipPath: 'url(#cd-detail-card)',
                         }}
                     >
                         {/* Image layer */}
@@ -1290,7 +1524,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                                 inset: 0,
                                 backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
                                 backgroundPosition: `${offset.x}% ${offset.y}%`,
-                                backgroundSize: 'cover',
+                                backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
                                 backgroundRepeat: 'no-repeat',
                             }}
                         />
@@ -1299,8 +1533,8 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                             style={{
                                 position: 'absolute',
                                 inset: 0,
-                                backdropFilter: 'blur(8px)',
-                                WebkitBackdropFilter: 'blur(8px)',
+                                backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                                WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
                                 background: 'rgba(0,0,0,0.40)',
                                 pointerEvents: 'none',
                             }}
@@ -1308,16 +1542,21 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 
                         {/* Text content — all in the event's textColor. */}
                         <div
-                            className="relative z-10 h-full flex flex-col"
+                            className="relative z-10 h-full"
                             style={{ color: textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
                         >
-                            <div className="flex items-center px-4 shrink-0" style={{ height: 32 }}>
-                                <span className="text-[14px] font-semibold truncate">
+                            {/* Title: top, centered, 16px top padding. */}
+                            <div
+                                className="absolute left-0 right-0 top-0 text-center px-4"
+                                style={{ paddingTop: 16 }}
+                            >
+                                <span className="block truncate text-[14px] font-semibold">
                                     {currentEvent.name || '未命名'}
                                 </span>
                             </div>
 
-                            <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
+                            {/* Day number: vertically centered in remaining space. */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
                                 {showPastPrefix && (
                                     <span className="text-[13px] font-medium" style={{ opacity: 0.85 }}>
                                         已过去
@@ -1332,20 +1571,21 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                                         就是今天
                                     </span>
                                 ) : (
-                                    <div className="flex flex-col items-center">
-                                        <span
-                                            className="font-bold leading-none tracking-tight"
-                                            style={{ fontSize: 56 }}
-                                        >
-                                            {bigNumber}
-                                        </span>
-                                        <span className="text-[13px] font-semibold mt-1" style={{ opacity: 0.9 }}>
-                                            天
-                                        </span>
-                                    </div>
+                                    <span
+                                        className="font-bold leading-none tracking-tight"
+                                        style={{ fontSize: 56 }}
+                                    >
+                                        {bigNumber}
+                                    </span>
                                 )}
+                            </div>
 
-                                <span className="text-[11px] font-medium mt-1" style={{ opacity: 0.85 }}>
+                            {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
+                            <div
+                                className="absolute left-0 right-0 bottom-0 text-center px-4"
+                                style={{ paddingBottom: 16 }}
+                            >
+                                <span className="block truncate text-[11px] font-medium" style={{ opacity: 0.85 }}>
                                     {dateRowLabel}：{formatCnDate(currentEvent.date)}
                                 </span>
                             </div>
@@ -1353,33 +1593,33 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                     </div>
                 ) : (
                     <div
+                        ref={cardRef}
                         style={{
+                            position: 'relative',
                             width: '100%',
                             maxWidth: 260,
                             height: 200,
-                            borderRadius: 24,
-                            overflow: 'hidden',
+                            clipPath: 'url(#cd-detail-card)',
                             background: 'rgba(255,255,255,0.06)',
-                            display: 'flex',
-                            flexDirection: 'column',
                         }}
                     >
-                        {/* Colored top band with the title in white. Reduced per Bug 5
-                            so the card stays within the standard expanded height. */}
+                        {/* Title: top, centered, 16px top padding. The colored top
+                            band was replaced by the squircle-clipped card; the event
+                            color accent lives on the day number below. */}
                         <div
-                            className="flex items-center px-4 shrink-0"
-                            style={{ height: 32, background: currentEvent.color }}
+                            className="absolute left-0 right-0 top-0 text-center px-4"
+                            style={{ paddingTop: 16 }}
                         >
                             <span
-                                className="text-[14px] font-semibold truncate"
+                                className="block truncate text-[14px] font-semibold"
                                 style={{ color: '#fff' }}
                             >
                                 {currentEvent.name || '未命名'}
                             </span>
                         </div>
 
-                        {/* Body: big day number (or 就是今天) + unit + date row. */}
-                        <div className="flex-1 flex flex-col items-center justify-center gap-1 px-4">
+                        {/* Day number: vertically centered in remaining space. */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
                             {showPastPrefix && (
                                 <span
                                     className="text-[13px] font-medium"
@@ -1397,24 +1637,22 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                                     就是今天
                                 </span>
                             ) : (
-                                <div className="flex flex-col items-center">
-                                    <span
-                                        className="font-bold leading-none tracking-tight"
-                                        style={{ fontSize: 56, color: currentEvent.color }}
-                                    >
-                                        {bigNumber}
-                                    </span>
-                                    <span
-                                        className="text-[13px] font-semibold mt-1"
-                                        style={{ color: 'rgba(255,255,255,0.7)' }}
-                                    >
-                                        天
-                                    </span>
-                                </div>
+                                <span
+                                    className="font-bold leading-none tracking-tight"
+                                    style={{ fontSize: 56, color: currentEvent.color }}
+                                >
+                                    {bigNumber}
+                                </span>
                             )}
+                        </div>
 
+                        {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
+                        <div
+                            className="absolute left-0 right-0 bottom-0 text-center px-4"
+                            style={{ paddingBottom: 16 }}
+                        >
                             <span
-                                className="text-[11px] font-medium mt-1"
+                                className="block truncate text-[11px] font-medium"
                                 style={{ color: 'rgba(255,255,255,0.5)' }}
                             >
                                 {dateRowLabel}：{formatCnDate(currentEvent.date)}
@@ -1422,6 +1660,202 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
                         </div>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ── Full-island date-selection page (task 021) ───────────────────
+// Replaces the old overlay DatePicker: a pure-black, full-island calendar page
+// that writes the chosen ISO date back into the form draft and returns to the
+// originating form page. Every interactive control is a real <button> (auto-safe
+// against the island's pointerdown collapse gesture) and also calls
+// e.stopPropagation().
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+const DATEPICKER_FALLBACK_COLOR = '#4A9EFF';
+
+interface CountdownDatePickerPageProps {
+    countdownFormDraft?: Partial<CountdownEvent> | null;
+    countdownDatePickerReturn?: 'add' | 'edit' | null;
+    dispatch: React.Dispatch<CountdownAction>;
+}
+
+const CountdownDatePickerPage: React.FC<CountdownDatePickerPageProps> = ({
+    countdownFormDraft,
+    countdownDatePickerReturn,
+    dispatch,
+}) => {
+    const returnPage: 'add' | 'edit' = countdownDatePickerReturn ?? 'add';
+    const selectedIso = countdownFormDraft?.date ?? '';
+    const eventColor = countdownFormDraft?.color || DATEPICKER_FALLBACK_COLOR;
+    const todayStr = localTodayStr();
+
+    // Viewed month — seed from the currently-selected date, else today. Local
+    // state so month nav never touches the form draft (only a day pick does).
+    const seedIso = selectedIso !== '' ? selectedIso : todayStr;
+    const [seedY, seedM] = seedIso.split('-').map((n) => parseInt(n, 10));
+    const [viewYear, setViewYear] = useState(seedY);
+    const [viewMonth, setViewMonth] = useState(seedM - 1); // 0-based
+
+    const goPrevMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear(viewYear - 1);
+        } else {
+            setViewMonth(viewMonth - 1);
+        }
+    };
+    const goNextMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear(viewYear + 1);
+        } else {
+            setViewMonth(viewMonth + 1);
+        }
+    };
+
+    const handleBack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: returnPage });
+    };
+
+    const isoFor = (day: number): string =>
+        `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const handlePickDay = (e: React.MouseEvent, day: number) => {
+        e.stopPropagation();
+        const iso = isoFor(day);
+        // Merge into the existing draft so a name/type the user already entered
+        // survives the form's unmount/remount round-trip (form re-seeds from draft).
+        dispatch({
+            type: 'SET_COUNTDOWN_FORM_DRAFT',
+            payload: { ...(countdownFormDraft ?? {}), date: iso },
+        });
+        dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: returnPage });
+    };
+
+    // 6-row × 7-col grid: leading blanks for the weekday of the 1st, then day
+    // numbers, padded out to 42 cells.
+    const firstWeekday = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length < 42) cells.push(null);
+
+    const arrowBtnStyle: React.CSSProperties = {
+        background: 'rgba(255,255,255,0.08)',
+        color: 'rgba(255,255,255,0.85)',
+    };
+
+    return (
+        <div
+            className="flex flex-col"
+            style={{
+                background: '#000000',
+                // Break out of the expanded content's px-9 py-5 padding so the page
+                // paints the full 540×420 island. Rounded to sit inside the squircle
+                // shell; the parent content wrapper is overflow-hidden.
+                margin: '-20px -36px',
+                width: 'calc(100% + 72px)',
+                height: 'calc(100% + 40px)',
+                borderRadius: 60,
+                padding: '18px 24px',
+                overflow: 'hidden',
+            }}
+        >
+            {/* Top row: back (far left) · centered month nav */}
+            <div className="relative flex items-center justify-center shrink-0" style={{ height: 36 }}>
+                <button
+                    onClick={handleBack}
+                    className="absolute left-0 flex items-center justify-center w-8 h-8 rounded-full text-[20px] leading-none transition-colors"
+                    style={arrowBtnStyle}
+                >
+                    ‹
+                </button>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={goPrevMonth}
+                        className="flex items-center justify-center w-7 h-7 rounded-full text-[18px] leading-none transition-colors"
+                        style={arrowBtnStyle}
+                    >
+                        ‹
+                    </button>
+                    <span className="text-[15px] font-semibold" style={{ color: 'rgba(255,255,255,0.95)' }}>
+                        {viewYear}年{viewMonth + 1}月
+                    </span>
+                    <button
+                        onClick={goNextMonth}
+                        className="flex items-center justify-center w-7 h-7 rounded-full text-[18px] leading-none transition-colors"
+                        style={arrowBtnStyle}
+                    >
+                        ›
+                    </button>
+                </div>
+            </div>
+
+            {/* Weekday header */}
+            <div
+                className="grid shrink-0 pt-3"
+                style={{ gridTemplateColumns: 'repeat(7, 44px)', justifyContent: 'center' }}
+            >
+                {WEEKDAY_LABELS.map((w) => (
+                    <div
+                        key={w}
+                        className="flex items-center justify-center text-[11px] font-medium"
+                        style={{ height: 24, color: 'rgba(255,255,255,0.4)' }}
+                    >
+                        {w}
+                    </div>
+                ))}
+            </div>
+
+            {/* Day grid: 6 rows × 7 cols, cells 44×32. */}
+            <div
+                className="grid pt-1"
+                style={{
+                    gridTemplateColumns: 'repeat(7, 44px)',
+                    gridAutoRows: '32px',
+                    justifyContent: 'center',
+                }}
+            >
+                {cells.map((day, idx) => {
+                    if (day === null) {
+                        return <div key={idx} style={{ width: 44, height: 32 }} />;
+                    }
+                    const iso = isoFor(day);
+                    const isSelected = iso === selectedIso;
+                    const isToday = iso === todayStr;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={(e) => handlePickDay(e, day)}
+                            className="flex items-center justify-center"
+                            style={{ width: 44, height: 32, background: 'transparent' }}
+                        >
+                            <span
+                                className="flex items-center justify-center text-[13px] font-medium"
+                                style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 9999,
+                                    background: isSelected ? eventColor : 'transparent',
+                                    color: isSelected ? '#fff' : 'rgba(255,255,255,0.85)',
+                                    // TODAY: subtle white ring (skipped when it's the
+                                    // selected cell, which already reads as filled).
+                                    boxShadow:
+                                        !isSelected && isToday
+                                            ? 'inset 0 0 0 1px rgba(255,255,255,0.28)'
+                                            : 'none',
+                                }}
+                            >
+                                {day}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );
@@ -1442,6 +1876,15 @@ const ExpandedCountdownCard: React.FC<ExpandedCountdownCardProps> = (props) => {
                     countdownEvents={props.countdownEvents}
                     countdownSelectedId={props.countdownSelectedId}
                     countdownFormDraft={props.countdownFormDraft}
+                    dispatch={props.dispatch}
+                />
+            );
+            break;
+        case 'datepicker':
+            content = (
+                <CountdownDatePickerPage
+                    countdownFormDraft={props.countdownFormDraft}
+                    countdownDatePickerReturn={props.countdownDatePickerReturn}
                     dispatch={props.dispatch}
                 />
             );

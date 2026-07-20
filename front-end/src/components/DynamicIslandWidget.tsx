@@ -265,8 +265,12 @@ const DynamicIslandWidget: React.FC = () => {
     // factor as the other expanded dimensions so it shrinks on smaller displays.
     // Declared here (before the resize effect) so the effect can size the window
     // to the form height without a second, racing resize effect.
+    // Also true on the dedicated full-island date-selection page so the shell
+    // stays at the 540×420 form box while picking a date (task 021).
     const isCountdownFormMode = appDisplayMode === 'countdown'
-        && (state.countdownPage === 'add' || state.countdownPage === 'edit');
+        && (state.countdownPage === 'add'
+            || state.countdownPage === 'edit'
+            || state.countdownPage === 'datepicker');
     const countdownFormWidth  = COUNTDOWN_FORM_WIDTH * expandedScale;
     const countdownFormHeight = COUNTDOWN_FORM_HEIGHT * expandedScale;
 
@@ -775,6 +779,7 @@ const DynamicIslandWidget: React.FC = () => {
                                     countdownEvents={state.countdownEvents}
                                     countdownSelectedId={state.countdownSelectedId}
                                     countdownFormDraft={state.countdownFormDraft}
+                                    countdownDatePickerReturn={state.countdownDatePickerReturn}
                                     dispatch={dispatch}
                                 />
                             ) : null}

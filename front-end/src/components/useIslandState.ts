@@ -78,7 +78,7 @@ const createEmptyTodoPreview = (): TodoPreviewData => ({
 
 export type AppDisplayMode = 'review' | 'todo' | 'countdown';
 
-export type CountdownPage = 'list' | 'detail' | 'add' | 'edit';
+export type CountdownPage = 'list' | 'detail' | 'add' | 'edit' | 'datepicker';
 
 interface IslandState {
     isExpanded: boolean;
@@ -91,6 +91,9 @@ interface IslandState {
     mode: 'app' | 'music';
     appDisplayMode: AppDisplayMode;
     countdownPage: CountdownPage;
+    // Which form page ('add' | 'edit') the dedicated datepicker page should
+    // return to once a date is chosen (or the back arrow is pressed).
+    countdownDatePickerReturn: 'add' | 'edit' | null;
     countdownSelectedId: string | null;
     countdownFormDraft: Partial<CountdownEvent> | null;
     countdownEvents: CountdownEvent[];
@@ -119,6 +122,7 @@ const initialState: IslandState = {
     mode: 'app',
     appDisplayMode: 'review',
     countdownPage: 'list',
+    countdownDatePickerReturn: null,
     countdownSelectedId: null,
     countdownFormDraft: null,
     countdownEvents: [],
@@ -148,6 +152,7 @@ type IslandAction =
     | { type: 'SET_MODE'; payload: 'app' | 'music' }
     | { type: 'SET_APP_DISPLAY_MODE'; payload: AppDisplayMode }
     | { type: 'SET_COUNTDOWN_PAGE'; payload: CountdownPage }
+    | { type: 'SET_COUNTDOWN_DATEPICKER_RETURN'; payload: 'add' | 'edit' | null }
     | { type: 'SET_COUNTDOWN_SELECTED_ID'; payload: string | null }
     | { type: 'SET_COUNTDOWN_FORM_DRAFT'; payload: Partial<CountdownEvent> | null }
     | { type: 'SET_COUNTDOWN_EVENTS'; payload: CountdownEvent[] }
@@ -200,6 +205,8 @@ function islandReducer(state: IslandState, action: IslandAction): IslandState {
             return { ...state, appDisplayMode: action.payload };
         case 'SET_COUNTDOWN_PAGE':
             return { ...state, countdownPage: action.payload };
+        case 'SET_COUNTDOWN_DATEPICKER_RETURN':
+            return { ...state, countdownDatePickerReturn: action.payload };
         case 'SET_COUNTDOWN_SELECTED_ID':
             return { ...state, countdownSelectedId: action.payload };
         case 'SET_COUNTDOWN_FORM_DRAFT':

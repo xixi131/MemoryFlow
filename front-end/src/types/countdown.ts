@@ -26,4 +26,25 @@ export interface CountdownEvent {
     bgImageOffset?: { x: number; y: number };
     /** Card text color used when a background image is set. Defaults to '#FFFFFF'. */
     textColor?: string;
+    /**
+     * Frosted-glass blur intensity (px) applied to the LIST card overlay when a
+     * background image is set. Range 0–20. Defaults to 6. Optional so events
+     * saved before this field existed still load.
+     */
+    listBlurIntensity?: number;
+    /**
+     * Frosted-glass blur intensity (px) applied to the DETAIL card overlay when a
+     * background image is set. Range 0–20. Defaults to 8. Optional so events
+     * saved before this field existed still load.
+     */
+    detailBlurIntensity?: number;
+    /**
+     * Background-image zoom/scale for the card. Applied as the background-size
+     * multiplier: 1.0 (or absent) renders as 'cover'; other values render as
+     * `${bgImageScale * 100}% auto`, so <1 shrinks the image (reveals more) and
+     * >1 zooms in. Range 0.3–3.0. Defaults to 1.0. Optional so events saved
+     * before this field existed still load. Adjusted via the edit-page preview
+     * card's scroll wheel (task 022).
+     */
+    bgImageScale?: number;
 }
