@@ -1449,7 +1449,7 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     const dateRowLabel = isCountup ? '起始日' : '目标日';
 
     // hasImage picks the text color (image → user textColor; solid → white).
-    // The image itself is rendered by DynamicIslandWidget's full-bleed layer.
+    // The image itself is rendered by DynamicIslandWidget's full-bleed overlay.
     const hasImage = currentEvent.bgImageUrl != null && currentEvent.bgImageUrl !== '';
     const textColor = currentEvent.textColor ?? TEXT_COLOR_DEFAULT;
 
@@ -1467,11 +1467,11 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 
     // True full-bleed detail page. The BACKGROUND (image / event color, clipped to
     // the island silhouette INCLUDING the ears) is rendered by DynamicIslandWidget
-    // in the outer island motion.div at z-55 — see detailBgEvent there. This
-    // component renders ONLY the foreground: nav buttons + title/number/date text,
-    // over a transparent container so the external image shows through.
-    // Non-interactive layers use pointerEvents:'none' so buttons stay hittable
-    // even though later layers (number, title) render above them in z-order.
+    // in the outer motion.div at z-55 — see detailBgEvent there. This component
+    // renders ONLY the foreground (nav buttons + title/number/date) over a
+    // transparent container so the external image shows through. Non-interactive
+    // layers use pointerEvents:'none' so buttons stay hittable even though later
+    // layers (number, title) render above them in z-order.
     const textShadow = '0 1px 8px rgba(0,0,0,0.72), 0 0 2px rgba(0,0,0,0.5)';
     const accentColor = hasImage ? textColor : '#ffffff';
     const displayOnly: React.CSSProperties = { pointerEvents: 'none' };

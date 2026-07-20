@@ -533,12 +533,14 @@ const DynamicIslandWidget: React.FC = () => {
     const shellExpandedWidth  = isCountdownFormMode ? countdownFormWidth  : expandedWidth;
     const shellExpandedHeight = isCountdownFormMode ? countdownFormHeight : expandedContentHeight;
 
-    // Full-bleed background for the countdown detail page. The image is rendered
-    // at z-55 inside the island's outer motion.div (which has no overflow-hidden,
-    // so it can extend left:-40px and right:-40px to reach the ear areas). A CSS
-    // SVG mask unions the squircle body + both ear shapes so the image is clipped
-    // exactly to the island silhouette. The ear black fills are hidden in this
-    // mode since the image itself provides the visual.
+    // Countdown detail page full-bleed background. Rendered as a single overlay in
+    // the outer island motion.div at z-55 — ABOVE the black cap shell (z-0) and the
+    // black ears (z-50), BELOW the z-9999 hit area (so the text/buttons stay on top
+    // and clickable). The overlay spans the full island silhouette INCLUDING the
+    // ears (left:-40 → width+40) and is clipped to union(leftEar, body, rightEar).
+    // Keeping the black ears UNDERNEATH is deliberate: if the clip is off by a
+    // sub-pixel the gap shows black (the island edge), never the desktop. The
+    // overlay is pointerEvents:none so it never intercepts the collapse gesture.
     const detailBgEvent = isCountdownDetailMode
         ? state.countdownEvents.find((e) => e.id === state.countdownSelectedId) ?? null
         : null;
@@ -587,98 +589,6 @@ const DynamicIslandWidget: React.FC = () => {
                 }}
                 transition={shellPathTransition}
             >
-                {/* ── Full-bleed detail background (countdown detail mode only) ──
-                    Rendered at z-55 so it sits above the CSS cap shell (z-0) and the
-                    ear fills (z-50). Spans left:-40px to right:-40px so it physically
-                    covers the ear regions. An SVG mask unions the squircle body path +
-                    both ear paths so only the island silhouette is visible; everything
-                    outside the mask is transparent (shows desktop through). The ear
-                    black fills are hidden in this mode (see below) so the image IS
-                    the ear visual. ── */}
-                {detailBgEvent && (() => {
-                    const earW = 40;
-                    const totalW = shellExpandedWidth + earW * 2;
-                    const bgUrl = detailBgEvent.bgImageUrl
-                        ? `url('${resolveApiAssetUrl(detailBgEvent.bgImageUrl)}')`
-                        : undefined;
-                    const bgPos = `${detailBgEvent.bgImageOffset?.x ?? 50}% ${detailBgEvent.bgImageOffset?.y ?? 50}%`;
-                    const bgSize = (() => {
-                        const s = detailBgEvent.bgImageScale;
-                        return !s || s === 1.0 ? 'cover' : `${s * 100}% auto`;
-                    })();
-                    const blurPx = detailBgEvent.detailBlurIntensity ?? 8;
-                    // Ear paths (40×40 viewBox). Left ear coords align with div x:[0,40];
-                    // squircle coords align with div x:[earW, earW+W]; right ear with x:[earW+W, totalW].
-                    const leftEarD  = generateEarPath(true,  earTension, earBlendHeight, earSmoothness);
-                    const rightEarD = generateEarPath(false, earTension, earBlendHeight, earSmoothness);
-                    const squircleD = generateFullSquirclePath(shellExpandedWidth, shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED);
-                    return (
-                        <>
-                            {/* SVG clipPath: union of leftEar + body squircle + rightEar,
-                                in the image div's own pixel coordinate system. clipPath
-                                (geometry) is more reliable than CSS mask (luminance) in
-                                Chromium and unions all child paths automatically. */}
-                            <svg width={0} height={0} style={{ position: 'absolute', overflow: 'visible' }}>
-                                <defs>
-                                    <clipPath id="cd-island-clip" clipPathUnits="userSpaceOnUse">
-                                        {/* Left ear — path coords 0-40 map to div x:[0,earW] */}
-                                        <path d={leftEarD} />
-                                        {/* Squircle body — offset right by earW */}
-                                        <path d={squircleD} transform={`translate(${earW},0)`} />
-                                        {/* Right ear — offset right by earW+W */}
-                                        <path d={rightEarD} transform={`translate(${earW + shellExpandedWidth},0)`} />
-                                    </clipPath>
-                                </defs>
-                            </svg>
-
-                            {/* Full-bleed image container spanning ears + body */}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    left: -earW,
-                                    top: 0,
-                                    width: totalW,
-                                    height: shellExpandedHeight,
-                                    zIndex: 55,
-                                    clipPath: 'url(#cd-island-clip)',
-                                    WebkitClipPath: 'url(#cd-island-clip)',
-                                }}
-                            >
-                                {bgUrl ? (
-                                    <>
-                                        {/* Blurred backdrop for letterbox gaps */}
-                                        <div style={{
-                                            position: 'absolute', inset: 0, pointerEvents: 'none',
-                                            backgroundImage: bgUrl,
-                                            backgroundSize: 'cover', backgroundPosition: 'center',
-                                            filter: 'blur(22px)', transform: 'scale(1.18)',
-                                        }} />
-                                        {/* Main image */}
-                                        <div style={{
-                                            position: 'absolute', inset: 0, pointerEvents: 'none',
-                                            backgroundImage: bgUrl,
-                                            backgroundPosition: bgPos,
-                                            backgroundSize: bgSize,
-                                            backgroundRepeat: 'no-repeat',
-                                        }} />
-                                        {/* Optional frosted glass */}
-                                        {blurPx > 0 && (
-                                            <div style={{
-                                                position: 'absolute', inset: 0, pointerEvents: 'none',
-                                                backdropFilter: `blur(${blurPx}px)`,
-                                                WebkitBackdropFilter: `blur(${blurPx}px)`,
-                                            }} />
-                                        )}
-                                    </>
-                                ) : (
-                                    /* Solid event color */
-                                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundColor: detailBgEvent.color }} />
-                                )}
-                            </div>
-                        </>
-                    );
-                })()}
-
                 {/* ── Shell: CSS-laid-out caps + flex middle ──────────────────
                     This is the SOLE black shell. Its outer edges track the container
                     width via flexbox each frame — exactly like the ears (right:-40px)
@@ -718,29 +628,101 @@ const DynamicIslandWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ── Liquid ears ── Hidden in detail mode (image layer provides visual) */}
+                {/* ── Liquid ears ── */}
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ left: '-40px' }}>
-                    {!isCountdownDetailMode && (
-                        <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
-                            <motion.path
-                                fill="#000000"
-                                animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
-                                transition={capEarTransition}
-                            />
-                        </motion.svg>
-                    )}
+                    <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                        <motion.path
+                            fill="#000000"
+                            animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
+                            transition={capEarTransition}
+                        />
+                    </motion.svg>
                 </div>
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ right: '-40px' }}>
-                    {!isCountdownDetailMode && (
-                        <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
-                            <motion.path
-                                fill="#000000"
-                                animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
-                                transition={capEarTransition}
-                            />
-                        </motion.svg>
-                    )}
+                    <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                        <motion.path
+                            fill="#000000"
+                            animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
+                            transition={capEarTransition}
+                        />
+                    </motion.svg>
                 </div>
+
+                {/* ── Countdown detail full-bleed background (image incl. ears) ──
+                    z-55: above the black shell (z-0) and black ears (z-50), below the
+                    z-9999 hit area (text/buttons stay on top & clickable). Spans the
+                    whole island silhouette; clipped to union(leftEar, body, rightEar).
+                    pointerEvents:none so it never blocks the collapse gesture. Black
+                    ears remain underneath as a safety base against sub-pixel clip gaps. */}
+                {detailBgEvent && (() => {
+                    const earW = 40;
+                    const W = shellExpandedWidth;
+                    const H = shellExpandedHeight;
+                    const totalW = W + earW * 2;
+                    const url = detailBgEvent.bgImageUrl
+                        ? `url('${resolveApiAssetUrl(detailBgEvent.bgImageUrl)}')`
+                        : undefined;
+                    const pos = `${detailBgEvent.bgImageOffset?.x ?? 50}% ${detailBgEvent.bgImageOffset?.y ?? 50}%`;
+                    const scale = detailBgEvent.bgImageScale;
+                    const size = !scale || scale === 1.0 ? 'cover' : `${scale * 100}% auto`;
+                    const blurPx = detailBgEvent.detailBlurIntensity ?? 8;
+                    const leftEarD = generateEarPath(true, earTension, earBlendHeight, earSmoothness);
+                    const rightEarD = generateEarPath(false, earTension, earBlendHeight, earSmoothness);
+                    const bodyD = generateFullSquirclePath(W, H, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED);
+                    return (
+                        <>
+                            {/* Zero-size SVG holding the union clipPath (userSpaceOnUse
+                                = overlay-div pixel coords: leftEar[0-40], body@+40, rightEar@+40+W) */}
+                            <svg width={0} height={0} aria-hidden style={{ position: 'absolute' }}>
+                                <defs>
+                                    <clipPath id="cd-island-clip" clipPathUnits="userSpaceOnUse">
+                                        <path d={leftEarD} />
+                                        <path d={bodyD} transform={`translate(${earW},0)`} />
+                                        <path d={rightEarD} transform={`translate(${earW + W},0)`} />
+                                    </clipPath>
+                                </defs>
+                            </svg>
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: -earW,
+                                    top: 0,
+                                    width: totalW,
+                                    height: H,
+                                    zIndex: 55,
+                                    pointerEvents: 'none',
+                                    clipPath: 'url(#cd-island-clip)',
+                                    WebkitClipPath: 'url(#cd-island-clip)',
+                                }}
+                            >
+                                {url ? (
+                                    <>
+                                        <div style={{
+                                            position: 'absolute', inset: 0,
+                                            backgroundImage: url, backgroundSize: 'cover',
+                                            backgroundPosition: 'center',
+                                            filter: 'blur(22px)', transform: 'scale(1.18)',
+                                        }} />
+                                        <div style={{
+                                            position: 'absolute', inset: 0,
+                                            backgroundImage: url, backgroundPosition: pos,
+                                            backgroundSize: size, backgroundRepeat: 'no-repeat',
+                                        }} />
+                                        {blurPx > 0 && (
+                                            <div style={{
+                                                position: 'absolute', inset: 0,
+                                                backdropFilter: `blur(${blurPx}px)`,
+                                                WebkitBackdropFilter: `blur(${blurPx}px)`,
+                                            }} />
+                                        )}
+                                    </>
+                                ) : (
+                                    <div style={{ position: 'absolute', inset: 0, backgroundColor: detailBgEvent.color }} />
+                                )}
+                            </div>
+                        </>
+                    );
+                })()}
 
                 {/* ── Hit area + gesture handling ── */}
                 <motion.div
@@ -866,7 +848,7 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className={`flex flex-col w-full flex-1 z-10 overflow-hidden${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5'}`}
+                            className={`flex flex-col w-full flex-1 z-10${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5 overflow-hidden'}`}
                             style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
