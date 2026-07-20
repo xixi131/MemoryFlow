@@ -753,7 +753,7 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
+                            className="flex flex-col w-full flex-1 px-9 py-5 pb-5 z-10 overflow-hidden"
                             style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
