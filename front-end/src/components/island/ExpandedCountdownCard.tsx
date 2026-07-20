@@ -1448,10 +1448,9 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 
     const dateRowLabel = isCountup ? '起始日' : '目标日';
 
-    // Background-image rendering (task 018). bgImageUrl holds a resolved absolute
-    // URL; guard the optional offset/textColor for older events.
+    // hasImage picks the text color (image → user textColor; solid → white).
+    // The image itself is rendered by DynamicIslandWidget's full-bleed layer.
     const hasImage = currentEvent.bgImageUrl != null && currentEvent.bgImageUrl !== '';
-    const offset = currentEvent.bgImageOffset ?? BG_OFFSET_DEFAULT;
     const textColor = currentEvent.textColor ?? TEXT_COLOR_DEFAULT;
 
     const handleBack = (e: React.MouseEvent) => {
@@ -1466,9 +1465,11 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
-    // True full-bleed detail page. DynamicIslandWidget removes its px-9 py-5
-    // padding (isCountdownDetailMode) and applies a squircle clip-path so the
-    // image is clipped to the exact island shape instead of a rectangle.
+    // True full-bleed detail page. The BACKGROUND (image / event color, clipped to
+    // the island silhouette INCLUDING the ears) is rendered by DynamicIslandWidget
+    // in the outer island motion.div at z-55 — see detailBgEvent there. This
+    // component renders ONLY the foreground: nav buttons + title/number/date text,
+    // over a transparent container so the external image shows through.
     // Non-interactive layers use pointerEvents:'none' so buttons stay hittable
     // even though later layers (number, title) render above them in z-order.
     const textShadow = '0 1px 8px rgba(0,0,0,0.72), 0 0 2px rgba(0,0,0,0.5)';
@@ -1480,31 +1481,6 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
             className="h-full w-full relative"
             onClick={(e) => e.stopPropagation()}
         >
-            {/* ── Layer 1: background — pointerEvents:none (display only) ── */}
-            {hasImage ? (
-                <>
-                    <div style={{ position: 'absolute', inset: 0, ...displayOnly,
-                        backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                        backgroundSize: 'cover', backgroundPosition: 'center',
-                        filter: 'blur(22px)', transform: 'scale(1.18)',
-                    }} />
-                    <div style={{ position: 'absolute', inset: 0, ...displayOnly,
-                        backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
-                        backgroundPosition: `${offset.x}% ${offset.y}%`,
-                        backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
-                        backgroundRepeat: 'no-repeat',
-                    }} />
-                    {(currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT) > 0 && (
-                        <div style={{ position: 'absolute', inset: 0, ...displayOnly,
-                            backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                            WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
-                        }} />
-                    )}
-                </>
-            ) : (
-                <div style={{ position: 'absolute', inset: 0, ...displayOnly, backgroundColor: currentEvent.color }} />
-            )}
-
             {/* ── Layer 2: nav buttons — float at top corners over the image ── */}
             <button
                 onClick={handleBack}

@@ -41,6 +41,7 @@ import {
 } from './islandMotionTokens';
 import { useIslandState } from './useIslandState';
 import { getCountdownEvents } from '../api/countdownApi';
+import { resolveApiAssetUrl } from '../utils/resolveApiAssetUrl';
 import MusicActivityContent from './island/MusicActivityContent';
 import AppActivityContent from './island/AppActivityContent';
 import ExpandedMusicCard from './island/ExpandedMusicCard';
@@ -532,13 +533,15 @@ const DynamicIslandWidget: React.FC = () => {
     const shellExpandedWidth  = isCountdownFormMode ? countdownFormWidth  : expandedWidth;
     const shellExpandedHeight = isCountdownFormMode ? countdownFormHeight : expandedContentHeight;
 
-    // Full-bleed clip-path for the countdown detail page: clips the expanded
-    // content wrapper to exactly the island's squircle shape so the background
-    // image doesn't bleed into the corner regions where the black CSS cap shell
-    // sits at z-0 (below the z-9999 hit area / content).
-    const detailClipPath = isCountdownDetailMode
-        ? `path('${generateFullSquirclePath(shellExpandedWidth, shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED)}')`
-        : undefined;
+    // Full-bleed background for the countdown detail page. The image is rendered
+    // at z-55 inside the island's outer motion.div (which has no overflow-hidden,
+    // so it can extend left:-40px and right:-40px to reach the ear areas). A CSS
+    // SVG mask unions the squircle body + both ear shapes so the image is clipped
+    // exactly to the island silhouette. The ear black fills are hidden in this
+    // mode since the image itself provides the visual.
+    const detailBgEvent = isCountdownDetailMode
+        ? state.countdownEvents.find((e) => e.id === state.countdownSelectedId) ?? null
+        : null;
 
     // ─────────────────────────────────────────────────────────
     // Render
@@ -584,6 +587,98 @@ const DynamicIslandWidget: React.FC = () => {
                 }}
                 transition={shellPathTransition}
             >
+                {/* ── Full-bleed detail background (countdown detail mode only) ──
+                    Rendered at z-55 so it sits above the CSS cap shell (z-0) and the
+                    ear fills (z-50). Spans left:-40px to right:-40px so it physically
+                    covers the ear regions. An SVG mask unions the squircle body path +
+                    both ear paths so only the island silhouette is visible; everything
+                    outside the mask is transparent (shows desktop through). The ear
+                    black fills are hidden in this mode (see below) so the image IS
+                    the ear visual. ── */}
+                {detailBgEvent && (() => {
+                    const earW = 40;
+                    const totalW = shellExpandedWidth + earW * 2;
+                    const bgUrl = detailBgEvent.bgImageUrl
+                        ? `url('${resolveApiAssetUrl(detailBgEvent.bgImageUrl)}')`
+                        : undefined;
+                    const bgPos = `${detailBgEvent.bgImageOffset?.x ?? 50}% ${detailBgEvent.bgImageOffset?.y ?? 50}%`;
+                    const bgSize = (() => {
+                        const s = detailBgEvent.bgImageScale;
+                        return !s || s === 1.0 ? 'cover' : `${s * 100}% auto`;
+                    })();
+                    const blurPx = detailBgEvent.detailBlurIntensity ?? 8;
+                    // Ear paths (40×40 viewBox). Left ear coords align with div x:[0,40];
+                    // squircle coords align with div x:[earW, earW+W]; right ear with x:[earW+W, totalW].
+                    const leftEarD  = generateEarPath(true,  earTension, earBlendHeight, earSmoothness);
+                    const rightEarD = generateEarPath(false, earTension, earBlendHeight, earSmoothness);
+                    const squircleD = generateFullSquirclePath(shellExpandedWidth, shellExpandedHeight, EXPANDED_RADIUS, SQUIRCLE_SMOOTHNESS_EXPANDED);
+                    return (
+                        <>
+                            {/* SVG clipPath: union of leftEar + body squircle + rightEar,
+                                in the image div's own pixel coordinate system. clipPath
+                                (geometry) is more reliable than CSS mask (luminance) in
+                                Chromium and unions all child paths automatically. */}
+                            <svg width={0} height={0} style={{ position: 'absolute', overflow: 'visible' }}>
+                                <defs>
+                                    <clipPath id="cd-island-clip" clipPathUnits="userSpaceOnUse">
+                                        {/* Left ear — path coords 0-40 map to div x:[0,earW] */}
+                                        <path d={leftEarD} />
+                                        {/* Squircle body — offset right by earW */}
+                                        <path d={squircleD} transform={`translate(${earW},0)`} />
+                                        {/* Right ear — offset right by earW+W */}
+                                        <path d={rightEarD} transform={`translate(${earW + shellExpandedWidth},0)`} />
+                                    </clipPath>
+                                </defs>
+                            </svg>
+
+                            {/* Full-bleed image container spanning ears + body */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: -earW,
+                                    top: 0,
+                                    width: totalW,
+                                    height: shellExpandedHeight,
+                                    zIndex: 55,
+                                    clipPath: 'url(#cd-island-clip)',
+                                    WebkitClipPath: 'url(#cd-island-clip)',
+                                }}
+                            >
+                                {bgUrl ? (
+                                    <>
+                                        {/* Blurred backdrop for letterbox gaps */}
+                                        <div style={{
+                                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                                            backgroundImage: bgUrl,
+                                            backgroundSize: 'cover', backgroundPosition: 'center',
+                                            filter: 'blur(22px)', transform: 'scale(1.18)',
+                                        }} />
+                                        {/* Main image */}
+                                        <div style={{
+                                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                                            backgroundImage: bgUrl,
+                                            backgroundPosition: bgPos,
+                                            backgroundSize: bgSize,
+                                            backgroundRepeat: 'no-repeat',
+                                        }} />
+                                        {/* Optional frosted glass */}
+                                        {blurPx > 0 && (
+                                            <div style={{
+                                                position: 'absolute', inset: 0, pointerEvents: 'none',
+                                                backdropFilter: `blur(${blurPx}px)`,
+                                                WebkitBackdropFilter: `blur(${blurPx}px)`,
+                                            }} />
+                                        )}
+                                    </>
+                                ) : (
+                                    /* Solid event color */
+                                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundColor: detailBgEvent.color }} />
+                                )}
+                            </div>
+                        </>
+                    );
+                })()}
+
                 {/* ── Shell: CSS-laid-out caps + flex middle ──────────────────
                     This is the SOLE black shell. Its outer edges track the container
                     width via flexbox each frame — exactly like the ears (right:-40px)
@@ -623,24 +718,28 @@ const DynamicIslandWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ── Liquid ears ── */}
+                {/* ── Liquid ears ── Hidden in detail mode (image layer provides visual) */}
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ left: '-40px' }}>
-                    <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
-                        <motion.path
-                            fill="#000000"
-                            animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
-                            transition={capEarTransition}
-                        />
-                    </motion.svg>
+                    {!isCountdownDetailMode && (
+                        <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                animate={{ d: generateEarPath(true, earTension, earBlendHeight, earSmoothness) }}
+                                transition={capEarTransition}
+                            />
+                        </motion.svg>
+                    )}
                 </div>
                 <div className="absolute top-0 w-[40px] h-[40px] z-50 pointer-events-none" style={{ right: '-40px' }}>
-                    <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
-                        <motion.path
-                            fill="#000000"
-                            animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
-                            transition={capEarTransition}
-                        />
-                    </motion.svg>
+                    {!isCountdownDetailMode && (
+                        <motion.svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="overflow-visible">
+                            <motion.path
+                                fill="#000000"
+                                animate={{ d: generateEarPath(false, earTension, earBlendHeight, earSmoothness) }}
+                                transition={capEarTransition}
+                            />
+                        </motion.svg>
+                    )}
                 </div>
 
                 {/* ── Hit area + gesture handling ── */}
@@ -767,15 +866,8 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className={`flex flex-col w-full flex-1 z-10${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5 overflow-hidden'}`}
-                            style={{
-                                width: shellExpandedWidth,
-                                minWidth: shellExpandedWidth,
-                                // Clip to the exact island squircle so the full-bleed image
-                                // does not overflow into the corner regions drawn by the
-                                // black CSS cap shell at z-0 (which sits below z-9999 content).
-                                clipPath: detailClipPath,
-                            }}
+                            className={`flex flex-col w-full flex-1 z-10 overflow-hidden${isCountdownDetailMode ? '' : ' px-9 py-5 pb-5'}`}
+                            style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
                                 <ExpandedMusicCard
