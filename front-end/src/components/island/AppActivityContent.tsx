@@ -8,12 +8,19 @@ import type { WidgetData, TodoPreviewData } from '../useIslandState';
 import type { CountdownEvent } from '../../types/countdown';
 import { calcEventDays } from '../../utils/countdownCalc';
 
+// Open-book glyph — mirrors mac-island IslandReviewOpenBookGlyph (fanned pages + spine),
+// stroked in review blue (#60a5fa, 1.5px round cap/join) to match the Mac activity tint.
+// Replaces the old amber notebook icon which matched neither the Mac shape nor color.
 const ReviewModeIcon: React.FC = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6.5 4.5H17.5C18.3284 4.5 19 5.17157 19 6V18C19 18.8284 18.3284 19.5 17.5 19.5H6.5C5.67157 19.5 5 18.8284 5 18V6C5 5.17157 5.67157 4.5 6.5 4.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M9.5 4.5V19.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M13 8H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M13 11H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+            d="M12 5.2C8.6 2.9 5.2 2.9 2.4 4.4L2.4 17.8C5.2 16.6 8.6 16.6 12 18.6M12 5.2C15.4 2.9 18.8 2.9 21.6 4.4L21.6 17.8C18.8 16.6 15.4 16.6 12 18.6M12 5.2L12 18.6"
+            stroke="#60a5fa"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+        />
     </svg>
 );
 
@@ -94,11 +101,11 @@ const AppActivityContent: React.FC<AppActivityContentProps> = ({
                     className="flex items-center justify-center rounded-md text-white/90 active:scale-95 transition-transform"
                 >
                     {appDisplayMode === 'todo' ? (
-                        <span className="material-symbols-outlined text-sm text-cyan-300">checklist</span>
+                        <span className="material-symbols-outlined text-sm" style={{ color: 'rgb(255,149,0)' }}>checklist</span>
                     ) : appDisplayMode === 'countdown' ? (
                         <span className="material-symbols-outlined text-sm text-emerald-300">event</span>
                     ) : (
-                        <div className="text-amber-300 flex items-center justify-center">
+                        <div className="flex items-center justify-center">
                             <ReviewModeIcon />
                         </div>
                     )}

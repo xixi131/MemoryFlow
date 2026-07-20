@@ -737,7 +737,7 @@ const DynamicIslandWidget: React.FC = () => {
                             ) : mode === 'app' && appDisplayMode === 'todo' && !hasAppActivitySource ? (
                                 <div className="flex items-center justify-between w-full h-full px-3">
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <span className="material-symbols-outlined text-sm text-cyan-300">checklist</span>
+                                        <span className="material-symbols-outlined text-sm" style={{ color: 'rgb(255,149,0)' }}>checklist</span>
                                     </div>
                                     <span className="text-[12px] font-bold text-white/[0.84] leading-none">
                                         {`${Math.max(todoPreview.pending, 0)}`}
@@ -753,7 +753,7 @@ const DynamicIslandWidget: React.FC = () => {
                             initial={false}
                             animate={{ opacity: isExpanded ? 1 : 0, filter: isExpanded ? 'blur(0px)' : 'blur(5px)', scale: isExpanded ? 1 : 0.96, y: isExpanded ? 0 : -4, pointerEvents: isExpanded ? 'auto' : 'none' }}
                             transition={expandedContentTransition}
-                            className="flex flex-col w-full px-9 py-5 pb-5 z-10 overflow-hidden"
+                            className="flex flex-col flex-1 min-h-0 w-full px-9 py-5 pb-5 z-10 overflow-hidden"
                             style={{ width: shellExpandedWidth, minWidth: shellExpandedWidth }}
                         >
                             {mode === 'music' && musicData ? (
