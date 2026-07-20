@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CountdownEvent, CountdownEventType, CountdownMode } from '../../types/countdown';
 import { calcEventDays } from '../../utils/countdownCalc';
 import { saveCountdownEvents } from '../../api/countdownApi';
@@ -27,10 +27,19 @@ const BG_IMAGE_SCALE_MAX = 3.0;
 function bgSizeForScale(scale?: number): string {
     return !scale || scale === BG_IMAGE_SCALE_DEFAULT ? 'cover' : `${scale * 100}% auto`;
 }
-// List-row squircle corners use CSS border-radius:12px + overflow:hidden (no
-// measured SVG clip-path needed at this layer).
-import { generateSquirclePath } from '../islandGeometry';
-void generateSquirclePath; // referenced by the CountdownPreviewCard below
+// generateSquirclePath is imported to keep the squircle vocabulary available for
+// tasks 012/013 (detail/add cards render at measured sizes). The list rows here
+// have no measured width at render time, so per task 011 step 5 we intentionally
+// fall back to CSS `border-radius:12px; overflow:hidden` for the row squircle.
+import {
+    generateSquirclePath,
+    generateFullSquirclePath,
+    SQUIRCLE_SMOOTHNESS_EXPANDED,
+} from '../islandGeometry';
+
+// Keep a reference so the import is not flagged as unused while the measured-size
+// SVG clipPath variant is deferred to later tasks (012/013).
+void generateSquirclePath;
 
 // ── Dispatch typing ──────────────────────────────────────────────
 // useIslandState's IslandAction union is not exported, so we declare the
@@ -1425,6 +1434,28 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
     const currentEvent =
         countdownEvents.find((e) => e.id === countdownSelectedId) ?? null;
 
+    // Squircle clip-path measurement (task 020). The card is width:100% (capped
+    // at 260) × height 200 — not strictly fixed — so we measure the rendered card
+    // with a ResizeObserver (attached via a callback ref so it re-observes when
+    // the image/non-image branch swaps) and regenerate the clip path at the real
+    // pixel size. clipPathUnits='userSpaceOnUse' means the path is expressed in
+    // the card's own pixel coordinate system.
+    const [cardSize, setCardSize] = useState({ width: 200, height: 200 });
+    const roRef = useRef<ResizeObserver | null>(null);
+    const cardRef = useCallback((node: HTMLDivElement | null) => {
+        roRef.current?.disconnect();
+        if (!node) return;
+        const ro = new ResizeObserver((entries) => {
+            const box = entries[0].contentRect;
+            setCardSize({
+                width: Math.round(box.width),
+                height: Math.round(box.height),
+            });
+        });
+        ro.observe(node);
+        roRef.current = ro;
+    }, []);
+
     // Guard against a stale selected id (event deleted elsewhere): bounce to list.
     // Done in an effect so we don't dispatch during render.
     useEffect(() => {
@@ -1448,9 +1479,10 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
 
     const dateRowLabel = isCountup ? '起始日' : '目标日';
 
-    // hasImage picks the text color (image → user textColor; solid → white).
-    // The image itself is rendered by DynamicIslandWidget's full-bleed overlay.
+    // Background-image rendering (task 018). bgImageUrl holds a resolved absolute
+    // URL; guard the optional offset/textColor for older events.
     const hasImage = currentEvent.bgImageUrl != null && currentEvent.bgImageUrl !== '';
+    const offset = currentEvent.bgImageOffset ?? BG_OFFSET_DEFAULT;
     const textColor = currentEvent.textColor ?? TEXT_COLOR_DEFAULT;
 
     const handleBack = (e: React.MouseEvent) => {
@@ -1465,111 +1497,227 @@ const CountdownDetailPage: React.FC<CountdownDetailPageProps> = ({
         dispatch({ type: 'SET_COUNTDOWN_PAGE', payload: 'edit' });
     };
 
-    // True full-bleed detail page. The BACKGROUND (image / event color, clipped to
-    // the island silhouette INCLUDING the ears) is rendered by DynamicIslandWidget
-    // in the outer motion.div at z-55 — see detailBgEvent there. This component
-    // renders ONLY the foreground (nav buttons + title/number/date) over a
-    // transparent container so the external image shows through. Non-interactive
-    // layers use pointerEvents:'none' so buttons stay hittable even though later
-    // layers (number, title) render above them in z-order.
-    const textShadow = '0 1px 8px rgba(0,0,0,0.72), 0 0 2px rgba(0,0,0,0.5)';
-    const accentColor = hasImage ? textColor : '#ffffff';
-    const displayOnly: React.CSSProperties = { pointerEvents: 'none' };
-
     return (
-        <div
-            className="h-full w-full relative"
-            onClick={(e) => e.stopPropagation()}
-        >
-            {/* ── Layer 2: nav buttons — float at top corners over the image ── */}
-            <button
-                onClick={handleBack}
-                className="flex items-center justify-center"
-                style={{
-                    position: 'absolute', top: 12, left: 12,
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.28)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '0.5px solid rgba(255,255,255,0.22)',
-                    color: 'rgba(255,255,255,0.95)',
-                    cursor: 'pointer',
-                }}
-            >
-                <span className="material-symbols-outlined text-[16px] leading-none">chevron_left</span>
-            </button>
-            <button
-                onClick={handleEdit}
-                className="flex items-center justify-center"
-                style={{
-                    position: 'absolute', top: 12, right: 12,
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.28)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '0.5px solid rgba(255,255,255,0.22)',
-                    color: 'rgba(255,255,255,0.95)',
-                    cursor: 'pointer',
-                }}
-            >
-                <span className="material-symbols-outlined text-[16px] leading-none">edit</span>
-            </button>
-
-            {/* ── Layer 3: title — pointerEvents:none (display only) ── */}
-            <div
-                className="absolute inset-x-0 top-0 flex items-center justify-center"
-                style={{ paddingTop: 14, paddingLeft: 48, paddingRight: 48, ...displayOnly }}
-            >
-                <span
-                    className="max-w-full truncate text-center"
-                    style={{
-                        color: accentColor,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        textShadow,
-                    }}
+        <div className="h-full flex flex-col">
+            {/* Top bar: back (←) · edit (✏) */}
+            <div className="flex items-center justify-between shrink-0 pb-2">
+                <button
+                    onClick={handleBack}
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
                 >
-                    {currentEvent.name}
-                </span>
+                    <span className="material-symbols-outlined text-[18px] leading-none">
+                        chevron_left
+                    </span>
+                </button>
+                <button
+                    onClick={handleEdit}
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
+                >
+                    <span className="material-symbols-outlined text-[18px] leading-none">edit</span>
+                </button>
             </div>
 
-            {/* ── Layer 4: primary number — pointerEvents:none (display only) ── */}
-            <div
-                className="absolute inset-0 flex flex-col items-center justify-center"
-                style={{ color: accentColor, textShadow, ...displayOnly }}
-            >
-                {showPastPrefix && (
-                    <span style={{ fontSize: 12, fontWeight: 300, opacity: 0.82, letterSpacing: '0.06em', marginBottom: 4 }}>
-                        已过去
-                    </span>
-                )}
-                {showTodayText ? (
-                    <span style={{ fontSize: 44, fontWeight: 100, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                        就是今天
-                    </span>
+            {/* Centered squircle card (task 020). A measured superellipse clip-path
+                replaces the old borderRadius:24 + overflow:hidden so all four corners
+                read as a true squircle; the clip on the container also clips the
+                absolute image/overlay children. Layout: title (top, centered, 16px
+                pt) → day number (vertically centered) → date (absolute bottom, 16px
+                pb). The '天' unit label was removed. */}
+            <div className="flex-1 min-h-0 flex items-center justify-center">
+                {/* Zero-size SVG holding the clipPath def; rendered immediately before
+                    the card. Path is regenerated at the card's measured pixel size. */}
+                <svg width={0} height={0} aria-hidden style={{ position: 'absolute' }}>
+                    <defs>
+                        <clipPath id="cd-detail-card" clipPathUnits="userSpaceOnUse">
+                            <path
+                                d={generateFullSquirclePath(
+                                    cardSize.width,
+                                    cardSize.height,
+                                    24,
+                                    SQUIRCLE_SMOOTHNESS_EXPANDED,
+                                )}
+                            />
+                        </clipPath>
+                    </defs>
+                </svg>
+
+                {hasImage ? (
+                    // Three-layer treatment (task 018): image + frosted-glass. The
+                    // container's clip-path clips all three layers to the squircle.
+                    <div
+                        ref={cardRef}
+                        style={{
+                            position: 'relative',
+                            // Square (1:1) so it matches the edit-preview crop exactly.
+                            width: 200,
+                            height: 200,
+                            clipPath: 'url(#cd-detail-card)',
+                            // Dark base behind the letterbox bars when zoomed out.
+                            backgroundColor: '#0a0a0a',
+                        }}
+                    >
+                        {/* Blurred fill: same photo, cover + heavy blur, filling the
+                            letterbox area with a soft backdrop when the photo is
+                            scaled below cover. Covered by the main image otherwise. */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                filter: 'blur(18px)',
+                                transform: 'scale(1.15)',
+                            }}
+                        />
+                        {/* Main image layer: honours scroll zoom + drag pan. */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundImage: `url('${resolveApiAssetUrl(currentEvent.bgImageUrl)}')`,
+                                backgroundPosition: `${offset.x}% ${offset.y}%`,
+                                backgroundSize: bgSizeForScale(currentEvent.bgImageScale),
+                                backgroundRepeat: 'no-repeat',
+                            }}
+                        />
+                        {/* Frosted-glass overlay: blur is user-controlled (详情模糊
+                            slider). Only a whisper-light scrim (0.10) is kept for big-
+                            number legibility so the detail image stays as bright as the
+                            edit preview — the old 0.40 black tint made it look 灰暗. */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                                WebkitBackdropFilter: `blur(${currentEvent.detailBlurIntensity ?? DETAIL_BLUR_DEFAULT}px)`,
+                                background: 'rgba(0,0,0,0.10)',
+                                pointerEvents: 'none',
+                            }}
+                        />
+
+                        {/* Text content — all in the event's textColor. */}
+                        <div
+                            className="relative z-10 h-full"
+                            style={{ color: textColor, textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+                        >
+                            {/* Title: top, centered, 16px top padding. */}
+                            <div
+                                className="absolute left-0 right-0 top-0 text-center px-4"
+                                style={{ paddingTop: 16 }}
+                            >
+                                <span className="block truncate text-[14px] font-semibold">
+                                    {currentEvent.name || '未命名'}
+                                </span>
+                            </div>
+
+                            {/* Day number: vertically centered in remaining space. */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+                                {showPastPrefix && (
+                                    <span className="text-[13px] font-medium" style={{ opacity: 0.85 }}>
+                                        已过去
+                                    </span>
+                                )}
+
+                                {showTodayText ? (
+                                    <span
+                                        className="font-bold leading-none tracking-tight"
+                                        style={{ fontSize: 40 }}
+                                    >
+                                        就是今天
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="font-bold leading-none tracking-tight"
+                                        style={{ fontSize: 56 }}
+                                    >
+                                        {bigNumber}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
+                            <div
+                                className="absolute left-0 right-0 bottom-0 text-center px-4"
+                                style={{ paddingBottom: 16 }}
+                            >
+                                <span className="block truncate text-[11px] font-medium" style={{ opacity: 0.85 }}>
+                                    {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
-                    <span style={{ fontSize: 100, fontWeight: 100, lineHeight: 0.9, letterSpacing: '-0.04em' }}>
-                        {bigNumber}
-                    </span>
-                )}
-            </div>
+                    <div
+                        ref={cardRef}
+                        style={{
+                            position: 'relative',
+                            // Square (1:1) to match the edit preview.
+                            width: 200,
+                            height: 200,
+                            clipPath: 'url(#cd-detail-card)',
+                            background: 'rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        {/* Title: top, centered, 16px top padding. The colored top
+                            band was replaced by the squircle-clipped card; the event
+                            color accent lives on the day number below. */}
+                        <div
+                            className="absolute left-0 right-0 top-0 text-center px-4"
+                            style={{ paddingTop: 16 }}
+                        >
+                            <span
+                                className="block truncate text-[14px] font-semibold"
+                                style={{ color: '#fff' }}
+                            >
+                                {currentEvent.name || '未命名'}
+                            </span>
+                        </div>
 
-            {/* ── Layer 5: date — pointerEvents:none (display only) ── */}
-            <div
-                className="absolute inset-x-0 bottom-0 flex justify-center"
-                style={{ paddingBottom: 14, ...displayOnly }}
-            >
-                <span
-                    style={{
-                        color: accentColor,
-                        fontSize: 11,
-                        fontWeight: 300,
-                        opacity: 0.78,
-                        textShadow,
-                    }}
-                >
-                    {dateRowLabel}：{formatCnDate(currentEvent.date)}
-                </span>
+                        {/* Day number: vertically centered in remaining space. */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+                            {showPastPrefix && (
+                                <span
+                                    className="text-[13px] font-medium"
+                                    style={{ color: 'rgba(255,255,255,0.6)' }}
+                                >
+                                    已过去
+                                </span>
+                            )}
+
+                            {showTodayText ? (
+                                <span
+                                    className="font-bold leading-none tracking-tight"
+                                    style={{ fontSize: 40, color: currentEvent.color }}
+                                >
+                                    就是今天
+                                </span>
+                            ) : (
+                                <span
+                                    className="font-bold leading-none tracking-tight"
+                                    style={{ fontSize: 56, color: currentEvent.color }}
+                                >
+                                    {bigNumber}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Date: pinned to the card's bottom edge, 16px bottom padding. */}
+                        <div
+                            className="absolute left-0 right-0 bottom-0 text-center px-4"
+                            style={{ paddingBottom: 16 }}
+                        >
+                            <span
+                                className="block truncate text-[11px] font-medium"
+                                style={{ color: 'rgba(255,255,255,0.5)' }}
+                            >
+                                {dateRowLabel}：{formatCnDate(currentEvent.date)}
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
