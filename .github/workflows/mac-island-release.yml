@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,6 +45,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Verify macOS and Xcode toolchain
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcodebuild -version
 
       - name: Validate trigger and signing secret
         env:

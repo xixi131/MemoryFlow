@@ -3,6 +3,11 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.7
+
+- 改进设置页面
+- 修复 v1.1.6 的 Liquid Glass 编译问题
+
 ## v1.1.6
 
 - 改进了设置页面
