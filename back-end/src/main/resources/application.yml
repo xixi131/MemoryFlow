@@ -116,7 +116,10 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-cloudflare:
-  turnstile:
-    secret-key: ${CLOUDFLARE_TURNSTILE_SECRET_KEY:}
-    site-verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
+altcha:
+  captcha:
+    # Optional. When blank, a secure in-memory secret is generated on startup.
+    secret: ${ALTCHA_CAPTCHA_SECRET:}
+    cost: ${ALTCHA_CAPTCHA_COST:5000}
+    expires-in-seconds: ${ALTCHA_CAPTCHA_EXPIRES_IN_SECONDS:180}
+    max-challenge-requests-per-minute: ${ALTCHA_CAPTCHA_MAX_CHALLENGE_REQUESTS_PER_MINUTE:20}

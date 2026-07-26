@@ -11,7 +11,7 @@ const normalizeApiBaseUrl = (raw?: string) => {
   return `${trimmed}/api`;
 };
 
-const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
+export const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const ACCESS_TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -99,10 +99,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Add Turnstile Token
-    const turnstileToken = useSecurityStore.getState().turnstileToken;
-    if (turnstileToken) {
-        config.headers['X-CF-Token'] = turnstileToken;
+    // Captcha proof is valid for one protected request only.
+    const captchaProof = useSecurityStore.getState().captchaProof;
+    if (captchaProof) {
+        config.headers['X-ALTCHA-Payload'] = captchaProof;
+        useSecurityStore.getState().setCaptchaProof(null);
     }
 
     return config;
@@ -160,7 +161,7 @@ api.interceptors.response.use(
     
     // Check for Captcha failure
     if (error.response?.data?.code === 2012) {
-        useSecurityStore.getState().setTurnstileToken(null);
+        useSecurityStore.getState().setCaptchaProof(null);
     }
 
     return Promise.reject(error);

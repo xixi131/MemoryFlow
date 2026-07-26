@@ -4,8 +4,10 @@ import com.memoryflow.annotation.RequiresCaptcha;
 import com.memoryflow.dto.ApiResponse;
 import com.memoryflow.dto.auth.*;
 import com.memoryflow.security.SecurityUtils;
+import com.memoryflow.service.AltchaCaptchaService;
 import com.memoryflow.service.AuthService;
 import com.memoryflow.utils.IpUtils;
+import org.altcha.altcha.v2.Altcha;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +19,15 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AltchaCaptchaService altchaCaptchaService;
     private final SecurityUtils securityUtils;
     private final IpUtils ipUtils;
+
+    /** Returns a signed, short-lived self-hosted ALTCHA challenge. */
+    @GetMapping("/captcha/challenge")
+    public Altcha.Challenge captchaChallenge(HttpServletRequest httpRequest) {
+        return altchaCaptchaService.createChallenge(ipUtils.getClientIp(httpRequest));
+    }
 
     /**
      * 用户注册

@@ -44,7 +44,10 @@ jwt:
   refresh-token-expiration: 604800000
   issuer: MemoryFlow
 
-cloudflare:
-  turnstile:
-    secret-key: YOUR_TURNSTILE_SECRET_KEY
-    site-verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
+altcha:
+  captcha:
+    # Optional. Set ALTCHA_CAPTCHA_SECRET only when you want a stable secret across restarts.
+    secret: ${ALTCHA_CAPTCHA_SECRET:}
+    cost: ${ALTCHA_CAPTCHA_COST:5000}
+    expires-in-seconds: ${ALTCHA_CAPTCHA_EXPIRES_IN_SECONDS:180}
+    max-challenge-requests-per-minute: ${ALTCHA_CAPTCHA_MAX_CHALLENGE_REQUESTS_PER_MINUTE:20}
