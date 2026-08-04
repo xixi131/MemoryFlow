@@ -145,6 +145,8 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var motionSequence = 0
     private var pendingMotionCompletionIdentifier: String?
     private var pendingMotionDurationOverride: TimeInterval?
+    private var reminderDuePollTimer: DispatchSourceTimer?
+    private var isEvaluatingReminderDuePolicy = false
 
     private static let visibleContentPresentation = IslandContentPresentation(
         phase: .visible,
@@ -254,6 +256,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         beginApplicationTerminationObservation()
         beginOutsideCollapseObservation()
         beginAccessibilityDisplayOptionsObservation()
+        beginReminderDuePolling()
     }
 
     deinit {
@@ -454,10 +457,44 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         }
     }
 
+    /// Local 10s clock over the already-polled review/todo snapshots — matches
+    /// the reminder cadence documented for the Windows island. No new data
+    /// source: this only reads `phase5PreviewStateContainer.domainState`,
+    /// which the existing 30s `ReviewPollingController` and 10s/60s
+    /// `TodoPollingController` already populate.
+    private func beginReminderDuePolling() {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 10, repeating: 10)
+        timer.setEventHandler { [weak self] in
+            self?.evaluateReminderDuePolicy()
+        }
+        timer.resume()
+        reminderDuePollTimer = timer
+    }
+
+    /// Evaluates `IslandReminderDuePolicy` against the current domain state
+    /// and dispatches at most one `.reminderBannerDue` intent. Guarded against
+    /// re-entrancy so a snapshot apply that happens to re-enter this method
+    /// (directly or via a downstream callback triggered by the dispatch)
+    /// cannot fire two events for what is effectively one evaluation pass.
+    private func evaluateReminderDuePolicy() {
+        guard isEvaluatingReminderDuePolicy == false else { return }
+        isEvaluatingReminderDuePolicy = true
+        defer { isEvaluatingReminderDuePolicy = false }
+        guard let event = IslandReminderDuePolicy.evaluate(
+            now: Date(),
+            state: phase5PreviewStateContainer.domainState,
+            calendar: .current
+        ) else { return }
+        dispatchPhase5Intent(.reminderBannerDue(kind: event.kind, key: event.key))
+    }
+
     private func stopObservation() {
         displayObserver.stopObserving()
         hoverMonitor.stopMonitoring()
         musicTakeoverController.stop()
+        reminderDuePollTimer?.cancel()
+        reminderDuePollTimer = nil
         trackpadCooldownWorkItem?.cancel()
         trackpadCooldownWorkItem = nil
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
@@ -1403,6 +1440,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             using: nil,
             allowLockScheduling: true
         )
+        evaluateReminderDuePolicy()
     }
 
     @MainActor
@@ -1420,6 +1458,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             using: nil,
             allowLockScheduling: true
         )
+        evaluateReminderDuePolicy()
     }
 
     private func handlePointerDown(_ input: IslandPointerInput) {
