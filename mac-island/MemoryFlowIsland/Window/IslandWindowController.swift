@@ -124,6 +124,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     private var lastPointerFeedbackTimestamp: TimeInterval?
     private var modeSwitchHoldAdapter = IslandModeSwitchHoldAdapter()
     private var modeSwitchHoldWorkItem: DispatchWorkItem?
+    private var reminderBannerDismissWorkItem: DispatchWorkItem?
     private var modeSwitchSequenceWorkItems: [DispatchWorkItem] = []
     private var isModeSwitchSequenceActive = false
     private var trackpadWheelAdapter = IslandTrackpadWheelAdapter()
@@ -489,12 +490,38 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         dispatchPhase5Intent(.reminderBannerDue(kind: event.kind, key: event.key))
     }
 
+    /// Holds the reminder banner open for `IslandMotionTokens.reminderBannerHoldDuration`
+    /// before auto-dismissing it, mirroring `beginModeSwitchHoldIfNeeded`'s
+    /// `modeSwitchHoldWorkItem` scheduling pattern. Any interruption path
+    /// (tap, outside click, music takeover, update prompt, logout, teardown)
+    /// must call `cancelReminderBannerDismiss()` so a stale dismiss can never
+    /// fire after the banner has already been replaced or torn down.
+    private func scheduleReminderBannerDismiss() {
+        cancelReminderBannerDismiss()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.reminderBannerDismissWorkItem = nil
+            self.dispatchPhase5Intent(.reminderBannerDismissed)
+        }
+        reminderBannerDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + IslandMotionTokens.reminderBannerHoldDuration,
+            execute: workItem
+        )
+    }
+
+    private func cancelReminderBannerDismiss() {
+        reminderBannerDismissWorkItem?.cancel()
+        reminderBannerDismissWorkItem = nil
+    }
+
     private func stopObservation() {
         displayObserver.stopObserving()
         hoverMonitor.stopMonitoring()
         musicTakeoverController.stop()
         reminderDuePollTimer?.cancel()
         reminderDuePollTimer = nil
+        cancelReminderBannerDismiss()
         trackpadCooldownWorkItem?.cancel()
         trackpadCooldownWorkItem = nil
         NotificationCenter.default.removeObserverIfNeeded(applicationTerminationObserver)
@@ -1077,6 +1104,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
               phase5PreviewStateContainer.derivedState.visualState.isExpanded else {
             return
         }
+        if phase5PreviewStateContainer.domainState.reminderBanner != nil {
+            cancelReminderBannerDismiss()
+            dispatchPhase5Intent(.reminderBannerDismissed)
+            return
+        }
         dispatchPhase5Intent(.outsideCollapse)
     }
 
@@ -1327,6 +1359,14 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
 
     private func handleTapInteraction() {
+        if phase5PreviewStateContainer.domainState.reminderBanner != nil {
+            // A tap during the reminder banner's hold dismisses it immediately
+            // rather than falling through to the generic `.tap` intent, which
+            // would collapse the shell but leave `reminderBanner` set.
+            cancelReminderBannerDismiss()
+            dispatchPhase5Intent(.reminderBannerDismissed)
+            return
+        }
         if phase5PreviewStateContainer.domainState.authState == .loggedOut {
             guard advancedFeaturesEnabled else { return }
             dispatchPhase5Intent(.loginRequiredRequested)
@@ -1362,6 +1402,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     @MainActor
     func applyLoggedOutState() {
+        cancelReminderBannerDismiss()
         let currentState = phase5PreviewStateContainer.domainState
         var loggedOutState = IslandDomainState.loggedOutCompact
         loggedOutState.updatePrompt = currentState.updatePrompt
@@ -1411,6 +1452,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
 
     @MainActor
     func presentUpdatePrompt(version: String, build: String) {
+        cancelReminderBannerDismiss()
         dispatchPhase5Intent(
             .updatePromptAvailable(IslandUpdatePrompt(version: version, build: build))
         )
@@ -1720,6 +1762,16 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         if interactionDiagnosticsEnabled {
             print("[IslandInteraction] intent=\(String(describing: intent)) before=\(phase5PreviewStateContainer.derivedState.visualState)")
         }
+        switch intent {
+        case .musicSnapshotUpdated, .mockPlaybackStarted:
+            // Music takeover acceptance always supersedes a reminder banner
+            // (`acceptMusicSnapshot` clears `reminderBanner` unconditionally).
+            // Cancel eagerly so a stale auto-dismiss can never fire once the
+            // island has moved on to showing music.
+            cancelReminderBannerDismiss()
+        default:
+            break
+        }
         var update = phase5PreviewStateContainer.dispatch(intent: intent)
         if update.previousState.appDisplayMode != update.currentState.appDisplayMode {
             onTodoModeActivityChanged?(update.currentState.appDisplayMode == .todo)
@@ -1745,6 +1797,9 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
                 currentDerivedState: phase5PreviewStateContainer.derivedState,
                 reducerResult: update.reducerResult
             )
+        }
+        if update.reducerResult.reason == .reminderBannerPresented {
+            scheduleReminderBannerDismiss()
         }
         let didStateChange = update.previousState != update.currentState
         let didLayoutChange = update.previousLayoutInput != update.currentLayoutInput

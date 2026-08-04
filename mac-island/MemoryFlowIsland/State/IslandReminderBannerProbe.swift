@@ -27,7 +27,8 @@ enum IslandReminderBannerProbe {
             key: "k2"
         )
         try validatePolicy()
-        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=timeReached+hasTasksToday+dayRearm+nothingPending"
+        try validateAutoDismissTiming()
+        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=timeReached+hasTasksToday+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery"
     }
 
     private static func validateSequence(
@@ -219,6 +220,46 @@ enum IslandReminderBannerProbe {
         let emptyState = makeState(pendingReviews: 0, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
         guard IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: emptyState, calendar: calendar) == nil else {
             throw IslandReminderBannerProbeError.failed("policy: an event fired despite zero pending reviews and zero due/overdue todos")
+        }
+    }
+
+    /// Task 026: `IslandWindowController.scheduleReminderBannerDismiss()`
+    /// schedules the real `.reminderBannerDismissed` dispatch after
+    /// `IslandMotionTokens.reminderBannerHoldDuration`, which this probe
+    /// cannot exercise headlessly (no real `DispatchQueue.main.asyncAfter`
+    /// wait here). Instead it asserts the two facts that make that live
+    /// behavior correct: the scheduled hold duration is exactly 2.0 seconds,
+    /// and the resulting dismiss transition stages the shared
+    /// `expandedCollapseRecovery` completion identifier rather than a new,
+    /// bespoke collapse path — so the eventual collapse motion is guaranteed
+    /// to reuse `startActiveMotion`'s existing 0.32s non-spring recovery.
+    private static func validateAutoDismissTiming() throws {
+        guard IslandMotionTokens.reminderBannerHoldDuration == 2.0 else {
+            throw IslandReminderBannerProbeError.failed(
+                "reminderBannerHoldDuration expected 2.0, got \(IslandMotionTokens.reminderBannerHoldDuration)"
+            )
+        }
+
+        let baseState = reviewBaseState()
+        let due = IslandPresentationReducer.reduce(
+            current: baseState,
+            intent: .reminderBannerDue(kind: .review, key: "auto-dismiss-timing-check")
+        )
+        guard due.reason == .reminderBannerPresented else {
+            throw IslandReminderBannerProbeError.failed(
+                "auto-dismiss timing probe setup: reminderBannerDue did not present the banner: \(due.reason)"
+            )
+        }
+
+        let dismissed = IslandPresentationReducer.reduce(
+            current: due.state,
+            intent: .reminderBannerDismissed
+        )
+        guard dismissed.reason == .reminderBannerDismissed,
+              dismissed.state.presentationLockState.transitionID == "expandedCollapseRecovery" else {
+            throw IslandReminderBannerProbeError.failed(
+                "auto-dismiss did not stage the shared expandedCollapseRecovery completion identifier: transitionID=\(String(describing: dismissed.state.presentationLockState.transitionID))"
+            )
         }
     }
 

@@ -101,6 +101,7 @@ enum IslandMotionTokens {
     static let modeSwitchReopenDelay: TimeInterval = 0.07
     static let hoverDuration: TimeInterval = 0.18
     static let reduceMotionDuration: TimeInterval = 0.12
+    static let reminderBannerHoldDuration: TimeInterval = 2.0
     static let todoDetailContent = IslandTodoDetailContentMotionToken(
         duration: 0.28,
         dampingFraction: 0.86,
