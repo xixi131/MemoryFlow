@@ -3,6 +3,12 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.8
+
+- 新增复习/待办到点提醒：到点后灵动岛下滑展示提醒横幅，停留约2秒后自动收起，进入对应的复习或待办活动态
+- 同一类型（复习/待办）每天最多提醒一次，不会因待处理事项较多而反复弹出
+- 复习与待办提醒的收起动画保持完全一致
+
 ## v1.1.7
 
 - 改进设置页面
