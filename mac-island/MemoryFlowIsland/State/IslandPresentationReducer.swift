@@ -484,7 +484,12 @@ enum IslandPresentationReducer {
                 nextState.presentationState = .expanded
                 nextState.forceCompactMode = false
                 nextState.appDisplayMode = kind.displayMode
-                nextState.isReminderActive = kind == .review
+                // NOT the unrelated `.reminderDue`/`showReminder` mock-reminder
+                // system (its "REM"/"DUE" badge + `.reminderRecover` motion is a
+                // different, pre-existing preview-only feature) — leaving this
+                // false keeps the post-collapse review activity pill visually
+                // identical to the todo one, per the shared-motion requirement.
+                nextState.isReminderActive = false
                 nextState.isHovered = false
                 nextState.selectedTodoTaskID = nil
                 nextState.firedReminderKeys.append(key)

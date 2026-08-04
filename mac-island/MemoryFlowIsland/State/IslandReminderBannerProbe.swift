@@ -28,7 +28,7 @@ enum IslandReminderBannerProbe {
         )
         try validatePolicy()
         try validateAutoDismissTiming()
-        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=timeReached+hasTasksToday+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery"
+        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; reminderActiveNeverSet=true"
     }
 
     private static func validateSequence(
@@ -55,7 +55,7 @@ enum IslandReminderBannerProbe {
               due.state.presentationState == .expanded,
               due.state.forceCompactMode == false,
               due.state.appDisplayMode == kind.displayMode,
-              due.state.isReminderActive == (kind == .review),
+              due.state.isReminderActive == false,
               due.state.firedReminderKeys.contains(key) else {
             throw IslandReminderBannerProbeError.failed(
                 "\(kind.rawValue) reminderBannerDue did not open the banner: reason=\(due.reason) visualState=\(due.derivedState.visualState)"
@@ -80,24 +80,29 @@ enum IslandReminderBannerProbe {
             intent: .transitionComplete("expandedCollapseRecovery")
         )
         guard completed.derivedState.visualState == .activityCollapsed,
-              completed.state.presentationLockState.transitionID == nil else {
+              completed.state.presentationLockState.transitionID == nil,
+              completed.state.isReminderActive == false else {
             throw IslandReminderBannerProbeError.failed(
-                "\(kind.rawValue) expandedCollapseRecovery did not resolve to activityCollapsed: \(completed.derivedState.visualState)"
+                "\(kind.rawValue) expandedCollapseRecovery did not resolve to activityCollapsed: \(completed.derivedState.visualState), isReminderActive=\(completed.state.isReminderActive)"
             )
         }
 
         switch kind {
         case .review:
-            guard completed.derivedState.showReviewActivity else {
+            guard completed.derivedState.showReviewActivity,
+                  completed.derivedState.previewContent.kind == .reviewActivity,
+                  completed.derivedState.previewContent.tone == .review else {
                 throw IslandReminderBannerProbeError.failed(
-                    "review sequence did not end with showReviewActivity == true"
+                    "review sequence did not land on the plain reviewActivity/.review tone (got kind=\(completed.derivedState.previewContent.kind) tone=\(completed.derivedState.previewContent.tone)) — must render identically to the todo case, not the old reminderActivity/.reminder mock content"
                 )
             }
         case .todo:
             guard completed.derivedState.showTodoActivity,
-                  completed.state.appDisplayMode == .todo else {
+                  completed.state.appDisplayMode == .todo,
+                  completed.derivedState.previewContent.kind == .todoActivity,
+                  completed.derivedState.previewContent.tone == .todo else {
                 throw IslandReminderBannerProbeError.failed(
-                    "todo sequence did not end with showTodoActivity == true and appDisplayMode == .todo"
+                    "todo sequence did not end with showTodoActivity == true, appDisplayMode == .todo, and plain todoActivity/.todo content (got kind=\(completed.derivedState.previewContent.kind) tone=\(completed.derivedState.previewContent.tone))"
                 )
             }
         }
@@ -152,71 +157,86 @@ enum IslandReminderBannerProbe {
             return state
         }
 
+        let day0BeforeReminder = date(day: 4, hour: 19, minute: 59)
         let day0AtReminder = date(day: 4, hour: 20, minute: 0)
         let day0TenSecondsLater = date(day: 4, hour: 20, minute: 0, second: 10)
+        let day0MuchLater = date(day: 4, hour: 23, minute: 0)
         let day1AtReminder = date(day: 5, hour: 20, minute: 0)
 
-        // 1) Review: time-reached key fires once, then the separate
-        //    "has pending reviews today" key fires as a second event, then
-        //    both dedup for the remainder of the day.
-        var reviewState = makeState(pendingReviews: 3, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
-        guard let reviewTimeEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: reviewState, calendar: calendar),
-              reviewTimeEvent.kind == .review,
-              reviewTimeEvent.key == "review-time-2026-08-04-20:00" else {
-            throw IslandReminderBannerProbeError.failed("policy: review-time key did not fire when the reminder time was reached")
+        // 1) Review: with a reminder time configured, nothing fires before it
+        //    is reached, no matter how many items are pending.
+        let reviewStateBeforeTime = makeState(pendingReviews: 3, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
+        guard IslandReminderDuePolicy.evaluate(now: day0BeforeReminder, state: reviewStateBeforeTime, calendar: calendar) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: review fired before its configured reminder time was reached")
         }
-        reviewState.firedReminderKeys.append(reviewTimeEvent.key)
 
-        guard let reviewTodayEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: reviewState, calendar: calendar),
-              reviewTodayEvent.kind == .review,
-              reviewTodayEvent.key == "review-today-2026-08-04" else {
-            throw IslandReminderBannerProbeError.failed("policy: review-today key did not fire as a separate second review event")
+        // 2) Once reached, EXACTLY ONE event fires for review — no matter how
+        //    many pending items — and it never fires again the same day, even
+        //    hours later with the same (or a larger) pending count.
+        var reviewState = reviewStateBeforeTime
+        guard let reviewEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: reviewState, calendar: calendar),
+              reviewEvent.kind == .review,
+              reviewEvent.key == "review-2026-08-04" else {
+            throw IslandReminderBannerProbeError.failed("policy: review did not fire exactly once when the reminder time was reached")
         }
-        reviewState.firedReminderKeys.append(reviewTodayEvent.key)
+        reviewState.firedReminderKeys.append(reviewEvent.key)
 
         guard IslandReminderDuePolicy.evaluate(now: day0TenSecondsLater, state: reviewState, calendar: calendar) == nil else {
-            throw IslandReminderBannerProbeError.failed("policy: a review key refired later the same day after both had already fired")
+            throw IslandReminderBannerProbeError.failed("policy: review refired 10s later the same day (should be deduped for the whole day)")
+        }
+        reviewState.reviewSnapshot = ReviewSnapshot(
+            dto: WidgetSummaryDTO(totalPendingReviews: 9, totalCompletedToday: 0, reminderTime: "20:00", subjects: [])
+        )
+        guard IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: reviewState, calendar: calendar) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: review refired later the same day even though the pending count grew — must still be capped at once per day")
         }
 
-        // 2) Todo: dueToday + overdueTasks drive the same pair of keys.
+        // 3) Todo: dueToday + overdueTasks drive the same single-fire-per-day
+        //    key, independently of review.
         var todoState = makeState(pendingReviews: 0, dueToday: 2, overdueTasks: 1, reminderTime: "20:00")
-        guard let todoTimeEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: todoState, calendar: calendar),
-              todoTimeEvent.kind == .todo,
-              todoTimeEvent.key == "todo-time-2026-08-04-20:00" else {
-            throw IslandReminderBannerProbeError.failed("policy: todo-time key did not fire when the reminder time was reached")
+        guard let todoEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: todoState, calendar: calendar),
+              todoEvent.kind == .todo,
+              todoEvent.key == "todo-2026-08-04" else {
+            throw IslandReminderBannerProbeError.failed("policy: todo did not fire exactly once when the reminder time was reached")
         }
-        todoState.firedReminderKeys.append(todoTimeEvent.key)
-
-        guard let todoTodayEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: todoState, calendar: calendar),
-              todoTodayEvent.kind == .todo,
-              todoTodayEvent.key == "todo-today-2026-08-04" else {
-            throw IslandReminderBannerProbeError.failed("policy: todo-today key did not fire as a separate second todo event")
-        }
-        todoState.firedReminderKeys.append(todoTodayEvent.key)
+        todoState.firedReminderKeys.append(todoEvent.key)
 
         guard IslandReminderDuePolicy.evaluate(now: day0TenSecondsLater, state: todoState, calendar: calendar) == nil else {
-            throw IslandReminderBannerProbeError.failed("policy: a todo key refired later the same day after both had already fired")
+            throw IslandReminderBannerProbeError.failed("policy: todo refired 10s later the same day (should be deduped for the whole day)")
         }
 
-        // 3) Advancing the clock to the next day re-arms both kinds.
+        // 4) No reminder time configured: fires immediately as soon as
+        //    something is pending, still capped at once per day.
+        var noTimeState = makeState(pendingReviews: 1, dueToday: 0, overdueTasks: 0, reminderTime: nil)
+        guard let noTimeEvent = IslandReminderDuePolicy.evaluate(now: day0BeforeReminder, state: noTimeState, calendar: calendar),
+              noTimeEvent.kind == .review,
+              noTimeEvent.key == "review-2026-08-04" else {
+            throw IslandReminderBannerProbeError.failed("policy: review with no configured reminder time did not fire immediately once something was pending")
+        }
+        noTimeState.firedReminderKeys.append(noTimeEvent.key)
+        guard IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: noTimeState, calendar: calendar) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: no-configured-time review refired later the same day")
+        }
+
+        // 5) Advancing the clock to the next day re-arms both kinds.
         var combinedState = reviewState
         combinedState.todoSnapshot = todoState.todoSnapshot
         combinedState.firedReminderKeys = reviewState.firedReminderKeys + todoState.firedReminderKeys
 
         guard let rearmedReview = IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: combinedState, calendar: calendar),
               rearmedReview.kind == .review,
-              rearmedReview.key == "review-time-2026-08-05-20:00" else {
+              rearmedReview.key == "review-2026-08-05" else {
             throw IslandReminderBannerProbeError.failed("policy: review key did not re-arm on the next day")
         }
         combinedState.firedReminderKeys.append(rearmedReview.key)
 
         guard let rearmedTodo = IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: combinedState, calendar: calendar),
               rearmedTodo.kind == .todo,
-              rearmedTodo.key == "todo-time-2026-08-05-20:00" else {
+              rearmedTodo.key == "todo-2026-08-05" else {
             throw IslandReminderBannerProbeError.failed("policy: todo key did not re-arm on the next day")
         }
 
-        // 4) Nothing pending means nothing fires, regardless of the clock.
+        // 6) Nothing pending means nothing fires, regardless of the clock.
         let emptyState = makeState(pendingReviews: 0, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
         guard IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: emptyState, calendar: calendar) == nil else {
             throw IslandReminderBannerProbeError.failed("policy: an event fired despite zero pending reviews and zero due/overdue todos")

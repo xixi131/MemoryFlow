@@ -26,36 +26,33 @@ enum IslandReminderDuePolicy {
         let totalDueOrOverdueTasks = (state.todoSnapshot?.dueToday ?? 0) + (state.todoSnapshot?.overdueTasks ?? 0)
         // Review and todo share one user-level reminder time; only
         // `ReviewSnapshot` carries it today.
-        let reachedTimeKey = reachedReminderTimeSuffix(
-            state.reviewSnapshot?.reminderTime,
-            now: now,
-            calendar: calendar
-        )
+        let reminderTime = state.reviewSnapshot?.reminderTime
+        let hasConfiguredReminderTime = reminderTime.flatMap(parseHourMinute) != nil
+        let reminderTimeReached = reachedReminderTimeSuffix(reminderTime, now: now, calendar: calendar) != nil
 
-        // Every candidate key embeds `today`, so checking a freshly built key
-        // against `firedKeys` is equivalent to first pruning the array down to
-        // today's entries: a key fired on a previous day never matches, so the
-        // same kind/reason re-arms automatically once the day rolls over.
-        if totalPendingReviews > 0, let reachedTimeKey {
-            let key = "review-time-\(today)-\(reachedTimeKey)"
+        // Fire AT MOST ONCE per kind per day, no matter how many items are
+        // pending and no matter how many times this gets re-evaluated (10s
+        // ticker + snapshot appliers). There is deliberately no separate
+        // "reminder time reached" vs. "has tasks today" pair anymore — both
+        // used to embed `today` as two distinct keys, so once the reminder
+        // time passed with items still pending, BOTH became eligible within
+        // moments of each other and fired back-to-back (perceived as
+        // reminder spam). A single day-scoped key per kind is dispatched as
+        // soon as the reminder time is reached (or immediately, if no
+        // reminder time is configured), and never again until the day rolls
+        // over — checking a freshly built key against `firedKeys` is
+        // equivalent to pruning stale entries, since a key fired on a
+        // previous day never matches today's key.
+        let mayFireNow = reminderTimeReached || hasConfiguredReminderTime == false
+
+        if totalPendingReviews > 0, mayFireNow {
+            let key = "review-\(today)"
             if firedKeys.contains(key) == false {
                 return IslandReminderDueEvent(kind: .review, key: key)
             }
         }
-        if totalDueOrOverdueTasks > 0, let reachedTimeKey {
-            let key = "todo-time-\(today)-\(reachedTimeKey)"
-            if firedKeys.contains(key) == false {
-                return IslandReminderDueEvent(kind: .todo, key: key)
-            }
-        }
-        if totalPendingReviews > 0 {
-            let key = "review-today-\(today)"
-            if firedKeys.contains(key) == false {
-                return IslandReminderDueEvent(kind: .review, key: key)
-            }
-        }
-        if totalDueOrOverdueTasks > 0 {
-            let key = "todo-today-\(today)"
+        if totalDueOrOverdueTasks > 0, mayFireNow {
+            let key = "todo-\(today)"
             if firedKeys.contains(key) == false {
                 return IslandReminderDueEvent(kind: .todo, key: key)
             }
