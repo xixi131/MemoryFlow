@@ -740,6 +740,20 @@ extension IslandDomainState {
         return state
     }
 
+    /// Forward-looking snapshot for the `.reminderBanner` visual state. Not yet
+    /// wired into `IslandDerivedState.resolveVisualState` or `phase5Catalog`:
+    /// the domain-state trigger and the `IslandPreviewContent.derive` routing
+    /// for this shape land with the reducer sequence in a later task. It exists
+    /// today so `IslandPreviewContent.reminderBanner(kind:message:pendingCount:)`
+    /// has a representative domain state to pair with once that wiring lands.
+    static var mockReminderBannerReview: IslandDomainState {
+        var state = expandedAppReview
+        state.isReminderActive = true
+        state.mockSources.review = .scenarioSample
+        state.mockSources.reminder = .due
+        return state
+    }
+
     static var mockMusicStoppedFallback: IslandDomainState {
         var state = pausedMusicTimeoutCompact
         state.mockSources.review = .scenarioSample

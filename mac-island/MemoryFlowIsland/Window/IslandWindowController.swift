@@ -72,7 +72,8 @@ private extension IslandPreviewContent.Kind {
              .expandedTodo,
              .expandedTodoDetail,
              .expandedMusic,
-             .gestureLock:
+             .gestureLock,
+             .reminderBanner:
             return false
         }
     }
@@ -1141,7 +1142,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         for layoutInput: IslandPreviewLayoutInput,
         attachmentMetrics: TopAttachmentMetrics
     ) -> IslandWidthConstraints {
-        if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt {
+        if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt || layoutInput.visualState == .reminderBanner {
             return IslandLoginRequiredLayout.loginConstraints(for: attachmentMetrics)
         }
         if usesPhase5PreviewInteractionRouting {

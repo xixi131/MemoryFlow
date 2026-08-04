@@ -150,7 +150,7 @@ struct IslandShadowBehaviorTokens: Equatable {
             return hoverBuffer.scaled(by: visualScale)
         case .expandedMusic, .expandedApp:
             return expandedBuffer.scaled(by: visualScale)
-        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner:
             return .zero
         }
     }
@@ -161,7 +161,7 @@ struct IslandShadowBehaviorTokens: Equatable {
             return hoverAppearance.scaled(by: visualScale)
         case .expandedMusic, .expandedApp:
             return expandedAppearance.scaled(by: visualScale)
-        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner:
             return IslandShadowAppearanceTokens(opacity: 0, radius: 0, offsetY: 0)
         }
     }

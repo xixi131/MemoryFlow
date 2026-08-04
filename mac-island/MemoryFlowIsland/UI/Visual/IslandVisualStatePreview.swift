@@ -428,7 +428,7 @@ private struct IslandPreviewContentOverlay: View {
         if content.kind == .expandedMusic {
             return 32
         }
-        if content.kind == .loginRequired || content.kind == .updatePrompt {
+        if content.kind == .loginRequired || content.kind == .updatePrompt || content.kind == .reminderBanner {
             return 8
         }
         return IslandVisualTokens.expandedContentLayout.bottomInset
@@ -731,6 +731,8 @@ private struct IslandPreviewContentOverlay: View {
     private var expandedAppContent: some View {
         if content.kind == .updatePrompt {
             updatePromptContent
+        } else if content.kind == .reminderBanner {
+            reminderBannerContent
         } else if content.kind == .loginRequired {
             promptCapsuleButton(
                 title: "登陆",
@@ -794,6 +796,39 @@ private struct IslandPreviewContentOverlay: View {
             insertion: .move(edge: swiftUIEdge).combined(with: .opacity),
             removal: .move(edge: swiftUIEdge).combined(with: .opacity)
         )
+    }
+
+    /// True when this reminder banner is for a todo reminder rather than a
+    /// review reminder. Encoded in `eyebrow` by `IslandPreviewContent.reminderBanner`.
+    private var reminderBannerIsTodo: Bool {
+        content.eyebrow == "待办"
+    }
+
+    private var reminderBannerContent: some View {
+        HStack(spacing: 8) {
+            if reminderBannerIsTodo {
+                Image(systemName: "checklist")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(IslandTodoVisualStyle.accent)
+                    .frame(width: 20, height: 20)
+            } else {
+                IslandReviewOpenBookGlyph()
+                    .stroke(
+                        Color(memoryFlowHex: "#60a5fa"),
+                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(width: 20, height: 20)
+            }
+
+            Text(content.title)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(content.title)
     }
 
     private var updatePromptContent: some View {

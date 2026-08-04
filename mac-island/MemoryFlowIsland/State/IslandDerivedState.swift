@@ -450,6 +450,7 @@ struct IslandPreviewContent: Equatable {
         case expandedTodoDetail
         case expandedMusic
         case gestureLock
+        case reminderBanner
     }
 
     let kind: Kind
@@ -627,6 +628,29 @@ struct IslandPreviewContent: Equatable {
                     for: .review,
                     isReminder: isReminder
                 )
+        )
+    }
+
+    /// Builds reminder-banner content directly, bypassing `derive`. The banner's
+    /// visual state is not yet reachable through `derive` — that domain-state
+    /// wiring (the 3-phase reducer sequence) lands in a later task. This factory
+    /// lets the render layer and mock scenarios construct banner content today.
+    static func reminderBanner(
+        kind: IslandAppDisplayMode,
+        message: String,
+        pendingCount: Int
+    ) -> IslandPreviewContent {
+        IslandPreviewContent(
+            kind: .reminderBanner,
+            eyebrow: kind == .todo ? "待办" : "复习",
+            title: message,
+            subtitle: "",
+            badge: "\(pendingCount)",
+            tone: .reminder,
+            review: nil,
+            todo: nil,
+            music: nil,
+            contentWidthRequirement: .none
         )
     }
 

@@ -9,6 +9,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case expandedApp
     case loginRequired
     case updatePrompt
+    case reminderBanner
 
     var id: String {
         rawValue
@@ -16,7 +17,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var isExpanded: Bool {
         switch self {
-        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner:
             return true
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
@@ -29,7 +30,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
         case .expandedMusic, .expandedApp:
             return IslandVisualTokens.shadow.visibleInExpanded
-        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner:
             return false
         }
     }
@@ -42,7 +43,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .activity
         case .expandedMusic:
             return .expandedMusic
-        case .loginRequired, .updatePrompt:
+        case .loginRequired, .updatePrompt, .reminderBanner:
             return .compactExpanded
         case .expandedApp:
             return .expandedApp
@@ -67,6 +68,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Login Required"
         case .updatePrompt:
             return "Update Available"
+        case .reminderBanner:
+            return "Reminder Banner"
         }
     }
 
@@ -92,7 +95,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
                 trailingContentWidth: 36,
                 horizontalPadding: 18
             )
-        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt:
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner:
             return .none
         }
     }
