@@ -48,9 +48,11 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case (.compactCollapsed, .expandedMusic), (.compactCollapsed, .expandedApp),
              (.compactCollapsed, .loginRequired),
              (.compactCollapsed, .updatePrompt),
+             (.compactCollapsed, .reminderBanner),
              (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp),
              (.hoverCollapsed, .loginRequired),
-             (.hoverCollapsed, .updatePrompt): return .compactToExpanded
+             (.hoverCollapsed, .updatePrompt),
+             (.hoverCollapsed, .reminderBanner): return .compactToExpanded
         case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed),
              (.activityHoverCollapsed, .compactCollapsed), (.activityHoverCollapsed, .hoverCollapsed): return .activityToCompact
         case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp),
@@ -61,9 +63,11 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
              (.expandedMusic, .activityHoverCollapsed), (.expandedApp, .activityHoverCollapsed): return .expandedToActivity
         case (.loginRequired, .activityCollapsed), (.loginRequired, .activityHoverCollapsed),
              (.updatePrompt, .activityCollapsed), (.updatePrompt, .activityHoverCollapsed): return .expandedToActivity
+        case (.reminderBanner, .activityCollapsed), (.reminderBanner, .activityHoverCollapsed): return .expandedToActivity
         case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed),
              (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed),
-             (.updatePrompt, .compactCollapsed), (.updatePrompt, .hoverCollapsed): return .expandedToCompact
+             (.updatePrompt, .compactCollapsed), (.updatePrompt, .hoverCollapsed),
+             (.reminderBanner, .compactCollapsed), (.reminderBanner, .hoverCollapsed): return .expandedToCompact
         default: return .defaultProfile
         }
     }

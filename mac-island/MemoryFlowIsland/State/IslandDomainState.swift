@@ -22,6 +22,29 @@ enum IslandAppDisplayMode: String, Codable, Equatable {
     case todo
 }
 
+enum IslandReminderKind: String, Codable, Equatable {
+    case review
+    case todo
+
+    var displayMode: IslandAppDisplayMode {
+        switch self {
+        case .review: return .review
+        case .todo: return .todo
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .review: return "您需要复习"
+        case .todo: return "您有待办要处理"
+        }
+    }
+}
+
+struct IslandReminderBanner: Codable, Equatable {
+    let kind: IslandReminderKind
+}
+
 enum IslandPresentationState: String, Codable, Equatable {
     case collapsed
     case activity
@@ -279,6 +302,8 @@ struct IslandDomainState: Codable, Equatable {
     var isReminderActive: Bool
     var isReminderCollapsing: Bool
     var lastReminderDueKey: String? = nil
+    var reminderBanner: IslandReminderBanner? = nil
+    var firedReminderKeys: [String] = []
     var isGreetingActive: Bool
     var greetingText: String?
     var isLoginRequiredPresented: Bool = false

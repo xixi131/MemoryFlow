@@ -23,6 +23,8 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case activitySwitchedToMusic
     case reminderDueMarkedActive
     case reminderDueOpenedReviewActivity
+    case reminderBannerPresented
+    case reminderBannerDismissed
     case pausedMusicTimedOutToApp
     case greetingLifecycleCompleted
     case hoverEntered
@@ -435,6 +437,7 @@ enum IslandPresentationReducer {
                 }
                 nextState.isHovered = false
                 nextState.isReminderActive = false
+                nextState.reminderBanner = nil
                 ensureAppMockSource(&nextState, for: nextMode)
                 lockModeSwitch(&nextState)
             }
@@ -459,6 +462,44 @@ enum IslandPresentationReducer {
                 nextState.isHovered = false
                 lockForceCompactTransition(&nextState)
             }
+        case let .reminderBannerDue(kind, key):
+            let matchingSnapshotPresent: Bool
+            switch kind {
+            case .review:
+                matchingSnapshotPresent = state.reviewSnapshot != nil
+            case .todo:
+                matchingSnapshotPresent = state.todoSnapshot != nil
+            }
+            guard state.authState == .loggedIn,
+                  state.primaryMode == .app,
+                  state.presentationState != .expanded,
+                  state.reminderBanner == nil,
+                  state.firedReminderKeys.contains(key) == false,
+                  matchingSnapshotPresent else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+
+            return transition(state, reason: .reminderBannerPresented) { nextState in
+                nextState.reminderBanner = IslandReminderBanner(kind: kind)
+                nextState.presentationState = .expanded
+                nextState.forceCompactMode = false
+                nextState.appDisplayMode = kind.displayMode
+                nextState.isReminderActive = kind == .review
+                nextState.isHovered = false
+                nextState.selectedTodoTaskID = nil
+                nextState.firedReminderKeys.append(key)
+            }
+        case .reminderBannerDismissed:
+            guard state.reminderBanner != nil else {
+                return unchanged(state, reason: .intentIgnored)
+            }
+            var dismissedState = state
+            dismissedState.reminderBanner = nil
+            return collapseExpanded(
+                dismissedState,
+                compactReason: .reminderBannerDismissed,
+                activityReason: .reminderBannerDismissed
+            )
         case .pausedMusicTimeout:
             guard state.primaryMode == .music || state.mockSources.music != nil else {
                 return unchanged(state, reason: .intentIgnored)
@@ -549,6 +590,7 @@ enum IslandPresentationReducer {
             nextState.isReminderActive = false
             nextState.isGreetingActive = false
             nextState.greetingText = nil
+            nextState.reminderBanner = nil
             nextState.mockSources.music = IslandMockMusicActivity(snapshot: snapshot)
             nextState.selectedTodoTaskID = nil
             if nextState.presentationLockState.isForceCompactLocked == false,
@@ -625,6 +667,7 @@ enum IslandPresentationReducer {
         state.updatePrompt = nil
         state.isLoginRequiredPresented = false
         state.isHovered = false
+        state.reminderBanner = nil
 
         guard state.presentationState == .expanded else { return }
         if state.primaryMode == .music && hasRecoverableActivitySource(state) {
@@ -704,6 +747,8 @@ enum IslandPresentationReducer {
              .musicStopped,
              .musicCommandRequested,
              .reminderDue,
+             .reminderBannerDue,
+             .reminderBannerDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
@@ -733,6 +778,8 @@ enum IslandPresentationReducer {
              .musicStopped,
              .musicCommandRequested,
              .reminderDue,
+             .reminderBannerDue,
+             .reminderBannerDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
@@ -775,6 +822,8 @@ enum IslandPresentationReducer {
              .modeSwitchToggle,
              .modeSwitchMutate,
              .reminderDue,
+             .reminderBannerDue,
+             .reminderBannerDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,

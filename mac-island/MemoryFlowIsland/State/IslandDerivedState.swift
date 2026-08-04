@@ -120,6 +120,9 @@ struct IslandDerivedState: Equatable {
         if state.isLoginRequiredPresented {
             return .loginRequired
         }
+        if state.reminderBanner != nil {
+            return .reminderBanner
+        }
         switch state.presentationState {
         case .expanded:
             return state.primaryMode == .music ? .expandedMusic : .expandedApp
@@ -548,6 +551,21 @@ struct IslandPreviewContent: Equatable {
                 todo: nil,
                 music: nil,
                 contentWidthRequirement: .none
+            )
+        }
+
+        if let banner = state.reminderBanner {
+            let pendingCount: Int
+            switch banner.kind {
+            case .review:
+                pendingCount = state.reviewSnapshot?.totalPendingReviews ?? state.mockSources.review?.pendingCount ?? 0
+            case .todo:
+                pendingCount = state.todoSnapshot?.pendingTasks ?? state.mockSources.todo?.pendingCount ?? 0
+            }
+            return IslandPreviewContent.reminderBanner(
+                kind: banner.kind.displayMode,
+                message: banner.kind.message,
+                pendingCount: pendingCount
             )
         }
 

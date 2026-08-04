@@ -71,6 +71,10 @@ enum IslandInteractionIntent: Codable, Equatable {
     case modeSwitchMutate
     /// A deterministic day-scoped identifier prevents the same due event from replaying.
     case reminderDue(String)
+    /// Grows the island into the reminder banner shell. `key` is a deterministic,
+    /// day-and-kind-scoped identifier that prevents the same due event from replaying.
+    case reminderBannerDue(kind: IslandReminderKind, key: String)
+    case reminderBannerDismissed
     case pausedMusicTimeout
     case greetingLifecycleCompleted
     case greetingFastForward

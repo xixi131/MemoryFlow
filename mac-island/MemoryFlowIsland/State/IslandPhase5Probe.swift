@@ -935,6 +935,10 @@ enum IslandPhase5Probe {
             return "modeSwitchMutate"
         case let .reminderDue(key):
             return "reminderDue(\(key))"
+        case let .reminderBannerDue(kind, key):
+            return "reminderBannerDue(\(kind.rawValue),\(key))"
+        case .reminderBannerDismissed:
+            return "reminderBannerDismissed"
         case .pausedMusicTimeout:
             return "pausedMusicTimeout"
         case .greetingLifecycleCompleted:

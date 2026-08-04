@@ -76,6 +76,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        if ProcessInfo.processInfo.environment["MEMORYFLOW_REMINDER_BANNER_PROBE"] == "1" {
+            do {
+                print(try IslandReminderBannerProbe.run())
+                NSApp.terminate(nil)
+            } catch {
+                fputs("reminder-banner-probe: FAIL; \(error)\n", stderr)
+                exit(EXIT_FAILURE)
+            }
+            return
+        }
         sceneCoordinator = SceneCoordinator()
         sceneCoordinator?.start()
         let pendingURLs = pendingIncomingURLs
