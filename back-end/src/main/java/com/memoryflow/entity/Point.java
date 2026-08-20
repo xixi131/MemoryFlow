@@ -29,6 +29,9 @@ public class Point {
     @TableField("user_id")
     private Long userId;
 
+    @TableField("source_article_id")
+    private Long sourceArticleId;
+
     private String title;
 
     @TableField("content") // 对应数据库 MEDIUMTEXT 类型

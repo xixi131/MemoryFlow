@@ -301,22 +301,15 @@ public class PointService {
     }
 
     /**
-     * 获取用户所有待复习的要点（去重：同一章节下相同标题的要点只显示一个，取下次复习时间最早的）
+     * 获取用户所有待复习的要点。
+     * 每个要点都是独立复习块，即使标题相同也不能合并。
      */
     public List<PointDTO> getPendingReviews(Long userId) {
         List<Point> points = pointMapper.findPendingReviewsByUserId(userId, LocalDate.now());
-        
-        // 去重逻辑：Map Key = title
+
         return points.stream()
-                .collect(Collectors.toMap(
-                        Point::getTitle,
-                        p -> p,
-                        (existing, replacement) -> existing.getNextReviewDate().isBefore(replacement.getNextReviewDate()) ? existing : replacement
-                ))
-                .values().stream()
-                .sorted((p1, p2) -> p1.getNextReviewDate().compareTo(p2.getNextReviewDate()))
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**

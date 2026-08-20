@@ -169,6 +169,7 @@ CREATE TABLE `points` (
     `chapter_id` BIGINT UNSIGNED NOT NULL COMMENT '所属章节ID',
     `subject_id` BIGINT UNSIGNED NOT NULL COMMENT '所属科目ID（冗余字段）',
     `user_id` BIGINT UNSIGNED NOT NULL COMMENT '用户ID（冗余字段）',
+    `source_article_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '章节直连文章对应的复习块',
     `title` VARCHAR(255) NOT NULL COMMENT '要点标题',
     `status` ENUM('pending', 'in-progress', 'completed') DEFAULT 'pending' COMMENT '学习状态',
     `is_learned` TINYINT(1) DEFAULT 0 COMMENT '是否已学习（首次勾选）',
@@ -188,6 +189,7 @@ CREATE TABLE `points` (
     KEY `idx_next_review_date` (`next_review_date`) COMMENT '复习日期索引，用于查询待复习内容',
     KEY `idx_user_next_review` (`user_id`, `next_review_date`) COMMENT '用户待复习内容索引',
     KEY `idx_review_stage` (`current_review_stage`),
+    UNIQUE KEY `uk_points_source_article` (`source_article_id`),
     CONSTRAINT `fk_points_chapter` FOREIGN KEY (`chapter_id`) REFERENCES `chapters` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_points_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_points_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE

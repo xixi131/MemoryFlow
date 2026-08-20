@@ -45,6 +45,7 @@ public class SubjectDTO {
     @AllArgsConstructor
     public static class PointSummary {
         private Long id;
+        private Long sourceArticleId;
         private String title;
         private String status;
         private Boolean isLearned;
@@ -64,6 +65,13 @@ public class SubjectDTO {
         private Long id;
         private String title;
         private String body; // Frontend uses 'body' for content
+        private Long reviewPointId;
+        private Boolean isLearned;
+        private Boolean needsReview;
+        private String nextReviewDate;
+        private String lastReviewAt;
+        private Boolean reviewCompleted;
+        private Integer currentReviewStage;
     }
 
     public static SubjectDTO fromEntity(Subject subject) {

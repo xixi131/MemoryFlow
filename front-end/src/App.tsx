@@ -1,10 +1,12 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
 import SecurityCheck from './pages/SecurityCheck';
+import TextJoinerPage from './pages/TextJoinerPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { MessageContainer } from './components/Message';
 import { Widgets } from './components/Widgets';
@@ -24,7 +26,7 @@ import settingsApis from './services/settingsApis';
 import userApis from './api/userApis';
 import { resolveApiAssetUrl } from './utils/resolveApiAssetUrl';
 import { message } from './components/Message';
-import TyporaEditor from './components/TyporaEditor';
+import InlineMarkdownEditor from './components/InlineMarkdownEditor';
 import TodoPage from './pages/TodoPage';
 
 import DynamicIslandWidget from './components/DynamicIslandWidget';
@@ -45,25 +47,50 @@ const MarketingPageFallback: React.FC = () => (
     </div>
 );
 
+const refreshReviewSchedule = async () => {
+    const reviewStore = useReviewStore.getState();
+    await Promise.all([
+        reviewStore.fetchReviews(true),
+        reviewStore.fetchSummary(true)
+    ]);
+};
+
+const normalizeEscapedMarkdown = (content: string) => {
+    const normalizedBreaks = content.replace(/^\s*<br\s*\/?>\s*$/gim, '');
+    if (!/^\\[-+*]\s+!?\\\[/m.test(normalizedBreaks)) return normalizedBreaks;
+
+    return normalizedBreaks.replace(/\\(?=[-+*_[\]():#>])/g, '');
+};
+
 // --- Page Components ---
 const ArticleInlineEditor: React.FC<{
     article: { id: string | number; title: string; body: string };
     onSave: (id: string, title: string, body: string) => Promise<{ title: string; body: string }>;
-}> = ({ article, onSave }) => {
+    editing: boolean;
+    onEditingChange: (editing: boolean) => void;
+}> = ({ article, onSave, editing, onEditingChange }) => {
     const [title, setTitle] = useState(article.title || '');
-    const [body, setBody] = useState(article.body || '');
-    const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [body, setBody] = useState(() => normalizeEscapedMarkdown(article.body || ''));
+    const [titleFocused, setTitleFocused] = useState(false);
+    const titleInputRef = useRef<HTMLInputElement>(null);
     const saveTimerRef = useRef<number | null>(null);
     const lastSavedTitleRef = useRef(article.title || '');
     const lastSavedBodyRef = useRef(article.body || '');
 
     useEffect(() => {
+        const normalizedBody = normalizeEscapedMarkdown(article.body || '');
         setTitle(article.title || '');
-        setBody(article.body || '');
-        setStatus('idle');
+        setBody(normalizedBody);
+        setTitleFocused(false);
         lastSavedTitleRef.current = article.title || '';
         lastSavedBodyRef.current = article.body || '';
     }, [article.id, article.title, article.body]);
+
+    useEffect(() => {
+        if (!titleFocused) return;
+        titleInputRef.current?.focus();
+        titleInputRef.current?.setSelectionRange(title.length, title.length);
+    }, [titleFocused, title.length]);
 
     useEffect(() => {
         const hasChanges = title !== lastSavedTitleRef.current || body !== lastSavedBodyRef.current;
@@ -73,7 +100,6 @@ const ArticleInlineEditor: React.FC<{
             window.clearTimeout(saveTimerRef.current);
         }
 
-        setStatus('saving');
         saveTimerRef.current = window.setTimeout(async () => {
             try {
                 const saved = await onSave(String(article.id), title, body);
@@ -81,10 +107,8 @@ const ArticleInlineEditor: React.FC<{
                 lastSavedBodyRef.current = saved.body;
                 setTitle(saved.title);
                 setBody(saved.body);
-                setStatus('saved');
             } catch (error) {
                 console.error(error);
-                setStatus('error');
             }
         }, 700);
 
@@ -98,40 +122,46 @@ const ArticleInlineEditor: React.FC<{
 
     return (
         <div className="space-y-3">
-            <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="内容标题"
-                className="w-full rounded-xl border-0 bg-blue-100/80 dark:bg-[#11213a]/85 px-6 py-3 text-lg font-bold text-slate-900 dark:text-white outline-none ring-0 focus:ring-2 focus:ring-blue-400/35"
-            />
-            <TyporaEditor
-                key={`always-inline-editor-${article.id}`}
-                initialValue={body}
-                onChange={(nextValue) => setBody(nextValue)}
-                placeholder="输入 Markdown，自动保存"
-                flat
-            />
-            <div className="text-xs font-medium">
-                <span
-                    className={
-                        status === 'saving'
-                            ? 'text-slate-500'
-                            : status === 'saved'
-                            ? 'text-emerald-500'
-                            : status === 'error'
-                            ? 'text-red-500'
-                            : 'text-slate-400'
-                    }
+            <div className="flex items-center justify-between gap-3">
+                {editing && titleFocused ? (
+                    <label className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <span className="select-none text-2xl font-bold text-slate-400" aria-hidden="true">#</span>
+                        <input
+                            ref={titleInputRef}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            onBlur={() => setTitleFocused(false)}
+                            placeholder="输入标题"
+                            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-extrabold text-slate-900 outline-none ring-0 focus:ring-0 dark:text-white"
+                        />
+                    </label>
+                ) : (
+                    <h3
+                        className={`min-w-0 flex-1 text-2xl font-extrabold text-slate-900 dark:text-white ${editing ? 'cursor-text' : ''}`}
+                        onMouseDown={(event) => {
+                            if (!editing) return;
+                            event.preventDefault();
+                            setTitleFocused(true);
+                        }}
+                    >
+                        {title || '未命名内容'}
+                    </h3>
+                )}
+                <button
+                    type="button"
+                    onClick={() => onEditingChange(!editing)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-primary dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
                 >
-                                        {status === 'saving'
-                        ? '自动保存中...'
-                        : status === 'saved'
-                        ? '已保存'
-                        : status === 'error'
-                        ? '保存失败，请继续编辑后重试'
-                        : '可直接编辑'}
-                </span>
+                    <span className="material-symbols-outlined text-[18px]">{editing ? 'visibility' : 'edit'}</span>
+                    {editing ? '阅读' : '编辑'}
+                </button>
             </div>
+            <InlineMarkdownEditor
+                value={body}
+                onChange={setBody}
+                readOnly={!editing}
+                placeholder="输入 Markdown"
+            />
         </div>
     );
 };
@@ -398,6 +428,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [checked, setChecked] = useState<Record<string, boolean>>({});
     const [activeTabs, setActiveTabs] = useState<Record<string, number>>({});
+    const [markdownEditing, setMarkdownEditing] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [chapterQuickAdd, setChapterQuickAdd] = useState<{ id: string; title: string } | null>(null);
     const [pointQuickAdd, setPointQuickAdd] = useState<{
@@ -534,6 +565,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             );
             if (res.code === 200) {
                 message.success('添加成功');
+                await refreshReviewSchedule();
                 setShowAddModal(false);
                 setChapterQuickAdd(null);
                 setPointQuickAdd(null);
@@ -608,7 +640,8 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     return {
                         ...c,
                         completedPoints: newCompleted,
-                        children: c.children?.map((p: any) => ({ ...p, isLearned: newStatus }))
+                        children: c.children?.map((p: any) => ({ ...p, isLearned: newStatus })),
+                        contents: c.contents?.map((article: any) => ({ ...article, isLearned: newStatus }))
                     };
                 }
                 return c;
@@ -620,6 +653,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 } else {
                     await subjectApis.unmarkChapterLearned(id);
                 }
+                await refreshReviewSchedule();
             } catch (error) {
                 console.error(error);
                 message.error('操作失败');
@@ -670,11 +704,38 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                 } else {
                     await subjectApis.unmarkPointLearned(id);
                 }
+                await refreshReviewSchedule();
             } catch (error) {
                 console.error(error);
                 message.error('操作失败');
                 fetchData();
             }
+        }
+    };
+
+    const toggleArticleCheck = async (chapterId: string, article: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!article.reviewPointId) return;
+        const newStatus = !article.isLearned;
+        setData((prev) => prev.map((chapter) => {
+            if (String(chapter.id) !== chapterId) return chapter;
+            return {
+                ...chapter,
+                completedPoints: Math.max(0, (chapter.completedPoints || 0) + (newStatus ? 1 : -1)),
+                contents: chapter.contents?.map((item: any) =>
+                    String(item.id) === String(article.id) ? { ...item, isLearned: newStatus } : item
+                )
+            };
+        }));
+
+        try {
+            if (newStatus) await subjectApis.markPointLearned(String(article.reviewPointId));
+            else await subjectApis.unmarkPointLearned(String(article.reviewPointId));
+            await refreshReviewSchedule();
+        } catch (error) {
+            console.error(error);
+            message.error('操作失败');
+            fetchData(true, [chapterId]);
         }
     };
 
@@ -877,6 +938,8 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
             key={`article-inline-${article.id}`}
             article={article}
             onSave={saveArticleInline}
+            editing={markdownEditing}
+            onEditingChange={setMarkdownEditing}
         />
     );
 
@@ -912,7 +975,11 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     const isChapterChecked = (chapter.completedPoints === chapter.totalPoints && chapter.totalPoints > 0) || (chapter.children?.length > 0 && chapter.children.every((p: any) => p.isLearned));
                     
                     // Review Status Calculation
-                    const pendingPoints = chapter.children?.filter((p: any) => p.isLearned && !p.reviewCompleted && p.nextReviewDate <= todayStr) || [];
+                    const articleReviewPoints = (chapter.contents || [])
+                        .filter((article: any) => article.reviewPointId)
+                        .map((article: any) => ({ ...article, id: article.reviewPointId }));
+                    const chapterReviewPoints = [...(chapter.children || []), ...articleReviewPoints];
+                    const pendingPoints = chapterReviewPoints.filter((p: any) => p.isLearned && !p.reviewCompleted && p.nextReviewDate <= todayStr);
                     // Fix: reviewedTodayPoints should NOT exclude pending points logic here, 
                     // but the logic "showReviewCompleted = !showReviewReminder && reviewedTodayPoints.length > 0" handles priority.
                     // However, we need to ensure reviewedTodayPoints includes points that were reviewed today EVEN IF they are not pending.
@@ -943,12 +1010,12 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                     // "鏀规垚杩涘叆椤甸潰灏辨樉绀猴紝涓嶉渶瑕佹墜鍔ㄥ睍寮€灏卞彲浠ユ樉绀? -> This was the main request.
                     // I will focus on fixing the "Entering page shows badges immediately" issue first (Backend change).
                     
-                    const reviewedTodayPoints = chapter.children?.filter((p: any) => p.isLearned && p.lastReviewAt && p.lastReviewAt.startsWith(todayStr)) || [];
+                    const reviewedTodayPoints = chapterReviewPoints.filter((p: any) => p.isLearned && p.lastReviewAt && p.lastReviewAt.startsWith(todayStr));
                     const showReviewReminder = pendingPoints.length > 0;
                     const showReviewCompleted = !showReviewReminder && reviewedTodayPoints.length > 0;
 
                     return (
-                    <div key={chapter.id} className={`flex flex-col transition-all duration-500 ease-in-out ${expanded[chapter.id] ? 'bg-slate-50/80 dark:bg-slate-900/40 rounded-[2.5rem] p-3 pb-6 gap-2 shadow-sm dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]' : 'gap-4 bg-transparent p-0'}`}>
+                    <div key={chapter.id} className={`flex flex-col transition-all duration-500 ease-in-out ${expanded[chapter.id] ? 'bg-white dark:bg-slate-900/40 rounded-[2.5rem] p-3 pb-6 gap-2 shadow-sm dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]' : 'gap-4 bg-transparent p-0'}`}>
                         {/* Level 1: Chapter */}
                         <div 
                             className={`group relative rounded-[2rem] transition-all cursor-pointer overflow-hidden ${expanded[chapter.id] ? 'bg-transparent' : 'bg-white dark:bg-surface-dark shadow-sm hover:shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.28)]'}`}
@@ -956,12 +1023,15 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                         >
                             <div className="flex items-center justify-between p-6">
                                 <div className="flex items-center gap-4">
-                                     <div 
-                                        className={`size-6 rounded-full border-2 flex items-center justify-center transition-colors ${isChapterChecked ? 'bg-primary border-primary' : 'border-slate-300 dark:border-white/20 hover:border-primary'}`}
+                                     <button
+                                        type="button"
+                                        className={`size-6 rounded-full border-2 flex items-center justify-center transition-colors ${isChapterChecked ? 'bg-[#0059D0] border-[#0059D0] text-white' : 'border-[#0059D0] hover:bg-[#0059D0]/10'}`}
                                         onClick={(e) => toggleCheck(String(chapter.id), true, e)}
+                                        aria-label={isChapterChecked ? `取消完成${chapter.title}` : `完成${chapter.title}`}
+                                        title={isChapterChecked ? '取消已学习' : '标记为已学习'}
                                     >
-                                        {isChapterChecked && <span className="material-symbols-outlined text-white text-sm font-bold">check</span>}
-                                    </div>
+                                        {isChapterChecked && <Check size={14} strokeWidth={3} />}
+                                    </button>
                                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">{chapter.title}</h3>
                                     
                                     {/* Review Reminder Badge */}
@@ -1026,18 +1096,31 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                                     {chapter.contents.map((article: any, idx: number) => {
                                                         const isActive = (activeTabs[String(chapter.id)] || 0) === idx;
                                                         return (
-                                                            <button 
+                                                            <div
                                                                 key={article.id}
-                                                                onClick={(e) => handleTabClick(String(chapter.id), idx, e)}
-                                                                className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                                                                className={`pl-2 pr-3 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
                                                                     isActive 
                                                                     ? 'bg-primary text-white shadow-md' 
                                                                     : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-text-secondary hover:bg-slate-200 dark:hover:bg-white/10'
                                                                 }`}
                                                             >
-                                                                {article.title}
-                                                                {isActive && <span className="material-symbols-outlined text-[16px]">article</span>}
-                                                            </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => toggleArticleCheck(String(chapter.id), article, e)}
+                                                                    className={`size-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${article.isLearned ? `border-transparent bg-transparent ${isActive ? 'text-white' : 'text-[#0059D0]'}` : `${isActive ? 'border-white' : 'border-[#0059D0]'} text-transparent hover:bg-white/10`}`}
+                                                                    aria-label={article.isLearned ? `取消完成${article.title}` : `完成${article.title}`}
+                                                                    title={article.isLearned ? '取消已学习' : '标记为已学习'}
+                                                                >
+                                                                    <Check size={14} strokeWidth={3} />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => handleTabClick(String(chapter.id), idx, e)}
+                                                                    className="flex items-center gap-2"
+                                                                >
+                                                                    {article.title}
+                                                                </button>
+                                                            </div>
                                                         );
                                                     })}
                                                 </div>
@@ -1065,20 +1148,23 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
                                     )}
 
                                     {/* Level 2 Points (Children of Chapter) */}
-                                    {chapter.children?.map((point: any) => (
+                                    {chapter.children?.filter((point: any) => !point.sourceArticleId).map((point: any) => (
                                         <div key={point.id} className="flex flex-col">
                                             <div 
-                                                className={`group relative bg-white dark:bg-surface-dark rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer ${expanded[point.id] ? 'rounded-b-none bg-slate-50 dark:bg-white/5' : ''}`}
+                                                className={`group relative bg-white dark:bg-surface-dark rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer ${expanded[point.id] ? 'rounded-b-none bg-white dark:bg-white/5' : ''}`}
                                                 onClick={() => toggleExpand(String(point.id))}
                                             >
                                                 <div className="flex items-center justify-between p-5">
                                                      <div className="flex items-center gap-4">
-                                                        <div 
-                                                            className={`size-5 rounded-full border-2 flex items-center justify-center transition-colors ${point.isLearned ? 'bg-accent-green border-accent-green' : 'border-slate-300 dark:border-white/20 hover:border-accent-green'}`}
+                                                        <button
+                                                            type="button"
+                                                            className={`size-5 rounded-full border-2 flex items-center justify-center transition-colors ${point.isLearned ? 'bg-[#0059D0] border-[#0059D0]' : 'border-[#0059D0] hover:bg-[#0059D0]/10'}`}
                                                             onClick={(e) => toggleCheck(String(point.id), false, e)}
+                                                            aria-label={point.isLearned ? `取消完成${point.title}` : `完成${point.title}`}
+                                                            title={point.isLearned ? '取消已学习' : '标记为已学习'}
                                                         >
-                                                            {point.isLearned && <span className="material-symbols-outlined text-white text-xs font-bold">check</span>}
-                                                        </div>
+                                                            {point.isLearned && <Check size={12} strokeWidth={3} />}
+                                                        </button>
                                                         <span className="text-base font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">{point.title}</span>
                                                     </div>
                                                     
@@ -2532,7 +2618,7 @@ const App: React.FC = () => {
         if (route === 'stats') {
             return { view: 'todo', subjectId: null, goalId: null };
         }
-        if (['calendar', 'todo', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs'].includes(route)) {
+        if (['calendar', 'todo', 'settings', 'profile', 'login', 'register', 'widget', 'forgot-password', 'security-check', 'admin', 'docs', 'text-joiner'].includes(route)) {
             return { view: route, subjectId: null, goalId: null };
         }
         
@@ -2540,7 +2626,7 @@ const App: React.FC = () => {
     };
 
     const { view, goalId: selectedGoalId, subjectId: selectedSubjectId } = getViewFromPath(location.pathname);
-    const publicMarketingView = view === 'homepage' || view === 'docs';
+    const publicMarketingView = view === 'homepage' || view === 'docs' || view === 'text-joiner';
 
     // State
     const { addGoal, deleteGoal, addSubject, deleteSubject } = useGoalStore();
@@ -2574,7 +2660,7 @@ const App: React.FC = () => {
     useEffect(() => {
         const token = localStorage.getItem('token');
         // Allow public pages (login, register) without token
-        if (!token && view !== 'login' && view !== 'register' && view !== 'widget' && view !== 'forgot-password' && view !== 'security-check' && view !== 'homepage' && view !== 'docs') {
+        if (!token && view !== 'login' && view !== 'register' && view !== 'widget' && view !== 'forgot-password' && view !== 'security-check' && view !== 'homepage' && view !== 'docs' && view !== 'text-joiner') {
             navigate('/login');
         } else if (token) {
              // Fetch user info if not exists
@@ -2792,6 +2878,8 @@ const App: React.FC = () => {
                 <Suspense fallback={<MarketingPageFallback />}>
                     <DocsPage />
                 </Suspense>
+            ) : view === 'text-joiner' ? (
+                <TextJoinerPage />
             ) : view === 'admin' ? (
                 <AdminDashboard />
             ) : (
@@ -2850,15 +2938,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-

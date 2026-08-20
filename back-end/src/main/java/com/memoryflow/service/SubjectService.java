@@ -111,6 +111,7 @@ public class SubjectService {
                         .children(points.stream()
                                 .map(p -> SubjectDTO.PointSummary.builder()
                                         .id(p.getId())
+                                        .sourceArticleId(p.getSourceArticleId())
                                         .title(p.getTitle())
                                         .status(p.getStatus().getValue())
                                         .isLearned(p.getIsLearned())
@@ -163,13 +164,10 @@ public class SubjectService {
                 .totalPoints(points.size())
                 .completedPoints((int) points.stream().filter(Point::getIsLearned).count())
                 .contents(chapterArticles.stream()
-                        .map(a -> SubjectDTO.ArticleDTO.builder()
-                                .id(a.getId())
-                                .title(a.getTitle())
-                                .body(a.getContent())
-                                .build())
+                        .map(this::toArticleDTO)
                         .collect(Collectors.toList()))
                 .children(points.stream()
+                        .filter(p -> p.getSourceArticleId() == null)
                         .map(p -> {
                             // Fetch Level 2 Articles (Under Point)
                             List<Article> pointArticles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
@@ -178,6 +176,7 @@ public class SubjectService {
 
                             return SubjectDTO.PointSummary.builder()
                                     .id(p.getId())
+                                    .sourceArticleId(p.getSourceArticleId())
                                     .title(p.getTitle())
                                     .status(p.getStatus().getValue())
                                     .isLearned(p.getIsLearned())
@@ -189,11 +188,7 @@ public class SubjectService {
                                     .reviewCompleted(p.getReviewCompleted())
                                     .currentReviewStage(p.getCurrentReviewStage())
                                     .contents(pointArticles.stream()
-                                            .map(a -> SubjectDTO.ArticleDTO.builder()
-                                                    .id(a.getId())
-                                                    .title(a.getTitle())
-                                                    .body(a.getContent())
-                                                    .build())
+                                            .map(this::toArticleDTO)
                                             .collect(Collectors.toList()))
                                     .build();
                         })
@@ -240,13 +235,10 @@ public class SubjectService {
                             .totalPoints(points.size())
                             .completedPoints((int) points.stream().filter(Point::getIsLearned).count())
                             .contents(chapterArticles.stream()
-                                    .map(a -> SubjectDTO.ArticleDTO.builder()
-                                            .id(a.getId())
-                                            .title(a.getTitle())
-                                            .body(a.getContent())
-                                            .build())
+                                    .map(this::toArticleDTO)
                                     .collect(Collectors.toList()))
                             .children(points.stream()
+                                    .filter(p -> p.getSourceArticleId() == null)
                                     .map(p -> {
                                         // Fetch Level 2 Articles (Under Point)
                                         List<Article> pointArticles = articleMapper.selectList(new LambdaQueryWrapper<Article>()
@@ -255,6 +247,7 @@ public class SubjectService {
 
                                         return SubjectDTO.PointSummary.builder()
                                                 .id(p.getId())
+                                                .sourceArticleId(p.getSourceArticleId())
                                                 .title(p.getTitle())
                                                 .status(p.getStatus().getValue())
                                                 .isLearned(p.getIsLearned())
@@ -266,11 +259,7 @@ public class SubjectService {
                                                 .reviewCompleted(p.getReviewCompleted())
                                                 .currentReviewStage(p.getCurrentReviewStage())
                                                 .contents(pointArticles.stream()
-                                                        .map(a -> SubjectDTO.ArticleDTO.builder()
-                                                                .id(a.getId())
-                                                                .title(a.getTitle())
-                                                                .body(a.getContent())
-                                                                .build())
+                                                        .map(this::toArticleDTO)
                                                         .collect(Collectors.toList()))
                                                 .build();
                                     })
@@ -568,7 +557,49 @@ public class SubjectService {
         } else if (currentChapter != null) {
             article.setChapterId(currentChapter.getId());
             articleMapper.insert(article);
+            createArticleReviewPoint(article, currentChapter);
         }
+    }
+
+    private void createArticleReviewPoint(Article article, Chapter chapter) {
+        int sortOrder = pointMapper.selectCount(new LambdaQueryWrapper<Point>()
+                .eq(Point::getChapterId, chapter.getId())).intValue();
+        Point reviewPoint = Point.builder()
+                .chapterId(chapter.getId())
+                .subjectId(chapter.getSubjectId())
+                .userId(chapter.getUserId())
+                .sourceArticleId(article.getId())
+                .title(article.getTitle())
+                .content(article.getContent())
+                .status(Point.PointStatus.pending)
+                .isLearned(false)
+                .currentReviewStage(0)
+                .reviewCompleted(false)
+                .sortOrder(sortOrder)
+                .build();
+        pointMapper.insert(reviewPoint);
+    }
+
+    private SubjectDTO.ArticleDTO toArticleDTO(Article article) {
+        SubjectDTO.ArticleDTO.ArticleDTOBuilder builder = SubjectDTO.ArticleDTO.builder()
+                .id(article.getId())
+                .title(article.getTitle())
+                .body(article.getContent());
+        if (article.getPointId() == null) {
+            Point reviewPoint = pointMapper.selectOne(new LambdaQueryWrapper<Point>()
+                    .eq(Point::getSourceArticleId, article.getId())
+                    .last("LIMIT 1"));
+            if (reviewPoint != null) {
+                builder.reviewPointId(reviewPoint.getId())
+                        .isLearned(reviewPoint.getIsLearned())
+                        .needsReview(reviewPoint.needsReview())
+                        .nextReviewDate(reviewPoint.getNextReviewDate() == null ? null : reviewPoint.getNextReviewDate().toString())
+                        .lastReviewAt(reviewPoint.getLastReviewAt() == null ? null : reviewPoint.getLastReviewAt().toString())
+                        .reviewCompleted(reviewPoint.getReviewCompleted())
+                        .currentReviewStage(reviewPoint.getCurrentReviewStage());
+            }
+        }
+        return builder.build();
     }
 
     @Transactional
@@ -645,7 +676,15 @@ public class SubjectService {
         Article article = articleMapper.selectById(articleId);
         if (article != null) {
             checkArticlePermission(article, userId);
+            if (article.getPointId() == null) {
+                pointMapper.delete(new LambdaQueryWrapper<Point>()
+                        .eq(Point::getSourceArticleId, articleId));
+            }
             articleMapper.deleteById(articleId);
+            if (article.getChapterId() != null) {
+                Chapter chapter = chapterMapper.selectById(article.getChapterId());
+                if (chapter != null) updateSubjectProgress(chapter.getSubjectId());
+            }
         }
     }
 
@@ -661,6 +700,16 @@ public class SubjectService {
         article.setTitle(title);
         article.setContent(content);
         articleMapper.updateById(article);
+        if (article.getPointId() == null) {
+            Point reviewPoint = pointMapper.selectOne(new LambdaQueryWrapper<Point>()
+                    .eq(Point::getSourceArticleId, articleId)
+                    .last("LIMIT 1"));
+            if (reviewPoint != null) {
+                reviewPoint.setTitle(title);
+                reviewPoint.setContent(content);
+                pointMapper.updateById(reviewPoint);
+            }
+        }
     }
 
     private void checkArticlePermission(Article article, Long userId) {

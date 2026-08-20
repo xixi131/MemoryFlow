@@ -27,6 +27,7 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         try {
             checkAndFixUserTable();
             checkAndFixWhitelistTable();
+            checkAndFixArticleReviewBlocks();
         } catch (Exception e) {
             log.error("Schema migration failed", e);
         }
@@ -113,6 +114,47 @@ public class SchemaMigrationRunner implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.error("Failed to check/create admin_whitelist table", e);
+        }
+    }
+
+    private void checkAndFixArticleReviewBlocks() {
+        try {
+            List<Map<String, Object>> columns = jdbcTemplate.queryForList(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'points' AND COLUMN_NAME = 'source_article_id'"
+            );
+            if (columns.isEmpty()) {
+                jdbcTemplate.execute("ALTER TABLE `points` ADD COLUMN `source_article_id` BIGINT UNSIGNED NULL " +
+                        "COMMENT '章节直连文章对应的复习块', ADD UNIQUE KEY `uk_points_source_article` (`source_article_id`)");
+            }
+
+            // The first migration version incorrectly marked historical article
+            // tags as learned. Only repair rows whose learned timestamp still
+            // equals the source article creation time; later user actions stay intact.
+            jdbcTemplate.update(
+                    "UPDATE points p JOIN articles a ON a.id = p.source_article_id " +
+                            "SET p.is_learned = 0, p.learned_at = NULL, p.current_review_stage = 0, " +
+                            "p.next_review_date = NULL, p.last_review_at = NULL, p.review_completed = 0, p.status = 'pending' " +
+                            "WHERE p.source_article_id IS NOT NULL AND p.learned_at IS NOT NULL " +
+                            "AND p.learned_at = a.created_at"
+            );
+
+            int migrated = jdbcTemplate.update(
+                    "INSERT INTO points (chapter_id, subject_id, user_id, source_article_id, title, status, " +
+                            "is_learned, learned_at, current_review_stage, next_review_date, review_completed, " +
+                            "sort_order, created_at, updated_at) " +
+                            "SELECT a.chapter_id, c.subject_id, c.user_id, a.id, a.title, 'pending', 0, " +
+                            "NULL, 0, NULL, " +
+                            "0, a.sort_order, COALESCE(a.created_at, NOW()), NOW() " +
+                            "FROM articles a JOIN chapters c ON c.id = a.chapter_id " +
+                            "LEFT JOIN points p ON p.source_article_id = a.id " +
+                            "WHERE a.point_id IS NULL AND a.chapter_id IS NOT NULL AND p.id IS NULL"
+            );
+            if (migrated > 0) {
+                log.info("Created {} review blocks for existing chapter article tags.", migrated);
+            }
+        } catch (Exception e) {
+            log.error("Failed to migrate chapter article review blocks", e);
         }
     }
 }

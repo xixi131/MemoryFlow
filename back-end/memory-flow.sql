@@ -243,6 +243,7 @@ CREATE TABLE `points`  (
   `chapter_id` bigint UNSIGNED NOT NULL COMMENT '所属章节ID',
   `subject_id` bigint UNSIGNED NOT NULL COMMENT '所属科目ID（冗余字段）',
   `user_id` bigint UNSIGNED NOT NULL COMMENT '用户ID（冗余字段）',
+  `source_article_id` bigint UNSIGNED NULL DEFAULT NULL COMMENT '章节直连文章对应的复习块',
   `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '要点标题',
   `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '详细内容（Markdown格式）',
   `status` enum('pending','in-progress','completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'pending' COMMENT '学习状态',
@@ -263,6 +264,7 @@ CREATE TABLE `points`  (
   INDEX `idx_next_review_date`(`next_review_date` ASC) USING BTREE COMMENT '复习日期索引，用于查询待复习内容',
   INDEX `idx_user_next_review`(`user_id` ASC, `next_review_date` ASC) USING BTREE COMMENT '用户待复习内容索引',
   INDEX `idx_review_stage`(`current_review_stage` ASC) USING BTREE,
+  UNIQUE INDEX `uk_points_source_article`(`source_article_id` ASC) USING BTREE,
   CONSTRAINT `fk_points_chapter` FOREIGN KEY (`chapter_id`) REFERENCES `chapters` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_points_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_points_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
