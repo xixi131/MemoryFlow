@@ -37,6 +37,7 @@ struct IslandVisualStatePreview: View {
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
+    var onExternalAgentOpen: (() -> Void)?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
@@ -179,7 +180,8 @@ struct IslandVisualStatePreview: View {
             onTodoDetailDismissed: onTodoDetailDismissed,
             onLoginRequested: onLoginRequested,
             onUpdateRequested: onUpdateRequested,
-            onUpdateLaterRequested: onUpdateLaterRequested
+            onUpdateLaterRequested: onUpdateLaterRequested,
+            onExternalAgentOpen: onExternalAgentOpen
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -396,6 +398,7 @@ private struct IslandPreviewContentOverlay: View {
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
+    var onExternalAgentOpen: (() -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
     @State private var seekPreviewSeconds: TimeInterval?
@@ -729,7 +732,9 @@ private struct IslandPreviewContentOverlay: View {
 
     @ViewBuilder
     private var expandedAppContent: some View {
-        if content.kind == .updatePrompt {
+        if content.kind == .externalAgentNotification {
+            externalAgentNotificationContent
+        } else if content.kind == .updatePrompt {
             updatePromptContent
         } else if content.kind == .reminderBanner {
             reminderBannerContent
@@ -859,6 +864,32 @@ private struct IslandPreviewContentOverlay: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+
+    private var externalAgentNotificationContent: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 10) {
+                ExternalAgentNoticeIcon(source: content.externalAgentSource)
+
+                Text(content.title)
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            }
+
+            Button(action: { onExternalAgentOpen?() }) {
+                Text("前往")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.black)
+                    .frame(width: 78, height: 30)
+                    .background(Color(memoryFlowHex: "#F5C451"))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("前往 \(content.title)")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     private func promptCapsuleButton(
@@ -1244,6 +1275,26 @@ private struct IslandPreviewContentOverlay: View {
     private var musicThemeColors: [Color] {
         let hexColors = content.music?.themePalette.colorsHex ?? [MusicThemePalette.fallbackHex]
         return hexColors.map { Color(memoryFlowHex: $0) }
+    }
+}
+
+private struct ExternalAgentNoticeIcon: View {
+    let source: ExternalAgentEvent.Source?
+
+    var body: some View {
+        Group {
+            if let icon = source?.applicationIcon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: source?.fallbackSymbolName ?? "sparkles")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 30, height: 30)
+        .accessibilityHidden(true)
     }
 }
 

@@ -939,6 +939,10 @@ enum IslandPhase5Probe {
             return "reminderBannerDue(\(kind.rawValue),\(key))"
         case .reminderBannerDismissed:
             return "reminderBannerDismissed"
+        case let .externalAgentNoticePresented(notice):
+            return "externalAgentNoticePresented(\(notice.sourceTitle))"
+        case .externalAgentNoticeDismissed:
+            return "externalAgentNoticeDismissed"
         case .pausedMusicTimeout:
             return "pausedMusicTimeout"
         case .greetingLifecycleCompleted:

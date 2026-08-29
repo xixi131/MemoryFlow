@@ -75,6 +75,8 @@ enum IslandInteractionIntent: Codable, Equatable {
     /// day-and-kind-scoped identifier that prevents the same due event from replaying.
     case reminderBannerDue(kind: IslandReminderKind, key: String)
     case reminderBannerDismissed
+    case externalAgentNoticePresented(IslandExternalAgentNotice)
+    case externalAgentNoticeDismissed
     case pausedMusicTimeout
     case greetingLifecycleCompleted
     case greetingFastForward

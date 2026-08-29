@@ -45,6 +45,13 @@ struct IslandReminderBanner: Codable, Equatable {
     let kind: IslandReminderKind
 }
 
+struct IslandExternalAgentNotice: Codable, Equatable {
+    let source: ExternalAgentEvent.Source
+    let sourceTitle: String
+    let title: String
+    let detail: String
+}
+
 enum IslandPresentationState: String, Codable, Equatable {
     case collapsed
     case activity
@@ -303,6 +310,7 @@ struct IslandDomainState: Codable, Equatable {
     var isReminderCollapsing: Bool
     var lastReminderDueKey: String? = nil
     var reminderBanner: IslandReminderBanner? = nil
+    var externalAgentNotice: IslandExternalAgentNotice? = nil
     var firedReminderKeys: [String] = []
     var isGreetingActive: Bool
     var greetingText: String?

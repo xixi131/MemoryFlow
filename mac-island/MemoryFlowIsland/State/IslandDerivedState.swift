@@ -123,6 +123,11 @@ struct IslandDerivedState: Equatable {
         if state.reminderBanner != nil {
             return .reminderBanner
         }
+        if state.externalAgentNotice != nil {
+            // External-agent notices intentionally reuse the normal app-expand
+            // shell so they look like the standard review expanded state.
+            return .expandedApp
+        }
         switch state.presentationState {
         case .expanded:
             return state.primaryMode == .music ? .expandedMusic : .expandedApp
@@ -454,6 +459,7 @@ struct IslandPreviewContent: Equatable {
         case expandedMusic
         case gestureLock
         case reminderBanner
+        case externalAgentNotification
     }
 
     let kind: Kind
@@ -466,6 +472,7 @@ struct IslandPreviewContent: Equatable {
     let todo: IslandMockTodoActivity?
     let music: IslandMockMusicActivity?
     let contentWidthRequirement: IslandContentWidthRequirement
+    var externalAgentSource: ExternalAgentEvent.Source? = nil
     var todoDetail: IslandTodoDetailPresentation? = nil
 
     static func derive(
@@ -566,6 +573,22 @@ struct IslandPreviewContent: Equatable {
                 kind: banner.kind.displayMode,
                 message: banner.kind.message,
                 pendingCount: pendingCount
+            )
+        }
+
+        if let notice = state.externalAgentNotice {
+            return IslandPreviewContent(
+                kind: .externalAgentNotification,
+                eyebrow: notice.sourceTitle,
+                title: notice.sourceTitle,
+                subtitle: notice.detail,
+                badge: notice.title,
+                tone: .reminder,
+                review: nil,
+                todo: nil,
+                music: nil,
+                contentWidthRequirement: .none,
+                externalAgentSource: notice.source
             )
         }
 

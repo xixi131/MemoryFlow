@@ -91,6 +91,7 @@
 		F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101120000000000000001 /* TodoLiveSyncProbe.swift */; };
 		F00102130000000000000001 /* TodoMutationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101130000000000000001 /* TodoMutationController.swift */; };
 		F00102140000000000000001 /* TodoMutationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00101140000000000000001 /* TodoMutationProbe.swift */; };
+		FB1201020000000000000001 /* AgentTaskWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB1201010000000000000001 /* AgentTaskWatcher.swift */; };
 		FA1201010000000000000001 /* UpdateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202010000000000000001 /* UpdateModels.swift */; };
 		FA1201020000000000000001 /* UpdateCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202020000000000000001 /* UpdateCoordinator.swift */; };
 		FA1201030000000000000001 /* SignedAppcastVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1202030000000000000001 /* SignedAppcastVerifier.swift */; };
@@ -187,6 +188,7 @@
 		F00101120000000000000001 /* TodoLiveSyncProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoLiveSyncProbe.swift; sourceTree = "<group>"; };
 		F00101130000000000000001 /* TodoMutationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationController.swift; sourceTree = "<group>"; };
 		F00101140000000000000001 /* TodoMutationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoMutationProbe.swift; sourceTree = "<group>"; };
+		FB1201010000000000000001 /* AgentTaskWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTaskWatcher.swift; sourceTree = "<group>"; };
 		FA1202010000000000000001 /* UpdateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateModels.swift; sourceTree = "<group>"; };
 		FA1202020000000000000001 /* UpdateCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCoordinator.swift; sourceTree = "<group>"; };
 		FA1202030000000000000001 /* SignedAppcastVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignedAppcastVerifier.swift; sourceTree = "<group>"; };
@@ -247,6 +249,7 @@
 				F00100040000000000000001 /* Review */,
 				F00100050000000000000001 /* Todo */,
 				FA1200010000000000000001 /* Update */,
+				FB1201000000000000000001 /* Agent */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -310,6 +313,14 @@
 				FA1202070000000000000001 /* UpdateProbeMain.swift */,
 			);
 			path = Update;
+			sourceTree = "<group>";
+		};
+		FB1201000000000000000001 /* Agent */ = {
+			isa = PBXGroup;
+			children = (
+				FB1201010000000000000001 /* AgentTaskWatcher.swift */,
+			);
+			path = Agent;
 			sourceTree = "<group>";
 		};
 		B00100060000000000000001 /* App */ = {
@@ -607,6 +618,7 @@
 				F00102120000000000000001 /* TodoLiveSyncProbe.swift in Sources */,
 				F00102130000000000000001 /* TodoMutationController.swift in Sources */,
 				F00102140000000000000001 /* TodoMutationProbe.swift in Sources */,
+				FB1201020000000000000001 /* AgentTaskWatcher.swift in Sources */,
 				FA1201010000000000000001 /* UpdateModels.swift in Sources */,
 				FA1201020000000000000001 /* UpdateCoordinator.swift in Sources */,
 				FA1201030000000000000001 /* SignedAppcastVerifier.swift in Sources */,

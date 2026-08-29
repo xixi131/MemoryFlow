@@ -73,7 +73,8 @@ private extension IslandPreviewContent.Kind {
              .expandedTodoDetail,
              .expandedMusic,
              .gestureLock,
-             .reminderBanner:
+             .reminderBanner,
+             .externalAgentNotification:
             return false
         }
     }
@@ -336,6 +337,15 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             guard result?.reducerResult.reason == .updatePromptLaterRequested else { return }
             self.hostingView.consumeNextPointerTap()
             self.onUpdateLaterRequested?()
+        }
+        renderModel.onExternalAgentOpen = { [weak self] in
+            guard let self else { return }
+            let source = self.phase5PreviewStateContainer.domainState.externalAgentNotice?.source
+            self.hostingView.consumeNextPointerTap()
+            _ = self.dispatchPhase5Intent(.externalAgentNoticeDismissed)
+            if let source {
+                ExternalAgentApplicationActivator.activate(source)
+            }
         }
         renderModel.onMusicCommand = { [weak self] command in
             guard let self else { return }
@@ -1211,7 +1221,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         for layoutInput: IslandPreviewLayoutInput,
         attachmentMetrics: TopAttachmentMetrics
     ) -> IslandWidthConstraints {
-        if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt || layoutInput.visualState == .reminderBanner {
+        if layoutInput.visualState == .loginRequired || layoutInput.visualState == .updatePrompt || layoutInput.visualState == .reminderBanner || layoutInput.visualState == .externalAgentNotification {
             return IslandLoginRequiredLayout.loginConstraints(for: attachmentMetrics)
         }
         if usesPhase5PreviewInteractionRouting {
@@ -1469,6 +1479,22 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     @MainActor
     func endUpdateDownloadActivity() {
         dispatchPhase5Intent(.updateDownloadEnded)
+    }
+
+    func presentExternalAgentEvent(_ event: ExternalAgentEvent) {
+        presentPanelIfNeeded()
+        beginHoverMonitoring()
+        synchronizePanelClickThroughState()
+        dispatchPhase5Intent(
+            .externalAgentNoticePresented(
+                IslandExternalAgentNotice(
+                    source: event.source,
+                    sourceTitle: event.source.islandTitle,
+                    title: event.title,
+                    detail: event.detail
+                )
+            )
+        )
     }
 
     @MainActor

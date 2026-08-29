@@ -498,4 +498,5 @@ private final class ProbeIslandWindowController: IslandWindowControlling {
     func endUpdateDownloadActivity() {}
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot) {}
     func applyTodoSnapshot(_ snapshot: TodoSnapshot) {}
+    func presentExternalAgentEvent(_ event: ExternalAgentEvent) {}
 }

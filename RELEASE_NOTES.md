@@ -3,6 +3,11 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.9
+
+- 新增 ToonFlow、Claude Code 与 ChatGPT Agent 任务完成通知，可直接在灵动岛查看并前往对应应用。
+- ChatGPT 通知改用透明 OpenAI 标识，避免应用图标底板与灵动岛割裂。
+
 ## v1.1.8
 
 - 新增复习/待办到点提醒：到点后灵动岛下滑展示提醒横幅，停留约2秒后自动收起，进入对应的复习或待办活动态

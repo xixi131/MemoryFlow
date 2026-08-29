@@ -67,6 +67,7 @@ final class IslandRenderModel: ObservableObject {
     var onLoginRequested: (() -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
+    var onExternalAgentOpen: (() -> Void)?
 
     init(
         presentation: IslandRenderPresentation,
@@ -109,7 +110,8 @@ struct IslandRootView: View {
             onTodoDetailDismissed: model.onTodoDetailDismissed,
             onLoginRequested: model.onLoginRequested,
             onUpdateRequested: model.onUpdateRequested,
-            onUpdateLaterRequested: model.onUpdateLaterRequested
+            onUpdateLaterRequested: model.onUpdateLaterRequested,
+            onExternalAgentOpen: model.onExternalAgentOpen
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

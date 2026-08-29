@@ -36,6 +36,7 @@ protocol IslandWindowControlling: AnyObject {
     func endUpdateDownloadActivity()
     func applyReviewSnapshot(_ snapshot: ReviewSnapshot)
     func applyTodoSnapshot(_ snapshot: TodoSnapshot)
+    func presentExternalAgentEvent(_ event: ExternalAgentEvent)
 }
 
 @MainActor
@@ -131,9 +132,13 @@ final class SceneCoordinator {
     private let updateCheckPolicy: UpdateCheckPolicy
     private let updateCoordinator: UpdateCoordinator
     private var updateStateCancellable: AnyCancellable?
+    private let externalAgentWatchers: [ExternalAgentWatching]
 
     init() {
         let windowController = IslandWindowController(initialPhase5PreviewState: .loggedOutCompact)
+        let toonFlowWatcher = ToonFlowDatabaseWatcher()
+        let claudeCodeWatcher = AgentCompletionLogWatcher.claudeCode()
+        let codexWatcher = AgentCompletionLogWatcher.codex()
         let languageSettings = AppLanguageSettings()
         let advancedFeaturesSettings = AdvancedFeaturesSettings()
         let settingsAccountState = SettingsAccountState()
@@ -148,6 +153,7 @@ final class SceneCoordinator {
             sessionStore: sessionStore
         )
         self.windowController = windowController
+        self.externalAgentWatchers = [toonFlowWatcher, claudeCodeWatcher, codexWatcher]
         self.languageSettings = languageSettings
         self.advancedFeaturesSettings = advancedFeaturesSettings
         self.settingsAccountState = settingsAccountState
@@ -272,6 +278,11 @@ final class SceneCoordinator {
         self.statusBarController = statusBarController
         self.menuBarController = statusBarController
         configureUpdatePromptBridge()
+        self.externalAgentWatchers.forEach { watcher in
+            watcher.onEvent = { [weak windowController] event in
+                windowController?.presentExternalAgentEvent(event)
+            }
+        }
     }
 
     init(
@@ -284,6 +295,7 @@ final class SceneCoordinator {
         reviewRepository: ReviewRepositoryProtocol? = nil
     ) {
         self.windowController = windowController
+        self.externalAgentWatchers = []
         self.preferencesWindowController = preferencesWindowController
         self.languageSettings = languageSettings
         self.advancedFeaturesSettings = AdvancedFeaturesSettings(store: InMemoryAdvancedFeaturesStore(isEnabled: true))
@@ -365,6 +377,7 @@ final class SceneCoordinator {
     func start() {
         menuBarController.install()
         windowController.show()
+        externalAgentWatchers.forEach { $0.start() }
         if let scenarioID = ProcessInfo.processInfo.environment["MEMORYFLOW_ISLAND_INITIAL_SCENARIO"],
            let scenarioController = windowController as? IslandPhase5ScenarioControlling {
             scenarioController.selectPhase5Scenario(id: scenarioID)
@@ -396,6 +409,7 @@ final class SceneCoordinator {
     }
 
     func stop() {
+        externalAgentWatchers.forEach { $0.stop() }
         reviewPollingController.stop()
         todoLiveSyncOrchestrator.stop()
         todoMutationController.cancelAll()

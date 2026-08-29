@@ -138,7 +138,7 @@ struct IslandShapeMetrics: Equatable {
             fixedVisibleWidth = nil
         }
         // Login prompts, update prompts, and the reminder banner share the same compact-expanded shell.
-        height = (state == .loginRequired || state == .updatePrompt || state == .reminderBanner) && fixedVisibleWidth != nil
+        height = (state == .loginRequired || state == .updatePrompt || state == .reminderBanner || state == .externalAgentNotification) && fixedVisibleWidth != nil
             ? IslandVisualTokens.compact.height * resolvedVisualScale * 2
             : resolvedHeight
         radius = shellTokens.radius * resolvedVisualScale
