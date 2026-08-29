@@ -54,7 +54,7 @@ struct TopAttachmentMetrics: Equatable {
         case .hoverCollapsed:
             return notchFrame.width
 
-        case .activityCollapsed, .activityHoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner:
+        case .activityCollapsed, .activityHoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return nil
         }
     }

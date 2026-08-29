@@ -25,6 +25,8 @@ enum IslandPresentationTransitionReason: String, Codable, Equatable {
     case reminderDueOpenedReviewActivity
     case reminderBannerPresented
     case reminderBannerDismissed
+    case externalAgentNoticePresented
+    case externalAgentNoticeDismissed
     case pausedMusicTimedOutToApp
     case greetingLifecycleCompleted
     case hoverEntered
@@ -86,6 +88,26 @@ enum IslandPresentationReducer {
         }
 
         switch intent {
+        case let .externalAgentNoticePresented(notice):
+            return transition(state, reason: .externalAgentNoticePresented) {
+                $0.externalAgentNotice = notice
+                $0.reminderBanner = nil
+                $0.presentationState = .expanded
+                $0.forceCompactMode = false
+                $0.isHovered = false
+                $0.selectedTodoTaskID = nil
+            }
+        case .externalAgentNoticeDismissed:
+            guard state.externalAgentNotice != nil else {
+                return unchanged(state, reason: .noChange)
+            }
+            return transition(state, reason: .externalAgentNoticeDismissed) {
+                $0.externalAgentNotice = nil
+                $0.presentationState = .collapsed
+                $0.forceCompactMode = true
+                $0.isHovered = false
+                $0.selectedTodoTaskID = nil
+            }
         case let .todoDetailRequested(taskID):
             let todo = state.todoSnapshot?.presentationActivity ?? state.mockSources.todo
             guard state.authState == .loggedIn,
@@ -228,9 +250,13 @@ enum IslandPresentationReducer {
         case .loginRequiredRequested, .loginRequiredDismissed,
              .updatePromptAvailable, .updatePromptUpdateRequested, .updatePromptLaterRequested,
              .updateDownloadStarted, .updateDownloadProgressed, .updateDownloadEnded,
-             .todoDetailRequested, .todoDetailDismissed:
+             .todoDetailRequested, .todoDetailDismissed,
+             .externalAgentNoticePresented, .externalAgentNoticeDismissed:
             return unchanged(state, reason: .noChange)
         case .outsideCollapse:
+            if state.externalAgentNotice != nil {
+                return reduce(current: state, intent: .externalAgentNoticeDismissed)
+            }
             if state.updatePrompt != nil {
                 return unchanged(state, reason: .intentIgnored)
             }
@@ -255,6 +281,9 @@ enum IslandPresentationReducer {
                 $0.isHovered = false
             }
         case .tap:
+            if state.externalAgentNotice != nil {
+                return reduce(current: state, intent: .externalAgentNoticeDismissed)
+            }
             if state.isLoginRequiredPresented {
                 return unchanged(state, reason: .noChange)
             }
@@ -514,14 +543,6 @@ enum IslandPresentationReducer {
         case .transitionComplete,
              .greetingLifecycleCompleted,
              .greetingFastForward,
-             .todoDetailRequested,
-             .todoDetailDismissed,
-             .updatePromptAvailable,
-             .updatePromptUpdateRequested,
-             .updatePromptLaterRequested,
-             .updateDownloadStarted,
-             .updateDownloadProgressed,
-             .updateDownloadEnded,
              .mockScenarioSelect,
              .retargetPresentation:
             return unchanged(state, reason: .noChange)
@@ -754,6 +775,8 @@ enum IslandPresentationReducer {
              .reminderDue,
              .reminderBannerDue,
              .reminderBannerDismissed,
+             .externalAgentNoticePresented,
+             .externalAgentNoticeDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
@@ -785,6 +808,8 @@ enum IslandPresentationReducer {
              .reminderDue,
              .reminderBannerDue,
              .reminderBannerDismissed,
+             .externalAgentNoticePresented,
+             .externalAgentNoticeDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,
@@ -829,6 +854,8 @@ enum IslandPresentationReducer {
              .reminderDue,
              .reminderBannerDue,
              .reminderBannerDismissed,
+             .externalAgentNoticePresented,
+             .externalAgentNoticeDismissed,
              .pausedMusicTimeout,
              .greetingLifecycleCompleted,
              .greetingFastForward,

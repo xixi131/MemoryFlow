@@ -10,6 +10,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case loginRequired
     case updatePrompt
     case reminderBanner
+    case externalAgentNotification
 
     var id: String {
         rawValue
@@ -17,7 +18,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var isExpanded: Bool {
         switch self {
-        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return true
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
@@ -30,7 +31,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
         case .expandedMusic, .expandedApp:
             return IslandVisualTokens.shadow.visibleInExpanded
-        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner:
+        case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return false
         }
     }
@@ -43,7 +44,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .activity
         case .expandedMusic:
             return .expandedMusic
-        case .loginRequired, .updatePrompt, .reminderBanner:
+        case .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return .compactExpanded
         case .expandedApp:
             return .expandedApp
@@ -70,6 +71,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Update Available"
         case .reminderBanner:
             return "Reminder Banner"
+        case .externalAgentNotification:
+            return "External Agent Notification"
         }
     }
 
@@ -95,7 +98,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
                 trailingContentWidth: 36,
                 horizontalPadding: 18
             )
-        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner:
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return .none
         }
     }

@@ -28,7 +28,54 @@ enum IslandReminderBannerProbe {
         )
         try validatePolicy()
         try validateAutoDismissTiming()
-        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; reminderActiveNeverSet=true"
+        try validateExternalAgentNotice()
+        try validateAgentCompletionLogEvents()
+        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+chatGPTTaskComplete; reminderActiveNeverSet=true"
+    }
+
+    private static func validateExternalAgentNotice() throws {
+        let notice = IslandExternalAgentNotice(
+            source: .toonFlow,
+            sourceTitle: "ToonFlow",
+            title: "《项目》剧本 Agent 已完成",
+            detail: "assistant:decision"
+        )
+        let presented = IslandPresentationReducer.reduce(
+            current: .loggedOutCompact,
+            intent: .externalAgentNoticePresented(notice)
+        )
+        guard presented.reason == .externalAgentNoticePresented,
+              presented.derivedState.visualState == .expandedApp,
+              presented.derivedState.previewContent.kind == .externalAgentNotification,
+              presented.derivedState.previewContent.title == "ToonFlow",
+              presented.state.presentationState == .expanded else {
+            throw IslandReminderBannerProbeError.failed("external agent notice did not open its dedicated notification state")
+        }
+
+        let dismissed = IslandPresentationReducer.reduce(current: presented.state, intent: .tap)
+        guard dismissed.reason == .externalAgentNoticeDismissed,
+              dismissed.derivedState.visualState == .compactCollapsed,
+              dismissed.state.externalAgentNotice == nil else {
+            throw IslandReminderBannerProbeError.failed("external agent notice tap did not restore the normal compact island")
+        }
+    }
+
+    private static func validateAgentCompletionLogEvents() throws {
+        let claudeCompletion = Data("""
+        {"type":"assistant","isSidechain":false,"message":{"stop_reason":"end_turn"}}
+        """.utf8)
+        let claudeToolUse = Data("""
+        {"type":"assistant","isSidechain":false,"message":{"stop_reason":"tool_use"}}
+        """.utf8)
+        let codexCompletion = Data("""
+        {"type":"event_msg","payload":{"type":"task_complete"}}
+        """.utf8)
+
+        guard AgentCompletionLogWatcher.completionEvent(from: claudeCompletion, source: .claudeCode)?.source == .claudeCode,
+              AgentCompletionLogWatcher.completionEvent(from: claudeToolUse, source: .claudeCode) == nil,
+              AgentCompletionLogWatcher.completionEvent(from: codexCompletion, source: .codex)?.source == .codex else {
+            throw IslandReminderBannerProbeError.failed("agent completion log parsing did not distinguish terminal and in-progress events")
+        }
     }
 
     private static func validateSequence(

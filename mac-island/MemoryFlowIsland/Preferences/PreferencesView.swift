@@ -11,6 +11,7 @@ struct PreferencesView: View {
     @ObservedObject private var advancedFeaturesSettings: AdvancedFeaturesSettings
     @ObservedObject private var accountState: SettingsAccountState
     @ObservedObject private var updateCoordinator: UpdateCoordinator
+    @AppStorage("com.memoryflow.island.toonflow.notifySubtasks") private var toonFlowSubtaskNotifications = false
     private let onLoginRequested: () -> Void
     private let onLogoutRequested: () -> Void
     private let onUpdateCommand: (PreferencesUpdateCommand) -> Void
@@ -105,6 +106,22 @@ struct PreferencesView: View {
                                 }
                             }
                         }
+                    }
+                }
+
+                sectionDivider
+
+                settingsSection(title: "ToonFlow 监听", systemImage: "sparkle.magnifyingglass") {
+                    HStack(alignment: .center, spacing: 20) {
+                        Text("剧本或生产 Agent 整轮完成、图片、视频和资产任务始终提醒。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 12)
+
+                        Toggle("子任务完成也提醒", isOn: $toonFlowSubtaskNotifications)
+                            .toggleStyle(.switch)
                     }
                 }
 

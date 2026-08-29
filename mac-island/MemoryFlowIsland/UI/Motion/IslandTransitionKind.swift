@@ -49,10 +49,12 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
              (.compactCollapsed, .loginRequired),
              (.compactCollapsed, .updatePrompt),
              (.compactCollapsed, .reminderBanner),
+             (.compactCollapsed, .externalAgentNotification),
              (.hoverCollapsed, .expandedMusic), (.hoverCollapsed, .expandedApp),
              (.hoverCollapsed, .loginRequired),
              (.hoverCollapsed, .updatePrompt),
-             (.hoverCollapsed, .reminderBanner): return .compactToExpanded
+             (.hoverCollapsed, .reminderBanner),
+             (.hoverCollapsed, .externalAgentNotification): return .compactToExpanded
         case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed),
              (.activityHoverCollapsed, .compactCollapsed), (.activityHoverCollapsed, .hoverCollapsed): return .activityToCompact
         case (.activityCollapsed, .expandedMusic), (.activityCollapsed, .expandedApp),
@@ -67,7 +69,8 @@ enum IslandTransitionKind: String, CaseIterable, Equatable {
         case (.expandedMusic, .compactCollapsed), (.expandedMusic, .hoverCollapsed), (.expandedApp, .compactCollapsed), (.expandedApp, .hoverCollapsed),
              (.loginRequired, .compactCollapsed), (.loginRequired, .hoverCollapsed),
              (.updatePrompt, .compactCollapsed), (.updatePrompt, .hoverCollapsed),
-             (.reminderBanner, .compactCollapsed), (.reminderBanner, .hoverCollapsed): return .expandedToCompact
+             (.reminderBanner, .compactCollapsed), (.reminderBanner, .hoverCollapsed),
+             (.externalAgentNotification, .compactCollapsed), (.externalAgentNotification, .hoverCollapsed): return .expandedToCompact
         default: return .defaultProfile
         }
     }

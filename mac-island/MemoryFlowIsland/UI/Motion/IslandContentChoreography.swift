@@ -95,10 +95,12 @@ struct IslandContentChoreographyPlan: Equatable {
              (.compactCollapsed, .loginRequired),
              (.compactCollapsed, .updatePrompt),
              (.compactCollapsed, .reminderBanner),
+             (.compactCollapsed, .externalAgentNotification),
              (.hoverCollapsed, .expandedApp), (.hoverCollapsed, .expandedMusic),
              (.hoverCollapsed, .loginRequired),
              (.hoverCollapsed, .updatePrompt),
-             (.hoverCollapsed, .reminderBanner):
+             (.hoverCollapsed, .reminderBanner),
+             (.hoverCollapsed, .externalAgentNotification):
             kind = .compactToExpanded
         case (.activityCollapsed, .expandedApp), (.activityCollapsed, .expandedMusic),
              (.activityCollapsed, .updatePrompt):
@@ -110,7 +112,8 @@ struct IslandContentChoreographyPlan: Equatable {
             kind = .expandedToActivity
         case (.activityCollapsed, .compactCollapsed), (.activityCollapsed, .hoverCollapsed):
             kind = .activityToCompact
-        case (.reminderBanner, .compactCollapsed), (.reminderBanner, .hoverCollapsed):
+        case (.reminderBanner, .compactCollapsed), (.reminderBanner, .hoverCollapsed),
+             (.externalAgentNotification, .compactCollapsed), (.externalAgentNotification, .hoverCollapsed):
             kind = .expandedToCompact
         default:
             kind = .defaultProfile
