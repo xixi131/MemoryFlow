@@ -3,6 +3,12 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.10
+
+- 优化 ToonFlow、Claude Code 与 ChatGPT 的灵动岛 Agent 通知：支持等待操作提醒，并统一为品牌、状态和“前往”三行布局。
+- 完成状态使用蓝色、等待操作使用黄色警示色，“前往”按钮统一为白底。
+- ToonFlow 现覆盖所有 Agent 模式，仅在 Agent 给出正式回答时通知，避免批量图片、视频和资产任务的完成或失败通知打扰。
+
 ## v1.1.9
 
 - 新增 ToonFlow、Claude Code 与 ChatGPT Agent 任务完成通知，可直接在灵动岛查看并前往对应应用。

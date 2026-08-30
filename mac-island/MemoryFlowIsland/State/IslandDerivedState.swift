@@ -475,6 +475,25 @@ struct IslandPreviewContent: Equatable {
     var externalAgentSource: ExternalAgentEvent.Source? = nil
     var todoDetail: IslandTodoDetailPresentation? = nil
 
+    /// External-agent notices show the source separately beside its logo.
+    /// Avoid repeating it in the larger status row when the event title starts
+    /// with the same source name.
+    var externalAgentStatusTitle: String {
+        guard kind == .externalAgentNotification,
+              eyebrow.isEmpty == false else {
+            return title
+        }
+
+        let sourcePrefix = "\(eyebrow) "
+        guard title.hasPrefix(sourcePrefix) else { return title }
+        return String(title.dropFirst(sourcePrefix.count))
+    }
+
+    var externalAgentIsWaitingForAction: Bool {
+        kind == .externalAgentNotification
+            && externalAgentStatusTitle.contains("正在等待你的操作")
+    }
+
     static func derive(
         from state: IslandDomainState,
         derivedVisualState: IslandVisualState,
@@ -580,7 +599,7 @@ struct IslandPreviewContent: Equatable {
             return IslandPreviewContent(
                 kind: .externalAgentNotification,
                 eyebrow: notice.sourceTitle,
-                title: notice.sourceTitle,
+                title: notice.title,
                 subtitle: notice.detail,
                 badge: notice.title,
                 tone: .reminder,
