@@ -30,7 +30,17 @@ enum IslandReminderBannerProbe {
         try validateAutoDismissTiming()
         try validateExternalAgentNotice()
         try validateAgentCompletionLogEvents()
-        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+chatGPTTaskComplete; reminderActiveNeverSet=true"
+        try validateToonFlowAgentModes()
+        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+claudeApprovalWait+claudeUserQuestionWait+chatGPTTaskComplete+chatGPTUserInputWait; toonFlow=allAgentModes+agentAnswersOnly; reminderActiveNeverSet=true"
+    }
+
+    private static func validateToonFlowAgentModes() throws {
+        guard ToonFlowDatabaseWatcher.agentName(for: "123:scriptAgent") == "剧本 Agent",
+              ToonFlowDatabaseWatcher.agentName(for: "123:productionAgent:1") == "生产 Agent",
+              ToonFlowDatabaseWatcher.agentName(for: "123:videoPlanningAgent") == "videoPlanningAgent",
+              ToonFlowDatabaseWatcher.agentName(for: "not-an-agent") == nil else {
+            throw IslandReminderBannerProbeError.failed("ToonFlow agent modes were not recognized")
+        }
     }
 
     private static func validateExternalAgentNotice() throws {
@@ -47,9 +57,27 @@ enum IslandReminderBannerProbe {
         guard presented.reason == .externalAgentNoticePresented,
               presented.derivedState.visualState == .expandedApp,
               presented.derivedState.previewContent.kind == .externalAgentNotification,
-              presented.derivedState.previewContent.title == "ToonFlow",
+              presented.derivedState.previewContent.title == "《项目》剧本 Agent 已完成",
+              presented.derivedState.previewContent.externalAgentStatusTitle == "《项目》剧本 Agent 已完成",
               presented.state.presentationState == .expanded else {
             throw IslandReminderBannerProbeError.failed("external agent notice did not open its dedicated notification state")
+        }
+
+        let waitingNotice = IslandExternalAgentNotice(
+            source: .codex,
+            sourceTitle: "ChatGPT",
+            title: "ChatGPT 正在等待你的操作",
+            detail: "等待你的选择或输入"
+        )
+        let waiting = IslandPresentationReducer.reduce(
+            current: .loggedOutCompact,
+            intent: .externalAgentNoticePresented(waitingNotice)
+        )
+        guard waiting.derivedState.previewContent.title == "ChatGPT 正在等待你的操作",
+              waiting.derivedState.previewContent.eyebrow == "ChatGPT",
+              waiting.derivedState.previewContent.externalAgentStatusTitle == "正在等待你的操作",
+              waiting.derivedState.previewContent.externalAgentIsWaitingForAction else {
+            throw IslandReminderBannerProbeError.failed("external agent waiting notice lost its action-required title")
         }
 
         let dismissed = IslandPresentationReducer.reduce(current: presented.state, intent: .tap)
@@ -70,11 +98,32 @@ enum IslandReminderBannerProbe {
         let codexCompletion = Data("""
         {"type":"event_msg","payload":{"type":"task_complete"}}
         """.utf8)
+        let claudePermissionRequest = Data("""
+        {"type":"assistant","isSidechain":false,"message":{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"rm -f /tmp/probe"}}]}}
+        """.utf8)
+        let claudeUserQuestion = Data("""
+        {"type":"assistant","isSidechain":false,"message":{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_ask","name":"AskUserQuestion","input":{"questions":[{"question":"Pick one"}]}}]}}
+        """.utf8)
+        let claudeToolResult = Data("""
+        {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_1"}]}}
+        """.utf8)
+        let claudeReadOnlyToolUse = Data("""
+        {"type":"assistant","isSidechain":false,"message":{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"rg TODO README.md"}}]}}
+        """.utf8)
+        let codexUserInput = Data("""
+        {"type":"response_item","payload":{"type":"function_call","name":"request_user_input"}}
+        """.utf8)
 
         guard AgentCompletionLogWatcher.completionEvent(from: claudeCompletion, source: .claudeCode)?.source == .claudeCode,
               AgentCompletionLogWatcher.completionEvent(from: claudeToolUse, source: .claudeCode) == nil,
-              AgentCompletionLogWatcher.completionEvent(from: codexCompletion, source: .codex)?.source == .codex else {
-            throw IslandReminderBannerProbeError.failed("agent completion log parsing did not distinguish terminal and in-progress events")
+              AgentCompletionLogWatcher.completionEvent(from: codexCompletion, source: .codex)?.source == .codex,
+              AgentCompletionLogWatcher.claudeToolUseIDs(from: claudePermissionRequest) == ["toolu_1"],
+              AgentCompletionLogWatcher.claudePermissionSensitiveToolUseIDs(from: claudePermissionRequest) == ["toolu_1"],
+              AgentCompletionLogWatcher.claudePermissionSensitiveToolUseIDs(from: claudeReadOnlyToolUse).isEmpty,
+              AgentCompletionLogWatcher.claudeResolvedToolUseIDs(from: claudeToolResult) == ["toolu_1"],
+              AgentCompletionLogWatcher.waitingForUserEvent(from: claudeUserQuestion, source: .claudeCode)?.title == "Claude Code 正在等待你的操作",
+              AgentCompletionLogWatcher.waitingForUserEvent(from: codexUserInput, source: .codex)?.source == .codex else {
+            throw IslandReminderBannerProbeError.failed("agent completion and user-input log parsing did not distinguish terminal, auto-resolved, and waiting events")
         }
     }
 

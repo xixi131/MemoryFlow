@@ -871,19 +871,29 @@ private struct IslandPreviewContentOverlay: View {
             HStack(spacing: 10) {
                 ExternalAgentNoticeIcon(source: content.externalAgentSource)
 
-                Text(content.title)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                Text(content.eyebrow)
+                    .font(.system(size: 25, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .minimumScaleFactor(0.8)
             }
+
+            Text(content.externalAgentStatusTitle)
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(
+                    content.externalAgentIsWaitingForAction
+                        ? Color(memoryFlowHex: "#F5C451")
+                        : Color(memoryFlowHex: "#0A84FF")
+                )
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
 
             Button(action: { onExternalAgentOpen?() }) {
                 Text("前往")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.black)
                     .frame(width: 78, height: 30)
-                    .background(Color(memoryFlowHex: "#F5C451"))
+                    .background(Color.white)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)

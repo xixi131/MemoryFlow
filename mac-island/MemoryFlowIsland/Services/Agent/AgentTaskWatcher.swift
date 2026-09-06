@@ -85,15 +85,11 @@ protocol ExternalAgentWatching: AnyObject {
 
 private struct ToonFlowWatcherState: Codable {
     var memoryCreateTime: Int64
-    var taskStartTime: Int64
     var processedMemoryKeys: [String]
-    var processedTaskKeys: [String]
 
     static let empty = ToonFlowWatcherState(
         memoryCreateTime: 0,
-        taskStartTime: 0,
-        processedMemoryKeys: [],
-        processedTaskKeys: []
+        processedMemoryKeys: []
     )
 }
 
@@ -155,10 +151,9 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
             guard var state else { return }
 
             let memoryEvents = try readMemoryEvents(using: connection, state: &state)
-            let taskEvents = try readTaskEvents(using: connection, state: &state)
             self.state = state
             saveState()
-            (memoryEvents + taskEvents).forEach { onEvent?($0) }
+            memoryEvents.forEach { onEvent?($0) }
         } catch {
             // ToonFlow can briefly hold a write transaction. The next 2s pass retries.
             NSLog("[ToonFlowWatcher] read-only poll failed: %@", String(describing: error))
@@ -174,17 +169,9 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
             guard let id = row.text(0) else { return nil }
             return "\(row.int64(1)):\(id)"
         }
-        let handledTaskKeys = try connection.rows(
-            "SELECT id, startTime, state FROM o_tasks"
-        ).compactMap { row -> String? in
-            guard isTerminalTaskState(row.text(2)) else { return nil }
-            return "\(row.int64(1)):\(row.int64(0))"
-        }
         return ToonFlowWatcherState(
             memoryCreateTime: memoryCreateTime,
-            taskStartTime: try connection.int64("SELECT COALESCE(MAX(startTime), 0) FROM o_tasks"),
-            processedMemoryKeys: handledMemoryKeys,
-            processedTaskKeys: handledTaskKeys
+            processedMemoryKeys: handledMemoryKeys
         )
     }
 
@@ -199,7 +186,7 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
             FROM memories m
             LEFT JOIN o_project p ON CAST(p.id AS TEXT) = substr(m.isolationKey, 1, instr(m.isolationKey, ':') - 1)
             WHERE m.createTime >= ?
-              AND (m.isolationKey LIKE '%:scriptAgent' OR m.isolationKey LIKE '%:productionAgent')
+              AND instr(m.isolationKey, ':') > 1
             ORDER BY m.createTime ASC, m.id ASC
             """,
             bind: { sqlite3_bind_int64($0, 1, cursor) }
@@ -207,7 +194,9 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
         var events: [ExternalAgentEvent] = []
         var seen = Set(state.processedMemoryKeys)
         for row in rows {
-            guard let id = row.text(0), let role = row.text(2) else { continue }
+            guard let id = row.text(0),
+                  let isolationKey = row.text(1),
+                  let role = row.text(2) else { continue }
             let createTime = row.int64(3)
             let key = "\(createTime):\(id)"
             defer {
@@ -215,10 +204,10 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
                 seen.insert(key)
             }
             guard seen.contains(key) == false else { continue }
+            guard let agentName = Self.agentName(for: isolationKey) else { continue }
             guard role == "assistant:decision" || (notifySubtasks && isSubtaskRole(role)) else { continue }
 
             let projectName = row.text(4).flatMap { $0.isEmpty ? nil : $0 } ?? "ToonFlow"
-            let agentName = row.text(1)?.hasSuffix(":productionAgent") == true ? "生产 Agent" : "剧本 Agent"
             let suffix = role == "assistant:decision" ? "已完成" : "子任务已完成"
             events.append(
                 ExternalAgentEvent(
@@ -232,50 +221,6 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
         return events
     }
 
-    private func readTaskEvents(
-        using connection: ReadOnlySQLiteConnection,
-        state: inout ToonFlowWatcherState
-    ) throws -> [ExternalAgentEvent] {
-        let rows = try connection.rows(
-            """
-            SELECT t.id, t.projectId, t.taskClass, t.state, t.describe, t.reason, t.startTime, COALESCE(p.name, '')
-            FROM o_tasks t
-            LEFT JOIN o_project p ON p.id = t.projectId
-            ORDER BY t.startTime ASC, t.id ASC
-            """,
-            bind: nil
-        )
-        var events: [ExternalAgentEvent] = []
-        var seen = Set(state.processedTaskKeys)
-        for row in rows {
-            let id = row.int64(0)
-            let startTime = row.int64(6)
-            let key = "\(startTime):\(id)"
-            state.taskStartTime = max(state.taskStartTime, startTime)
-            guard seen.contains(key) == false, let rawState = row.text(3) else { continue }
-            let normalized = rawState.lowercased()
-            let isFailure = isFailureTaskState(normalized)
-            let isSuccess = isSuccessfulTaskState(normalized)
-            guard isFailure || isSuccess else { continue }
-            seen.insert(key)
-
-            let projectName = row.text(7).flatMap { $0.isEmpty ? nil : $0 } ?? "ToonFlow"
-            let taskClass = row.text(2).flatMap { $0.isEmpty ? nil : $0 } ?? "图片/视频/资产"
-            let describe = row.text(4).flatMap { $0.isEmpty ? nil : $0 }
-            let reason = row.text(5).flatMap { $0.isEmpty ? nil : $0 }
-            let outcome = isFailure ? "任务失败" : "任务已完成"
-            events.append(
-                ExternalAgentEvent(
-                    source: .toonFlow,
-                    title: "《\(projectName)》\(taskClass)\(outcome)",
-                    detail: isFailure ? (reason ?? "ToonFlow 未提供失败原因") : (describe ?? taskClass)
-                )
-            )
-        }
-        state.processedTaskKeys = Array(seen)
-        return events
-    }
-
     private func isSubtaskRole(_ role: String) -> Bool {
         role == "assistant:supervision" ||
             role.hasPrefix("assistant:execution:")
@@ -285,18 +230,20 @@ final class ToonFlowDatabaseWatcher: ExternalAgentWatching {
         UserDefaults.standard.bool(forKey: "com.memoryflow.island.toonflow.notifySubtasks")
     }
 
-    private func isTerminalTaskState(_ state: String?) -> Bool {
-        guard let state else { return false }
-        let normalized = state.lowercased()
-        return isSuccessfulTaskState(normalized) || isFailureTaskState(normalized)
-    }
+    static func agentName(for isolationKey: String) -> String? {
+        let parts = isolationKey.split(separator: ":", omittingEmptySubsequences: true)
+        guard parts.count >= 2 else { return nil }
 
-    private func isSuccessfulTaskState(_ state: String) -> Bool {
-        state.contains("success") || state.contains("complete") || state == "done" || state.contains("finish")
-    }
-
-    private func isFailureTaskState(_ state: String) -> Bool {
-        state.contains("fail") || state.contains("error")
+        switch parts[1] {
+        case "scriptAgent":
+            return "剧本 Agent"
+        case "productionAgent":
+            return "生产 Agent"
+        default:
+            let identifier = String(parts[1])
+            guard identifier.hasSuffix("Agent") else { return nil }
+            return "\(identifier)"
+        }
     }
 
     private func loadState() -> ToonFlowWatcherState? {
@@ -431,8 +378,10 @@ final class AgentCompletionLogWatcher: ExternalAgentWatching {
     private let pollInterval: TimeInterval
     private var timer: Timer?
     private var cursors: [URL: FileCursor] = [:]
+    private var pendingClaudeWaits: [String: DispatchWorkItem] = [:]
     private var hasEstablishedBaseline = false
     private var isPolling = false
+    private let claudeWaitConfirmationDelay: TimeInterval = 1.5
 
     private init(provider: Provider, pollInterval: TimeInterval = 2) {
         self.provider = provider
@@ -458,6 +407,8 @@ final class AgentCompletionLogWatcher: ExternalAgentWatching {
     func stop() {
         timer?.invalidate()
         timer = nil
+        pendingClaudeWaits.values.forEach { $0.cancel() }
+        pendingClaudeWaits.removeAll()
         cursors.removeAll()
         hasEstablishedBaseline = false
     }
@@ -548,17 +499,16 @@ final class AgentCompletionLogWatcher: ExternalAgentWatching {
             let hasTrailingNewline = combined.last == 0x0A
             let completeLineCount = hasTrailingNewline ? lines.count : max(0, lines.count - 1)
             for line in lines.prefix(completeLineCount) {
-                guard let event = parseCompletionEvent(line: Data(line)) else { continue }
-                onEvent?(event)
+                processLogLine(Data(line), from: file)
             }
             if hasTrailingNewline {
                 cursor.partialLine = Data()
             } else if let trailingLine = lines.last,
-                      let event = parseCompletionEvent(line: Data(trailingLine)) {
-                // Codex can end a completed turn without writing one more newline.
-                // A complete JSON object is safe to emit immediately and must not
-                // wait for the user's next prompt to flush the buffer.
-                onEvent?(event)
+                      Self.isCompleteJSONLine(Data(trailingLine)) {
+                // Codex can end a terminal or user-input event without writing
+                // one more newline. A complete JSON object is safe to handle
+                // immediately and must not wait for the user's next prompt.
+                processLogLine(Data(trailingLine), from: file)
                 cursor.partialLine = Data()
             } else {
                 cursor.partialLine = Data(lines.last ?? Data())
@@ -569,8 +519,45 @@ final class AgentCompletionLogWatcher: ExternalAgentWatching {
         }
     }
 
-    private func parseCompletionEvent(line: Data) -> ExternalAgentEvent? {
-        Self.completionEvent(from: line, source: provider.source)
+    private func processLogLine(_ line: Data, from file: URL) {
+        if let event = Self.completionEvent(from: line, source: provider.source)
+            ?? Self.waitingForUserEvent(from: line, source: provider.source) {
+            onEvent?(event)
+        }
+
+        guard provider == .claudeCode else { return }
+        Self.claudeResolvedToolUseIDs(from: line).forEach { toolUseID in
+            cancelPendingClaudeWait(toolUseID, file: file)
+        }
+        Self.claudeToolUses(from: line).filter(\.mayRequireUserApproval).forEach { toolUse in
+            scheduleClaudeWaitConfirmation(toolUse, file: file)
+        }
+    }
+
+    private func scheduleClaudeWaitConfirmation(_ toolUse: ClaudeToolUse, file: URL) {
+        let key = claudeWaitKey(toolUse.id, file: file)
+        pendingClaudeWaits[key]?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.pendingClaudeWaits.removeValue(forKey: key) != nil else { return }
+            self.onEvent?(
+                ExternalAgentEvent(
+                    source: .claudeCode,
+                    title: "Claude Code 正在等待你的操作",
+                    detail: "等待批准 (toolUse.name)"
+                )
+            )
+        }
+        pendingClaudeWaits[key] = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + claudeWaitConfirmationDelay, execute: workItem)
+    }
+
+    private func cancelPendingClaudeWait(_ toolUseID: String, file: URL) {
+        let key = claudeWaitKey(toolUseID, file: file)
+        pendingClaudeWaits.removeValue(forKey: key)?.cancel()
+    }
+
+    private func claudeWaitKey(_ toolUseID: String, file: URL) -> String {
+        "\(file.path)#\(toolUseID)"
     }
 
     static func completionEvent(
@@ -598,6 +585,102 @@ final class AgentCompletionLogWatcher: ExternalAgentWatching {
             title: "\(source.islandTitle) Agent 已完成",
             detail: "任务已完成"
         )
+    }
+
+    static func waitingForUserEvent(
+        from line: Data,
+        source: ExternalAgentEvent.Source
+    ) -> ExternalAgentEvent? {
+        guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else {
+            return nil
+        }
+
+        let isWaitingForUser: Bool
+        switch source {
+        case .codex:
+            let payload = object["payload"] as? [String: Any]
+            isWaitingForUser = object["type"] as? String == "response_item"
+                && payload?["type"] as? String == "function_call"
+                && payload?["name"] as? String == "request_user_input"
+        case .claudeCode:
+            let message = object["message"] as? [String: Any]
+            let content = message?["content"] as? [[String: Any]]
+            isWaitingForUser = object["type"] as? String == "assistant"
+                && object["isSidechain"] as? Bool != true
+                && message?["stop_reason"] as? String == "tool_use"
+                && content?.contains(where: {
+                    $0["type"] as? String == "tool_use"
+                        && $0["name"] as? String == "AskUserQuestion"
+                }) == true
+        case .toonFlow:
+            isWaitingForUser = false
+        }
+
+        guard isWaitingForUser else { return nil }
+        return ExternalAgentEvent(
+            source: source,
+            title: "\(source.islandTitle) 正在等待你的操作",
+            detail: "等待你的选择或输入"
+        )
+    }
+
+    private struct ClaudeToolUse {
+        let id: String
+        let name: String
+        let command: String?
+
+        var mayRequireUserApproval: Bool {
+            guard name == "Bash", let command else { return false }
+            let pattern = #"(?:^|[;&|]\s*)(?:sudo\s+)?(?:rm|mv|chmod|chown|dd|mkfs)\b|\bgit\s+(?:push|reset|clean|checkout|restore)\b"#
+            return command.range(of: pattern, options: .regularExpression) != nil
+        }
+    }
+
+    private static func claudeToolUses(from line: Data) -> [ClaudeToolUse] {
+        guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
+              object["type"] as? String == "assistant",
+              object["isSidechain"] as? Bool != true,
+              let message = object["message"] as? [String: Any],
+              message["stop_reason"] as? String == "tool_use",
+              let content = message["content"] as? [[String: Any]] else {
+            return []
+        }
+        return content.compactMap { item in
+            guard item["type"] as? String == "tool_use",
+                  let id = item["id"] as? String,
+                  let name = item["name"] as? String else {
+                return nil
+            }
+            let command = (item["input"] as? [String: Any])?["command"] as? String
+            return ClaudeToolUse(id: id, name: name, command: command)
+        }
+    }
+
+    static func claudeToolUseIDs(from line: Data) -> [String] {
+        claudeToolUses(from: line).map(\.id)
+    }
+
+    static func claudePermissionSensitiveToolUseIDs(from line: Data) -> [String] {
+        claudeToolUses(from: line)
+            .filter(\.mayRequireUserApproval)
+            .map(\.id)
+    }
+
+    static func claudeResolvedToolUseIDs(from line: Data) -> [String] {
+        guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
+              object["type"] as? String == "user",
+              let message = object["message"] as? [String: Any],
+              let content = message["content"] as? [[String: Any]] else {
+            return []
+        }
+        return content.compactMap { item in
+            guard item["type"] as? String == "tool_result" else { return nil }
+            return item["tool_use_id"] as? String
+        }
+    }
+
+    static func isCompleteJSONLine(_ line: Data) -> Bool {
+        (try? JSONSerialization.jsonObject(with: line)) != nil
     }
 
     private func fileSize(for file: URL) -> UInt64? {
