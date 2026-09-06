@@ -256,9 +256,20 @@ public class TodoService {
                 .dueTime(parseTimeOrNull(request.getDueTime(), false))
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : nextTaskSortOrder(userId, request.getListId()))
                 .completedAt(null)
+                .repeatFreq(parseRepeatFreq(request.getRepeatFreq()))
+                .repeatInterval(TodoRecurrence.normalizeInterval(request.getRepeatInterval()))
+                .repeatByWeekdays(TodoRecurrence.formatWeekdays(request.getRepeatByWeekdays()))
+                .repeatUntil(parseDateOrNull(request.getRepeatUntil(), true))
+                .repeatCount(normalizeRepeatCount(request.getRepeatCount()))
+                .repeatIndex(1)
                 .build();
+        validateRecurrence(task);
 
         todoTaskMapper.insert(task);
+        if (TodoRecurrence.isRecurring(task)) {
+            task.setSeriesId(task.getId());
+            todoTaskMapper.updateById(task);
+        }
         syncTaskTags(userId, task.getId(), request.getTagIds());
         return getTaskById(userId, task.getId());
     }
@@ -279,8 +290,11 @@ public class TodoService {
             requireListOwner(request.getListId(), userId);
             task.setListId(request.getListId());
         }
+        boolean justCompleted = false;
         if (request.getStatus() != null) {
             TodoTask.TaskStatus nextStatus = parseTaskStatus(request.getStatus());
+            justCompleted = nextStatus == TodoTask.TaskStatus.COMPLETED
+                    && task.getStatus() != TodoTask.TaskStatus.COMPLETED;
             task.setStatus(nextStatus);
             task.setCompletedAt(nextStatus == TodoTask.TaskStatus.COMPLETED ? LocalDateTime.now() : null);
         }
@@ -296,11 +310,17 @@ public class TodoService {
         if (request.getSortOrder() != null) {
             task.setSortOrder(request.getSortOrder());
         }
+        applyRecurrenceUpdate(task, request);
+        validateRecurrence(task);
 
         todoTaskMapper.updateById(task);
 
         if (request.getTagIds() != null) {
             syncTaskTags(userId, taskId, request.getTagIds());
+        }
+
+        if (justCompleted) {
+            spawnNextOccurrence(userId, task);
         }
 
         return getTaskById(userId, taskId);
@@ -309,12 +329,43 @@ public class TodoService {
     @Transactional
     public TodoTaskDTO updateTaskStatus(Long userId, Long taskId, UpdateTodoTaskStatusRequest request) {
         TodoTask task = requireTaskOwner(taskId, userId);
+        boolean justCompleted = false;
         if (Boolean.TRUE.equals(request.getCompleted())) {
+            justCompleted = task.getStatus() != TodoTask.TaskStatus.COMPLETED;
             task.setStatus(TodoTask.TaskStatus.COMPLETED);
             task.setCompletedAt(LocalDateTime.now());
         } else {
             task.setStatus(TodoTask.TaskStatus.TODO);
             task.setCompletedAt(null);
+        }
+        todoTaskMapper.updateById(task);
+        if (justCompleted) {
+            spawnNextOccurrence(userId, task);
+        }
+        return getTaskById(userId, taskId);
+    }
+
+    /**
+     * 跳过循环任务的当前这一次：不记为完成，直接把这条待办顺延到下一个周期。
+     */
+    @Transactional
+    public TodoTaskDTO skipOccurrence(Long userId, Long taskId) {
+        TodoTask task = requireTaskOwner(taskId, userId);
+        if (!TodoRecurrence.isRecurring(task) || task.getDueDate() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该任务不是循环任务，无法跳过");
+        }
+
+        TodoRecurrence.Occurrence next = TodoRecurrence.nextOccurrence(task, LocalDate.now());
+        if (next.isFinished()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环已结束，没有下一次待办");
+        }
+
+        task.setDueDate(next.getDueDate());
+        task.setRepeatIndex(next.getRepeatIndex());
+        task.setStatus(TodoTask.TaskStatus.TODO);
+        task.setCompletedAt(null);
+        if (task.getSeriesId() == null) {
+            task.setSeriesId(task.getId());
         }
         todoTaskMapper.updateById(task);
         return getTaskById(userId, taskId);
@@ -351,10 +402,10 @@ public class TodoService {
         int affected;
         switch (action) {
             case "complete":
-                affected = updateTasksStatus(tasks, TodoTask.TaskStatus.COMPLETED);
+                affected = updateTasksStatus(userId, tasks, TodoTask.TaskStatus.COMPLETED);
                 break;
             case "uncomplete":
-                affected = updateTasksStatus(tasks, TodoTask.TaskStatus.TODO);
+                affected = updateTasksStatus(userId, tasks, TodoTask.TaskStatus.TODO);
                 break;
             case "delete":
                 todoTaskTagMapper.deleteByTaskIds(uniqueIds);
@@ -589,12 +640,17 @@ public class TodoService {
         return count == null ? 0 : count.intValue();
     }
 
-    private int updateTasksStatus(List<TodoTask> tasks, TodoTask.TaskStatus status) {
+    private int updateTasksStatus(Long userId, List<TodoTask> tasks, TodoTask.TaskStatus status) {
         int affected = 0;
         for (TodoTask task : tasks) {
+            boolean justCompleted = status == TodoTask.TaskStatus.COMPLETED
+                    && task.getStatus() != TodoTask.TaskStatus.COMPLETED;
             task.setStatus(status);
             task.setCompletedAt(status == TodoTask.TaskStatus.COMPLETED ? LocalDateTime.now() : null);
             affected += todoTaskMapper.updateById(task);
+            if (justCompleted) {
+                spawnNextOccurrence(userId, task);
+            }
         }
         return affected;
     }
@@ -617,6 +673,153 @@ public class TodoService {
             affected += todoTaskMapper.updateById(task);
         }
         return affected;
+    }
+
+    /**
+     * 完成一次循环待办后，自动派生下一次任务（标题、标签、子任务原样带过来）。
+     * 已完成的这一条会保留在历史里，统计与趋势因此仍然准确。
+     */
+    private void spawnNextOccurrence(Long userId, TodoTask completed) {
+        if (!TodoRecurrence.isRecurring(completed) || completed.getDueDate() == null) {
+            return;
+        }
+
+        TodoRecurrence.Occurrence next = TodoRecurrence.nextOccurrence(completed, LocalDate.now());
+        if (next.isFinished()) {
+            return;
+        }
+
+        Long seriesId = completed.getSeriesId() != null ? completed.getSeriesId() : completed.getId();
+        if (completed.getSeriesId() == null) {
+            completed.setSeriesId(seriesId);
+            todoTaskMapper.updateById(completed);
+        }
+
+        // 幂等保护：同一序列、同一到期日只保留一条待办，避免重复点击生成多份。
+        Long duplicated = todoTaskMapper.selectCount(new LambdaQueryWrapper<TodoTask>()
+                .eq(TodoTask::getUserId, userId)
+                .eq(TodoTask::getSeriesId, seriesId)
+                .eq(TodoTask::getDueDate, next.getDueDate())
+                .eq(TodoTask::getStatus, TodoTask.TaskStatus.TODO));
+        if (duplicated != null && duplicated > 0) {
+            return;
+        }
+
+        TodoTask nextTask = TodoTask.builder()
+                .userId(userId)
+                .listId(completed.getListId())
+                .title(completed.getTitle())
+                .descriptionMd(completed.getDescriptionMd())
+                .status(TodoTask.TaskStatus.TODO)
+                .priority(completed.getPriority())
+                .dueDate(next.getDueDate())
+                .dueTime(completed.getDueTime())
+                .sortOrder(nextTaskSortOrder(userId, completed.getListId()))
+                .completedAt(null)
+                .repeatFreq(completed.getRepeatFreq())
+                .repeatInterval(completed.getRepeatInterval())
+                .repeatByWeekdays(completed.getRepeatByWeekdays())
+                .repeatUntil(completed.getRepeatUntil())
+                .repeatCount(completed.getRepeatCount())
+                .repeatIndex(next.getRepeatIndex())
+                .seriesId(seriesId)
+                .build();
+        todoTaskMapper.insert(nextTask);
+
+        copySeriesTags(completed.getId(), nextTask.getId());
+        copySeriesSubtasks(completed.getId(), nextTask.getId());
+    }
+
+    private void copySeriesTags(Long fromTaskId, Long toTaskId) {
+        List<TodoTaskTag> taskTags = todoTaskTagMapper.findByTaskIds(Collections.singletonList(fromTaskId));
+        for (TodoTaskTag taskTag : taskTags) {
+            todoTaskTagMapper.insert(TodoTaskTag.builder()
+                    .taskId(toTaskId)
+                    .tagId(taskTag.getTagId())
+                    .build());
+        }
+    }
+
+    private void copySeriesSubtasks(Long fromTaskId, Long toTaskId) {
+        List<TodoSubtask> subtasks = todoSubtaskMapper.findByTaskIds(Collections.singletonList(fromTaskId));
+        subtasks.stream()
+                .sorted(Comparator.comparing(TodoSubtask::getSortOrder).thenComparing(TodoSubtask::getId))
+                .forEach(subtask -> todoSubtaskMapper.insert(TodoSubtask.builder()
+                        .taskId(toTaskId)
+                        .title(subtask.getTitle())
+                        .status(TodoSubtask.SubtaskStatus.TODO)
+                        .sortOrder(subtask.getSortOrder())
+                        .completedAt(null)
+                        .build()));
+    }
+
+    private void applyRecurrenceUpdate(TodoTask task, UpdateTodoTaskRequest request) {
+        if (request.getRepeatFreq() != null) {
+            TodoTask.RepeatFreq freq = parseRepeatFreq(request.getRepeatFreq());
+            task.setRepeatFreq(freq);
+            if (freq == TodoTask.RepeatFreq.NONE) {
+                task.setRepeatInterval(1);
+                task.setRepeatByWeekdays(null);
+                task.setRepeatUntil(null);
+                task.setRepeatCount(null);
+                task.setRepeatIndex(1);
+                task.setSeriesId(null);
+                return;
+            }
+            if (task.getSeriesId() == null) {
+                task.setSeriesId(task.getId());
+            }
+        }
+        if (request.getRepeatInterval() != null) {
+            task.setRepeatInterval(TodoRecurrence.normalizeInterval(request.getRepeatInterval()));
+        }
+        if (request.getRepeatByWeekdays() != null) {
+            task.setRepeatByWeekdays(TodoRecurrence.formatWeekdays(request.getRepeatByWeekdays()));
+        }
+        if (request.getRepeatUntil() != null) {
+            task.setRepeatUntil(parseDateOrNull(request.getRepeatUntil(), true));
+        }
+        if (request.getRepeatCount() != null) {
+            task.setRepeatCount(normalizeRepeatCount(request.getRepeatCount()));
+        }
+    }
+
+    private void validateRecurrence(TodoTask task) {
+        if (!TodoRecurrence.isRecurring(task)) {
+            return;
+        }
+        if (task.getDueDate() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环任务需要先设置截止日期");
+        }
+        if (task.getRepeatUntil() != null && task.getRepeatUntil().isBefore(task.getDueDate())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环结束日期不能早于截止日期");
+        }
+    }
+
+    private TodoTask.RepeatFreq parseRepeatFreq(String raw) {
+        String value = normalize(raw);
+        if (!StringUtils.hasText(value) || "none".equals(value)) {
+            return TodoTask.RepeatFreq.NONE;
+        }
+        switch (value) {
+            case "daily":
+                return TodoTask.RepeatFreq.DAILY;
+            case "weekly":
+                return TodoTask.RepeatFreq.WEEKLY;
+            case "monthly":
+                return TodoTask.RepeatFreq.MONTHLY;
+            case "yearly":
+                return TodoTask.RepeatFreq.YEARLY;
+            default:
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "无效的循环频率: " + raw);
+        }
+    }
+
+    private Integer normalizeRepeatCount(Integer count) {
+        if (count == null || count <= 0) {
+            return null;
+        }
+        return Math.min(count, 9999);
     }
 
     private void applyTimeFilter(LambdaQueryWrapper<TodoTask> wrapper, String timeFilter) {
@@ -710,6 +913,11 @@ public class TodoService {
             boolean dueToday = task.getDueDate() != null && task.getDueDate().isEqual(today);
             boolean dueTomorrow = task.getDueDate() != null && task.getDueDate().isEqual(today.plusDays(1));
 
+            boolean recurring = TodoRecurrence.isRecurring(task);
+            TodoRecurrence.Occurrence nextOccurrence = recurring
+                    ? TodoRecurrence.nextOccurrence(task, today)
+                    : null;
+
             TodoTaskDTO dto = TodoTaskDTO.builder()
                     .id(task.getId())
                     .listId(task.getListId())
@@ -729,6 +937,18 @@ public class TodoService {
                     .subtaskTotal(subtaskTotal)
                     .subtaskCompleted(subtaskCompleted)
                     .subtaskProgress(subtaskProgress)
+                    .recurring(recurring)
+                    .repeatFreq(task.getRepeatFreq() == null
+                            ? TodoTask.RepeatFreq.NONE.getValue()
+                            : task.getRepeatFreq().getValue())
+                    .repeatInterval(TodoRecurrence.normalizeInterval(task.getRepeatInterval()))
+                    .repeatByWeekdays(TodoRecurrence.weekdayNumbers(task.getRepeatByWeekdays()))
+                    .repeatUntil(task.getRepeatUntil())
+                    .repeatCount(task.getRepeatCount())
+                    .repeatIndex(task.getRepeatIndex() == null ? 1 : task.getRepeatIndex())
+                    .seriesId(task.getSeriesId())
+                    .recurrenceLabel(TodoRecurrence.describe(task))
+                    .nextDueDate(nextOccurrence == null ? null : nextOccurrence.getDueDate())
                     .tags(tags.stream().map(this::toTagDTO).collect(Collectors.toList()))
                     .subtasks(subtasks.stream()
                             .sorted(Comparator.comparing(TodoSubtask::getSortOrder).thenComparing(TodoSubtask::getId))

@@ -35,6 +35,17 @@ public class TodoTaskDTO {
     private Integer subtaskCompleted;
     private Integer subtaskProgress;
 
+    private Boolean recurring;
+    private String repeatFreq;
+    private Integer repeatInterval;
+    private List<Integer> repeatByWeekdays;
+    private LocalDate repeatUntil;
+    private Integer repeatCount;
+    private Integer repeatIndex;
+    private Long seriesId;
+    private String recurrenceLabel;
+    private LocalDate nextDueDate;
+
     private List<TodoTagDTO> tags;
     private List<TodoSubtaskDTO> subtasks;
 }

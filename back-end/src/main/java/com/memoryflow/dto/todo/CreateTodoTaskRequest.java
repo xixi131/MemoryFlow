@@ -35,5 +35,30 @@ public class CreateTodoTaskRequest {
     private Integer sortOrder;
 
     private List<Long> tagIds;
+
+    /**
+     * none / daily / weekly / monthly / yearly
+     */
+    private String repeatFreq;
+
+    /**
+     * 循环间隔，默认 1
+     */
+    private Integer repeatInterval;
+
+    /**
+     * 每周循环指定星期，ISO 编号（1=周一 ... 7=周日）
+     */
+    private List<Integer> repeatByWeekdays;
+
+    /**
+     * 循环结束日期，YYYY-MM-DD
+     */
+    private String repeatUntil;
+
+    /**
+     * 循环总次数，null 表示不限
+     */
+    private Integer repeatCount;
 }
 

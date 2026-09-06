@@ -5,6 +5,7 @@ export type TodoPriority = 'high' | 'medium' | 'low' | 'none';
 export type TodoTimeFilter = 'all' | 'today' | 'tomorrow' | 'week' | 'no-date' | 'overdue';
 export type TodoSortBy = 'custom' | 'created' | 'due' | 'priority';
 export type TodoSortOrder = 'asc' | 'desc';
+export type TodoRepeatFreq = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface TodoListDTO {
     id: number;
@@ -49,6 +50,16 @@ export interface TodoTaskDTO {
     subtaskTotal?: number;
     subtaskCompleted?: number;
     subtaskProgress?: number;
+    recurring?: boolean;
+    repeatFreq?: TodoRepeatFreq;
+    repeatInterval?: number;
+    repeatByWeekdays?: number[];
+    repeatUntil?: string | null;
+    repeatCount?: number | null;
+    repeatIndex?: number;
+    seriesId?: number | null;
+    recurrenceLabel?: string | null;
+    nextDueDate?: string | null;
     tags: TodoTagDTO[];
     subtasks: TodoSubtaskDTO[];
 }
@@ -102,7 +113,15 @@ export interface TodoTaskQuery {
     sortOrder?: TodoSortOrder;
 }
 
-export interface CreateTodoTaskPayload {
+export interface TodoRecurrencePayload {
+    repeatFreq?: TodoRepeatFreq;
+    repeatInterval?: number;
+    repeatByWeekdays?: number[];
+    repeatUntil?: string;
+    repeatCount?: number | null;
+}
+
+export interface CreateTodoTaskPayload extends TodoRecurrencePayload {
     title: string;
     descriptionMd?: string;
     priority?: TodoPriority;
@@ -112,7 +131,7 @@ export interface CreateTodoTaskPayload {
     tagIds?: number[];
 }
 
-export interface UpdateTodoTaskPayload {
+export interface UpdateTodoTaskPayload extends TodoRecurrencePayload {
     title?: string;
     descriptionMd?: string;
     status?: TodoTaskStatus;
@@ -177,6 +196,9 @@ const todoApis = {
         request({ url: `/todos/tasks/${id}/status`, method: 'patch', data: { completed } }),
 
     deleteTask: (id: number) => request({ url: `/todos/tasks/${id}`, method: 'delete' }),
+
+    /** 跳过循环任务的当前这一次，直接顺延到下一个周期 */
+    skipTaskOccurrence: (id: number) => request({ url: `/todos/tasks/${id}/skip`, method: 'post' }),
 
     batchOperateTasks: (data: BatchTodoTaskPayload) =>
         request({ url: '/todos/tasks/batch', method: 'post', data }),

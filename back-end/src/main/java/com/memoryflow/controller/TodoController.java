@@ -136,6 +136,12 @@ public class TodoController {
         return ApiResponse.success(todoService.updateTaskStatus(userId, id, request));
     }
 
+    @PostMapping("/tasks/{id}/skip")
+    public ApiResponse<TodoTaskDTO> skipOccurrence(@PathVariable Long id) {
+        Long userId = securityUtils.getCurrentUserId();
+        return ApiResponse.success(todoService.skipOccurrence(userId, id));
+    }
+
     @DeleteMapping("/tasks/{id}")
     public ApiResponse<Void> deleteTask(@PathVariable Long id) {
         Long userId = securityUtils.getCurrentUserId();

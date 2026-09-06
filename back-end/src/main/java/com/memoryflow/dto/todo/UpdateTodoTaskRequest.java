@@ -41,5 +41,27 @@ public class UpdateTodoTaskRequest {
      * 传 null 表示不变，传空数组表示清空标签
      */
     private List<Long> tagIds;
+
+    /**
+     * none / daily / weekly / monthly / yearly，传 none 可取消循环
+     */
+    private String repeatFreq;
+
+    private Integer repeatInterval;
+
+    /**
+     * 传 null 表示不变，传空数组表示清空指定星期
+     */
+    private List<Integer> repeatByWeekdays;
+
+    /**
+     * YYYY-MM-DD，传空字符串可清空
+     */
+    private String repeatUntil;
+
+    /**
+     * 传 0 或负数可清空次数限制
+     */
+    private Integer repeatCount;
 }
 

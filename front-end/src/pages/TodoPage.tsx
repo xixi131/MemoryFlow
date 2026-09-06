@@ -12,7 +12,10 @@ import {
     ListFilter,
     ListTodo,
     Minus,
+    Plus,
+    Repeat,
     Search,
+    SkipForward,
     SlidersHorizontal,
     Tags,
     Trash2
@@ -24,6 +27,8 @@ import { useTodoSynchronization } from '../hooks/useTodoSynchronization';
 import todoApis, {
     CreateTodoTaskPayload,
     TodoPriority,
+    TodoRecurrencePayload,
+    TodoRepeatFreq,
     TodoSortBy,
     TodoSortOrder,
     TodoStatsDTO,
@@ -43,6 +48,17 @@ type TodoQueryState = {
     sortOrder: TodoSortOrder;
 };
 
+type RecurrenceEndMode = 'never' | 'until' | 'count';
+
+type RecurrenceDraft = {
+    freq: TodoRepeatFreq;
+    interval: number;
+    weekdays: number[];
+    endMode: RecurrenceEndMode;
+    until: string;
+    count: number;
+};
+
 type TaskEditorDraft = {
     id: number;
     title: string;
@@ -51,6 +67,7 @@ type TaskEditorDraft = {
     dueDate: string;
     dueTime: string;
     tagIds: number[];
+    recurrence: RecurrenceDraft;
 };
 
 type CreateDraft = {
@@ -60,6 +77,7 @@ type CreateDraft = {
     dueDate: string;
     dueTime: string;
     tagIds: number[];
+    recurrence: RecurrenceDraft;
 };
 
 const DEFAULT_QUERY: TodoQueryState = {
@@ -98,6 +116,78 @@ const PRIORITY_CLASS: Record<TodoPriority, string> = {
     medium: 'bg-amber-500/15 text-amber-500 border-amber-500/25',
     low: 'bg-blue-500/15 text-blue-500 border-blue-500/25',
     none: 'bg-slate-500/15 text-slate-500 border-slate-500/25'
+};
+
+const REPEAT_OPTIONS: Array<{ value: TodoRepeatFreq; label: string }> = [
+    { value: 'none', label: '不重复' },
+    { value: 'daily', label: '每天' },
+    { value: 'weekly', label: '每周' },
+    { value: 'monthly', label: '每月' },
+    { value: 'yearly', label: '每年' }
+];
+
+const REPEAT_UNIT: Record<Exclude<TodoRepeatFreq, 'none'>, string> = {
+    daily: '天',
+    weekly: '周',
+    monthly: '个月',
+    yearly: '年'
+};
+
+const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+
+const REPEAT_END_OPTIONS: Array<{ value: RecurrenceEndMode; label: string }> = [
+    { value: 'never', label: '永不结束' },
+    { value: 'until', label: '截止日期' },
+    { value: 'count', label: '重复次数' }
+];
+
+const EMPTY_RECURRENCE: RecurrenceDraft = {
+    freq: 'none',
+    interval: 1,
+    weekdays: [],
+    endMode: 'never',
+    until: '',
+    count: 10
+};
+
+const recurrenceFromTask = (task: TodoTaskDTO): RecurrenceDraft => {
+    const freq = task.repeatFreq || 'none';
+    if (freq === 'none') return { ...EMPTY_RECURRENCE };
+    return {
+        freq,
+        interval: Math.max(1, task.repeatInterval || 1),
+        weekdays: task.repeatByWeekdays || [],
+        endMode: task.repeatCount ? 'count' : task.repeatUntil ? 'until' : 'never',
+        until: toDateInput(task.repeatUntil),
+        count: task.repeatCount || 10
+    };
+};
+
+const recurrenceToPayload = (draft: RecurrenceDraft): TodoRecurrencePayload => {
+    if (draft.freq === 'none') {
+        return { repeatFreq: 'none' };
+    }
+    return {
+        repeatFreq: draft.freq,
+        repeatInterval: Math.max(1, draft.interval || 1),
+        repeatByWeekdays: draft.freq === 'weekly' ? draft.weekdays : [],
+        repeatUntil: draft.endMode === 'until' ? draft.until : '',
+        repeatCount: draft.endMode === 'count' ? Math.max(1, draft.count || 1) : 0
+    };
+};
+
+/** 与后端 TodoRecurrence#describe 保持一致的本地预览文案 */
+const describeRecurrence = (draft: RecurrenceDraft): string => {
+    if (draft.freq === 'none') return '不重复';
+    const interval = Math.max(1, draft.interval || 1);
+    const unit = REPEAT_UNIT[draft.freq];
+    let text = interval === 1 ? `每${draft.freq === 'monthly' ? '月' : unit}` : `每 ${interval} ${unit}`;
+    if (draft.freq === 'weekly' && draft.weekdays.length > 0) {
+        text += ` ${[...draft.weekdays].sort((a, b) => a - b).map((day) => `周${WEEKDAY_LABELS[day - 1]}`).join('、')}`;
+    }
+    if (draft.endMode === 'count') text += `，共 ${Math.max(1, draft.count || 1)} 次`;
+    else if (draft.endMode === 'until' && draft.until) text += `，至 ${draft.until}`;
+    return text;
 };
 
 const TIME_OPTIONS: Array<{ value: TodoTimeFilter; label: string }> = [
@@ -147,7 +237,29 @@ const inputClass =
     'w-full border border-slate-200/90 bg-white px-4 py-3 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] placeholder:text-slate-400 hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 const selectClass =
-    'border border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+    'min-h-[52px] border border-slate-200/90 bg-white px-4 py-3 text-[15px] text-slate-900 outline-none transition-[border-color,box-shadow,background-color] hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+
+/**
+ * 统一的按钮尺寸体系。所有可点区域至少 40px 高，主操作 48px，
+ * 避免此前一排 text-xs / py-1.5 的小按钮挤在一起。
+ */
+const btnBase =
+    'inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition-[background-color,color,box-shadow,transform] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100';
+
+const btnPrimary = `${btnBase} min-h-12 px-6 text-[15px] bg-primary text-white shadow-[0_6px_18px_rgba(37,99,235,0.24)] hover:bg-blue-600 hover:shadow-[0_8px_22px_rgba(37,99,235,0.3)]`;
+
+const btnSecondary = `${btnBase} min-h-11 px-5 text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/[0.16]`;
+
+const btnGhost = `${btnBase} min-h-11 px-4 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10`;
+
+const btnDanger = `${btnBase} min-h-11 px-5 text-sm bg-red-500/10 text-red-600 hover:bg-red-500/[0.18] dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25`;
+
+const iconBtnClass = `${btnBase} size-11 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white`;
+
+const fieldLabelClass = 'mb-2 block text-[13px] font-semibold text-slate-600 dark:text-text-secondary';
+
+const sectionCardClass =
+    'min-w-0 border border-slate-200/90 bg-white/75 p-5 dark:border-white/10 dark:bg-white/[0.03] sm:p-6';
 
 const quickCreateInputClass =
     'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
@@ -188,15 +300,15 @@ const ProjectSelect: React.FC<{
                 aria-expanded={open}
             >
                 <span className="truncate">{selected?.label || ''}</span>
-                <span className={`material-symbols-outlined text-[20px] text-slate-500 dark:text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}>
+                <span className={`material-symbols-outlined ml-2 text-[22px] text-slate-500 dark:text-text-secondary transition-transform ${open ? 'rotate-180' : ''}`}>
                     expand_more
                 </span>
             </button>
             {open && (
                 <div
-                    className="absolute z-40 mt-2 w-full overflow-hidden bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/10 shadow-[0_14px_40px_rgba(15,23,42,0.16)]"
+                    className="absolute z-40 mt-2 w-full overflow-hidden border border-slate-200 bg-white p-1.5 shadow-[0_18px_48px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-surface-dark"
                     role="listbox"
-                    style={continuous(8)}
+                    style={continuous(18)}
                 >
                     {options.map((option) => {
                         const active = option.value === value;
@@ -206,10 +318,11 @@ const ProjectSelect: React.FC<{
                                 type="button"
                                 role="option"
                                 aria-selected={active}
-                                className={`w-full text-left px-4 py-3 text-base transition-colors ${
+                                style={continuous(12)}
+                                className={`flex min-h-11 w-full items-center px-3.5 text-left text-[15px] transition-colors ${
                                     active
-                                        ? 'bg-primary text-white font-bold'
-                                        : 'text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10'
+                                        ? 'bg-primary font-bold text-white'
+                                        : 'text-slate-800 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10'
                                 }`}
                                 onClick={() => {
                                     onChange(option.value);
@@ -272,11 +385,11 @@ const ProjectNativePicker: React.FC<{
                 className={`w-full ${selectClass} inline-flex items-center justify-between`}
                 style={continuous(16)}
             >
-                <span className={`${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-text-secondary'}`}>
+                <span className={`truncate ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-text-secondary'}`}>
                     {displayValue}
                 </span>
-                <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-text-secondary">
-                    expand_more
+                <span className="material-symbols-outlined ml-2 text-[22px] text-slate-500 dark:text-text-secondary">
+                    {type === 'date' ? 'calendar_today' : 'schedule'}
                 </span>
             </button>
         </div>
@@ -300,9 +413,10 @@ const QuickCreateModal: React.FC<{
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="size-9 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:text-text-secondary dark:hover:text-white dark:hover:bg-white/10 transition-colors"
+                        aria-label="关闭"
+                        className="flex size-11 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200 dark:text-text-secondary dark:hover:bg-white/10 dark:hover:text-white"
                     >
-                        <span className="material-symbols-outlined text-[20px]">close</span>
+                        <span className="material-symbols-outlined text-[22px]">close</span>
                     </button>
                 </div>
                 <input
@@ -319,18 +433,20 @@ const QuickCreateModal: React.FC<{
                     className={quickCreateInputClass}
                     style={continuous(18)}
                 />
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2.5">
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-4 py-2 rounded-xl border border-slate-300 dark:border-white/10 text-slate-500 dark:text-text-secondary"
+                        className={`${btnBase} min-h-11 border border-slate-300 px-5 text-sm text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-text-secondary dark:hover:bg-white/10`}
+                        style={continuous(16)}
                     >
                         取消
                     </button>
                     <button
                         type="button"
                         onClick={onConfirm}
-                        className="px-4 py-2 rounded-xl bg-primary text-white font-bold hover:bg-blue-600 transition-colors"
+                        className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(37,99,235,0.24)] hover:bg-blue-600`}
+                        style={continuous(16)}
                     >
                         {confirmText}
                     </button>
@@ -371,21 +487,222 @@ const AppleCheckbox: React.FC<{
                 event.stopPropagation();
                 onChange(!checked);
             }}
-            className={`inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-500 dark:text-text-secondary ${className || ''}`}
+            style={continuous(999)}
+            className={`inline-flex min-h-11 shrink-0 items-center gap-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 dark:text-text-secondary dark:hover:bg-white/10 ${
+                label ? 'px-3' : 'px-1.5'
+            } ${className || ''}`}
         >
             <span
                 aria-hidden="true"
-                className={`relative flex size-5 items-center justify-center border transition-[background-color,border-color,box-shadow] ${
+                className={`relative flex size-[22px] items-center justify-center border transition-[background-color,border-color,box-shadow] ${
                     active
                         ? 'border-[#0A84FF] bg-[#0A84FF] text-white shadow-[0_1px_3px_rgba(10,132,255,0.3)]'
                         : 'border-slate-300 bg-white text-transparent hover:border-slate-400 dark:border-slate-500 dark:bg-[#101725] dark:hover:border-slate-400'
                 }`}
-                style={continuous(6)}
+                style={continuous(7)}
             >
-                {indeterminate ? <Minus size={14} strokeWidth={2.8} /> : <Check size={14} strokeWidth={2.8} />}
+                {indeterminate ? <Minus size={15} strokeWidth={2.8} /> : <Check size={15} strokeWidth={2.8} />}
             </span>
             {label && <span>{label}</span>}
         </button>
+    );
+};
+
+/**
+ * 重复规则选择器。收起时只是一行分段控件，选中频率后再展开细节，
+ * 保持 Apple「渐进披露」的节奏，不给一次性任务增加噪音。
+ */
+const RecurrencePicker: React.FC<{
+    value: RecurrenceDraft;
+    onChange: (next: RecurrenceDraft) => void;
+    hasDueDate: boolean;
+    nextDueDate?: string | null;
+}> = ({ value, onChange, hasDueDate, nextDueDate }) => {
+    const expanded = value.freq !== 'none';
+
+    const patch = (partial: Partial<RecurrenceDraft>) => onChange({ ...value, ...partial });
+
+    const toggleWeekday = (day: number) =>
+        patch({
+            weekdays: value.weekdays.includes(day)
+                ? value.weekdays.filter((item) => item !== day)
+                : [...value.weekdays, day].sort((a, b) => a - b)
+        });
+
+    return (
+        <div
+            className="border border-slate-200/90 bg-white/70 p-5 transition-colors dark:border-white/10 dark:bg-white/[0.03]"
+            style={continuous(24)}
+        >
+            <div className="mb-4 flex items-center gap-3">
+                <span
+                    className={`flex size-11 shrink-0 items-center justify-center transition-colors ${
+                        expanded ? 'bg-primary/12 text-primary' : 'bg-slate-200/70 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+                    }`}
+                    style={continuous(15)}
+                >
+                    <Repeat size={20} strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-bold text-slate-900 dark:text-white">重复</p>
+                    <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-text-secondary">
+                        {expanded ? describeRecurrence(value) : '完成后不再自动生成新的待办'}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                {REPEAT_OPTIONS.map((option) => {
+                    const active = value.freq === option.value;
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() =>
+                                patch(
+                                    option.value === 'none'
+                                        ? { ...EMPTY_RECURRENCE }
+                                        : { freq: option.value, interval: value.freq === 'none' ? 1 : value.interval }
+                                )
+                            }
+                            className={`min-h-11 px-5 text-sm font-semibold transition-[background-color,color,box-shadow,transform] active:scale-[0.97] ${
+                                active
+                                    ? 'bg-primary text-white shadow-[0_6px_16px_rgba(37,99,235,0.26)]'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/[0.16]'
+                            }`}
+                            style={continuous(999)}
+                        >
+                            {option.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {expanded && (
+                <div className="mt-5 flex flex-col gap-5 border-t border-slate-200/80 pt-5 dark:border-white/10">
+                    <div>
+                        <span className={fieldLabelClass}>间隔</span>
+                        <div
+                            className="inline-flex items-center gap-1.5 bg-slate-100 p-1.5 dark:bg-white/10"
+                            style={continuous(999)}
+                        >
+                            <button
+                                type="button"
+                                aria-label="减少间隔"
+                                onClick={() => patch({ interval: Math.max(1, value.interval - 1) })}
+                                disabled={value.interval <= 1}
+                                className="flex size-10 items-center justify-center bg-white text-slate-700 shadow-[0_1px_3px_rgba(15,23,42,0.1)] transition-[background-color,transform] active:scale-90 disabled:opacity-35 disabled:active:scale-100 dark:bg-white/15 dark:text-slate-200"
+                                style={continuous(999)}
+                            >
+                                <Minus size={17} strokeWidth={2.6} />
+                            </button>
+                            <span className="min-w-[5.5rem] text-center text-[15px] font-bold text-slate-900 dark:text-white">
+                                {value.interval} {REPEAT_UNIT[value.freq as Exclude<TodoRepeatFreq, 'none'>]}
+                            </span>
+                            <button
+                                type="button"
+                                aria-label="增加间隔"
+                                onClick={() => patch({ interval: Math.min(365, value.interval + 1) })}
+                                className="flex size-10 items-center justify-center bg-white text-slate-700 shadow-[0_1px_3px_rgba(15,23,42,0.1)] transition-[background-color,transform] active:scale-90 dark:bg-white/15 dark:text-slate-200"
+                                style={continuous(999)}
+                            >
+                                <Plus size={17} strokeWidth={2.6} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {value.freq === 'weekly' && (
+                        <div>
+                            <span className={fieldLabelClass}>在这些星期重复</span>
+                            <div className="flex flex-wrap gap-2">
+                                {WEEKDAY_LABELS.map((label, index) => {
+                                    const day = index + 1;
+                                    const active = value.weekdays.includes(day);
+                                    return (
+                                        <button
+                                            key={day}
+                                            type="button"
+                                            aria-pressed={active}
+                                            aria-label={`周${label}`}
+                                            onClick={() => toggleWeekday(day)}
+                                            className={`size-11 text-[15px] font-semibold transition-[background-color,color,transform] active:scale-90 ${
+                                                active
+                                                    ? 'bg-primary text-white shadow-[0_4px_12px_rgba(37,99,235,0.26)]'
+                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/[0.16]'
+                                            }`}
+                                            style={continuous(999)}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <span className={fieldLabelClass}>结束条件</span>
+                        <div className="flex flex-wrap gap-2">
+                            {REPEAT_END_OPTIONS.map((option) => {
+                                const active = value.endMode === option.value;
+                                return (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        aria-pressed={active}
+                                        onClick={() => patch({ endMode: option.value })}
+                                        className={`min-h-11 px-5 text-sm font-semibold transition-[background-color,color,transform] active:scale-[0.97] ${
+                                            active
+                                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/[0.16]'
+                                        }`}
+                                        style={continuous(999)}
+                                    >
+                                        {option.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {value.endMode === 'until' && (
+                            <div className="mt-3 max-w-xs">
+                                <ProjectNativePicker
+                                    type="date"
+                                    value={value.until}
+                                    placeholder="选择循环结束日期"
+                                    onChange={(next) => patch({ until: next })}
+                                />
+                            </div>
+                        )}
+
+                        {value.endMode === 'count' && (
+                            <label className="mt-3 flex items-center gap-3 text-sm font-semibold text-slate-600 dark:text-text-secondary">
+                                共重复
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={9999}
+                                    value={value.count}
+                                    onChange={(e) => patch({ count: Number(e.target.value) || 1 })}
+                                    className={`${selectClass} w-28 text-center`}
+                                    style={continuous(16)}
+                                />
+                                次
+                            </label>
+                        )}
+                    </div>
+
+                    <p className="text-sm text-slate-400 dark:text-text-secondary/80">
+                        {hasDueDate
+                            ? nextDueDate
+                                ? `完成或跳过后，会自动生成下一次待办：${nextDueDate}`
+                                : '完成后会自动生成下一次待办。'
+                            : '循环任务需要先选择截止日期作为第一次的时间。'}
+                    </p>
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -475,7 +792,8 @@ const TodoPage: React.FC = () => {
         priority: 'medium',
         dueDate: '',
         dueTime: '',
-        tagIds: []
+        tagIds: [],
+        recurrence: { ...EMPTY_RECURRENCE }
     });
 
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
@@ -508,7 +826,8 @@ const TodoPage: React.FC = () => {
             priority: task.priority || 'none',
             dueDate: toDateInput(task.dueDate),
             dueTime: toTimeInput(task.dueTime),
-            tagIds: (task.tags || []).map((tag) => tag.id)
+            tagIds: (task.tags || []).map((tag) => tag.id),
+            recurrence: recurrenceFromTask(task)
         }),
         []
     );
@@ -637,19 +956,24 @@ const TodoPage: React.FC = () => {
             message.warning('请输入任务标题');
             return;
         }
+        if (createDraft.recurrence.freq !== 'none' && !createDraft.dueDate) {
+            message.warning('循环任务需要先选择截止日期');
+            return;
+        }
         const payload: CreateTodoTaskPayload = {
             title,
             descriptionMd: createDraft.descriptionMd,
             priority: createDraft.priority,
             dueDate: createDraft.dueDate || undefined,
             dueTime: createDraft.dueDate ? createDraft.dueTime || undefined : undefined,
-            tagIds: createDraft.tagIds
+            tagIds: createDraft.tagIds,
+            ...recurrenceToPayload(createDraft.recurrence)
         };
         setSaving(true);
         try {
             const res: any = await todoApis.createTask(payload);
             if (res.code === 200) {
-                message.success('任务已创建');
+                message.success(createDraft.recurrence.freq === 'none' ? '任务已创建' : '循环任务已创建');
                 setCreateDraft((prev) => ({ ...prev, title: '', descriptionMd: '' }));
                 await refreshAfterMutation();
             } else {
@@ -738,6 +1062,22 @@ const TodoPage: React.FC = () => {
                 )
             );
             message.error('状态更新失败');
+        }
+    };
+
+    const handleSkipOccurrence = async (task: TodoTaskDTO) => {
+        try {
+            const res: any = await todoApis.skipTaskOccurrence(task.id);
+            if (res.code === 200) {
+                const nextDue = toDateInput(res.data?.dueDate);
+                message.success(nextDue ? `已跳过本次，顺延到 ${nextDue}` : '已跳过本次');
+                await refreshAfterMutation();
+            } else {
+                message.error(res.message || '跳过失败');
+            }
+        } catch (error) {
+            console.error(error);
+            message.error('跳过失败');
         }
     };
 
@@ -867,6 +1207,10 @@ const TodoPage: React.FC = () => {
             message.warning('任务标题不能为空');
             return;
         }
+        if (drawerDraft.recurrence.freq !== 'none' && !drawerDraft.dueDate) {
+            message.warning('循环任务需要先选择截止日期');
+            return;
+        }
         setSaving(true);
         try {
             const res: any = await todoApis.updateTask(drawerDraft.id, {
@@ -875,7 +1219,8 @@ const TodoPage: React.FC = () => {
                 priority: drawerDraft.priority,
                 dueDate: drawerDraft.dueDate || '',
                 dueTime: drawerDraft.dueDate ? drawerDraft.dueTime || '' : '',
-                tagIds: drawerDraft.tagIds
+                tagIds: drawerDraft.tagIds,
+                ...recurrenceToPayload(drawerDraft.recurrence)
             });
             if (res.code === 200) {
                 message.success('任务已更新');
@@ -1013,11 +1358,11 @@ const TodoPage: React.FC = () => {
                                 ].map((metric) => (
                                     <article
                                         key={metric.label}
-                                        className="flex min-h-[132px] flex-col justify-between border border-slate-200 bg-white/80 p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/5"
-                                        style={continuous(24)}
+                                        className="flex min-h-[148px] flex-col justify-between border border-slate-200 bg-white/80 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/5"
+                                        style={continuous(26)}
                                     >
                                         <p className="text-sm font-bold text-slate-500 dark:text-text-secondary">{metric.label}</p>
-                                        <p className={`text-3xl font-extrabold ${metric.tone}`}>{metric.value}</p>
+                                        <p className={`text-4xl font-extrabold tracking-tight ${metric.tone}`}>{metric.value}</p>
                                         <p className="text-xs text-slate-400 dark:text-text-secondary/80">{metric.detail}</p>
                                     </article>
                                 ))}
@@ -1038,45 +1383,49 @@ const TodoPage: React.FC = () => {
                     <>
                 <section
                     aria-labelledby="todo-create-heading"
-                    className="min-w-0 border border-slate-200/90 bg-slate-50/80 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.035] sm:p-5"
-                    style={continuous(28)}
+                    className="min-w-0 border border-slate-200/90 bg-slate-50/80 p-5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-white/[0.035] sm:p-7"
+                    style={continuous(30)}
                 >
-                    <div className="mb-4 flex items-center gap-3">
-                        <span className="flex size-10 shrink-0 items-center justify-center bg-primary/10 text-primary" style={continuous(14)}>
-                            <CirclePlus size={21} strokeWidth={2.1} />
+                    <div className="mb-6 flex items-center gap-3.5">
+                        <span className="flex size-12 shrink-0 items-center justify-center bg-primary/10 text-primary" style={continuous(16)}>
+                            <CirclePlus size={24} strokeWidth={2.1} />
                         </span>
                         <div>
-                            <h3 id="todo-create-heading" className="text-base font-bold text-slate-900 dark:text-white">新建任务</h3>
+                            <h3 id="todo-create-heading" className="text-lg font-bold text-slate-900 dark:text-white">新建任务</h3>
                             <p className="mt-0.5 text-sm text-slate-500 dark:text-text-secondary">快速记录，再补充时间与优先级。</p>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-3">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <input
-                                    value={createDraft.title}
-                                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, title: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleCreateTask();
-                                        }
-                                    }}
-                                    className={`${inputClass} flex-1`}
-                                    style={continuous(18)}
-                                    placeholder="任务标题（回车可创建）"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleCreateTask}
-                                    disabled={saving}
-                                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-sm font-bold text-white shadow-[0_8px_20px_rgba(37,99,235,0.22)] transition-[background-color,transform,box-shadow] hover:bg-blue-600 hover:shadow-[0_10px_24px_rgba(37,99,235,0.28)] active:scale-[0.98] disabled:opacity-60"
-                                    style={continuous(18)}
-                                >
-                                    <CirclePlus size={18} />
-                                    创建
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3">
+
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                            <input
+                                value={createDraft.title}
+                                onChange={(e) => setCreateDraft((prev) => ({ ...prev, title: e.target.value }))}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleCreateTask();
+                                    }
+                                }}
+                                className={`${inputClass} min-h-[52px] flex-1 text-[15px]`}
+                                style={continuous(18)}
+                                placeholder="任务标题（回车可创建）"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleCreateTask}
+                                disabled={saving}
+                                className={`${btnPrimary} shrink-0 sm:min-w-[132px]`}
+                                style={continuous(18)}
+                            >
+                                <CirclePlus size={19} />
+                                创建
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div>
+                                <span className={fieldLabelClass}>优先级</span>
                                 <ProjectSelect
                                     className="w-full"
                                     value={createDraft.priority}
@@ -1088,6 +1437,9 @@ const TodoPage: React.FC = () => {
                                         }))
                                     }
                                 />
+                            </div>
+                            <div>
+                                <span className={fieldLabelClass}>截止日期</span>
                                 <ProjectNativePicker
                                     type="date"
                                     value={createDraft.dueDate}
@@ -1100,6 +1452,9 @@ const TodoPage: React.FC = () => {
                                         }))
                                     }
                                 />
+                            </div>
+                            <div>
+                                <span className={fieldLabelClass}>截止时间</span>
                                 <ProjectNativePicker
                                     type="time"
                                     value={createDraft.dueTime}
@@ -1109,79 +1464,111 @@ const TodoPage: React.FC = () => {
                                         setCreateDraft((prev) => ({ ...prev, dueTime: nextValue }))
                                     }
                                 />
-                                <div className="flex items-center justify-end">
-                                    <button type="button" onClick={openCreateTagModal} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10" style={continuous(999)}>
-                                        <Tags size={15} />
-                                        新建标签
-                                    </button>
+                            </div>
+                        </div>
+
+                        <RecurrencePicker
+                            value={createDraft.recurrence}
+                            hasDueDate={!!createDraft.dueDate}
+                            onChange={(next) => setCreateDraft((prev) => ({ ...prev, recurrence: next }))}
+                        />
+
+                        <div>
+                            <span className={fieldLabelClass}>任务描述</span>
+                            <textarea
+                                value={createDraft.descriptionMd}
+                                onChange={(e) => setCreateDraft((prev) => ({ ...prev, descriptionMd: e.target.value }))}
+                                placeholder="输入任务描述或备注..."
+                                rows={4}
+                                className={`${inputClass} resize-y text-[15px] leading-relaxed`}
+                                style={continuous(18)}
+                            />
+                        </div>
+
+                        <div>
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <span className="text-[13px] font-semibold text-slate-600 dark:text-text-secondary">标签</span>
+                                <button
+                                    type="button"
+                                    onClick={openCreateTagModal}
+                                    className={`${btnGhost} text-primary hover:bg-primary/10`}
+                                    style={continuous(999)}
+                                >
+                                    <Tags size={17} />
+                                    新建标签
+                                </button>
+                            </div>
+                            {tags.length === 0 ? (
+                                <p className="text-sm text-slate-400 dark:text-text-secondary/80">还没有标签，先创建一个吧。</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-2.5">
+                                    {tags.map((tag) => {
+                                        const active = createDraft.tagIds.includes(tag.id);
+                                        return (
+                                            <button
+                                                key={tag.id}
+                                                type="button"
+                                                aria-pressed={active}
+                                                onClick={() => toggleCreateTag(tag.id)}
+                                                className={`min-h-10 border px-4 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.97] ${active ? 'ring-2 ring-offset-1 ring-offset-transparent' : ''}`}
+                                                style={{
+                                                    ...continuous(999),
+                                                    color: tag.color,
+                                                    borderColor: `${tag.color}88`,
+                                                    backgroundColor: active ? `${tag.color}26` : `${tag.color}12`,
+                                                    ...(active ? { boxShadow: `0 0 0 2px ${tag.color}55` } : {})
+                                                }}
+                                            >
+                                                #{tag.name}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-500 dark:text-text-secondary mb-2">任务描述</p>
-                                <textarea
-                                    value={createDraft.descriptionMd}
-                                    onChange={(e) => setCreateDraft((prev) => ({ ...prev, descriptionMd: e.target.value }))}
-                                    placeholder="输入任务描述或备注..."
-                                    rows={4}
-                                    className={`${inputClass} resize-y`}
-                                    style={continuous(18)}
-                                />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {tags.map((tag) => {
-                                    const active = createDraft.tagIds.includes(tag.id);
-                                    return (
-                                        <button
-                                            key={tag.id}
-                                            type="button"
-                                            onClick={() => toggleCreateTag(tag.id)}
-                                            className={`border px-2.5 py-1 text-xs ${active ? 'ring-1' : ''}`}
-                                            style={{ ...continuous(999), color: tag.color, borderColor: `${tag.color}88`, backgroundColor: active ? `${tag.color}22` : `${tag.color}10` }}
-                                        >
-                                            #{tag.name}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                            )}
+                        </div>
                     </div>
                 </section>
 
                 <section
                     aria-labelledby="todo-filter-heading"
-                    className="min-w-0 border border-slate-200/90 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.025] sm:p-5"
-                    style={continuous(28)}
+                    className={sectionCardClass}
+                    style={continuous(30)}
                 >
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(14)}>
-                                <ListFilter size={20} strokeWidth={2.1} />
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3.5">
+                            <span className="flex size-12 shrink-0 items-center justify-center bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(16)}>
+                                <ListFilter size={23} strokeWidth={2.1} />
                             </span>
                             <div>
-                                <h3 id="todo-filter-heading" className="text-base font-bold text-slate-900 dark:text-white">查询与筛选</h3>
+                                <h3 id="todo-filter-heading" className="text-lg font-bold text-slate-900 dark:text-white">查询与筛选</h3>
                                 <p className="mt-0.5 text-sm text-slate-500 dark:text-text-secondary">组合条件，快速定位需要处理的任务。</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => { setQuery(DEFAULT_QUERY); setSearchInput(''); }}
-                            className="inline-flex items-center justify-center gap-1.5 self-start bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15 sm:self-auto"
+                            className={`${btnSecondary} self-start sm:self-auto`}
                             style={continuous(999)}
                         >
-                            <SlidersHorizontal size={14} />
+                            <SlidersHorizontal size={17} />
                             重置筛选
                         </button>
                     </div>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-7">
-                            <label className="relative sm:col-span-2 xl:col-span-2">
-                                <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    className={`${inputClass} py-2.5 pl-11`}
-                                    style={continuous(16)}
-                                    placeholder="搜索任务标题或描述"
-                                />
-                            </label>
+
+                    <label className="relative block">
+                        <Search className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400" size={20} />
+                        <input
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className={`${inputClass} min-h-[52px] pl-12 text-[15px]`}
+                            style={continuous(18)}
+                            placeholder="搜索任务标题或描述"
+                        />
+                    </label>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <span className={fieldLabelClass}>状态</span>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.status}
@@ -1193,10 +1580,13 @@ const TodoPage: React.FC = () => {
                                     }))
                                 }
                             />
+                        </div>
+                        <div>
+                            <span className={fieldLabelClass}>时间范围</span>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.timeFilter}
-                                options={TIME_OPTIONS.map((option) => ({ value: option.value, label: `时间：${option.label}` }))}
+                                options={TIME_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                                 onChange={(nextValue) =>
                                     setQuery((prev) => ({
                                         ...prev,
@@ -1204,6 +1594,9 @@ const TodoPage: React.FC = () => {
                                     }))
                                 }
                             />
+                        </div>
+                        <div>
+                            <span className={fieldLabelClass}>优先级</span>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.priority}
@@ -1215,10 +1608,13 @@ const TodoPage: React.FC = () => {
                                     }))
                                 }
                             />
+                        </div>
+                        <div>
+                            <span className={fieldLabelClass}>排序方式</span>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.sortBy}
-                                options={SORT_OPTIONS.map((option) => ({ value: option.value, label: `排序：${option.label}` }))}
+                                options={SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                                 onChange={(nextValue) =>
                                     setQuery((prev) => ({
                                         ...prev,
@@ -1226,6 +1622,9 @@ const TodoPage: React.FC = () => {
                                     }))
                                 }
                             />
+                        </div>
+                        <div>
+                            <span className={fieldLabelClass}>排序方向</span>
                             <ProjectSelect
                                 className="w-full"
                                 value={query.sortOrder}
@@ -1238,55 +1637,132 @@ const TodoPage: React.FC = () => {
                                 }
                             />
                         </div>
-                        <p className="mt-3 text-xs text-slate-500 dark:text-text-secondary">{orderHint}</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-text-secondary"><Tags size={14} />标签</span>
-                            <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: undefined }))} className={`border px-3 py-1.5 text-xs font-semibold ${query.tagId == null ? 'border-primary/40 text-primary bg-primary/10' : 'border-slate-200 text-slate-500 dark:border-white/10'}`} style={continuous(999)}>全部</button>
-                            {tags.map((tag) => (
-                                <div key={tag.id} className="inline-flex items-center gap-1">
-                                    <button type="button" onClick={() => setQuery((prev) => ({ ...prev, tagId: tag.id }))} className="border px-3 py-1.5 text-xs font-semibold" style={{ ...continuous(999), color: tag.color, borderColor: `${tag.color}88`, backgroundColor: query.tagId === tag.id ? `${tag.color}22` : `${tag.color}10` }}>
-                                        #{tag.name}
-                                    </button>
-                                    <button type="button" onClick={() => handleDeleteTag(tag)} aria-label={`删除标签 ${tag.name}`} className="flex size-7 items-center justify-center text-slate-400 hover:text-red-500" style={continuous(999)}><Trash2 size={13} /></button>
-                                </div>
-                            ))}
+                        <p className="flex items-end pb-1 text-sm leading-relaxed text-slate-500 dark:text-text-secondary">{orderHint}</p>
+                    </div>
+
+                    <div className="mt-6 border-t border-slate-200/80 pt-5 dark:border-white/10">
+                        <span className={`${fieldLabelClass} flex items-center gap-2`}>
+                            <Tags size={16} />
+                            按标签筛选
+                        </span>
+                        <div className="flex flex-wrap gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => setQuery((prev) => ({ ...prev, tagId: undefined }))}
+                                className={`min-h-10 border px-4 text-sm font-semibold transition-[background-color,transform] active:scale-[0.97] ${
+                                    query.tagId == null
+                                        ? 'border-primary/40 bg-primary/10 text-primary'
+                                        : 'border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/10'
+                                }`}
+                                style={continuous(999)}
+                            >
+                                全部
+                            </button>
+                            {tags.map((tag) => {
+                                const active = query.tagId === tag.id;
+                                return (
+                                    <span
+                                        key={tag.id}
+                                        className="inline-flex min-h-10 items-center border pl-4 pr-1.5 transition-colors"
+                                        style={{
+                                            ...continuous(999),
+                                            borderColor: `${tag.color}88`,
+                                            backgroundColor: active ? `${tag.color}26` : `${tag.color}12`
+                                        }}
+                                    >
+                                        <button
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => setQuery((prev) => ({ ...prev, tagId: active ? undefined : tag.id }))}
+                                            className="pr-2.5 text-sm font-semibold"
+                                            style={{ color: tag.color }}
+                                        >
+                                            #{tag.name}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteTag(tag)}
+                                            aria-label={`删除标签 ${tag.name}`}
+                                            className="flex size-8 shrink-0 items-center justify-center text-slate-400 transition-colors hover:bg-red-500/15 hover:text-red-500"
+                                            style={continuous(999)}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </span>
+                                );
+                            })}
                         </div>
+                    </div>
                 </section>
 
                 <section aria-labelledby="todo-list-heading" className="w-full min-w-0 pt-1">
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <h3 id="todo-list-heading" className="text-xl font-bold text-slate-900 dark:text-white">任务列表</h3>
-                            <span className="bg-slate-200/80 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(999)}>{tasks.length}</span>
+                            <span className="inline-flex min-h-7 items-center bg-slate-200/80 px-3 text-sm font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300" style={continuous(999)}>{tasks.length}</span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
-                            {selectedTaskIds.length > 0 && (
-                                <>
-                                    <span className="px-2 text-xs font-bold text-slate-500 dark:text-slate-300">已选 {selectedTaskIds.length} 项</span>
-                                    <button type="button" onClick={() => runBatchAction('complete')} className="px-3 py-1.5 text-xs font-bold text-emerald-600 hover:bg-emerald-500/10" style={continuous(999)}>标记完成</button>
-                                    <button type="button" onClick={() => runBatchAction('uncomplete')} className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-500/10" style={continuous(999)}>恢复待办</button>
-                                    <button type="button" onClick={() => runBatchAction('delete')} className="px-3 py-1.5 text-xs font-bold text-red-500 hover:bg-red-500/10" style={continuous(999)}>删除</button>
-                                    <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-white/10" aria-hidden="true" />
-                                </>
-                            )}
-                            <AppleCheckbox
-                                checked={allVisibleSelected}
-                                indeterminate={someVisibleSelected}
-                                ariaLabel="全选可见任务"
-                                label="全选"
-                                onChange={(checked) => setSelectedTaskIds(checked ? tasks.map((task) => task.id) : [])}
-                            />
-                        </div>
+                        <AppleCheckbox
+                            checked={allVisibleSelected}
+                            indeterminate={someVisibleSelected}
+                            ariaLabel="全选可见任务"
+                            label="全选"
+                            onChange={(checked) => setSelectedTaskIds(checked ? tasks.map((task) => task.id) : [])}
+                        />
                     </div>
+
+                    {selectedTaskIds.length > 0 && (
+                        <div
+                            className="mb-4 flex flex-wrap items-center gap-3 border border-primary/20 bg-primary/[0.07] p-3 sm:px-5 sm:py-3.5 dark:border-primary/25 dark:bg-primary/10"
+                            style={continuous(22)}
+                        >
+                            <span className="mr-auto text-sm font-bold text-slate-700 dark:text-white">
+                                已选 {selectedTaskIds.length} 项
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => runBatchAction('complete')}
+                                className={`${btnBase} min-h-11 bg-emerald-500/12 px-5 text-sm text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400`}
+                                style={continuous(999)}
+                            >
+                                <Check size={17} strokeWidth={2.6} />
+                                标记完成
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => runBatchAction('uncomplete')}
+                                className={`${btnBase} min-h-11 bg-blue-500/12 px-5 text-sm text-blue-600 hover:bg-blue-500/20 dark:text-blue-400`}
+                                style={continuous(999)}
+                            >
+                                恢复待办
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => runBatchAction('delete')}
+                                className={btnDanger}
+                                style={continuous(999)}
+                            >
+                                <Trash2 size={16} />
+                                删除
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedTaskIds([])}
+                                className={btnGhost}
+                                style={continuous(999)}
+                            >
+                                取消选择
+                            </button>
+                        </div>
+                    )}
 
                     <div className="-m-3 flex max-h-[70vh] flex-col gap-3 overflow-y-auto p-3">
                         {tasksLoading || tagsLoading ? (
                             <div className="border border-slate-200 bg-white/70 py-14 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.03]" style={continuous(24)}>加载中...</div>
                         ) : tasks.length === 0 ? (
-                            <div className="flex flex-col items-center border border-dashed border-slate-300 bg-white/50 px-6 py-14 text-center dark:border-white/15 dark:bg-white/[0.02]" style={continuous(28)}>
-                                <span className="mb-3 flex size-12 items-center justify-center bg-slate-100 text-slate-400 dark:bg-white/10" style={continuous(18)}><ListTodo size={23} /></span>
-                                <p className="font-bold text-slate-700 dark:text-slate-200">没有符合条件的任务</p>
-                                <p className="mt-1 text-sm text-slate-400">新建一个任务，或调整上方筛选条件。</p>
+                            <div className="flex flex-col items-center border border-dashed border-slate-300 bg-white/50 px-6 py-16 text-center dark:border-white/15 dark:bg-white/[0.02]" style={continuous(28)}>
+                                <span className="mb-4 flex size-14 items-center justify-center bg-slate-100 text-slate-400 dark:bg-white/10" style={continuous(20)}><ListTodo size={26} /></span>
+                                <p className="text-base font-bold text-slate-700 dark:text-slate-200">没有符合条件的任务</p>
+                                <p className="mt-1.5 text-sm text-slate-400">新建一个任务，或调整上方筛选条件。</p>
                             </div>
                         ) : (
                             tasks.map((task) => {
@@ -1300,20 +1776,19 @@ const TodoPage: React.FC = () => {
                                             if (canDragSort) e.preventDefault();
                                         }}
                                         onDrop={() => handleDragDrop(task.id)}
-                                        className={`group cursor-pointer p-4 shadow-[0_5px_16px_rgba(15,23,42,0.08),0_1px_3px_rgba(15,23,42,0.04)] dark:shadow-[0_7px_20px_rgba(0,0,0,0.24),0_1px_3px_rgba(0,0,0,0.16)] ${
+                                        className={`group cursor-pointer p-4 shadow-[0_5px_16px_rgba(15,23,42,0.08),0_1px_3px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_10px_28px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.06)] dark:shadow-[0_7px_20px_rgba(0,0,0,0.24),0_1px_3px_rgba(0,0,0,0.16)] sm:p-5 ${
                                             done
                                                 ? 'bg-slate-50/75 dark:bg-white/[0.025]'
                                                 : 'bg-white dark:bg-[#101725]'
                                         }`}
-                                        style={continuous(24)}
+                                        style={continuous(26)}
                                         onClick={() => openDrawer(task)}
                                     >
-                                        <div className="flex items-start gap-3">
-                                            {canDragSort && <GripVertical className="mt-1.5 hidden shrink-0 text-slate-300 transition-colors group-hover:text-slate-400 sm:block" size={17} aria-hidden="true" />}
+                                        <div className="flex items-start gap-3.5">
+                                            {canDragSort && <GripVertical className="mt-3 hidden shrink-0 cursor-grab text-slate-300 transition-colors group-hover:text-slate-400 sm:block" size={19} aria-hidden="true" />}
                                             <AppleCheckbox
                                                 checked={selectedTaskIds.includes(task.id)}
                                                 ariaLabel={`选择任务 ${task.title}`}
-                                                className="mt-1"
                                                 onChange={(checked) =>
                                                     setSelectedTaskIds((prev) =>
                                                         checked ? [...prev, task.id] : prev.filter((id) => id !== task.id)
@@ -1326,7 +1801,7 @@ const TodoPage: React.FC = () => {
                                                     e.stopPropagation();
                                                     handleToggleTask(task);
                                                 }}
-                                                className={`group/check relative mt-0.5 size-7 shrink-0 border-2 transition-[border-color,background-color,transform] active:scale-90 ${
+                                                className={`group/check relative mt-1.5 size-8 shrink-0 border-2 transition-[border-color,background-color,transform] active:scale-90 ${
                                                     done
                                                         ? 'bg-emerald-500 border-emerald-500'
                                                         : 'bg-white/80 dark:bg-[#0F172A] border-slate-300 dark:border-slate-500 hover:border-emerald-400'
@@ -1334,30 +1809,60 @@ const TodoPage: React.FC = () => {
                                                 style={continuous(999)}
                                                 aria-label={done ? '标记为未完成' : '标记为完成'}
                                             >
-                                                <Check className={`absolute inset-0 m-auto size-4 transition-opacity ${done ? 'opacity-100 text-white' : 'opacity-0 text-emerald-500 group-hover/check:opacity-100'}`} strokeWidth={2.8} />
+                                                <Check className={`absolute inset-0 m-auto size-[18px] transition-opacity ${done ? 'opacity-100 text-white' : 'opacity-0 text-emerald-500 group-hover/check:opacity-100'}`} strokeWidth={2.8} />
                                             </button>
-                                            <div className="min-w-0 flex-1">
+                                            <div className="min-w-0 flex-1 pt-1">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <p className={`min-w-0 truncate text-[15px] font-bold ${done ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>{task.title}</p>
-                                                    <span className={`border px-2.5 py-1 text-[10px] font-bold ${PRIORITY_CLASS[task.priority]}`} style={continuous(999)}>{PRIORITY_LABEL[task.priority]}</span>
+                                                    <p className={`min-w-0 truncate text-base font-bold ${done ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>{task.title}</p>
+                                                    <span className={`inline-flex min-h-6 items-center border px-2.5 text-xs font-bold ${PRIORITY_CLASS[task.priority]}`} style={continuous(999)}>{PRIORITY_LABEL[task.priority]}</span>
+                                                    {task.recurring && (
+                                                        <span
+                                                            className="inline-flex min-h-6 items-center gap-1.5 border border-primary/25 bg-primary/10 px-2.5 text-xs font-bold text-primary"
+                                                            style={continuous(999)}
+                                                            title={task.nextDueDate ? `下一次：${toDateInput(task.nextDueDate)}` : undefined}
+                                                        >
+                                                            <Repeat size={12} strokeWidth={2.6} />
+                                                            {task.recurrenceLabel || '循环'}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                {!!task.descriptionMd && <p className="mt-1.5 line-clamp-1 text-sm text-slate-500 dark:text-text-secondary">{compactMarkdown(task.descriptionMd)}</p>}
-                                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-400 dark:text-slate-500">
-                                                    <span className="inline-flex items-center gap-1.5"><CalendarDays size={14} />{buildDueLabel(task)}</span>
-                                                    {(task.subtaskTotal || 0) > 0 && <span className="inline-flex items-center gap-1.5"><Check size={14} />子任务 {task.subtaskCompleted || 0}/{task.subtaskTotal || 0}</span>}
-                                                    {!!task.dueTime && <span className="inline-flex items-center gap-1.5"><Clock3 size={14} />{toTimeInput(task.dueTime)}</span>}
+                                                {!!task.descriptionMd && <p className="mt-2 line-clamp-1 text-sm text-slate-500 dark:text-text-secondary">{compactMarkdown(task.descriptionMd)}</p>}
+                                                <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-slate-400 dark:text-slate-500">
+                                                    <span className="inline-flex items-center gap-1.5"><CalendarDays size={16} />{buildDueLabel(task)}</span>
+                                                    {!!task.dueTime && <span className="inline-flex items-center gap-1.5"><Clock3 size={16} />{toTimeInput(task.dueTime)}</span>}
+                                                    {(task.subtaskTotal || 0) > 0 && <span className="inline-flex items-center gap-1.5"><Check size={16} />子任务 {task.subtaskCompleted || 0}/{task.subtaskTotal || 0}</span>}
                                                 </div>
                                                 {!!task.tags?.length && (
-                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                    <div className="mt-3 flex flex-wrap gap-2">
                                                         {task.tags.slice(0, 4).map((tag) => (
-                                                            <span key={tag.id} className="px-2 py-1 text-[10px] font-semibold" style={{ ...continuous(999), color: tag.color, backgroundColor: `${tag.color}12` }}>#{tag.name}</span>
+                                                            <span key={tag.id} className="inline-flex min-h-7 items-center px-3 text-xs font-semibold" style={{ ...continuous(999), color: tag.color, backgroundColor: `${tag.color}18` }}>#{tag.name}</span>
                                                         ))}
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="flex shrink-0 items-center gap-1">
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }} aria-label={`删除任务 ${task.title}`} className="flex size-9 items-center justify-center text-slate-300 opacity-100 transition-[color,background-color,opacity] hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100" style={continuous(999)}><Trash2 size={16} /></button>
-                                                <ChevronRight className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" size={19} aria-hidden="true" />
+                                            <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+                                                {task.recurring && !done && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); handleSkipOccurrence(task); }}
+                                                        aria-label={`跳过本次 ${task.title}`}
+                                                        title="跳过本次，顺延到下一个周期"
+                                                        className={`${iconBtnClass} hover:bg-primary/10 hover:text-primary`}
+                                                        style={continuous(999)}
+                                                    >
+                                                        <SkipForward size={19} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteTask(task); }}
+                                                    aria-label={`删除任务 ${task.title}`}
+                                                    className={`${iconBtnClass} hover:bg-red-500/10 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400`}
+                                                    style={continuous(999)}
+                                                >
+                                                    <Trash2 size={19} />
+                                                </button>
+                                                <ChevronRight className="ml-0.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" size={21} aria-hidden="true" />
                                             </div>
                                         </div>
                                     </div>
@@ -1378,22 +1883,48 @@ const TodoPage: React.FC = () => {
                         onClick={closeDrawer}
                     />
                     <aside
-                        className={`absolute right-0 top-0 h-full w-full max-w-[430px] bg-slate-50 dark:bg-background-dark border-l border-slate-200 dark:border-white/10 p-5 overflow-y-auto transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        className={`absolute right-0 top-0 h-full w-full max-w-[480px] overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border-white/10 dark:bg-background-dark ${
                             isDrawerVisible ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
                         }`}
                         style={continuousLeft(36)}
                     >
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="mb-6 flex items-center justify-between gap-3">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">编辑任务</h3>
                             <div className="flex items-center gap-2">
-                                <button type="button" onClick={handleSaveDrawer} disabled={saving} className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-blue-600 rounded-xl disabled:opacity-60">保存</button>
-                                <button type="button" onClick={closeDrawer} className="text-slate-500 hover:text-slate-900 dark:text-text-secondary dark:hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveDrawer}
+                                    disabled={saving}
+                                    className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(37,99,235,0.24)] hover:bg-blue-600`}
+                                    style={continuous(999)}
+                                >
+                                    保存
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeDrawer}
+                                    aria-label="关闭"
+                                    className={iconBtnClass}
+                                    style={continuous(999)}
+                                >
+                                    <span className="material-symbols-outlined text-[22px]">close</span>
+                                </button>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <input value={drawerDraft.title} onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))} className={inputClass} style={continuous(18)} placeholder="任务标题" />
+                        <div className="flex flex-col gap-5">
                             <div>
+                                <span className={fieldLabelClass}>标题</span>
+                                <input
+                                    value={drawerDraft.title}
+                                    onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                                    className={`${inputClass} min-h-[52px] text-[15px]`}
+                                    style={continuous(18)}
+                                    placeholder="任务标题"
+                                />
+                            </div>
+                            <div>
+                                <span className={fieldLabelClass}>优先级</span>
                                 <ProjectSelect
                                     className="w-full"
                                     value={drawerDraft.priority}
@@ -1410,84 +1941,163 @@ const TodoPage: React.FC = () => {
                                     }
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <ProjectNativePicker
-                                    type="date"
-                                    value={drawerDraft.dueDate}
-                                    placeholder="选择日期"
-                                    onChange={(nextValue) =>
-                                        setDrawerDraft((prev) =>
-                                            prev
-                                                ? {
-                                                      ...prev,
-                                                      dueDate: nextValue,
-                                                      dueTime: nextValue ? prev.dueTime : ''
-                                                  }
-                                                : prev
-                                        )
-                                    }
-                                />
-                                <ProjectNativePicker
-                                    type="time"
-                                    value={drawerDraft.dueTime}
-                                    placeholder={drawerDraft.dueDate ? '选择时间' : '请先选择日期'}
-                                    disabled={!drawerDraft.dueDate}
-                                    onChange={(nextValue) =>
-                                        setDrawerDraft((prev) =>
-                                            prev ? { ...prev, dueTime: nextValue } : prev
-                                        )
-                                    }
-                                />
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <span className={fieldLabelClass}>截止日期</span>
+                                    <ProjectNativePicker
+                                        type="date"
+                                        value={drawerDraft.dueDate}
+                                        placeholder="选择日期"
+                                        onChange={(nextValue) =>
+                                            setDrawerDraft((prev) =>
+                                                prev
+                                                    ? {
+                                                          ...prev,
+                                                          dueDate: nextValue,
+                                                          dueTime: nextValue ? prev.dueTime : ''
+                                                      }
+                                                    : prev
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <span className={fieldLabelClass}>截止时间</span>
+                                    <ProjectNativePicker
+                                        type="time"
+                                        value={drawerDraft.dueTime}
+                                        placeholder={drawerDraft.dueDate ? '选择时间' : '请先选择日期'}
+                                        disabled={!drawerDraft.dueDate}
+                                        onChange={(nextValue) =>
+                                            setDrawerDraft((prev) =>
+                                                prev ? { ...prev, dueTime: nextValue } : prev
+                                            )
+                                        }
+                                    />
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                {tags.map((tag) => {
-                                    const active = drawerDraft.tagIds.includes(tag.id);
-                                    return (
-                                        <button key={tag.id} type="button" onClick={() => toggleDrawerTag(tag.id)} className={`px-2.5 py-1 text-xs border rounded-full ${active ? 'ring-1' : ''}`} style={{ color: tag.color, borderColor: `${tag.color}88`, backgroundColor: active ? `${tag.color}22` : `${tag.color}10` }}>
-                                            #{tag.name}
-                                        </button>
-                                    );
-                                })}
+                            <RecurrencePicker
+                                value={drawerDraft.recurrence}
+                                hasDueDate={!!drawerDraft.dueDate}
+                                nextDueDate={toDateInput(drawerTask.nextDueDate) || undefined}
+                                onChange={(next) =>
+                                    setDrawerDraft((prev) => (prev ? { ...prev, recurrence: next } : prev))
+                                }
+                            />
+                            {drawerTask.recurring && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSkipOccurrence(drawerTask)}
+                                    className={`${btnBase} min-h-12 w-full border border-primary/25 bg-primary/[0.08] px-5 text-[15px] text-primary hover:bg-primary/15`}
+                                    style={continuous(18)}
+                                >
+                                    <SkipForward size={18} />
+                                    跳过本次，顺延到下一个周期
+                                </button>
+                            )}
+                            <div>
+                                <span className={fieldLabelClass}>标签</span>
+                                {tags.length === 0 ? (
+                                    <p className="text-sm text-slate-400 dark:text-text-secondary/80">还没有标签。</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {tags.map((tag) => {
+                                            const active = drawerDraft.tagIds.includes(tag.id);
+                                            return (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    onClick={() => toggleDrawerTag(tag.id)}
+                                                    className="min-h-10 border px-4 text-sm font-semibold transition-[background-color,box-shadow,transform] active:scale-[0.97]"
+                                                    style={{
+                                                        ...continuous(999),
+                                                        color: tag.color,
+                                                        borderColor: `${tag.color}88`,
+                                                        backgroundColor: active ? `${tag.color}26` : `${tag.color}12`,
+                                                        ...(active ? { boxShadow: `0 0 0 2px ${tag.color}55` } : {})
+                                                    }}
+                                                >
+                                                    #{tag.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div>
-                                <p className="text-xs font-bold text-slate-500 dark:text-text-secondary mb-2">任务描述</p>
+                                <span className={fieldLabelClass}>任务描述</span>
                                 <textarea
                                     value={drawerDraft.descriptionMd}
                                     onChange={(e) => setDrawerDraft((prev) => (prev ? { ...prev, descriptionMd: e.target.value } : prev))}
                                     rows={5}
                                     placeholder="可编辑任务描述"
-                                    className={`${inputClass} resize-y`}
+                                    className={`${inputClass} resize-y text-[15px] leading-relaxed`}
                                     style={continuous(18)}
                                 />
                             </div>
 
-                            <div className={`${panelClass} p-3`} style={continuous(20)}>
-                                <div className="flex items-center justify-between mb-2 text-xs text-slate-500 dark:text-text-secondary">
-                                    <span>子任务 ({drawerTask.subtaskCompleted || 0}/{drawerTask.subtaskTotal || 0})</span>
+                            <div className={`${panelClass} p-4`} style={continuous(24)}>
+                                <div className="mb-2.5 flex items-center justify-between text-sm font-semibold text-slate-500 dark:text-text-secondary">
+                                    <span>子任务 {drawerTask.subtaskCompleted || 0}/{drawerTask.subtaskTotal || 0}</span>
                                     <span>{drawerTask.subtaskProgress || 0}%</span>
                                 </div>
-                                <div className="h-1.5 bg-slate-200 dark:bg-white/10 rounded-full mb-3 overflow-hidden">
-                                    <div className="h-full bg-primary" style={{ width: `${drawerTask.subtaskProgress || 0}%` }} />
+                                <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                                    <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${drawerTask.subtaskProgress || 0}%` }} />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     {(drawerTask.subtasks || []).map((subtask) => {
                                         const done = subtask.status === 'completed';
                                         return (
-                                            <div key={subtask.id} className={`${softClass} flex items-center gap-2 px-2.5 py-2`} style={continuous(14)}>
-                                                <button type="button" onClick={() => handleToggleSubtask(subtask.id, done)} className={`size-4 rounded-full border-2 ${done ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-slate-500'}`} />
-                                                <span className={`flex-1 text-xs ${done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-white'}`}>{subtask.title}</span>
-                                                <button type="button" onClick={() => handleDeleteSubtask(subtask.id)} className="text-slate-400 hover:text-red-500"><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                                            <div key={subtask.id} className={`${softClass} flex min-h-12 items-center gap-3 pl-3 pr-1.5`} style={continuous(16)}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleSubtask(subtask.id, done)}
+                                                    aria-label={done ? '标记子任务未完成' : '标记子任务完成'}
+                                                    className={`relative flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-[background-color,border-color,transform] active:scale-90 ${
+                                                        done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 text-transparent hover:border-emerald-400 dark:border-slate-500'
+                                                    }`}
+                                                >
+                                                    <Check size={14} strokeWidth={3} />
+                                                </button>
+                                                <span className={`flex-1 text-sm ${done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-white'}`}>{subtask.title}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteSubtask(subtask.id)}
+                                                    aria-label={`删除子任务 ${subtask.title}`}
+                                                    className={`${btnBase} size-9 shrink-0 text-slate-400 hover:bg-red-500/10 hover:text-red-500`}
+                                                    style={continuous(999)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <div className="mt-2 flex gap-2">
-                                    <input value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateSubtask())} className={`${inputClass} text-sm`} style={continuous(16)} placeholder="输入子任务并回车" />
-                                    <button type="button" onClick={handleCreateSubtask} className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-200 dark:bg-white/10">添加</button>
+                                <div className="mt-3 flex gap-2.5">
+                                    <input
+                                        value={newSubtaskTitle}
+                                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateSubtask())}
+                                        className={`${inputClass} min-h-11 py-2 text-sm`}
+                                        style={continuous(16)}
+                                        placeholder="输入子任务并回车"
+                                    />
+                                    <button type="button" onClick={handleCreateSubtask} className={`${btnSecondary} shrink-0`} style={continuous(16)}>
+                                        添加
+                                    </button>
                                 </div>
                             </div>
 
-                            <button type="button" onClick={() => handleDeleteTask(drawerTask)} className="w-full py-2.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl">删除任务</button>
+                            <button
+                                type="button"
+                                onClick={() => handleDeleteTask(drawerTask)}
+                                className={`${btnBase} min-h-12 w-full bg-red-500 px-5 text-[15px] text-white shadow-[0_6px_16px_rgba(239,68,68,0.24)] hover:bg-red-600`}
+                                style={continuous(18)}
+                            >
+                                <Trash2 size={18} />
+                                删除任务
+                            </button>
                         </div>
                     </aside>
                 </div>
