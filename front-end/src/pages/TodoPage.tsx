@@ -176,6 +176,41 @@ const recurrenceToPayload = (draft: RecurrenceDraft): TodoRecurrencePayload => {
     };
 };
 
+const todayInput = () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+/**
+ * 与后端 TodoRecurrence#firstOccurrence 对齐：循环任务的第一次永远不落在今天之前，
+ * 每周循环还会前推到最近一个选中的星期。用于在界面上提前把真实的首次日期显示出来。
+ */
+const resolveFirstOccurrence = (dueDate: string, draft: RecurrenceDraft): string => {
+    if (!dueDate || draft.freq === 'none') return dueDate;
+
+    const today = todayInput();
+    let cursor = dueDate < today ? today : dueDate;
+
+    if (draft.freq === 'weekly' && draft.weekdays.length > 0) {
+        const date = new Date(`${cursor}T00:00:00`);
+        for (let offset = 0; offset < 7; offset += 1) {
+            const isoWeekday = date.getDay() === 0 ? 7 : date.getDay();
+            if (draft.weekdays.includes(isoWeekday)) break;
+            date.setDate(date.getDate() + 1);
+        }
+        const pad = (n: number) => String(n).padStart(2, '0');
+        cursor = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+    return cursor;
+};
+
+/** 循环开启时，日期字段问的是「第一次什么时候」，不是「什么时候截止」 */
+const dateFieldLabels = (recurring: boolean) =>
+    recurring
+        ? { date: '首次日期', time: '提醒时间', datePlaceholder: '选择首次日期', timePlaceholder: '选择提醒时间' }
+        : { date: '截止日期', time: '截止时间', datePlaceholder: '选择日期', timePlaceholder: '选择时间' };
+
 /** 与后端 TodoRecurrence#describe 保持一致的本地预览文案 */
 const describeRecurrence = (draft: RecurrenceDraft): string => {
     if (draft.freq === 'none') return '不重复';
@@ -234,10 +269,10 @@ const softClass =
     'bg-slate-100/75 dark:bg-[#0F172A]/70 border border-slate-200/70 dark:border-white/10';
 
 const inputClass =
-    'w-full border border-slate-200/90 bg-white px-4 py-3 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] placeholder:text-slate-400 hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+    'w-full border border-slate-200/90 bg-white px-4 py-3 text-slate-900 outline-none transition-[border-color,box-shadow,background-color] placeholder:text-slate-400 hover:border-slate-300 focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:placeholder:text-slate-500 dark:hover:border-white/20 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 const selectClass =
-    'min-h-[52px] border border-slate-200/90 bg-white px-4 py-3 text-[15px] text-slate-900 outline-none transition-[border-color,box-shadow,background-color] hover:border-slate-300 focus:border-primary/70 focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:hover:border-white/20 dark:focus:border-primary/70 dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
+    'field-control min-h-[52px] border border-slate-200/90 bg-white px-4 py-3 text-[15px] text-slate-900 outline-none transition-[border-color,box-shadow,background-color] hover:border-slate-300 focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 disabled:opacity-70 dark:border-white/10 dark:bg-[#101725] dark:text-white dark:hover:border-white/20 dark:focus:border-primary dark:disabled:bg-[#0B1220] dark:disabled:text-slate-400';
 
 /**
  * 统一的按钮尺寸体系。所有可点区域至少 40px 高，主操作 48px，
@@ -246,7 +281,7 @@ const selectClass =
 const btnBase =
     'inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition-[background-color,color,box-shadow,transform] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100';
 
-const btnPrimary = `${btnBase} min-h-12 px-6 text-[15px] bg-primary text-white shadow-[0_6px_18px_rgba(37,99,235,0.24)] hover:bg-blue-600 hover:shadow-[0_8px_22px_rgba(37,99,235,0.3)]`;
+const btnPrimary = `${btnBase} min-h-12 px-6 text-[15px] bg-primary text-white shadow-[0_6px_18px_rgba(0, 100, 225,0.24)] hover:bg-primary-hover hover:shadow-[0_8px_22px_rgba(0, 100, 225,0.3)]`;
 
 const btnSecondary = `${btnBase} min-h-11 px-5 text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/[0.16]`;
 
@@ -262,7 +297,7 @@ const sectionCardClass =
     'min-w-0 border border-slate-200/90 bg-white/75 p-5 dark:border-white/10 dark:bg-white/[0.03] sm:p-6';
 
 const quickCreateInputClass =
-    'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:ring-2 focus:ring-primary/25';
+    'w-full px-4 py-3 bg-slate-200/95 dark:bg-[#16263b]/88 text-slate-900 dark:text-white border-0 outline-none transition-colors rounded-2xl shadow-[inset_0_1px_1px_rgba(15,23,42,0.09)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]';
 
 type SelectOption = {
     value: string;
@@ -445,7 +480,7 @@ const QuickCreateModal: React.FC<{
                     <button
                         type="button"
                         onClick={onConfirm}
-                        className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(37,99,235,0.24)] hover:bg-blue-600`}
+                        className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(0, 100, 225,0.24)] hover:bg-primary-hover`}
                         style={continuous(16)}
                     >
                         {confirmText}
@@ -496,7 +531,7 @@ const AppleCheckbox: React.FC<{
                 aria-hidden="true"
                 className={`relative flex size-[22px] items-center justify-center border transition-[background-color,border-color,box-shadow] ${
                     active
-                        ? 'border-[#0A84FF] bg-[#0A84FF] text-white shadow-[0_1px_3px_rgba(10,132,255,0.3)]'
+                        ? 'border-[#0064E1] bg-[#0064E1] text-white shadow-[0_1px_3px_rgba(0,100,225,0.3)]'
                         : 'border-slate-300 bg-white text-transparent hover:border-slate-400 dark:border-slate-500 dark:bg-[#101725] dark:hover:border-slate-400'
                 }`}
                 style={continuous(7)}
@@ -515,9 +550,8 @@ const AppleCheckbox: React.FC<{
 const RecurrencePicker: React.FC<{
     value: RecurrenceDraft;
     onChange: (next: RecurrenceDraft) => void;
-    hasDueDate: boolean;
-    nextDueDate?: string | null;
-}> = ({ value, onChange, hasDueDate, nextDueDate }) => {
+    hint?: string;
+}> = ({ value, onChange, hint }) => {
     const expanded = value.freq !== 'none';
 
     const patch = (partial: Partial<RecurrenceDraft>) => onChange({ ...value, ...partial });
@@ -568,7 +602,7 @@ const RecurrencePicker: React.FC<{
                             }
                             className={`min-h-11 px-5 text-sm font-semibold transition-[background-color,color,box-shadow,transform] active:scale-[0.97] ${
                                 active
-                                    ? 'bg-primary text-white shadow-[0_6px_16px_rgba(37,99,235,0.26)]'
+                                    ? 'bg-primary text-white shadow-[0_6px_16px_rgba(0, 100, 225,0.26)]'
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/[0.16]'
                             }`}
                             style={continuous(999)}
@@ -628,7 +662,7 @@ const RecurrencePicker: React.FC<{
                                             onClick={() => toggleWeekday(day)}
                                             className={`size-11 text-[15px] font-semibold transition-[background-color,color,transform] active:scale-90 ${
                                                 active
-                                                    ? 'bg-primary text-white shadow-[0_4px_12px_rgba(37,99,235,0.26)]'
+                                                    ? 'bg-primary text-white shadow-[0_4px_12px_rgba(0, 100, 225,0.26)]'
                                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/[0.16]'
                                             }`}
                                             style={continuous(999)}
@@ -693,13 +727,7 @@ const RecurrencePicker: React.FC<{
                         )}
                     </div>
 
-                    <p className="text-sm text-slate-400 dark:text-text-secondary/80">
-                        {hasDueDate
-                            ? nextDueDate
-                                ? `完成或跳过后，会自动生成下一次待办：${nextDueDate}`
-                                : '完成后会自动生成下一次待办。'
-                            : '循环任务需要先选择截止日期作为第一次的时间。'}
-                    </p>
+                    {!!hint && <p className="text-sm text-slate-400 dark:text-text-secondary/80">{hint}</p>}
                 </div>
             )}
         </div>
@@ -723,7 +751,7 @@ const compactMarkdown = (value?: string | null) =>
         .trim();
 
 const colorByText = (text: string) => {
-    const palette = ['#3A7FF1', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#14B8A6', '#06B6D4'];
+    const palette = ['#0064E1', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#14B8A6', '#06B6D4'];
     let hash = 0;
     for (let i = 0; i < text.length; i += 1) {
         hash = (hash << 5) - hash + text.charCodeAt(i);
@@ -814,6 +842,26 @@ const TodoPage: React.FC = () => {
         () => tasks.find((task) => task.id === drawerTaskId) || null,
         [tasks, drawerTaskId]
     );
+
+    const createLabels = dateFieldLabels(createDraft.recurrence.freq !== 'none');
+    const createRecurrenceHint = useMemo(() => {
+        if (createDraft.recurrence.freq === 'none') return undefined;
+        if (!createDraft.dueDate) return '选择首次日期后，完成一次就会自动生成下一次。';
+        const first = resolveFirstOccurrence(createDraft.dueDate, createDraft.recurrence);
+        const moved = first !== createDraft.dueDate;
+        return moved
+            ? `首次待办为 ${first}（已按重复规则顺延，不会一创建就逾期），完成后自动生成下一次。`
+            : `首次待办为 ${first}，完成后自动生成下一次。`;
+    }, [createDraft.dueDate, createDraft.recurrence]);
+
+    const drawerLabels = dateFieldLabels(!!drawerDraft && drawerDraft.recurrence.freq !== 'none');
+    const drawerRecurrenceHint = useMemo(() => {
+        if (!drawerDraft || drawerDraft.recurrence.freq === 'none') return undefined;
+        const nextDue = toDateInput(drawerTask?.nextDueDate);
+        return nextDue
+            ? `完成或跳过后，会顺延到下一次：${nextDue}`
+            : '完成后会自动生成下一次待办。';
+    }, [drawerDraft, drawerTask]);
 
     const allVisibleSelected = tasks.length > 0 && tasks.every((task) => selectedTaskIds.includes(task.id));
     const someVisibleSelected = selectedTaskIds.length > 0 && !allVisibleSelected;
@@ -957,7 +1005,7 @@ const TodoPage: React.FC = () => {
             return;
         }
         if (createDraft.recurrence.freq !== 'none' && !createDraft.dueDate) {
-            message.warning('循环任务需要先选择截止日期');
+            message.warning('循环任务需要先选择首次日期');
             return;
         }
         const payload: CreateTodoTaskPayload = {
@@ -1208,7 +1256,7 @@ const TodoPage: React.FC = () => {
             return;
         }
         if (drawerDraft.recurrence.freq !== 'none' && !drawerDraft.dueDate) {
-            message.warning('循环任务需要先选择截止日期');
+            message.warning('循环任务需要先选择首次日期');
             return;
         }
         setSaving(true);
@@ -1423,6 +1471,19 @@ const TodoPage: React.FC = () => {
                             </button>
                         </div>
 
+                        <RecurrencePicker
+                            value={createDraft.recurrence}
+                            hint={createRecurrenceHint}
+                            onChange={(next) =>
+                                setCreateDraft((prev) => ({
+                                    ...prev,
+                                    recurrence: next,
+                                    // 打开重复时如果还没选日期，默认从今天开始，省掉一次多余的操作
+                                    dueDate: next.freq !== 'none' && !prev.dueDate ? todayInput() : prev.dueDate
+                                }))
+                            }
+                        />
+
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             <div>
                                 <span className={fieldLabelClass}>优先级</span>
@@ -1439,11 +1500,11 @@ const TodoPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <span className={fieldLabelClass}>截止日期</span>
+                                <span className={fieldLabelClass}>{createLabels.date}</span>
                                 <ProjectNativePicker
                                     type="date"
                                     value={createDraft.dueDate}
-                                    placeholder="选择日期"
+                                    placeholder={createLabels.datePlaceholder}
                                     onChange={(nextValue) =>
                                         setCreateDraft((prev) => ({
                                             ...prev,
@@ -1454,11 +1515,11 @@ const TodoPage: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <span className={fieldLabelClass}>截止时间</span>
+                                <span className={fieldLabelClass}>{createLabels.time}</span>
                                 <ProjectNativePicker
                                     type="time"
                                     value={createDraft.dueTime}
-                                    placeholder={createDraft.dueDate ? '选择时间' : '请先选择日期'}
+                                    placeholder={createDraft.dueDate ? createLabels.timePlaceholder : '请先选择日期'}
                                     disabled={!createDraft.dueDate}
                                     onChange={(nextValue) =>
                                         setCreateDraft((prev) => ({ ...prev, dueTime: nextValue }))
@@ -1466,12 +1527,6 @@ const TodoPage: React.FC = () => {
                                 />
                             </div>
                         </div>
-
-                        <RecurrencePicker
-                            value={createDraft.recurrence}
-                            hasDueDate={!!createDraft.dueDate}
-                            onChange={(next) => setCreateDraft((prev) => ({ ...prev, recurrence: next }))}
-                        />
 
                         <div>
                             <span className={fieldLabelClass}>任务描述</span>
@@ -1895,7 +1950,7 @@ const TodoPage: React.FC = () => {
                                     type="button"
                                     onClick={handleSaveDrawer}
                                     disabled={saving}
-                                    className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(37,99,235,0.24)] hover:bg-blue-600`}
+                                    className={`${btnBase} min-h-11 bg-primary px-6 text-sm text-white shadow-[0_6px_16px_rgba(0, 100, 225,0.24)] hover:bg-primary-hover`}
                                     style={continuous(999)}
                                 >
                                     保存
@@ -1941,13 +1996,32 @@ const TodoPage: React.FC = () => {
                                     }
                                 />
                             </div>
+                            <RecurrencePicker
+                                value={drawerDraft.recurrence}
+                                hint={drawerRecurrenceHint}
+                                onChange={(next) =>
+                                    setDrawerDraft((prev) =>
+                                        prev
+                                            ? {
+                                                  ...prev,
+                                                  recurrence: next,
+                                                  dueDate:
+                                                      next.freq !== 'none' && !prev.dueDate
+                                                          ? todayInput()
+                                                          : prev.dueDate
+                                              }
+                                            : prev
+                                    )
+                                }
+                            />
+
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <span className={fieldLabelClass}>截止日期</span>
+                                    <span className={fieldLabelClass}>{drawerLabels.date}</span>
                                     <ProjectNativePicker
                                         type="date"
                                         value={drawerDraft.dueDate}
-                                        placeholder="选择日期"
+                                        placeholder={drawerLabels.datePlaceholder}
                                         onChange={(nextValue) =>
                                             setDrawerDraft((prev) =>
                                                 prev
@@ -1962,11 +2036,11 @@ const TodoPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <span className={fieldLabelClass}>截止时间</span>
+                                    <span className={fieldLabelClass}>{drawerLabels.time}</span>
                                     <ProjectNativePicker
                                         type="time"
                                         value={drawerDraft.dueTime}
-                                        placeholder={drawerDraft.dueDate ? '选择时间' : '请先选择日期'}
+                                        placeholder={drawerDraft.dueDate ? drawerLabels.timePlaceholder : '请先选择日期'}
                                         disabled={!drawerDraft.dueDate}
                                         onChange={(nextValue) =>
                                             setDrawerDraft((prev) =>
@@ -1976,14 +2050,6 @@ const TodoPage: React.FC = () => {
                                     />
                                 </div>
                             </div>
-                            <RecurrencePicker
-                                value={drawerDraft.recurrence}
-                                hasDueDate={!!drawerDraft.dueDate}
-                                nextDueDate={toDateInput(drawerTask.nextDueDate) || undefined}
-                                onChange={(next) =>
-                                    setDrawerDraft((prev) => (prev ? { ...prev, recurrence: next } : prev))
-                                }
-                            />
                             {drawerTask.recurring && (
                                 <button
                                     type="button"

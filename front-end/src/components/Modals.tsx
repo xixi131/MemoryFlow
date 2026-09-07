@@ -289,7 +289,7 @@ void backtrack(路径, 选择列表) {
                     <button onClick={onClose} className="px-8 py-3 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-white transition-all font-medium text-sm tracking-wide">
                         取消
                     </button>
-                    <button onClick={handleSubmit} className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-blue-600 dark:hover:bg-primary-glow shadow-lg dark:shadow-[0_4px_20px_-5px_rgba(55,128,246,0.5)] hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm tracking-wide">
+                    <button onClick={handleSubmit} className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-primary-hover dark:hover:bg-primary-glow shadow-lg dark:shadow-[0_4px_20px_-5px_rgba(55,128,246,0.5)] hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm tracking-wide">
                         <span className="material-symbols-outlined text-[20px] group-hover:rotate-12 transition-transform">smart_toy</span>
                         {isAppendMode ? '智能解析并添加' : '智能解析并保存'}
                     </button>
@@ -349,7 +349,7 @@ export const EditContentModal: React.FC<{ onClose: () => void; title: string }> 
                         <button onClick={onClose} className="flex h-12 min-w-[100px] items-center justify-center rounded-full border border-slate-300 dark:border-slate-600/50 bg-transparent px-6 text-sm font-bold text-slate-500 dark:text-slate-300 transition-all hover:bg-slate-100 dark:hover:bg-white/5 hover:border-slate-400 dark:hover:border-slate-500 active:scale-95">
                             取消
                         </button>
-                        <button onClick={onClose} className="shadow-glow flex h-12 min-w-[120px] items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-bold text-white transition-all hover:bg-blue-600 dark:hover:bg-blue-500 active:scale-95">
+                        <button onClick={onClose} className="shadow-glow flex h-12 min-w-[120px] items-center justify-center gap-2 rounded-full bg-primary px-8 text-sm font-bold text-white transition-all hover:bg-primary-hover dark:hover:bg-blue-500 active:scale-95">
                             <span className="material-symbols-outlined text-[18px]">save</span>
                             保存
                         </button>
@@ -541,7 +541,7 @@ export const AddGoalModal: React.FC<{ onClose: () => void; onCreate: (name: stri
                         onClick={() => {
                             if (canSave) onCreate(name.trim(), tag);
                         }}
-                        className={`px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 transition-all ${canSave ? 'bg-primary text-white hover:bg-blue-600' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                        className={`px-6 py-3 rounded-full text-sm font-bold flex items-center gap-2 transition-all ${canSave ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                     >
                         <span className="material-symbols-outlined">save</span>
                         保存

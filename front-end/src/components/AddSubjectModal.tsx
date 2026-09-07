@@ -772,7 +772,7 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-blue-600 shadow-lg hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm"
+                            className="group px-8 py-3 rounded-full bg-primary text-white hover:bg-primary-hover shadow-lg hover:-translate-y-0.5 transition-all font-bold flex items-center gap-2 text-sm"
                         >
                             <span className="material-symbols-outlined text-[20px]">save</span>
                             {isAppendMode ? '添加到当前科目' : '创建科目'}

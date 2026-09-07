@@ -364,7 +364,7 @@ const StudySession: React.FC<StudySessionProps> = ({ courseId, onExit, target })
                         onClick={() => hasAnswered ? handleNextAfterForgot() : onUserResponse(true)}
                         className={`group relative flex items-center gap-4 px-8 sm:px-12 py-5 sm:py-6 rounded-full transition-all duration-300 w-full max-w-[320px] sm:w-[320px] justify-center border-none
                             ${hasAnswered && !autoAdvanceTimer 
-                                ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' // "Next" style
+                                ? 'bg-blue-500 hover:bg-primary-hover shadow-blue-500/20' // "Next" style
                                 : 'bg-[#FF3366] hover:bg-[#F42156] shadow-pink-500/20' // "Know" style
                             }`}
                     >

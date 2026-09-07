@@ -221,6 +221,7 @@ public class TodoService {
             wrapper.in(TodoTask::getId, taskIds);
         }
 
+        hideUnreachedOccurrences(wrapper);
         applyTaskSort(wrapper, sortBy, sortOrder);
 
         List<TodoTask> tasks = todoTaskMapper.selectList(wrapper);
@@ -263,6 +264,7 @@ public class TodoService {
                 .repeatCount(normalizeRepeatCount(request.getRepeatCount()))
                 .repeatIndex(1)
                 .build();
+        normalizeFirstOccurrence(task);
         validateRecurrence(task);
 
         todoTaskMapper.insert(task);
@@ -310,7 +312,12 @@ public class TodoService {
         if (request.getSortOrder() != null) {
             task.setSortOrder(request.getSortOrder());
         }
-        applyRecurrenceUpdate(task, request);
+        boolean repeatJustEnabled = applyRecurrenceUpdate(task, request);
+        if (repeatJustEnabled) {
+            // 只在「刚打开重复」时归一化首次日期。已经在跑的循环任务即使逾期也保持原状，
+            // 否则用户改个标题就会把一条没做的待办悄悄推到未来。
+            normalizeFirstOccurrence(task);
+        }
         validateRecurrence(task);
 
         todoTaskMapper.updateById(task);
@@ -546,14 +553,19 @@ public class TodoService {
         int overdue = countTasks(userId, TodoTask.TaskStatus.TODO, null, today, true);
         int highPriorityPending = countTasks(userId, TodoTask.TaskStatus.TODO, null, null, TodoTask.Priority.HIGH);
 
-        int createdThisWeek = todoTaskMapper.selectCount(new LambdaQueryWrapper<TodoTask>()
+        LambdaQueryWrapper<TodoTask> createdWrapper = new LambdaQueryWrapper<TodoTask>()
                 .eq(TodoTask::getUserId, userId)
-                .ge(TodoTask::getCreatedAt, weekStartTime)).intValue();
+                .ge(TodoTask::getCreatedAt, weekStartTime);
+        hideUnreachedOccurrences(createdWrapper);
+        int createdThisWeek = todoTaskMapper.selectCount(createdWrapper).intValue();
 
-        int completedThisWeek = todoTaskMapper.selectCount(new LambdaQueryWrapper<TodoTask>()
+        LambdaQueryWrapper<TodoTask> completedWrapper = new LambdaQueryWrapper<TodoTask>()
                 .eq(TodoTask::getUserId, userId)
                 .eq(TodoTask::getStatus, TodoTask.TaskStatus.COMPLETED)
-                .ge(TodoTask::getCompletedAt, weekStartTime)).intValue();
+                .ge(TodoTask::getCompletedAt, weekStartTime);
+        // 已完成的行本来就不会被隐藏规则挡住，这里带上只为让「所有统计口径一致」成为硬约束
+        hideUnreachedOccurrences(completedWrapper);
+        int completedThisWeek = todoTaskMapper.selectCount(completedWrapper).intValue();
 
         double weekRate = createdThisWeek == 0 ? 0D : Math.min(100D, (completedThisWeek * 100D / createdThisWeek));
 
@@ -636,6 +648,8 @@ public class TodoService {
         if (extra instanceof TodoTask.Priority) {
             wrapper.eq(TodoTask::getPriority, extra);
         }
+        // 统计口径必须和列表一致，否则会出现「计数里有、列表里找不到」的任务
+        hideUnreachedOccurrences(wrapper);
         Long count = todoTaskMapper.selectCount(wrapper);
         return count == null ? 0 : count.intValue();
     }
@@ -753,9 +767,14 @@ public class TodoService {
                         .build()));
     }
 
-    private void applyRecurrenceUpdate(TodoTask task, UpdateTodoTaskRequest request) {
+    /**
+     * @return true 表示这次更新把「不重复」切换成了循环任务
+     */
+    private boolean applyRecurrenceUpdate(TodoTask task, UpdateTodoTaskRequest request) {
+        boolean repeatJustEnabled = false;
         if (request.getRepeatFreq() != null) {
             TodoTask.RepeatFreq freq = parseRepeatFreq(request.getRepeatFreq());
+            repeatJustEnabled = freq != TodoTask.RepeatFreq.NONE && !TodoRecurrence.isRecurring(task);
             task.setRepeatFreq(freq);
             if (freq == TodoTask.RepeatFreq.NONE) {
                 task.setRepeatInterval(1);
@@ -764,7 +783,7 @@ public class TodoService {
                 task.setRepeatCount(null);
                 task.setRepeatIndex(1);
                 task.setSeriesId(null);
-                return;
+                return false;
             }
             if (task.getSeriesId() == null) {
                 task.setSeriesId(task.getId());
@@ -782,6 +801,15 @@ public class TodoService {
         if (request.getRepeatCount() != null) {
             task.setRepeatCount(normalizeRepeatCount(request.getRepeatCount()));
         }
+        return repeatJustEnabled;
+    }
+
+    private void normalizeFirstOccurrence(TodoTask task) {
+        if (!TodoRecurrence.isRecurring(task) || task.getDueDate() == null) {
+            return;
+        }
+        task.setDueDate(TodoRecurrence.firstOccurrence(
+                task.getDueDate(), task.getRepeatFreq(), task.getRepeatByWeekdays(), LocalDate.now()));
     }
 
     private void validateRecurrence(TodoTask task) {
@@ -789,10 +817,10 @@ public class TodoService {
             return;
         }
         if (task.getDueDate() == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环任务需要先设置截止日期");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环任务需要先设置首次日期");
         }
         if (task.getRepeatUntil() != null && task.getRepeatUntil().isBefore(task.getDueDate())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环结束日期不能早于截止日期");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "循环结束日期不能早于首次日期");
         }
     }
 
@@ -820,6 +848,25 @@ public class TodoService {
             return null;
         }
         return Math.min(count, 9999);
+    }
+
+    /**
+     * 隐藏「还没到时间」的循环待办。
+     *
+     * <p>循环任务完成后会立刻派生下一次，但那一条不该马上摆回列表里 —— 否则用户勾掉本周的，
+     * 下周的当场出现，可以一路连点到明年，等于永远勾不完。这里在查询层把它挡住，到期当天才浮现。
+     *
+     * <p>只挡 {@code repeat_index > 1} 的自动派生行；用户自己建的第一次（index=1）始终可见，
+     * 否则新建一个「下周五做某事」会当场消失。
+     */
+    private void hideUnreachedOccurrences(LambdaQueryWrapper<TodoTask> wrapper) {
+        LocalDate today = LocalDate.now();
+        wrapper.and(w -> w
+                .eq(TodoTask::getRepeatFreq, TodoTask.RepeatFreq.NONE)
+                .or().le(TodoTask::getRepeatIndex, 1)
+                .or().ne(TodoTask::getStatus, TodoTask.TaskStatus.TODO)
+                .or().isNull(TodoTask::getDueDate)
+                .or().le(TodoTask::getDueDate, today));
     }
 
     private void applyTimeFilter(LambdaQueryWrapper<TodoTask> wrapper, String timeFilter) {

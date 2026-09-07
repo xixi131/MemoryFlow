@@ -299,7 +299,7 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
                 <button
                     onClick={handleLogin}
                     disabled={loading}
-                    className="w-full mt-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-blue-600 transition-all shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full mt-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-hover transition-all shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? '登录中...' : '登录'}
                 </button>

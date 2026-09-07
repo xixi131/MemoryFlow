@@ -159,7 +159,7 @@ export const ForgotPassword: React.FC<{ setView: (v: string) => void }> = ({ set
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="w-full mt-8 py-3 rounded-xl bg-primary text-white font-bold hover:bg-blue-600 transition-all shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full mt-8 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-hover transition-all shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? '提交中...' : '重置密码'}
                 </button>

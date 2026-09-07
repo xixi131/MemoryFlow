@@ -122,6 +122,47 @@ class TodoRecurrenceTest {
     }
 
     @Test
+    void firstOccurrencePullsPastStartUpToToday() {
+        LocalDate first = TodoRecurrence.firstOccurrence(
+                LocalDate.of(2026, 8, 1), TodoTask.RepeatFreq.DAILY, null, LocalDate.of(2026, 9, 6));
+
+        assertThat(first).isEqualTo(LocalDate.of(2026, 9, 6));
+    }
+
+    @Test
+    void firstOccurrenceKeepsFutureStartUntouched() {
+        LocalDate first = TodoRecurrence.firstOccurrence(
+                LocalDate.of(2026, 9, 20), TodoTask.RepeatFreq.MONTHLY, null, LocalDate.of(2026, 9, 6));
+
+        assertThat(first).isEqualTo(LocalDate.of(2026, 9, 20));
+    }
+
+    @Test
+    void firstOccurrenceSnapsForwardToASelectedWeekday() {
+        // 今天是周日(9/6)，选了周一、周三 → 首次应落在周一(9/7)
+        LocalDate first = TodoRecurrence.firstOccurrence(
+                LocalDate.of(2026, 9, 6), TodoTask.RepeatFreq.WEEKLY, "1,3", LocalDate.of(2026, 9, 6));
+
+        assertThat(first).isEqualTo(LocalDate.of(2026, 9, 7));
+    }
+
+    @Test
+    void firstOccurrenceKeepsStartThatAlreadyMatchesAWeekday() {
+        LocalDate first = TodoRecurrence.firstOccurrence(
+                LocalDate.of(2026, 9, 9), TodoTask.RepeatFreq.WEEKLY, "1,3", LocalDate.of(2026, 9, 6));
+
+        assertThat(first).isEqualTo(LocalDate.of(2026, 9, 9)); // 周三，原样保留
+    }
+
+    @Test
+    void firstOccurrenceLeavesNonRecurringDueDateAlone() {
+        LocalDate first = TodoRecurrence.firstOccurrence(
+                LocalDate.of(2026, 8, 1), TodoTask.RepeatFreq.NONE, null, LocalDate.of(2026, 9, 6));
+
+        assertThat(first).isEqualTo(LocalDate.of(2026, 8, 1));
+    }
+
+    @Test
     void formatWeekdaysDeduplicatesAndSorts() {
         assertThat(TodoRecurrence.formatWeekdays(List.of(5, 1, 3, 1))).isEqualTo("1,3,5");
         assertThat(TodoRecurrence.formatWeekdays(List.of(0, 9))).isNull();

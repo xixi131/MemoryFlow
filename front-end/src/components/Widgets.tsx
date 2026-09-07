@@ -188,7 +188,7 @@ export const Widgets: React.FC<WidgetsProps> = ({ fixed = false }) => {
                         <button 
                             onClick={() => setTimerActive(!timerActive)}
                             className={`flex-1 py-4 rounded-2xl font-bold text-sm tracking-wide shadow-glow transition-all flex items-center justify-center gap-2 group ${
-                                timerActive ? 'bg-accent-coral text-white hover:bg-red-500' : 'bg-primary text-white hover:bg-blue-600'
+                                timerActive ? 'bg-accent-coral text-white hover:bg-red-500' : 'bg-primary text-white hover:bg-primary-hover'
                             }`}
                         >
                             <span className="material-symbols-outlined group-hover:scale-110 transition-transform">

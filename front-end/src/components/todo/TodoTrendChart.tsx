@@ -167,7 +167,7 @@ const TodoTrendChart: React.FC<TodoTrendChartProps> = ({
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-blue-600"
+                            className="bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
                             style={continuous(16)}
                         >
                             重试

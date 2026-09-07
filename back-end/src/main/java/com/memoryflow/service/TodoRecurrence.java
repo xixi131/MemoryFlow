@@ -88,6 +88,35 @@ public final class TodoRecurrence {
         return new Occurrence(null, 0);
     }
 
+    /**
+     * 归一化循环序列的第一次日期。循环任务问的是「从哪天开始」而不是「哪天截止」，
+     * 所以第一次永远不该落在今天之前，否则任务一创建就是逾期状态。
+     *
+     * <p>每周循环若指定了星期，还会把首次日期前推到最近一个选中的星期。
+     *
+     * @return 归一化后的首次日期；非循环任务原样返回
+     */
+    public static LocalDate firstOccurrence(LocalDate start,
+                                            TodoTask.RepeatFreq freq,
+                                            String weekdaysRaw,
+                                            LocalDate today) {
+        if (start == null || freq == null || freq == TodoTask.RepeatFreq.NONE) {
+            return start;
+        }
+
+        LocalDate candidate = (today != null && start.isBefore(today)) ? today : start;
+
+        if (freq == TodoTask.RepeatFreq.WEEKLY) {
+            Set<DayOfWeek> weekdays = parseWeekdays(weekdaysRaw);
+            if (!weekdays.isEmpty()) {
+                for (int offset = 0; offset < 7 && !weekdays.contains(candidate.getDayOfWeek()); offset++) {
+                    candidate = candidate.plusDays(1);
+                }
+            }
+        }
+        return candidate;
+    }
+
     private static LocalDate advance(LocalDate from,
                                      TodoTask.RepeatFreq freq,
                                      int interval,

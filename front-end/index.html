@@ -22,8 +22,9 @@
         theme: {
           extend: {
             colors: {
-              "primary": "#3A7FF1", 
-              "primary-glow": "#60A5FA",
+              "primary": "#0064E1",
+              "primary-hover": "#0053BD",
+              "primary-glow": "#268AEA",
               "background-dark": "#0F172A",
               "surface-dark": "#1E293B", 
               "surface-light": "#334155", 
@@ -43,7 +44,7 @@
               "pill": "9999px",
             },
             boxShadow: {
-              "glow": "0 0 20px -5px rgba(58, 127, 241, 0.5)",
+              "glow": "0 0 20px -5px rgba(0, 100, 225, 0.5)",
               "inner-light": "inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)",
             }
           },
@@ -75,6 +76,24 @@
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #475569; 
+      }
+      /*
+       * 输入框聚焦样式：GitHub / Apple 那种「边框变蓝」，不要外发光。
+       * 用 1px outline 画在内侧（offset -1px），这样有边框的输入框看起来就是边框变蓝，
+       * 无边框的（药丸输入框那类）也能有一条干净的蓝边，不会撑开布局。
+       * Tailwind 的 focus:ring-* 本质是 box-shadow，且 .focus\:ring-2:focus 优先级高于这里，
+       * 所以必须 !important 才压得住。
+       */
+      input:not([type="checkbox"]):not([type="radio"]):focus,
+      textarea:focus,
+      select:focus,
+      .field-control:focus,
+      .field-control:focus-visible,
+      .field-control[aria-expanded="true"] {
+        outline: 2px solid #0064E1 !important;
+        outline-offset: -2px !important;
+        border-color: #0064E1 !important;
+        box-shadow: none !important;
       }
       .glass-panel {
         background: rgba(255, 255, 255, 0.8);

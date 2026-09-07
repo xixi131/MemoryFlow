@@ -1493,7 +1493,7 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                         </div>
                                         <button 
                                             onClick={() => setShowTimePicker(false)}
-                                            className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-primary/30"
+                                            className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary-hover transition-colors shadow-lg shadow-primary/30"
                                         >
                                             确认
                                         </button>
@@ -1869,7 +1869,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                 iconText: 'text-blue-500 dark:text-blue-400',
                 hoverIconBg: 'group-hover:bg-blue-500',
                 hoverText: 'group-hover:text-blue-500 dark:group-hover:text-blue-400',
-                btnHover: 'hover:bg-blue-600 dark:hover:bg-blue-600',
+                btnHover: 'hover:bg-primary-hover dark:hover:bg-primary-hover',
                 btnBorder: 'hover:border-blue-600 dark:hover:border-blue-600',
                 shadow: 'hover:shadow-[0_0_40px_rgba(59,130,246,0.3)]',
                 border: 'hover:border-blue-500/60',
@@ -2004,7 +2004,7 @@ const English: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                         height: 32px;
                         width: 32px;
                         border-radius: 50%;
-                        background: #3A7FF1;
+                        background: #0064E1;
                         cursor: pointer;
                         margin-top: -12px;
                         box-shadow: 0 0 0 4px #101722, 0 0 15px rgba(58, 127, 241, 0.6);
@@ -2488,7 +2488,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
                                 <button 
                                     type="button" 
                                     onClick={handleChangeEmail}
-                                    className="w-full py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-glow hover:bg-blue-600 transition-colors"
+                                    className="w-full py-2 rounded-xl bg-primary text-white text-sm font-bold shadow-glow hover:bg-primary-hover transition-colors"
                                 >
                                     确认换绑
                                 </button>
@@ -2498,7 +2498,7 @@ const EditProfileModal: React.FC<{ isOpen: boolean; onClose: () => void; user: U
 
                     <div className="flex justify-end gap-3 mt-8">
                         <button type="button" onClick={onClose} className="px-6 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors font-bold">取消</button>
-                        <button type="submit" className="px-6 py-2 rounded-xl bg-primary text-white font-bold shadow-glow hover:bg-blue-600 transition-colors">保存</button>
+                        <button type="submit" className="px-6 py-2 rounded-xl bg-primary text-white font-bold shadow-glow hover:bg-primary-hover transition-colors">保存</button>
                     </div>
                 </form>
             </div>
@@ -2533,7 +2533,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                     <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{user.nickname || (user as any).username || 'User'}</h3>
                     <p className="text-slate-500 dark:text-text-secondary">{user.profession || 'Student'}</p>
                     <div className="flex gap-4 mt-6">
-                        <button onClick={() => setShowEditModal(true)} className="px-6 py-2 rounded-full bg-primary text-white text-sm font-bold shadow-glow hover:bg-blue-600 transition-colors">编辑资料</button>
+                        <button onClick={() => setShowEditModal(true)} className="px-6 py-2 rounded-full bg-primary text-white text-sm font-bold shadow-glow hover:bg-primary-hover transition-colors">编辑资料</button>
                         <button className="px-6 py-2 rounded-full bg-slate-100 dark:bg-white/5 text-slate-900 dark:text-white text-sm font-bold border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">设置</button>
                     </div>
                  </div>
@@ -2567,7 +2567,7 @@ const Profile: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
                     <a
                         href="https://memoryflow.tanxhub.com/download/MemoryFlow-Setup.exe"
                         download
-                        className="w-full py-3 rounded-xl bg-primary text-white font-bold shadow-glow hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 mb-3"
+                        className="w-full py-3 rounded-xl bg-primary text-white font-bold shadow-glow hover:bg-primary-hover transition-colors flex items-center justify-center gap-2 mb-3"
                     >
                         <span className="material-symbols-outlined">download</span>
                         Download for Windows
