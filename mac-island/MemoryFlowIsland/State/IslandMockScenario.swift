@@ -81,6 +81,12 @@ struct IslandMockScenario: Equatable, Identifiable {
             expectedDerivedVisualState: .activityCollapsed
         ),
         IslandMockScenario(
+            id: "reminder-banner-expanded",
+            menuTitle: "Reminder (Large)",
+            initialState: .mockReminderBannerExpanded,
+            expectedDerivedVisualState: .reminderBannerExpanded
+        ),
+        IslandMockScenario(
             id: "music-stopped-fallback",
             menuTitle: "Music Stopped Fallback",
             initialState: .mockMusicStoppedFallback,

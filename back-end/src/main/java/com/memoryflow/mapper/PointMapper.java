@@ -1,6 +1,7 @@
 package com.memoryflow.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.memoryflow.dto.widget.PendingReviewItemView;
 import com.memoryflow.entity.Point;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -22,6 +23,26 @@ public interface PointMapper extends BaseMapper<Point> {
     int countLearnedByChapterId(@Param("chapterId") Long chapterId);
 
     // ========== 复习相关查询 ==========
+
+    /**
+     * 查询用户当前待复习的要点，并一次性带出章节 / 科目标题。
+     *
+     * 桌面灵动岛每 30 秒轮询一次 /widget/summary，如果走 PointService.getPendingReviews
+     * 再逐条补关联信息，每次轮询会额外产生 3N 次查询。这里用一条 JOIN 取全。
+     */
+    @Select("SELECT p.id AS id, p.subject_id AS subjectId, p.chapter_id AS chapterId, " +
+            "       p.title AS title, c.title AS chapterTitle, s.title AS subjectTitle, " +
+            "       p.learned_at AS learnedAt, p.next_review_date AS nextReviewDate " +
+            "FROM points p " +
+            "LEFT JOIN chapters c ON c.id = p.chapter_id " +
+            "LEFT JOIN subjects s ON s.id = p.subject_id " +
+            "WHERE p.user_id = #{userId} AND p.is_learned = true " +
+            "  AND p.review_completed = false AND p.next_review_date <= #{today} " +
+            "ORDER BY p.next_review_date ASC")
+    List<PendingReviewItemView> findPendingReviewItemsByUserId(
+            @Param("userId") Long userId,
+            @Param("today") LocalDate today
+    );
 
     /**
      * 查询用户所有待复习的要点（包括今天已复习的）

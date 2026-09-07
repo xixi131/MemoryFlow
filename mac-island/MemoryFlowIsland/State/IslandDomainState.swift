@@ -41,8 +41,50 @@ enum IslandReminderKind: String, Codable, Equatable {
     }
 }
 
+/// 提醒展开的两种形态：小灵动岛只放一行文案，大灵动岛额外列出待复习内容。
+/// 两者都复用既有 shell（`.reminderBanner` / `.expandedApp`），没有新增几何。
+enum IslandReminderBannerStyle: String, Codable, Equatable {
+    case compact
+    case expanded
+}
+
+enum IslandReminderBannerLimits {
+    /// `firedReminderKeys` 保留的历史条数。一天最多 24 次复习提醒 + 1 次待办提醒，
+    /// 留两天的量足够覆盖跨天，同时不会无限增长。
+    static let firedKeyHistory = 64
+}
+
+/// 一次提醒触发的完整描述：提醒什么、去重 key、用哪种形态、说哪句话。
+/// `IslandReminderDuePolicy` 负责决定 key，`IslandReminderCopy` 负责决定
+/// 形态与文案，reducer 只是照着渲染。
+struct IslandReminderAnnouncement: Codable, Equatable {
+    let kind: IslandReminderKind
+    let key: String
+    let style: IslandReminderBannerStyle
+    let message: String
+
+    init(
+        kind: IslandReminderKind,
+        key: String,
+        style: IslandReminderBannerStyle = .compact,
+        message: String = ""
+    ) {
+        self.kind = kind
+        self.key = key
+        self.style = style
+        self.message = message
+    }
+}
+
 struct IslandReminderBanner: Codable, Equatable {
     let kind: IslandReminderKind
+    var style: IslandReminderBannerStyle = .compact
+    /// 本次提醒实际展示的文案。为空时回退到 `kind.message`。
+    var message: String = ""
+
+    var displayMessage: String {
+        message.isEmpty ? kind.message : message
+    }
 }
 
 struct IslandExternalAgentNotice: Codable, Equatable {
@@ -83,11 +125,40 @@ enum IslandTransitionLockIdentifier {
     static let modeSwitchLock = "modeSwitchLock"
 }
 
+/// 一条可点击的待复习内容。展开态复习列表展示的就是它，
+/// `subjectID` 用于点击后深链回网页对应的科目页。
+struct IslandReviewItem: Codable, Equatable, Identifiable {
+    let id: String
+    let subjectID: String?
+    let title: String
+    let subtitle: String
+    let dateText: String
+    let isOverdue: Bool
+
+    init(
+        id: String,
+        subjectID: String? = nil,
+        title: String,
+        subtitle: String = "",
+        dateText: String = "",
+        isOverdue: Bool = false
+    ) {
+        self.id = id
+        self.subjectID = subjectID
+        self.title = title
+        self.subtitle = subtitle
+        self.dateText = dateText
+        self.isOverdue = isOverdue
+    }
+}
+
 struct IslandMockReviewActivity: Codable, Equatable {
     var pendingCount: Int
     var completedTodayCount: Int
     var nextSubjectTitle: String?
     var subjectTitles: [String] = []
+    /// 具体的待复习要点。为空时展开态回退到按科目展示。
+    var items: [IslandReviewItem] = []
 
     static let empty = IslandMockReviewActivity(
         pendingCount: 0,
@@ -747,7 +818,44 @@ extension IslandDomainState {
                 "高等数学",
                 "编译原理",
                 "英语阅读"
-            ]
+            ],
+            items: mockReviewItems
+        )
+        return state
+    }
+
+    /// 一份贴近真实数据的待复习清单：要点标题 + 章节 + 学习日期。
+    static let mockReviewItems: [IslandReviewItem] = [
+        ("子串", "8月22日"),
+        ("哈希", "8月11日"),
+        ("双指针", "8月12日"),
+        ("滑动窗口", "8月14日"),
+        ("动态规划", "8月16日"),
+        ("普通数组", "8月18日"),
+        ("矩阵", "8月20日")
+    ].enumerated().map { index, entry in
+        IslandReviewItem(
+            id: "point-\(index)",
+            subjectID: "1",
+            title: entry.0,
+            subtitle: "第 1 周 · 数组与字符串基础（24 题）",
+            dateText: entry.1
+        )
+    }
+
+    static var mockReminderBannerExpanded: IslandDomainState {
+        var state = expandedAppReview
+        state.mockSources.review = IslandMockReviewActivity(
+            pendingCount: 7,
+            completedTodayCount: 0,
+            nextSubjectTitle: "子串",
+            subjectTitles: [],
+            items: mockReviewItems
+        )
+        state.reminderBanner = IslandReminderBanner(
+            kind: .review,
+            style: .expanded,
+            message: "再不复习就要忘光啦"
         )
         return state
     }

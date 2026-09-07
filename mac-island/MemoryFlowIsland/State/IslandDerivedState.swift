@@ -120,8 +120,8 @@ struct IslandDerivedState: Equatable {
         if state.isLoginRequiredPresented {
             return .loginRequired
         }
-        if state.reminderBanner != nil {
-            return .reminderBanner
+        if let banner = state.reminderBanner {
+            return banner.style == .expanded ? .reminderBannerExpanded : .reminderBanner
         }
         if state.externalAgentNotice != nil {
             // External-agent notices intentionally reuse the normal app-expand
@@ -320,7 +320,16 @@ enum IslandActivityContentWidthProfile {
         isReminder: Bool = false
     ) -> IslandContentWidthRequirement {
         switch branch {
-        case .review, .todo, .music, .updateDownload:
+        case .updateDownload:
+            // The trailing slot holds the "100%" label, which is wider than the
+            // generic 32pt control slot. Declaring its real width keeps the
+            // number from being pushed onto the shell's right curve.
+            return IslandContentWidthRequirement(
+                leadingContentWidth: minimumLeadingIdentityWidth,
+                trailingContentWidth: IslandUpdateDownloadLayout.percentageWidth,
+                horizontalPadding: notchSpacing
+            )
+        case .review, .todo, .music:
             return IslandContentWidthRequirement(
                 leadingContentWidth: minimumLeadingIdentityWidth,
                 trailingContentWidth: minimumTrailingControlWidth,
@@ -459,6 +468,7 @@ struct IslandPreviewContent: Equatable {
         case expandedMusic
         case gestureLock
         case reminderBanner
+        case reminderBannerExpanded
         case externalAgentNotification
     }
 
@@ -590,8 +600,12 @@ struct IslandPreviewContent: Equatable {
             }
             return IslandPreviewContent.reminderBanner(
                 kind: banner.kind.displayMode,
-                message: banner.kind.message,
-                pendingCount: pendingCount
+                message: banner.displayMessage,
+                pendingCount: pendingCount,
+                style: banner.style,
+                review: banner.style == .expanded
+                    ? (state.reviewSnapshot?.presentationActivity ?? state.mockSources.review)
+                    : nil
             )
         }
 
@@ -691,23 +705,24 @@ struct IslandPreviewContent: Equatable {
         )
     }
 
-    /// Builds reminder-banner content directly, bypassing `derive`. The banner's
-    /// visual state is not yet reachable through `derive` — that domain-state
-    /// wiring (the 3-phase reducer sequence) lands in a later task. This factory
-    /// lets the render layer and mock scenarios construct banner content today.
+    /// Builds reminder content. `style == .expanded` swaps in the large shell's
+    /// content kind and carries the review queue so the reminder can list what
+    /// is actually due instead of only shouting a line of copy.
     static func reminderBanner(
         kind: IslandAppDisplayMode,
         message: String,
-        pendingCount: Int
+        pendingCount: Int,
+        style: IslandReminderBannerStyle = .compact,
+        review: IslandMockReviewActivity? = nil
     ) -> IslandPreviewContent {
         IslandPreviewContent(
-            kind: .reminderBanner,
+            kind: style == .expanded ? .reminderBannerExpanded : .reminderBanner,
             eyebrow: kind == .todo ? "待办" : "复习",
             title: message,
             subtitle: "",
             badge: "\(pendingCount)",
             tone: .reminder,
-            review: nil,
+            review: style == .expanded ? review : nil,
             todo: nil,
             music: nil,
             contentWidthRequirement: .none

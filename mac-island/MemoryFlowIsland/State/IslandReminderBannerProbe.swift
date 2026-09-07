@@ -27,11 +27,12 @@ enum IslandReminderBannerProbe {
             key: "k2"
         )
         try validatePolicy()
+        try validateRepeatCopyAndStyle()
         try validateAutoDismissTiming()
         try validateExternalAgentNotice()
         try validateAgentCompletionLogEvents()
         try validateToonFlowAgentModes()
-        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=onceDailyPerKind+timeGated+dayRearm+nothingPending; autoDismissHold=2.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+claudeApprovalWait+claudeUserQuestionWait+chatGPTTaskComplete+chatGPTUserInputWait; toonFlow=allAgentModes+agentAnswersOnly; reminderActiveNeverSet=true"
+        return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=hourlyReviewRepeat+onceDailyTodo+timeGated+dayRearm+nothingPending+reminderDisabledSilences; repeatCopy=variedNudges+deterministic; repeatStyle=compactFirst+mixedShells; autoDismissHold=2.0s/6.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+claudeApprovalWait+claudeUserQuestionWait+chatGPTTaskComplete+chatGPTUserInputWait; toonFlow=allAgentModes+agentAnswersOnly; reminderActiveNeverSet=true"
     }
 
     private static func validateToonFlowAgentModes() throws {
@@ -141,7 +142,7 @@ enum IslandReminderBannerProbe {
 
         let due = IslandPresentationReducer.reduce(
             current: baseState,
-            intent: .reminderBannerDue(kind: kind, key: key)
+            intent: .reminderBannerDue(IslandReminderAnnouncement(kind: kind, key: key))
         )
         guard due.reason == .reminderBannerPresented,
               due.derivedState.visualState == .reminderBanner,
@@ -205,7 +206,7 @@ enum IslandReminderBannerProbe {
 
         let repeated = IslandPresentationReducer.reduce(
             current: completed.state,
-            intent: .reminderBannerDue(kind: kind, key: key)
+            intent: .reminderBannerDue(IslandReminderAnnouncement(kind: kind, key: key))
         )
         guard repeated.reason == .intentIgnored else {
             throw IslandReminderBannerProbeError.failed(
@@ -267,24 +268,58 @@ enum IslandReminderBannerProbe {
         }
 
         // 2) Once reached, EXACTLY ONE event fires for review — no matter how
-        //    many pending items — and it never fires again the same day, even
-        //    hours later with the same (or a larger) pending count.
+        //    many pending items — and it does not refire within the same hourly
+        //    slot. It DOES refire in the next slot, because an unfinished review
+        //    queue is nagged once an hour until it is cleared.
         var reviewState = reviewStateBeforeTime
         guard let reviewEvent = IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: reviewState, calendar: calendar),
               reviewEvent.kind == .review,
-              reviewEvent.key == "review-2026-08-04" else {
+              reviewEvent.key == "review-2026-08-04#0",
+              reviewEvent.repeatIndex == 0 else {
             throw IslandReminderBannerProbeError.failed("policy: review did not fire exactly once when the reminder time was reached")
         }
         reviewState.firedReminderKeys.append(reviewEvent.key)
 
         guard IslandReminderDuePolicy.evaluate(now: day0TenSecondsLater, state: reviewState, calendar: calendar) == nil else {
-            throw IslandReminderBannerProbeError.failed("policy: review refired 10s later the same day (should be deduped for the whole day)")
+            throw IslandReminderBannerProbeError.failed("policy: review refired 10s later (should be deduped within the hourly slot)")
+        }
+        guard IslandReminderDuePolicy.evaluate(
+            now: date(day: 4, hour: 20, minute: 59),
+            state: reviewState,
+            calendar: calendar
+        ) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: review refired 59 minutes in — the repeat interval is one hour")
         }
         reviewState.reviewSnapshot = ReviewSnapshot(
             dto: WidgetSummaryDTO(totalPendingReviews: 9, totalCompletedToday: 0, reminderTime: "20:00", subjects: [])
         )
-        guard IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: reviewState, calendar: calendar) == nil else {
-            throw IslandReminderBannerProbeError.failed("policy: review refired later the same day even though the pending count grew — must still be capped at once per day")
+        guard let hourlyRepeat = IslandReminderDuePolicy.evaluate(now: date(day: 4, hour: 21, minute: 0), state: reviewState, calendar: calendar),
+              hourlyRepeat.key == "review-2026-08-04#1",
+              hourlyRepeat.repeatIndex == 1 else {
+            throw IslandReminderBannerProbeError.failed("policy: review did not re-announce one hour later while the queue was still pending")
+        }
+        reviewState.firedReminderKeys.append(hourlyRepeat.key)
+        guard let laterRepeat = IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: reviewState, calendar: calendar),
+              laterRepeat.key == "review-2026-08-04#3",
+              laterRepeat.repeatIndex == 3 else {
+            throw IslandReminderBannerProbeError.failed("policy: review repeat slot did not track elapsed hours since the reminder time")
+        }
+        reviewState.firedReminderKeys.append(laterRepeat.key)
+
+        // 2b) The reminder master switch (web settings → 复习提醒) silences
+        //     everything, however much is pending.
+        var disabledState = makeState(pendingReviews: 5, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
+        disabledState.reviewSnapshot = ReviewSnapshot(
+            dto: WidgetSummaryDTO(
+                totalPendingReviews: 5,
+                totalCompletedToday: 0,
+                reminderTime: "20:00",
+                subjects: [],
+                reminderEnabled: false
+            )
+        )
+        guard IslandReminderDuePolicy.evaluate(now: day0AtReminder, state: disabledState, calendar: calendar) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: a reminder fired even though reminderEnabled was false")
         }
 
         // 3) Todo: dueToday + overdueTasks drive the same single-fire-per-day
@@ -306,12 +341,20 @@ enum IslandReminderBannerProbe {
         var noTimeState = makeState(pendingReviews: 1, dueToday: 0, overdueTasks: 0, reminderTime: nil)
         guard let noTimeEvent = IslandReminderDuePolicy.evaluate(now: day0BeforeReminder, state: noTimeState, calendar: calendar),
               noTimeEvent.kind == .review,
-              noTimeEvent.key == "review-2026-08-04" else {
+              noTimeEvent.key == "review-2026-08-04#19" else {
             throw IslandReminderBannerProbeError.failed("policy: review with no configured reminder time did not fire immediately once something was pending")
         }
         noTimeState.firedReminderKeys.append(noTimeEvent.key)
-        guard IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: noTimeState, calendar: calendar) == nil else {
-            throw IslandReminderBannerProbeError.failed("policy: no-configured-time review refired later the same day")
+        guard IslandReminderDuePolicy.evaluate(
+            now: date(day: 4, hour: 19, minute: 59, second: 59),
+            state: noTimeState,
+            calendar: calendar
+        ) == nil else {
+            throw IslandReminderBannerProbeError.failed("policy: no-configured-time review refired inside the same hour bucket")
+        }
+        guard let noTimeRepeat = IslandReminderDuePolicy.evaluate(now: day0MuchLater, state: noTimeState, calendar: calendar),
+              noTimeRepeat.key == "review-2026-08-04#23" else {
+            throw IslandReminderBannerProbeError.failed("policy: no-configured-time review did not fall into the next hour bucket")
         }
 
         // 5) Advancing the clock to the next day re-arms both kinds.
@@ -321,7 +364,7 @@ enum IslandReminderBannerProbe {
 
         guard let rearmedReview = IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: combinedState, calendar: calendar),
               rearmedReview.kind == .review,
-              rearmedReview.key == "review-2026-08-05" else {
+              rearmedReview.key == "review-2026-08-05#0" else {
             throw IslandReminderBannerProbeError.failed("policy: review key did not re-arm on the next day")
         }
         combinedState.firedReminderKeys.append(rearmedReview.key)
@@ -336,6 +379,111 @@ enum IslandReminderBannerProbe {
         let emptyState = makeState(pendingReviews: 0, dueToday: 0, overdueTasks: 0, reminderTime: "20:00")
         guard IslandReminderDuePolicy.evaluate(now: day1AtReminder, state: emptyState, calendar: calendar) == nil else {
             throw IslandReminderBannerProbeError.failed("policy: an event fired despite zero pending reviews and zero due/overdue todos")
+        }
+    }
+
+    /// Repeat reminders must not read as the same notification stuck on loop:
+    /// the copy varies, the shell alternates between the small banner and the
+    /// large list, and both choices are deterministic for a given dedup key so
+    /// a re-render can never make the island flicker between two variants.
+    private static func validateRepeatCopyAndStyle() throws {
+        let openers = (0..<8).map {
+            IslandReminderCopy.message(for: .review, repeatIndex: 0, key: "review-2026-08-04#\($0)")
+        }
+        guard openers.allSatisfy({ IslandReminderCopy.reviewOpeners.contains($0) }) else {
+            throw IslandReminderBannerProbeError.failed("copy: the first reminder of the day used a non-opener line")
+        }
+
+        let nudges = (1..<12).map {
+            IslandReminderCopy.message(for: .review, repeatIndex: $0, key: "review-2026-08-04#\($0)")
+        }
+        guard nudges.allSatisfy({ IslandReminderCopy.reviewNudges.contains($0) }) else {
+            throw IslandReminderBannerProbeError.failed("copy: a repeat reminder used a line outside the nudge pool")
+        }
+        guard Set(nudges).count >= 3 else {
+            throw IslandReminderBannerProbeError.failed(
+                "copy: repeat reminders barely varied their wording (distinct=\(Set(nudges).count))"
+            )
+        }
+
+        // Deterministic: the same key always resolves to the same line/shell.
+        guard IslandReminderCopy.message(for: .review, repeatIndex: 4, key: "stable-key")
+                == IslandReminderCopy.message(for: .review, repeatIndex: 4, key: "stable-key"),
+              IslandReminderCopy.style(for: .review, repeatIndex: 4, key: "stable-key", hasListContent: true)
+                == IslandReminderCopy.style(for: .review, repeatIndex: 4, key: "stable-key", hasListContent: true) else {
+            throw IslandReminderBannerProbeError.failed("copy: message/style selection was not deterministic for a fixed key")
+        }
+
+        // The first reminder is always the small shell; repeats mix both.
+        guard IslandReminderCopy.style(for: .review, repeatIndex: 0, key: "review-2026-08-04#0", hasListContent: true) == .compact else {
+            throw IslandReminderBannerProbeError.failed("style: the first reminder of the day should use the small shell")
+        }
+        let repeatStyles = (1..<12).map {
+            IslandReminderCopy.style(for: .review, repeatIndex: $0, key: "review-2026-08-04#\($0)", hasListContent: true)
+        }
+        guard repeatStyles.contains(.expanded), repeatStyles.contains(.compact) else {
+            throw IslandReminderBannerProbeError.failed("style: repeat reminders did not alternate between the small and large shells")
+        }
+        // Without review content to list, the large shell would be an empty box.
+        guard (1..<12).allSatisfy({
+            IslandReminderCopy.style(for: .review, repeatIndex: $0, key: "k#\($0)", hasListContent: false) == .compact
+        }) else {
+            throw IslandReminderBannerProbeError.failed("style: the large shell was used with nothing to list")
+        }
+
+        // The expanded announcement must reach the big shell and carry the queue.
+        var state = reviewBaseState()
+        state.reviewSnapshot = ReviewSnapshot(
+            dto: WidgetSummaryDTO(
+                totalPendingReviews: 2,
+                totalCompletedToday: 0,
+                reminderTime: "20:00",
+                subjects: [],
+                reviewItems: [
+                    ReviewItemDTO(
+                        id: 1,
+                        subjectId: 9,
+                        title: "子串",
+                        chapterTitle: "第 1 周 · 数组与字符串基础（24 题）",
+                        learnedAt: "2026-08-22T09:30:00"
+                    ),
+                    ReviewItemDTO(
+                        id: 2,
+                        subjectId: 9,
+                        title: "哈希",
+                        chapterTitle: "第 1 周 · 数组与字符串基础（24 题）",
+                        learnedAt: "2026-08-11T09:30:00"
+                    )
+                ]
+            )
+        )
+        let expanded = IslandPresentationReducer.reduce(
+            current: state,
+            intent: .reminderBannerDue(
+                IslandReminderAnnouncement(
+                    kind: .review,
+                    key: "expanded-style-check",
+                    style: .expanded,
+                    message: "再不复习就要忘光啦"
+                )
+            )
+        )
+        guard expanded.reason == .reminderBannerPresented,
+              expanded.derivedState.visualState == .reminderBannerExpanded,
+              expanded.derivedState.previewContent.kind == .reminderBannerExpanded,
+              expanded.derivedState.previewContent.title == "再不复习就要忘光啦",
+              expanded.derivedState.previewContent.review?.items.count == 2,
+              expanded.derivedState.previewContent.review?.items.first?.title == "子串",
+              expanded.derivedState.previewContent.review?.items.first?.subtitle == "第 1 周 · 数组与字符串基础（24 题）",
+              expanded.derivedState.previewContent.review?.items.first?.dateText == "8月22日",
+              expanded.derivedState.previewContent.review?.items.first?.subjectID == "9" else {
+            throw IslandReminderBannerProbeError.failed(
+                "expanded reminder did not resolve to the large shell with its review list: state=\(expanded.derivedState.visualState) kind=\(expanded.derivedState.previewContent.kind)"
+            )
+        }
+
+        guard IslandMotionTokens.reminderBannerExpandedHoldDuration > IslandMotionTokens.reminderBannerHoldDuration else {
+            throw IslandReminderBannerProbeError.failed("the large reminder must stay open longer than the one-line banner")
         }
     }
 
@@ -359,7 +507,7 @@ enum IslandReminderBannerProbe {
         let baseState = reviewBaseState()
         let due = IslandPresentationReducer.reduce(
             current: baseState,
-            intent: .reminderBannerDue(kind: .review, key: "auto-dismiss-timing-check")
+            intent: .reminderBannerDue(IslandReminderAnnouncement(kind: .review, key: "auto-dismiss-timing-check"))
         )
         guard due.reason == .reminderBannerPresented else {
             throw IslandReminderBannerProbeError.failed(

@@ -245,7 +245,71 @@ enum UpdateCoordinatorProbe {
         installedPolicy.stop()
 
         try validateRecoverableFailures()
-        return "update-coordinator-probe: PASS; signed=current,newer,higher-version,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale,deferred-direct; install=verifying,ready,authorization,duplicate-guard,installing,relaunched,version-changed,no-repeat,future-check,sparkle-delegated; recovery=offline,http,feed,disk,auth-cancel,signature,explicit-retry,no-auto-loop,launchable; policy=launch,24h,wake,manual,4h-deferral,recheck,future-version,termination"
+        try await validateDownloadRestart()
+        try validateProgressPresentation()
+        return "update-coordinator-probe: PASS; signed=current,newer,higher-version,malformed,http,invalid-signature; download=requested,start-confirmed,setup-failure,unknown-length,expected-length,throttled,monotonic,clamped-100,retry-reset,duplicate,stale,deferred-direct,delta-fallback-restart; install=verifying,ready,authorization,duplicate-guard,installing,relaunched,version-changed,no-repeat,future-check,sparkle-delegated; recovery=offline,http,feed,disk,auth-cancel,signature,explicit-retry,no-auto-loop,launchable; policy=launch,24h,wake,manual,4h-deferral,recheck,future-version,termination,failure-retry-30m; presentation=completed-holds-100,unknown-total-stays-indeterminate"
+    }
+
+    /// Sparkle restarts the transfer when a delta update cannot be applied and it
+    /// falls back to the full archive. The second `downloadStarted` has to reset
+    /// progress — otherwise the delta's byte count and its much smaller total stay
+    /// latched and the island's percentage sticks at 100% for the whole download.
+    private static func validateDownloadRestart() async throws {
+        let engine = ProbeEngine()
+        let coordinator = UpdateCoordinator(engine: engine)
+        _ = coordinator.checkForUpdates()
+        let session = engine.lastSession!
+        let release = UpdateRelease(
+            version: "1.0.1",
+            build: "101",
+            downloadURL: URL(string: "https://updates.memoryflow.example/MemoryFlow.zip")!,
+            contentLength: nil
+        )
+        engine.emit(.available(release), sessionID: session)
+        try await Task.sleep(for: .milliseconds(20))
+        _ = coordinator.downloadAvailableUpdate()
+
+        // Delta download: 100 of 100 bytes.
+        engine.emit(.downloadStarted(totalBytes: 100), sessionID: session)
+        engine.emit(.downloadProgress(receivedBytes: 100, totalBytes: 100), sessionID: session)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let delta) = coordinator.state, delta.percentage == 100 else {
+            throw UpdateCoordinatorProbeError.failed("delta download did not reach 100 percent")
+        }
+
+        // Delta failed to apply — Sparkle restarts with the full 1000-byte archive.
+        engine.emit(.downloadStarted(totalBytes: 1000), sessionID: session)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let restarted) = coordinator.state,
+              restarted.receivedBytes == 0,
+              restarted.totalBytes == 1000,
+              restarted.percentage == 0 else {
+            throw UpdateCoordinatorProbeError.failed("restarted download kept the previous byte count or total")
+        }
+
+        engine.emit(.downloadProgress(receivedBytes: 250, totalBytes: 1000), sessionID: session)
+        try await Task.sleep(for: .milliseconds(20))
+        guard case .downloading(_, let resumed) = coordinator.state, resumed.percentage == 25 else {
+            throw UpdateCoordinatorProbeError.failed("restarted download did not track the full archive's progress")
+        }
+    }
+
+    /// The island keeps showing the finished percentage while Sparkle verifies and
+    /// installs. Without `completed`, the bridge reset to `.indeterminate` and the
+    /// badge visibly fell back from "100%" to "--%" at the very end.
+    private static func validateProgressPresentation() throws {
+        let downloaded = UpdateDownloadProgress(receivedBytes: 512, totalBytes: 2048)
+        guard downloaded.completed.percentage == 100,
+              downloaded.completed.totalBytes == 2048 else {
+            throw UpdateCoordinatorProbeError.failed("completed progress did not resolve to 100 percent")
+        }
+        guard UpdateDownloadProgress.indeterminate.completed == .indeterminate,
+              UpdateDownloadProgress(receivedBytes: 10, totalBytes: nil).completed == .indeterminate else {
+            throw UpdateCoordinatorProbeError.failed("unknown-total progress should stay indeterminate")
+        }
+        guard UpdateCheckPolicy.failureRetry < UpdateCheckPolicy.cadence else {
+            throw UpdateCoordinatorProbeError.failed("a failed check must be retried sooner than the daily cadence")
+        }
     }
 
     private static func validateRecoverableFailures() throws {

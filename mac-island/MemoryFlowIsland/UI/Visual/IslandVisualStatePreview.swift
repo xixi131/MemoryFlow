@@ -38,6 +38,7 @@ struct IslandVisualStatePreview: View {
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
     var onExternalAgentOpen: (() -> Void)?
+    var onReviewItemSelected: ((IslandReviewItem) -> Void)?
     @State private var greetingPhase: IslandGreetingPhase = .cancelled
     @State private var greetingGate = IslandGreetingTransitionGate()
     @State private var greetingExpired = false
@@ -181,7 +182,8 @@ struct IslandVisualStatePreview: View {
             onLoginRequested: onLoginRequested,
             onUpdateRequested: onUpdateRequested,
             onUpdateLaterRequested: onUpdateLaterRequested,
-            onExternalAgentOpen: onExternalAgentOpen
+            onExternalAgentOpen: onExternalAgentOpen,
+            onReviewItemSelected: onReviewItemSelected
         )
             .frame(
                 width: snapshot.contentFrame.width,
@@ -399,6 +401,7 @@ private struct IslandPreviewContentOverlay: View {
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
     var onExternalAgentOpen: (() -> Void)?
+    var onReviewItemSelected: ((IslandReviewItem) -> Void)?
     @State private var musicClock = IslandMockMusicProgressClock()
     @State private var playbackOverride: Bool?
     @State private var seekPreviewSeconds: TimeInterval?
@@ -682,10 +685,10 @@ private struct IslandPreviewContentOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(
             IslandExpandedContentClipShape(
-                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic
+                topRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic || content.kind == .reminderBannerExpanded
                     ? 0
                     : expandedInnerCornerRadius,
-                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic
+                bottomRadius: content.kind == .expandedReview || content.kind == .expandedTodo || content.kind == .expandedTodoDetail || content.kind == .expandedMusic || content.kind == .reminderBannerExpanded
                     ? 0
                     : expandedInnerCornerRadius
             )
@@ -738,6 +741,15 @@ private struct IslandPreviewContentOverlay: View {
             updatePromptContent
         } else if content.kind == .reminderBanner {
             reminderBannerContent
+        } else if content.kind == .reminderBannerExpanded {
+            // 大形态提醒复用展开态复习列表，只把顶部计数换成提醒文案。
+            IslandExpandedReviewContent(
+                review: content.review ?? .empty,
+                tint: tintColor,
+                contentPhase: contentPhase,
+                headline: content.title,
+                onItemSelected: onReviewItemSelected
+            )
         } else if content.kind == .loginRequired {
             promptCapsuleButton(
                 title: "登陆",
@@ -754,7 +766,8 @@ private struct IslandPreviewContentOverlay: View {
             IslandExpandedReviewContent(
                 review: review,
                 tint: tintColor,
-                contentPhase: contentPhase
+                contentPhase: contentPhase,
+                onItemSelected: onReviewItemSelected
             )
         } else if content.kind == .expandedTodoDetail || content.kind == .expandedTodo {
             todoNavigationContent
@@ -836,6 +849,8 @@ private struct IslandPreviewContentOverlay: View {
         .accessibilityLabel(content.title)
     }
 
+    /// 只放「稍后 / 更新」两个按钮。灵动岛向下展开的高度有限，更上方的区域
+    /// 会被菜单栏盖住，写在那里的标题用户根本看不到，所以不要往上加文案。
     private var updatePromptContent: some View {
         HStack(spacing: IslandUpdatePromptLayout.actionSpacing) {
             promptCapsuleButton(
@@ -1548,6 +1563,9 @@ private struct IslandExpandedReviewContent: View {
     let review: IslandMockReviewActivity
     let tint: Color
     let contentPhase: IslandContentPhase
+    /// 非空时替换顶部的计数行，用于大形态复习提醒（「再不复习就要忘光啦」）。
+    var headline: String?
+    var onItemSelected: ((IslandReviewItem) -> Void)?
     @State private var cardsAreVisible = false
     @State private var scrollOffset: CGFloat = 0
 
@@ -1555,31 +1573,51 @@ private struct IslandExpandedReviewContent: View {
         IslandExpandedReviewContentLayout.subjectSlots(for: review)
     }
 
+    /// 有具体待复习内容时展示要点清单；没有（老后端或数据缺失）时退回科目网格。
+    private var items: [IslandReviewItem] {
+        review.items
+    }
+
     var body: some View {
         GeometryReader { _ in
             ZStack(alignment: .top) {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 16) {
-                        reviewCounterRow
+                        headerRow
                             .scaleEffect(1 - (collapseProgress * 0.18), anchor: .topLeading)
                             .opacity(Double(1 - (collapseProgress * 0.5)))
                             .background(
                                 IslandReviewScrollOffsetReader(offset: $scrollOffset)
                             )
 
-                        LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
-                            spacing: 8
-                        ) {
-                            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                                subjectCard(slot)
-                                    .opacity(cardsAreVisible ? 1 : 0)
-                                    .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
-                                    .animation(
-                                        IslandExpandedReviewContentLayout.cardAnimation
-                                            .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
-                                        value: cardsAreVisible
-                                    )
+                        if items.isEmpty {
+                            LazyVGrid(
+                                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                                spacing: 8
+                            ) {
+                                ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                                    subjectCard(slot)
+                                        .opacity(cardsAreVisible ? 1 : 0)
+                                        .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
+                                        .animation(
+                                            IslandExpandedReviewContentLayout.cardAnimation
+                                                .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
+                                            value: cardsAreVisible
+                                        )
+                                }
+                            }
+                        } else {
+                            LazyVStack(spacing: 6) {
+                                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                                    reviewItemRow(item)
+                                        .opacity(cardsAreVisible ? 1 : 0)
+                                        .scaleEffect(cardsAreVisible ? 1 : IslandExpandedReviewContentLayout.initialCardScale)
+                                        .animation(
+                                            IslandExpandedReviewContentLayout.cardAnimation
+                                                .delay(IslandExpandedReviewContentLayout.cardDelay(for: index)),
+                                            value: cardsAreVisible
+                                        )
+                                }
                             }
                         }
                     }
@@ -1612,6 +1650,15 @@ private struct IslandExpandedReviewContent: View {
         min(max(scrollOffset / IslandExpandedReviewContentLayout.headerCollapseDistance, 0), 1)
     }
 
+    @ViewBuilder
+    private var headerRow: some View {
+        if let headline, headline.isEmpty == false {
+            reminderHeadline(headline, fontSize: 19)
+        } else {
+            reviewCounterRow
+        }
+    }
+
     private var reviewCounterRow: some View {
         HStack(spacing: 8) {
             reviewCounter(value: max(review.pendingCount, 0), label: "待复习")
@@ -1619,13 +1666,35 @@ private struct IslandExpandedReviewContent: View {
         }
     }
 
+    @ViewBuilder
     private var compactHeader: some View {
-        HStack(spacing: 8) {
-            compactCounter(value: max(review.pendingCount, 0), label: "待复习")
-            compactCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
+        if let headline, headline.isEmpty == false {
+            reminderHeadline(headline, fontSize: 14)
+                .frame(height: IslandExpandedReviewContentLayout.compactHeaderHeight)
+                .padding(.horizontal, 2)
+        } else {
+            HStack(spacing: 8) {
+                compactCounter(value: max(review.pendingCount, 0), label: "待复习")
+                compactCounter(value: max(review.completedTodayCount, 0), label: "今日完成")
+            }
+            .frame(height: IslandExpandedReviewContentLayout.compactHeaderHeight)
+            .padding(.horizontal, 2)
         }
-        .frame(height: IslandExpandedReviewContentLayout.compactHeaderHeight)
-        .padding(.horizontal, 2)
+    }
+
+    private func reminderHeadline(_ text: String, fontSize: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            Text(text)
+                .font(.system(size: fontSize, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+            Text("\(max(review.pendingCount, 0)) 项")
+                .font(.system(size: max(fontSize - 6, 10), weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func reviewCounter(value: Int, label: String) -> some View {
@@ -1654,11 +1723,54 @@ private struct IslandExpandedReviewContent: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// 一条具体的待复习内容：标题 + 章节 + 学习日期，点击后深链回网页。
+    /// 这里刻意不放科目图标——提醒里要看到的是「复习什么」，不是「哪本书」。
+    private func reviewItemRow(_ item: IslandReviewItem) -> some View {
+        // A real `Button` (not a tap gesture) so the hosting view's hit test sees
+        // an accessibility button and routes the click to this row instead of
+        // treating it as a shell gesture — the same contract the todo rows use.
+        Button {
+            onItemSelected?(item)
+        } label: {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    if item.subtitle.isEmpty == false {
+                        Text(item.subtitle)
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                }
+                Spacer(minLength: 6)
+                if item.dateText.isEmpty == false {
+                    Text(item.dateText)
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(item.isOverdue ? Color(memoryFlowHex: "#f87171") : .white.opacity(0.42))
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 11)
+            .frame(height: 42)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(.white.opacity(0.10))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("island-review-item-\(item.id)")
+        .accessibilityLabel("待复习 \(item.title)")
+    }
+
     private func subjectCard(_ slot: IslandExpandedReviewSubjectSlot) -> some View {
         HStack(spacing: 7) {
-            Image(systemName: "book.closed.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint.opacity(0.92))
             Text(slot.title)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.86))

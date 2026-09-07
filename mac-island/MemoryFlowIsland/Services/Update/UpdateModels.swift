@@ -20,6 +20,12 @@ struct UpdateDownloadProgress: Codable, Equatable, Sendable {
         fraction.map { Int(($0 * 100).rounded(.down)) }
     }
 
+    /// 同一份下载的「已完成」形态（100%）。总大小未知时保持不确定态。
+    var completed: UpdateDownloadProgress {
+        guard let totalBytes, totalBytes > 0 else { return .indeterminate }
+        return UpdateDownloadProgress(receivedBytes: totalBytes, totalBytes: totalBytes)
+    }
+
     static let indeterminate = UpdateDownloadProgress(receivedBytes: 0, totalBytes: nil)
 }
 

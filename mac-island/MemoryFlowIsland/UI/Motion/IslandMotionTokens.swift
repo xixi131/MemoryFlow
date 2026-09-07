@@ -102,6 +102,9 @@ enum IslandMotionTokens {
     static let hoverDuration: TimeInterval = 0.18
     static let reduceMotionDuration: TimeInterval = 0.12
     static let reminderBannerHoldDuration: TimeInterval = 2.0
+    /// 大形态提醒列出了待复习内容，用户需要时间读完并点击其中一条，
+    /// 所以停留时间比只有一行字的小形态更长。
+    static let reminderBannerExpandedHoldDuration: TimeInterval = 6.0
     static let todoDetailContent = IslandTodoDetailContentMotionToken(
         duration: 0.28,
         dampingFraction: 0.86,

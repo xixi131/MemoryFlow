@@ -484,6 +484,7 @@ private final class ProbeIslandWindowController: IslandWindowControlling {
     var onLoginRequested: (() -> Void)?
     var onTodoCompletionRequested: ((Int64) -> Void)?
     var onTodoModeActivityChanged: ((Bool) -> Void)?
+    var onReviewItemOpenRequested: ((IslandReviewItem) -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
 

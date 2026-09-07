@@ -74,6 +74,7 @@ private extension IslandPreviewContent.Kind {
              .expandedMusic,
              .gestureLock,
              .reminderBanner,
+             .reminderBannerExpanded,
              .externalAgentNotification:
             return false
         }
@@ -86,6 +87,7 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
     }
     var onTodoCompletionRequested: ((Int64) -> Void)?
     var onTodoModeActivityChanged: ((Bool) -> Void)?
+    var onReviewItemOpenRequested: ((IslandReviewItem) -> Void)?
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
     private var advancedFeaturesEnabled = false
@@ -380,6 +382,22 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             self?.hostingView.consumeNextPointerTap()
             _ = self?.dispatchPhase5Intent(.todoDetailDismissed)
         }
+        renderModel.onReviewItemSelected = { [weak self] item in
+            guard let self else { return }
+            // Swallow the pointer-up that follows this tap so the generic
+            // `.tap` handler cannot also act on it.
+            self.hostingView.consumeNextPointerTap()
+            // Opening the browser takes focus away from the island, so close it
+            // on the way out: a reminder dismisses itself, a manually expanded
+            // island collapses the same way an outside click collapses it.
+            if self.phase5PreviewStateContainer.domainState.reminderBanner != nil {
+                self.cancelReminderBannerDismiss()
+                _ = self.dispatchPhase5Intent(.reminderBannerDismissed)
+            } else {
+                _ = self.dispatchPhase5Intent(.outsideCollapse)
+            }
+            self.onReviewItemOpenRequested?(item)
+        }
         hostingView.onPointerDown = { [weak self] input in
             self?.handlePointerDown(input)
         }
@@ -492,12 +510,33 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
         guard isEvaluatingReminderDuePolicy == false else { return }
         isEvaluatingReminderDuePolicy = true
         defer { isEvaluatingReminderDuePolicy = false }
+        let state = phase5PreviewStateContainer.domainState
         guard let event = IslandReminderDuePolicy.evaluate(
             now: Date(),
-            state: phase5PreviewStateContainer.domainState,
+            state: state,
             calendar: .current
         ) else { return }
-        dispatchPhase5Intent(.reminderBannerDue(kind: event.kind, key: event.key))
+        // Repeat reminders vary their copy and alternate between the small and
+        // the large shell so an hour-after-hour nag does not read as the same
+        // notification stuck on repeat.
+        let hasListContent = (state.reviewSnapshot?.items.isEmpty == false)
+            || (state.mockSources.review?.items.isEmpty == false)
+        let announcement = IslandReminderAnnouncement(
+            kind: event.kind,
+            key: event.key,
+            style: IslandReminderCopy.style(
+                for: event.kind,
+                repeatIndex: event.repeatIndex,
+                key: event.key,
+                hasListContent: event.kind == .review && hasListContent
+            ),
+            message: IslandReminderCopy.message(
+                for: event.kind,
+                repeatIndex: event.repeatIndex,
+                key: event.key
+            )
+        )
+        dispatchPhase5Intent(.reminderBannerDue(announcement))
     }
 
     /// Holds the reminder banner open for `IslandMotionTokens.reminderBannerHoldDuration`
@@ -514,8 +553,11 @@ final class IslandWindowController: NSWindowController, IslandWindowControlling 
             self.dispatchPhase5Intent(.reminderBannerDismissed)
         }
         reminderBannerDismissWorkItem = workItem
+        let holdDuration = phase5PreviewStateContainer.domainState.reminderBanner?.style == .expanded
+            ? IslandMotionTokens.reminderBannerExpandedHoldDuration
+            : IslandMotionTokens.reminderBannerHoldDuration
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + IslandMotionTokens.reminderBannerHoldDuration,
+            deadline: .now() + holdDuration,
             execute: workItem
         )
     }

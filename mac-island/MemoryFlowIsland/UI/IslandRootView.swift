@@ -68,6 +68,7 @@ final class IslandRenderModel: ObservableObject {
     var onUpdateRequested: (() -> Void)?
     var onUpdateLaterRequested: (() -> Void)?
     var onExternalAgentOpen: (() -> Void)?
+    var onReviewItemSelected: ((IslandReviewItem) -> Void)?
 
     init(
         presentation: IslandRenderPresentation,
@@ -111,7 +112,8 @@ struct IslandRootView: View {
             onLoginRequested: model.onLoginRequested,
             onUpdateRequested: model.onUpdateRequested,
             onUpdateLaterRequested: model.onUpdateLaterRequested,
-            onExternalAgentOpen: model.onExternalAgentOpen
+            onExternalAgentOpen: model.onExternalAgentOpen,
+            onReviewItemSelected: model.onReviewItemSelected
         )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.clear)

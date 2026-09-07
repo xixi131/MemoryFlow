@@ -555,6 +555,8 @@ enum IslandShadowEvidenceProbe {
             return "update-prompt-shadow.png"
         case .reminderBanner:
             return "reminder-banner-shadow.png"
+        case .reminderBannerExpanded:
+            return "reminder-banner-expanded-shadow.png"
         case .externalAgentNotification:
             return "external-agent-notification-shadow.png"
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:

@@ -41,6 +41,8 @@ export interface WidgetData {
     subjects: SubjectLight[];
     lightStatus?: 'GREEN' | 'YELLOW' | 'RED';
     reminderTime?: string;
+    /** 复习提醒总开关（设置页的「复习提醒」）。缺省视为开启。 */
+    reminderEnabled?: boolean;
 }
 
 export interface TodoPreviewTask {
@@ -695,7 +697,8 @@ export function useIslandState() {
     // ── Reminder time check ──────────────────────────────────────────────
     useEffect(() => {
         const checkTime = () => {
-            if (!state.data.reminderTime) {
+            // 关掉复习提醒后，灵动岛不再自动展开提醒。
+            if (!state.data.reminderTime || state.data.reminderEnabled === false) {
                 reminderDueRef.current = false;
                 dispatch({ type: 'SET_REMINDER_ACTIVE', payload: false });
                 return;
@@ -730,7 +733,7 @@ export function useIslandState() {
         checkTime();
         const interval = setInterval(checkTime, 10000);
         return () => clearInterval(interval);
-    }, [state.data.reminderTime, setForceCompactModeWithTransition]);
+    }, [state.data.reminderTime, state.data.reminderEnabled, setForceCompactModeWithTransition]);
 
     // ── Reminder collapse animation ──────────────────────────────────────
     useEffect(() => {

@@ -491,7 +491,9 @@ enum IslandPresentationReducer {
                 nextState.isHovered = false
                 lockForceCompactTransition(&nextState)
             }
-        case let .reminderBannerDue(kind, key):
+        case let .reminderBannerDue(announcement):
+            let kind = announcement.kind
+            let key = announcement.key
             let matchingSnapshotPresent: Bool
             switch kind {
             case .review:
@@ -509,7 +511,11 @@ enum IslandPresentationReducer {
             }
 
             return transition(state, reason: .reminderBannerPresented) { nextState in
-                nextState.reminderBanner = IslandReminderBanner(kind: kind)
+                nextState.reminderBanner = IslandReminderBanner(
+                    kind: kind,
+                    style: announcement.style,
+                    message: announcement.message
+                )
                 nextState.presentationState = .expanded
                 nextState.forceCompactMode = false
                 nextState.appDisplayMode = kind.displayMode
@@ -522,6 +528,15 @@ enum IslandPresentationReducer {
                 nextState.isHovered = false
                 nextState.selectedTodoTaskID = nil
                 nextState.firedReminderKeys.append(key)
+                // Review now re-announces hourly, so this list grows during the
+                // day instead of gaining one entry. Keep a bounded tail: a key
+                // old enough to fall off can never match again, because every
+                // key embeds its own day.
+                if nextState.firedReminderKeys.count > IslandReminderBannerLimits.firedKeyHistory {
+                    nextState.firedReminderKeys.removeFirst(
+                        nextState.firedReminderKeys.count - IslandReminderBannerLimits.firedKeyHistory
+                    )
+                }
             }
         case .reminderBannerDismissed:
             guard state.reminderBanner != nil else {

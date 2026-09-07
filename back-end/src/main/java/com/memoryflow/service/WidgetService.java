@@ -1,6 +1,7 @@
 package com.memoryflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.memoryflow.dto.widget.PendingReviewItemView;
 import com.memoryflow.dto.widget.WidgetSummaryDTO;
 import com.memoryflow.entity.Subject;
 import com.memoryflow.entity.UserSettings;
@@ -34,6 +35,7 @@ public class WidgetService {
         UserSettings settings = userSettingsMapper.selectOne(new LambdaQueryWrapper<UserSettings>()
                 .eq(UserSettings::getUserId, userId));
         String reminderTime = settings != null ? settings.getReminderTime() : "20:00";
+        boolean reminderEnabled = settings == null || !Boolean.FALSE.equals(settings.getReminderEnabled());
 
         // 获取用户所有科目
         List<Subject> subjects = subjectMapper.selectList(new LambdaQueryWrapper<Subject>()
@@ -72,11 +74,34 @@ public class WidgetService {
                 })
                 .collect(Collectors.toList());
 
+        // 待复习的具体要点。筛选条件与 countPendingReviewsByUserId 完全一致，
+        // 所以列表长度天然等于 totalPendingReviews。
+        List<WidgetSummaryDTO.ReviewItem> reviewItems = pointMapper
+                .findPendingReviewItemsByUserId(userId, today).stream()
+                .map(item -> toReviewItem(item, today))
+                .collect(Collectors.toList());
+
         return WidgetSummaryDTO.builder()
                 .totalPendingReviews(totalPending)
                 .totalCompletedToday(totalCompletedToday)
                 .reminderTime(reminderTime)
+                .reminderEnabled(reminderEnabled)
                 .subjects(subjectLights)
+                .reviewItems(reviewItems)
+                .build();
+    }
+
+    private static WidgetSummaryDTO.ReviewItem toReviewItem(PendingReviewItemView item, LocalDate today) {
+        return WidgetSummaryDTO.ReviewItem.builder()
+                .id(item.getId())
+                .subjectId(item.getSubjectId())
+                .chapterId(item.getChapterId())
+                .title(item.getTitle())
+                .chapterTitle(item.getChapterTitle())
+                .subjectTitle(item.getSubjectTitle())
+                .learnedAt(item.getLearnedAt() != null ? item.getLearnedAt().toString() : null)
+                .nextReviewDate(item.getNextReviewDate() != null ? item.getNextReviewDate().toString() : null)
+                .overdue(item.getNextReviewDate() != null && item.getNextReviewDate().isBefore(today))
                 .build();
     }
 }

@@ -10,6 +10,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
     case loginRequired
     case updatePrompt
     case reminderBanner
+    /// 大形态复习提醒：复用应用展开态的 shell，额外列出待复习内容。
+    case reminderBannerExpanded
     case externalAgentNotification
 
     var id: String {
@@ -18,7 +20,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
 
     var isExpanded: Bool {
         switch self {
-        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
+        case .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .reminderBannerExpanded, .externalAgentNotification:
             return true
         case .compactCollapsed, .hoverCollapsed, .activityCollapsed, .activityHoverCollapsed:
             return false
@@ -29,7 +31,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
         switch self {
         case .hoverCollapsed, .activityHoverCollapsed:
             return IslandVisualTokens.shadow.visibleInHoverCollapsed
-        case .expandedMusic, .expandedApp:
+        case .expandedMusic, .expandedApp, .reminderBannerExpanded:
             return IslandVisualTokens.shadow.visibleInExpanded
         case .compactCollapsed, .activityCollapsed, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return false
@@ -46,7 +48,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return .expandedMusic
         case .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
             return .compactExpanded
-        case .expandedApp:
+        case .expandedApp, .reminderBannerExpanded:
             return .expandedApp
         }
     }
@@ -71,6 +73,8 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
             return "Update Available"
         case .reminderBanner:
             return "Reminder Banner"
+        case .reminderBannerExpanded:
+            return "Reminder Banner (Expanded)"
         case .externalAgentNotification:
             return "External Agent Notification"
         }
@@ -98,7 +102,7 @@ enum IslandVisualState: String, CaseIterable, Identifiable {
                 trailingContentWidth: 36,
                 horizontalPadding: 18
             )
-        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .externalAgentNotification:
+        case .compactCollapsed, .hoverCollapsed, .expandedMusic, .expandedApp, .loginRequired, .updatePrompt, .reminderBanner, .reminderBannerExpanded, .externalAgentNotification:
             return .none
         }
     }

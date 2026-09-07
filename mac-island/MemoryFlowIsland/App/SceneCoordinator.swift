@@ -23,6 +23,7 @@ protocol IslandWindowControlling: AnyObject {
     var onLoginRequested: (() -> Void)? { get set }
     var onTodoCompletionRequested: ((Int64) -> Void)? { get set }
     var onTodoModeActivityChanged: ((Bool) -> Void)? { get set }
+    var onReviewItemOpenRequested: ((IslandReviewItem) -> Void)? { get set }
     var onUpdateRequested: (() -> Void)? { get set }
     var onUpdateLaterRequested: (() -> Void)? { get set }
     func show()
@@ -129,9 +130,12 @@ final class SceneCoordinator {
     let todoPollingController: TodoPollingController
     let todoMutationController: TodoMutationController
     private let todoLiveSyncOrchestrator: TodoLiveSyncOrchestrator
+    private let reviewDeepLinkOpener: ReviewDeepLinkOpener
     private let updateCheckPolicy: UpdateCheckPolicy
     private let updateCoordinator: UpdateCoordinator
     private var updateStateCancellable: AnyCancellable?
+    /// 最后一次已知的下载进度，用于在校验/安装阶段继续显示百分比。
+    private var lastDownloadProgress: UpdateDownloadProgress?
     private let externalAgentWatchers: [ExternalAgentWatching]
 
     init() {
@@ -267,6 +271,14 @@ final class SceneCoordinator {
         windowController.onTodoModeActivityChanged = { [weak todoLiveSyncOrchestrator] isActive in
             todoLiveSyncOrchestrator?.setTodoModeActive(isActive)
         }
+        let reviewDeepLinkOpener = ReviewDeepLinkOpener(
+            webBaseURL: MemoryFlowRuntimeEndpoints.webBaseURL
+        )
+        self.reviewDeepLinkOpener = reviewDeepLinkOpener
+        windowController.onReviewItemOpenRequested = { [weak advancedFeaturesSettings] item in
+            guard advancedFeaturesSettings?.isEnabled == true else { return }
+            _ = reviewDeepLinkOpener.open(item)
+        }
         let statusBarController = StatusBarController(
             windowController: windowController,
             preferencesWindowController: preferencesWindowController,
@@ -355,6 +367,13 @@ final class SceneCoordinator {
         }
         self.windowController.onTodoModeActivityChanged = { [weak todoLiveSyncOrchestrator = self.todoLiveSyncOrchestrator] isActive in
             todoLiveSyncOrchestrator?.setTodoModeActive(isActive)
+        }
+        let reviewDeepLinkOpener = ReviewDeepLinkOpener(
+            webBaseURL: MemoryFlowRuntimeEndpoints.webBaseURL
+        )
+        self.reviewDeepLinkOpener = reviewDeepLinkOpener
+        self.windowController.onReviewItemOpenRequested = { item in
+            _ = reviewDeepLinkOpener.open(item)
         }
         self.todoMutationController.onCompletionSucceeded = { [weak todoLiveSyncOrchestrator = self.todoLiveSyncOrchestrator] snapshot in
             todoLiveSyncOrchestrator?.acceptCompletionRefresh(snapshot)
@@ -521,11 +540,19 @@ final class SceneCoordinator {
                 }
                 self.windowController.presentUpdatePrompt(version: release.version, build: release.build)
             case .downloadRequested:
+                self.lastDownloadProgress = nil
                 self.windowController.applyUpdateDownloadProgress(.indeterminate)
             case .downloading(_, let progress):
+                self.lastDownloadProgress = progress
                 self.windowController.applyUpdateDownloadProgress(progress)
             case .verifying, .awaitingAuthorization, .installing:
-                self.windowController.applyUpdateDownloadProgress(.indeterminate)
+                // Verifying/installing follows a finished download. Resetting to
+                // `.indeterminate` here made the badge fall back from "100%" to
+                // "--%" right at the end, which reads as a glitch. Hold the last
+                // percentage instead; the spinner already says work is ongoing.
+                self.windowController.applyUpdateDownloadProgress(
+                    self.lastDownloadProgress?.completed ?? .indeterminate
+                )
             case .ready:
                 self.windowController.endUpdateDownloadActivity()
                 Task { @MainActor [weak self] in

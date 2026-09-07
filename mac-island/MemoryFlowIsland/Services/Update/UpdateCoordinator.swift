@@ -125,7 +125,20 @@ final class UpdateCoordinator: ObservableObject {
                 state = .available(release)
             }
         case .downloadStarted(let total):
-            guard case .downloadRequested(let release) = state else { return }
+            // A second `downloadStarted` means Sparkle restarted the transfer —
+            // it does this when a delta update fails to apply and it falls back
+            // to the full archive. Progress must restart from zero too, otherwise
+            // the old byte count and the old (smaller) total stay latched and the
+            // percentage jumps to 100% and sticks there.
+            let release: UpdateRelease
+            switch state {
+            case .downloadRequested(let requested):
+                release = requested
+            case .downloading(let downloading, _):
+                release = downloading
+            default:
+                return
+            }
             pendingReceivedBytes = 0
             state = .downloading(
                 release,
@@ -249,11 +262,15 @@ final class UserDefaultsUpdatePolicyStore: UpdatePolicyPersisting {
 final class UpdateCheckPolicy {
     static let cadence: TimeInterval = 24 * 60 * 60
     static let deferral: TimeInterval = 4 * 60 * 60
+    /// 检查失败（离线、超时、GitHub 抽风）后的重试间隔。
+    /// 没有它的话，一次失败就要等到下一个 24 小时周期，用户会觉得“根本不检测更新”。
+    static let failureRetry: TimeInterval = 30 * 60
     private let coordinator: UpdateCoordinator
     private let clock: UpdateClock
     private let store: UpdatePolicyPersisting
     private var cadenceTimer: Timer?
     private var deferralTimer: Timer?
+    private var retryTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
     private var cancellable: AnyCancellable?
     private var wasChecking = false
@@ -268,9 +285,21 @@ final class UpdateCheckPolicy {
             case .available, .downloadRequested:
                 self.store.lastSuccessfulCheck = self.clock.now
                 self.wasChecking = false
-            case .failed: self.wasChecking = false
+            case .failed:
+                self.wasChecking = false
+                self.scheduleFailureRetry()
             default: break
             }
+        }
+    }
+
+    /// A failed check leaves `lastSuccessfulCheck` untouched, so the next cadence
+    /// tick would still be a day away. Re-arm a short retry instead — the island
+    /// is a long-running menu bar app and may not be relaunched for weeks.
+    private func scheduleFailureRetry() {
+        retryTimer?.invalidate()
+        retryTimer = Timer.scheduledTimer(withTimeInterval: Self.failureRetry, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.catchUpIfNeeded() }
         }
     }
 
@@ -298,6 +327,8 @@ final class UpdateCheckPolicy {
         cadenceTimer = nil
         deferralTimer?.invalidate()
         deferralTimer = nil
+        retryTimer?.invalidate()
+        retryTimer = nil
         if let wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }

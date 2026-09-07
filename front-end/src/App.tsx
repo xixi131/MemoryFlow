@@ -423,6 +423,7 @@ const GoalDetail: React.FC<{
 
 const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) => void, onEdit: (title: string) => void }> = ({ subjectId, setView, onEdit }) => {
     const { fetchSubjectDetail, subjectDetails } = useSubjectStore();
+    const location = useLocation();
     const [data, setData] = useState<any[]>([]);
     const [subjectTitle, setSubjectTitle] = useState('');
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -444,6 +445,20 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
         id: string;
         title: string;
     } | null>(null);
+
+    // 深链支持：`/subject/:id?point=<pointId>`（Mac 灵动岛的复习提醒点开的就是这种链接）。
+    // 数据加载完成后展开目标要点并滚动到它，用户不用自己在长列表里找。
+    const highlightedPointId = new URLSearchParams(location.search).get('point');
+    useEffect(() => {
+        if (!highlightedPointId || data.length === 0) return;
+        setExpanded(prev => ({ ...prev, [highlightedPointId]: true }));
+        const frame = window.requestAnimationFrame(() => {
+            document
+                .getElementById(`point-${highlightedPointId}`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [highlightedPointId, data]);
 
     useEffect(() => {
         if (subjectId) {
@@ -1149,7 +1164,7 @@ const SubjectDetail: React.FC<{ subjectId: string | null, setView: (v: string) =
 
                                     {/* Level 2 Points (Children of Chapter) */}
                                     {chapter.children?.filter((point: any) => !point.sourceArticleId).map((point: any) => (
-                                        <div key={point.id} className="flex flex-col">
+                                        <div key={point.id} id={`point-${point.id}`} className="flex flex-col">
                                             <div 
                                                 className={`group relative bg-white dark:bg-surface-dark rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer ${expanded[point.id] ? 'rounded-b-none bg-white dark:bg-white/5' : ''}`}
                                                 onClick={() => toggleExpand(String(point.id))}
@@ -1322,12 +1337,18 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
     const [settings, setSettings] = useState<any>({
         dailyNewWordsGoal: 20,
         reminderTime: '20:00',
+        reminderEnabled: true,
         emailReminderEnabled: true,
         autoPlayAudio: true,
         soundEffectsEnabled: true,
         theme: 'dark'
     });
     const [showTimePicker, setShowTimePicker] = useState(false);
+
+    // 后端历史上同时返回过 "HH:mm" 与 "HH:mm:ss" 两种格式，
+    // 统一裁剪成 "HH:mm" 后再参与展示与选中态比较，避免秒位把分钟选中判断带偏。
+    const reminderTime: string = (settings.reminderTime || '20:00').slice(0, 5);
+    const reminderEnabled: boolean = settings.reminderEnabled !== false;
 
     useEffect(() => {
         fetchSettings();
@@ -1437,10 +1458,10 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
 
                         {/* Time */}
                         <div className="flex flex-col gap-3">
-                            <label className="text-base font-bold text-slate-900 dark:text-white">每日提醒时间</label>
+                            <label className="text-base font-bold text-slate-900 dark:text-white">复习提醒时间</label>
                             <div className="relative group cursor-pointer" onClick={() => setShowTimePicker(true)}>
                                 <div className="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-2xl px-5 py-4 font-mono text-lg flex items-center justify-between hover:border-primary dark:hover:border-primary transition-all">
-                                    <span>{settings.reminderTime || "20:00"}</span>
+                                    <span>{reminderTime}</span>
                                     <span className="material-symbols-outlined text-slate-400 dark:text-text-secondary group-hover:text-primary transition-colors">schedule</span>
                                 </div>
                             </div>
@@ -1455,12 +1476,12 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                             <div className="flex-1 overflow-y-auto no-scrollbar snap-y snap-mandatory bg-slate-50/50 dark:bg-black/20 rounded-xl">
                                                 {Array.from({length: 24}, (_, i) => i).map(h => {
                                                     const hStr = String(h).padStart(2, '0');
-                                                    const isSelected = (settings.reminderTime || "20:00").startsWith(hStr);
+                                                    const isSelected = reminderTime.startsWith(hStr);
                                                     return (
                                                         <div 
                                                             key={h} 
                                                             onClick={() => {
-                                                                const m = (settings.reminderTime || "20:00").split(':')[1];
+                                                                const m = reminderTime.split(':')[1];
                                                                 handleSettingChange('reminderTime', `${hStr}:${m}`);
                                                             }}
                                                             className={`snap-center h-12 flex items-center justify-center text-lg font-mono cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5 ${isSelected ? 'font-bold text-primary bg-primary/10' : 'text-slate-500 dark:text-slate-400'}`}
@@ -1475,12 +1496,12 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                             <div className="flex-1 overflow-y-auto no-scrollbar snap-y snap-mandatory bg-slate-50/50 dark:bg-black/20 rounded-xl">
                                                 {Array.from({length: 60}, (_, i) => i).map(m => {
                                                     const mStr = String(m).padStart(2, '0');
-                                                    const isSelected = (settings.reminderTime || "20:00").endsWith(mStr);
+                                                    const isSelected = reminderTime.endsWith(mStr);
                                                     return (
                                                         <div 
                                                             key={m} 
                                                             onClick={() => {
-                                                                const h = (settings.reminderTime || "20:00").split(':')[0];
+                                                                const h = reminderTime.split(':')[0];
                                                                 handleSettingChange('reminderTime', `${h}:${mStr}`);
                                                             }}
                                                             className={`snap-center h-12 flex items-center justify-center text-lg font-mono cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/5 ${isSelected ? 'font-bold text-primary bg-primary/10' : 'text-slate-500 dark:text-slate-400'}`}
@@ -1500,14 +1521,20 @@ const Settings: React.FC<{ theme: string; setTheme: (t: 'light' | 'dark') => voi
                                     </div>
                                 </div>
                             )}
+                            <p className="text-xs text-slate-500 dark:text-text-secondary pl-1">
+                                {reminderEnabled
+                                    ? '到点后，桌面灵动岛会提醒你今天还没复习完的内容'
+                                    : '复习提醒已关闭，桌面灵动岛不会再弹出复习提醒'}
+                            </p>
                         </div>
                      </div>
-                     
+
                      <div className="h-px bg-slate-100 dark:bg-white/5 w-full"></div>
 
                      {/* Toggles Grid */}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                         {[
+                            { label: '复习提醒', id: 'reminderEnabled', icon: 'notifications_active', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
                             { label: '自动播放发音', id: 'autoPlayAudio', icon: 'volume_up', color: 'text-blue-500', bg: 'bg-blue-500/10' },
                             { label: '应用内音效', id: 'soundEffectsEnabled', icon: 'music_note', color: 'text-pink-500', bg: 'bg-pink-500/10' },
                             { label: '邮件提醒', id: 'emailReminderEnabled', icon: 'mail', color: 'text-orange-500', bg: 'bg-orange-500/10' },
@@ -2661,7 +2688,9 @@ const App: React.FC = () => {
         const token = localStorage.getItem('token');
         // Allow public pages (login, register) without token
         if (!token && view !== 'login' && view !== 'register' && view !== 'widget' && view !== 'forgot-password' && view !== 'security-check' && view !== 'homepage' && view !== 'docs' && view !== 'text-joiner') {
-            navigate('/login');
+            // 记住用户原本要访问的页面（例如灵动岛复习提醒深链到的科目页），
+            // 登录成功后 Login 会把用户送回这里。
+            navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
         } else if (token) {
              // Fetch user info if not exists
              if (!user) fetchUser();
@@ -2709,7 +2738,7 @@ const App: React.FC = () => {
                 return;
             }
 
-            navigate('/login');
+            navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
             message.error('会话已过期，请重新登录');
         };
 

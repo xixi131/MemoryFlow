@@ -28,6 +28,17 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
         return params.get('callback') === 'desktop';
     };
 
+    /**
+     * 登录前用户想去的页面（灵动岛复习提醒深链、会话过期等场景会带上它）。
+     * 只接受站内相对路径，避免把用户重定向到外部站点。
+     */
+    const getRedirectTarget = () => {
+        const raw = new URLSearchParams(location.search).get('redirect');
+        if (!raw) return null;
+        if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+        return raw;
+    };
+
     const getDesktopCallbackScheme = () => {
         const params = new URLSearchParams(location.search);
         return params.get('client') === 'mac-island' ? 'memoryflow-island' : 'memoryflow';
@@ -151,6 +162,12 @@ export const Login: React.FC<{ setView: (v: string) => void }> = ({ setView }) =
 
                 if (isDesktopCallback()) {
                     return { redirectTo: `/login${location.search}` };
+                }
+
+                // 用户是被拦截到登录页的：登录成功后送回他原本点击的页面。
+                const requestedTarget = getRedirectTarget();
+                if (requestedTarget) {
+                    return { redirectTo: requestedTarget };
                 }
 
                 if (res.data.user && (res.data.user.role === 'ADMIN' || res.data.user.email === 'admin@gmail.com')) {
