@@ -557,6 +557,22 @@ struct IslandPreviewContent: Equatable {
             )
         }
 
+        if let notice = state.externalAgentNotice {
+            return IslandPreviewContent(
+                kind: .externalAgentNotification,
+                eyebrow: notice.sourceTitle,
+                title: notice.title,
+                subtitle: notice.detail,
+                badge: notice.title,
+                tone: .reminder,
+                review: nil,
+                todo: nil,
+                music: nil,
+                contentWidthRequirement: .none,
+                externalAgentSource: notice.source
+            )
+        }
+
         if showMusicActivity || state.primaryMode == .music {
             let music = state.mockSources.music ?? .sample
             return IslandPreviewContent(
@@ -606,22 +622,6 @@ struct IslandPreviewContent: Equatable {
                 review: banner.style == .expanded
                     ? (state.reviewSnapshot?.presentationActivity ?? state.mockSources.review)
                     : nil
-            )
-        }
-
-        if let notice = state.externalAgentNotice {
-            return IslandPreviewContent(
-                kind: .externalAgentNotification,
-                eyebrow: notice.sourceTitle,
-                title: notice.title,
-                subtitle: notice.detail,
-                badge: notice.title,
-                tone: .reminder,
-                review: nil,
-                todo: nil,
-                music: nil,
-                contentWidthRequirement: .none,
-                externalAgentSource: notice.source
             )
         }
 

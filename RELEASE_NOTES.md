@@ -3,6 +3,12 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.12
+
+- 修复歌曲切换时灵动岛封面偶尔仍显示上一首的问题，并提升多首连续切换时的显示稳定性。
+- 修复 Agent 通知覆盖音乐态时可能套用音乐样式的问题；关闭通知后会恢复原有播放状态。
+- 新增音乐封面切换与 Agent 通知覆盖音乐态的回归验证。
+
 ## v1.1.11
 
 - 复习提醒改为展示具体复习内容（要点标题、所属章节、学习日期），不再只显示科目名，并去掉了条目前的书本图标。

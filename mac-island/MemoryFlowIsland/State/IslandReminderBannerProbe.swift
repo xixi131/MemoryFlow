@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum IslandReminderBannerProbeError: Error, CustomStringConvertible {
@@ -30,6 +31,7 @@ enum IslandReminderBannerProbe {
         try validateRepeatCopyAndStyle()
         try validateAutoDismissTiming()
         try validateExternalAgentNotice()
+        try validateMusicArtworkUpdates()
         try validateAgentCompletionLogEvents()
         try validateToonFlowAgentModes()
         return "reminder-banner-probe: PASS; sequence=compactCollapsed->reminderBanner->compactCollapsed->activityCollapsed; kinds=review+todo; recovery=expandedCollapseRecovery; dedup=intentIgnored; policy=hourlyReviewRepeat+onceDailyTodo+timeGated+dayRearm+nothingPending+reminderDisabledSilences; repeatCopy=variedNudges+deterministic; repeatStyle=compactFirst+mixedShells; autoDismissHold=2.0s/6.0s+expandedCollapseRecovery; externalAgentNotice=present+tapDismiss; agentLogs=claudeEndTurn+claudeApprovalWait+claudeUserQuestionWait+chatGPTTaskComplete+chatGPTUserInputWait; toonFlow=allAgentModes+agentAnswersOnly; reminderActiveNeverSet=true"
@@ -87,6 +89,54 @@ enum IslandReminderBannerProbe {
               dismissed.state.externalAgentNotice == nil else {
             throw IslandReminderBannerProbeError.failed("external agent notice tap did not restore the normal compact island")
         }
+
+        for initial in [IslandDomainState.musicActivity, .expandedMusic] {
+            let overMusic = IslandPresentationReducer.reduce(
+                current: initial, intent: .externalAgentNoticePresented(notice)
+            )
+            let updated = IslandPresentationReducer.reduce(
+                current: overMusic.state, intent: .musicSnapshotUpdated(.mockPlaybackStart)
+            )
+            for result in [overMusic, updated] {
+                guard result.derivedState.visualState == .expandedApp,
+                      result.derivedState.previewContent.kind == .externalAgentNotification,
+                      result.derivedState.previewContent.music == nil else {
+                    throw IslandReminderBannerProbeError.failed("agent notice shell rendered music template")
+                }
+            }
+            let closed = IslandPresentationReducer.reduce(current: updated.state, intent: .tap)
+            guard closed.state.externalAgentNotice == nil,
+                  closed.state.primaryMode == .music,
+                  closed.state.mockSources.music != nil else {
+                throw IslandReminderBannerProbeError.failed("dismissing agent notice lost music")
+            }
+        }
+    }
+
+    private static func validateMusicArtworkUpdates() throws {
+        var fixtures: [Data] = []
+        for color in [NSColor.red, .green, .blue] {
+            let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+            )!
+            for x in 0..<2 {
+                for y in 0..<2 { bitmap.setColor(color, atX: x, y: y) }
+            }
+            fixtures.append(bitmap.representation(using: .png, properties: [:])!)
+        }
+        for data in fixtures + fixtures.reversed() {
+            guard let actual = IslandMusicArtworkCache.image(for: data)?.tiffRepresentation,
+                  actual == NSImage(data: data)?.tiffRepresentation else {
+                throw IslandReminderBannerProbeError.failed("artwork cache returned another track's image")
+            }
+        }
+        guard IslandMusicArtworkCache.image(for: nil) == nil,
+              IslandMusicArtworkCache.image(for: Data([0])) == nil else {
+            throw IslandReminderBannerProbeError.failed("missing artwork retained a previous image")
+        }
+        print("music-display-regression: PASS; artwork=threeTracks+reverse+missing; agentNotice=activity+expanded+snapshotUpdate+dismiss")
     }
 
     private static func validateAgentCompletionLogEvents() throws {

@@ -406,7 +406,9 @@ private struct IslandPreviewContentOverlay: View {
     @State private var playbackOverride: Bool?
     @State private var seekPreviewSeconds: TimeInterval?
     @State private var isFavorite = false
-    @State private var decodedMusicArtwork: NSImage?
+    private var decodedMusicArtwork: NSImage? {
+        IslandMusicArtworkCache.image(for: content.music?.artworkData)
+    }
     @State private var isLoginButtonHovered = false
     @State private var isUpdateButtonHovered = false
     @State private var isUpdateLaterButtonHovered = false
@@ -504,7 +506,6 @@ private struct IslandPreviewContentOverlay: View {
         .clipped()
         .onAppear {
             resetMusicPresentation(for: content.music, clearsPlaybackOverride: true)
-            decodeMusicArtwork(content.music?.artworkData)
         }
         .onChange(of: content.music) { previousMusic, nextMusic in
             if isPlaybackStateOnlyChange(from: previousMusic, to: nextMusic) {
@@ -519,7 +520,6 @@ private struct IslandPreviewContentOverlay: View {
                 seekPreviewSeconds = nil
             }
         }
-        .onChange(of: content.music?.artworkData) { decodeMusicArtwork($0) }
     }
 
     @ViewBuilder
@@ -1250,14 +1250,6 @@ private struct IslandPreviewContentOverlay: View {
             previous.isPlaying != next.isPlaying
     }
 
-    private func decodeMusicArtwork(_ artworkData: Data?) {
-        guard let artworkData else {
-            decodedMusicArtwork = nil
-            return
-        }
-        decodedMusicArtwork = NSImage(data: artworkData)
-    }
-
     private func registerMusicCommand(_ command: MusicCommand) {
         onMusicCommand?(command)
     }
@@ -1300,6 +1292,24 @@ private struct IslandPreviewContentOverlay: View {
     private var musicThemeColors: [Color] {
         let hexColors = content.music?.themePalette.colorsHex ?? [MusicThemePalette.fallbackHex]
         return hexColors.map { Color(memoryFlowHex: $0) }
+    }
+}
+
+enum IslandMusicArtworkCache {
+    private static let images: NSCache<NSData, NSImage> = {
+        let cache = NSCache<NSData, NSImage>()
+        cache.countLimit = 8
+        return cache
+    }()
+
+    // Resolve from this render's bytes so track transitions never capture a previous image.
+    static func image(for data: Data?) -> NSImage? {
+        guard let data else { return nil }
+        let key = data as NSData
+        if let image = images.object(forKey: key) { return image }
+        guard let image = NSImage(data: data) else { return nil }
+        images.setObject(image, forKey: key)
+        return image
     }
 }
 
