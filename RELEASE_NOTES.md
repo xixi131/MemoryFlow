@@ -3,6 +3,12 @@
 Add one `## vX.Y.Z` section before creating and pushing its matching Git tag.
 Only that section is published to GitHub Releases and shown by Sparkle to users.
 
+## v1.1.13
+
+- 修复 Apple Music 的播放通知不携带封面时，灵动岛没有继续读取实际封面的问题。
+- 兼容 MediaRemote 返回的 Data、NSImage、CGImage 等封面类型，避免歌曲信息正常但封面回退为默认图标。
+- 修复连续播放状态更新时封面被无封面通知覆盖的问题。
+
 ## v1.1.12
 
 - 修复歌曲切换时灵动岛封面偶尔仍显示上一首的问题，并提升多首连续切换时的显示稳定性。

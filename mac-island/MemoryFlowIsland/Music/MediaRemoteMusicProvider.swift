@@ -210,8 +210,12 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
             return
         }
 
+        var artworkSnapshot: MusicTrackSnapshot?
+        if rawSnapshot.artworkData == nil {
+            artworkSnapshot = queryMediaRemoteSnapshot()
+        }
         let fallbackSnapshot = rawSnapshot.artworkData == nil
-            ? fallbackProvider?.currentSnapshot()
+            ? (artworkSnapshot?.artworkData == nil ? fallbackProvider?.currentSnapshot() : artworkSnapshot)
             : nil
         let snapshot = MusicArtworkSnapshotMerger.merge(
             primary: rawSnapshot,
@@ -521,12 +525,32 @@ final class MediaRemoteMusicProvider: MusicEventProvider {
 
     private func firstData(in info: [String: Any], keys: [String]) -> Data? {
         for key in keys {
-            if let value = info[key] as? Data {
-                return value
+            if let data = artworkData(from: info[key]) {
+                return data
             }
-            if let value = info[key] as? NSData {
-                return value as Data
+        }
+        return nil
+    }
+
+    private func artworkData(from value: Any?) -> Data? {
+        if let value = value as? Data, value.isEmpty == false {
+            return value
+        }
+        if let value = value as? NSData, value.length > 0 {
+            return value as Data
+        }
+        if let value = value as? NSImage {
+            return value.tiffRepresentation
+        }
+        if let value {
+            let object = value as CFTypeRef
+            if CFGetTypeID(object) == CGImage.typeID {
+                let image = unsafeBitCast(object, to: CGImage.self)
+                return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
             }
+        }
+        if let value = value as? [UInt8], value.isEmpty == false {
+            return Data(value)
         }
         return nil
     }
